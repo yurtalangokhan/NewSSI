@@ -242,8 +242,12 @@ export default function SignedUpUserTable({
             </SelectTrigger>
             <SelectContent className="bg-background-tint-00">
               <SelectItem value="all">{t("admin.users.allStatus")}</SelectItem>
-              <SelectItem value="true">{t("admin.users.activeStatus")}</SelectItem>
-              <SelectItem value="false">{t("admin.users.inactiveStatus")}</SelectItem>
+              <SelectItem value="true">
+                {t("admin.users.activeStatus")}
+              </SelectItem>
+              <SelectItem value="false">
+                {t("admin.users.inactiveStatus")}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -560,5 +564,3 @@ function StatusBadge({ active, label }: { active: boolean; label: string }) {
     </div>
   );
 }
-
-

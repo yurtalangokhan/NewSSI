@@ -521,9 +521,7 @@ class PersonaController(BaseController):
                 meta = tool_descriptions.get(tool_name) or {}
 
             description = meta.get("description", "")
-            display_name = meta.get("display_name") or _format_tool_display_name(
-                tool_name
-            )
+            display_name = meta.get("display_name") or _format_tool_display_name(tool_name)
 
             index = len(tool_snapshots)
             tool_snapshots.append(
@@ -602,9 +600,7 @@ class PersonaController(BaseController):
         def _record(name: object, raw_description: object) -> None:
             if not name:
                 return
-            clean_description, title = _parse_mcp_tool_description(
-                str(raw_description or "")
-            )
+            clean_description, title = _parse_mcp_tool_description(str(raw_description or ""))
             descriptions[str(name)] = {
                 "description": clean_description,
                 "display_name": title or "",
@@ -1267,9 +1263,7 @@ class PersonaController(BaseController):
                 for persona in visible_personas
             )
             rag_payload = (
-                await self._fetch_rag_knowledge_selector_payload()
-                if needs_rag_lookup
-                else None
+                await self._fetch_rag_knowledge_selector_payload() if needs_rag_lookup else None
             )
             local_collection_cache: dict[str, dict[str, Any] | None] = {}
 

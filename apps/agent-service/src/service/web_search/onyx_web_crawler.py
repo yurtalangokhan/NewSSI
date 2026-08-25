@@ -447,8 +447,8 @@ class OnyxWebCrawler(WebContentProvider):
 
             if response.status_code >= 400:
                 has_cf_signals = _has_cloudflare_signals(response)
-                try_fallback = self._playwright_fallback_enabled and _should_try_playwright_fallback(
-                    response
+                try_fallback = (
+                    self._playwright_fallback_enabled and _should_try_playwright_fallback(response)
                 )
 
                 if try_fallback:
@@ -488,7 +488,9 @@ class OnyxWebCrawler(WebContentProvider):
                     fallback_encoding=response.apparent_encoding or response.encoding,
                 )
             except Exception as exc:
-                logger.warning("ATLAS crawler failed to decode %s (%s)", url, exc.__class__.__name__)
+                logger.warning(
+                    "ATLAS crawler failed to decode %s (%s)", url, exc.__class__.__name__
+                )
                 return _failed_result(url, FailureReason.DECODE_ERROR)
 
             direct_result = _parse_html_to_web_content(url, decoded_html)
@@ -552,7 +554,10 @@ class OnyxWebCrawler(WebContentProvider):
                     continue
                 return None
 
-            if self._max_html_size_bytes is not None and len(rendered.html) > self._max_html_size_bytes:
+            if (
+                self._max_html_size_bytes is not None
+                and len(rendered.html) > self._max_html_size_bytes
+            ):
                 logger.warning(
                     "Rendered HTML too large (%d chars) for %s, max is %d",
                     len(rendered.html),

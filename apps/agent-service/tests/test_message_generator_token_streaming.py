@@ -418,9 +418,7 @@ class _InterruptedSentenceAgent:
                         AIMessage(
                             id="tool-call",
                             content="",
-                            tool_calls=[
-                                {"name": "generic_tool", "args": {"q": "x"}, "id": "c1"}
-                            ],
+                            tool_calls=[{"name": "generic_tool", "args": {"q": "x"}, "id": "c1"}],
                         ),
                         ToolMessage(content="ok", tool_call_id="c1", name="generic_tool"),
                     ]
@@ -453,9 +451,7 @@ async def _tokens_across_tool_call(monkeypatch, *, tail: str, resume: str) -> st
 @pytest.mark.asyncio
 async def test_answer_resumed_after_tool_call_is_not_glued_mid_word(monkeypatch):
     """A call that stopped mid-word must not run into the next one's first word."""
-    answer = await _tokens_across_tool_call(
-        monkeypatch, tail="Aramaları", resume="Harika, buldum."
-    )
+    answer = await _tokens_across_tool_call(monkeypatch, tail="Aramaları", resume="Harika, buldum.")
 
     assert "AramalarıHarika" not in answer
     assert answer == "Aramaları\n\nHarika, buldum."
@@ -474,6 +470,7 @@ async def test_answer_resumed_mid_sentence_is_left_intact(monkeypatch):
     )
 
     assert answer == "kritik sayfaları okuyalım."
+
 
 class _TrailingWordBeforeToolAgent:
     """A call whose last word has no trailing space, then its tool call.
@@ -519,14 +516,11 @@ async def test_trailing_word_is_flushed_before_its_tool_steps(monkeypatch):
     packets = await _run(monkeypatch, _TrailingWordBeforeToolAgent())
     types = [p["type"] for p in packets]
 
-    assert "okuyacagim:" in "".join(
-        p["content"] for p in packets if p["type"] == "token"
-    )
+    assert "okuyacagim:" in "".join(p["content"] for p in packets if p["type"] == "token")
     last_token = len(types) - 1 - types[::-1].index("token")
     first_tool = types.index("custom_tool_start")
-    assert last_token < first_tool, (
-        "answer text arrived after the tool steps it introduces"
-    )
+    assert last_token < first_tool, "answer text arrived after the tool steps it introduces"
+
 
 class _QuietWhileWritingDocumentAgent:
     """Writes a sentence, then goes quiet while composing a document.
@@ -577,9 +571,12 @@ async def test_buffered_word_is_released_while_the_stream_is_quiet(monkeypatch):
     seen_word_at = None
     seen_document_at = None
     for index, chunk in enumerate(
-        [c async for c in AgentsRoute.message_generator(
-            StreamInput(message="arastir"), agent_id="chatbot", user_id="user-1"
-        )]
+        [
+            c
+            async for c in AgentsRoute.message_generator(
+                StreamInput(message="arastir"), agent_id="chatbot", user_id="user-1"
+            )
+        ]
     ):
         if seen_word_at is None and "gerekiyor:" in chunk:
             seen_word_at = index
@@ -588,6 +585,4 @@ async def test_buffered_word_is_released_while_the_stream_is_quiet(monkeypatch):
 
     assert seen_word_at is not None, "the buffered word never reached the client"
     assert seen_document_at is not None
-    assert seen_word_at < seen_document_at, (
-        "the word only appeared once the document was done"
-    )
+    assert seen_word_at < seen_document_at, "the word only appeared once the document was done"

@@ -12,9 +12,8 @@ import { LoadingAnimation } from "@/components/Loading";
 import { ConnectorTitle } from "@/components/admin/connectors/ConnectorTitle";
 import { deleteUserGroup } from "./lib";
 import { useRouter } from "next/navigation";
-import { FiEdit2, FiUser } from "react-icons/fi";
+import { FiUser } from "react-icons/fi";
 import { User, UserGroup } from "@/lib/types";
-import Link from "next/link";
 import { DeleteButton } from "@/components/DeleteButton";
 import { TableHeader } from "@/components/ui/table";
 import Button from "@/refresh-components/buttons/Button";
@@ -143,7 +142,9 @@ export const UserGroupsTable = ({
                   </TableCell>
                   <TableCell>
                     {userGroup.is_up_to_date ? (
-                      <div className="text-success">{t("admin.groups.upToDate")}</div>
+                      <div className="text-success">
+                        {t("admin.groups.upToDate")}
+                      </div>
                     ) : (
                       <div className="w-10">
                         <LoadingAnimation text={t("admin.groups.syncing")} />

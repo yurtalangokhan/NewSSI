@@ -70,9 +70,7 @@ def extract_title_and_description(html: str) -> tuple[str | None, str | None]:
 
     description_match = _META_DESCRIPTION_RE.search(html)
     description = (
-        html_module.unescape(description_match.group(2)).strip()
-        if description_match
-        else None
+        html_module.unescape(description_match.group(2)).strip() if description_match else None
     )
     description = description or None
 
@@ -93,10 +91,7 @@ def format_web_search_results(results: list[dict[str, str]]) -> str:
     format WebSearchProgressTracker (agent-service) parses back into
     structured OnyxDocument entries for the sources sidebar. Kept human
     readable so the LLM can still use it as plain text."""
-    blocks = [
-        f"TITLE: {r['title']}\nURL: {r['url']}\nSNIPPET: {r['snippet']}"
-        for r in results
-    ]
+    blocks = [f"TITLE: {r['title']}\nURL: {r['url']}\nSNIPPET: {r['snippet']}" for r in results]
     return "\n---\n".join(blocks)
 
 
@@ -139,9 +134,7 @@ def web_search_results(query: str, max_results: int = 5) -> str:
             html = response.text
 
             result_pattern = r'<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>([^<]*)</a>'
-            snippet_pattern = (
-                r'<a[^>]*class="result__snippet"[^>]*>([^<]*(?:<[^>]*>[^<]*)*)</a>'
-            )
+            snippet_pattern = r'<a[^>]*class="result__snippet"[^>]*>([^<]*(?:<[^>]*>[^<]*)*)</a>'
 
             links = re.findall(result_pattern, html)
             snippets = re.findall(snippet_pattern, html)

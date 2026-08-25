@@ -56,9 +56,10 @@ describe("resolveDefaultModelSelection", () => {
   });
 
   it("falls back to scanning all provider groups when only a bare model name is stored", () => {
-    expect(
-      resolveDefaultModelSelection("llama3.1:8b", null, groups)
-    ).toEqual({ providerKey: "ollama", modelName: "llama3.1:8b" });
+    expect(resolveDefaultModelSelection("llama3.1:8b", null, groups)).toEqual({
+      providerKey: "ollama",
+      modelName: "llama3.1:8b",
+    });
   });
 
   it("leaves providerKey unresolved when the saved model can't be found in any provider (e.g. provider deleted)", () => {

@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Text from "@/refresh-components/texts/Text";
+import { useState } from "react";
 import Button from "@/refresh-components/buttons/Button";
 import { SvgLink, SvgCopy, SvgCheck, SvgX } from "@opal/icons";
 import { setSessionSharing } from "@/app/craft/services/apiServices";
@@ -107,7 +106,9 @@ export default function ShareButton({
             leftIcon={SvgLink}
             aria-label={t("craftComponents.shareWebapp")}
           >
-            {isShared ? t("craftComponents.shared") : t("craftComponents.share")}
+            {isShared
+              ? t("craftComponents.shared")
+              : t("craftComponents.share")}
           </Button>
         </Popover.Trigger>
         <Popover.Content side="bottom" align="end" width="lg" sideOffset={4}>

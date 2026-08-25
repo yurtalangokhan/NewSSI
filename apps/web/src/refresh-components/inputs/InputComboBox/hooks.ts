@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, RefObject } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ComboBoxOption } from "./types";
 
 // =============================================================================

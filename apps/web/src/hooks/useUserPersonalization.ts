@@ -209,12 +209,7 @@ export default function useUserPersonalization(
         setIsSavingPersonalization(false);
       }
     },
-    [
-      onError,
-      onSuccess,
-      persistPersonalization,
-      personalizationValues,
-    ]
+    [onError, onSuccess, persistPersonalization, personalizationValues]
   );
 
   return {

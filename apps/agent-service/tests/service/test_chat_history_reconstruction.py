@@ -54,7 +54,9 @@ def test_reconstruct_messages_handles_web_search_error_cleanly_without_custom_to
                 content="",
                 tool_calls=[{"name": "web_search", "args": {"query": "Onyx"}, "id": "call-1"}],
             ),
-            ToolMessage(content="Web search error: timeout", tool_call_id="call-1", name="web_search"),
+            ToolMessage(
+                content="Web search error: timeout", tool_call_id="call-1", name="web_search"
+            ),
             AIMessage(content="Aramada bir sorun oluştu."),
         ],
         thread_metadata={"user_id": "user-1", "persona_id": 1},
@@ -74,7 +76,13 @@ def test_reconstruct_messages_handles_fetch_webpage_404_error_cleanly():
             HumanMessage(content="Valkey oku"),
             AIMessage(
                 content="",
-                tool_calls=[{"name": "fetch_webpage", "args": {"url": "https://example.com/404"}, "id": "call-1"}],
+                tool_calls=[
+                    {
+                        "name": "fetch_webpage",
+                        "args": {"url": "https://example.com/404"},
+                        "id": "call-1",
+                    }
+                ],
             ),
             ToolMessage(
                 content="Error fetching webpage: Client error '404 Not Found' for url 'https://example.com/404'",
@@ -303,13 +311,12 @@ def test_reconstruct_message_tree_reconstructs_a_branch_deeper_in_a_multi_turn_t
     )
 
     by_content = {m["message"]: m for m in messages if m["message"]}
-    assert by_content["ilk cevap"]["parent_message"] == by_content["ilk cevap (retry)"][
-        "parent_message"
-    ]
+    assert (
+        by_content["ilk cevap"]["parent_message"]
+        == by_content["ilk cevap (retry)"]["parent_message"]
+    )
     # The untouched second turn is unaffected by the earlier retry branch.
-    assert by_content["ikinci cevap"]["parent_message"] == by_content["ikinci soru"][
-        "message_id"
-    ]
+    assert by_content["ikinci cevap"]["parent_message"] == by_content["ikinci soru"]["message_id"]
 
 
 def test_reconstruct_message_tree_accumulates_a_tool_call_turn_split_across_checkpoints():
@@ -449,9 +456,13 @@ def test_reconstruct_messages_groups_web_search_and_fetch_webpage_turns_consiste
     """Verify that multiple parallel web searches group into one turn,
     reasoning steps get their own turns, and each fetch_webpage gets its own turn
     with queries, URLs, and document deltas on the correct turns."""
-    web_result_1 = "TITLE: Valkey vs Redis\nURL: https://example.com/valkey\nSNIPPET: Valkey comparison"
+    web_result_1 = (
+        "TITLE: Valkey vs Redis\nURL: https://example.com/valkey\nSNIPPET: Valkey comparison"
+    )
     web_result_2 = "TITLE: Benchmarks\nURL: https://example.com/bench\nSNIPPET: Benchmark results"
-    fetch_result_1 = "TITLE: What is Valkey?\nDESCRIPTION: A deep look at Valkey\n---\nContent of Valkey page"
+    fetch_result_1 = (
+        "TITLE: What is Valkey?\nDESCRIPTION: A deep look at Valkey\n---\nContent of Valkey page"
+    )
 
     raw_msgs = [
         HumanMessage(content="Valkey vs Redis 8 karşılaştırması"),
@@ -471,7 +482,11 @@ def test_reconstruct_messages_groups_web_search_and_fetch_webpage_turns_consiste
             content="",
             additional_kwargs={"thinking": "Good start! Now let me fetch the page..."},
             tool_calls=[
-                {"name": "fetch_webpage", "args": {"url": "https://example.com/valkey"}, "id": "call-3"},
+                {
+                    "name": "fetch_webpage",
+                    "args": {"url": "https://example.com/valkey"},
+                    "id": "call-3",
+                },
             ],
         ),
         ToolMessage(content=fetch_result_1, tool_call_id="call-3", name="fetch_webpage"),

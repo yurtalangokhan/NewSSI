@@ -15,7 +15,7 @@ import Button from "@/refresh-components/buttons/Button";
 import Switch from "@/refresh-components/inputs/Switch";
 import { useUser } from "@/providers/UserProvider";
 import { useTheme } from "next-themes";
-import { MemoryItem, ThemePreference } from "@/lib/types";
+import { ThemePreference } from "@/lib/types";
 import useUserPersonalization from "@/hooks/useUserPersonalization";
 import { toast } from "@/hooks/useToast";
 import LLMPopover from "@/refresh-components/popovers/LLMPopover";
@@ -78,9 +78,7 @@ function GeneralSettings() {
 
   // Which field (if any) currently has an in-flight save, so only that
   // field is locked instead of both.
-  const [savingField, setSavingField] = useState<"name" | "role" | null>(
-    null
-  );
+  const [savingField, setSavingField] = useState<"name" | "role" | null>(null);
 
   // Track initial values to detect changes
   const initialNameRef = useRef(basePersonalization.name);

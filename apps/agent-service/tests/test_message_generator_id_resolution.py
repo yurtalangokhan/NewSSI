@@ -105,9 +105,7 @@ async def _run(
 async def test_emits_real_message_ids_after_a_successful_turn(monkeypatch):
     packets = await _run(monkeypatch, thread_id="thread-1")
 
-    id_packet = next(
-        (p for p in packets if "reserved_assistant_message_id" in p), None
-    )
+    id_packet = next((p for p in packets if "reserved_assistant_message_id" in p), None)
     assert id_packet is not None, f"no id packet in: {packets}"
     assert id_packet == {"user_message_id": 4, "reserved_assistant_message_id": 5}
 

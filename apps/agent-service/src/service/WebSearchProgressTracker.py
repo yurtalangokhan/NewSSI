@@ -100,7 +100,11 @@ class WebSearchProgressTracker:
             query = _coerce_args(args).get("query") or ""
             return [
                 {"type": "search_tool_start", "is_internet_search": True, "call_id": call_id},
-                {"type": "search_tool_queries_delta", "queries": [query] if query else [], "call_id": call_id},
+                {
+                    "type": "search_tool_queries_delta",
+                    "queries": [query] if query else [],
+                    "call_id": call_id,
+                },
             ]
 
         if tool_name == FETCH_WEBPAGE_TOOL_NAME:
@@ -129,7 +133,9 @@ class WebSearchProgressTracker:
                 for m in _WEB_SEARCH_RESULT_RE.finditer(content)
                 if m.group("url").strip()
             ]
-            return [{"type": "search_tool_documents_delta", "documents": documents, "call_id": call_id}]
+            return [
+                {"type": "search_tool_documents_delta", "documents": documents, "call_id": call_id}
+            ]
 
         if tool_name == FETCH_WEBPAGE_TOOL_NAME:
             url = self._fetch_urls_by_call_id.pop(call_id, "") if call_id else ""
@@ -147,7 +153,13 @@ class WebSearchProgressTracker:
                         is_error=True,
                         error=content.strip()[:_BLURB_FALLBACK_LENGTH],
                     )
-                    return [{"type": "open_url_documents", "documents": [doc], "call_id": packet_call_id}]
+                    return [
+                        {
+                            "type": "open_url_documents",
+                            "documents": [doc],
+                            "call_id": packet_call_id,
+                        }
+                    ]
                 return [{"type": "open_url_documents", "documents": [], "call_id": packet_call_id}]
 
             description_match = _FETCH_DESCRIPTION_RE.search(content)
@@ -155,7 +167,9 @@ class WebSearchProgressTracker:
                 blurb = description_match.group("description").strip()
             else:
                 body_match = _FETCH_BODY_RE.search(content)
-                blurb = body_match.group("body").strip()[:_BLURB_FALLBACK_LENGTH] if body_match else ""
+                blurb = (
+                    body_match.group("body").strip()[:_BLURB_FALLBACK_LENGTH] if body_match else ""
+                )
 
             doc_title = title_match.group("title").strip()
             return [

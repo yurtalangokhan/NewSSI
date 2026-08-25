@@ -89,10 +89,7 @@ async function Main({ id }: { id: string }) {
 }
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
-  const [params, locale] = await Promise.all([
-    props.params,
-    resolveLocaleSS(),
-  ]);
+  const [params, locale] = await Promise.all([props.params, resolveLocaleSS()]);
 
   return (
     <SettingsLayouts.Root>

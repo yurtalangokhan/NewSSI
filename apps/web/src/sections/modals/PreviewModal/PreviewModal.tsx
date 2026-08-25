@@ -13,7 +13,9 @@ import { PreviewContext } from "@/sections/modals/PreviewModal/interfaces";
 import { resolveVariant } from "@/sections/modals/PreviewModal/variants";
 import { useTranslation } from "react-i18next";
 
-function getFilenameFromContentDisposition(header: string | null): string | null {
+function getFilenameFromContentDisposition(
+  header: string | null
+): string | null {
   if (!header) return null;
   const utf8Match = header.match(/filename\*=UTF-8''([^;]+)/i);
   if (utf8Match && utf8Match[1]) {
@@ -140,7 +142,8 @@ export default function PreviewModal({
         const url = window.URL.createObjectURL(blob);
         if (!isCancelled) {
           setFileUrl((prev) => {
-            if (prev && prev.startsWith("blob:")) window.URL.revokeObjectURL(prev);
+            if (prev && prev.startsWith("blob:"))
+              window.URL.revokeObjectURL(prev);
             return url;
           });
 
@@ -148,16 +151,17 @@ export default function PreviewModal({
             response.headers.get("Content-Disposition")
           );
           const originalFileName =
-            (docName && !docName.startsWith("image-"))
+            docName && !docName.startsWith("image-")
               ? docName
-              : dispositionFilename ||
-                docName ||
-                "document";
+              : dispositionFilename || docName || "document";
           setFileName(originalFileName);
 
           const rawContentType =
             response.headers.get("Content-Type") || "application/octet-stream";
-          const resolvedMime = resolveMimeType(rawContentType, originalFileName);
+          const resolvedMime = resolveMimeType(
+            rawContentType,
+            originalFileName
+          );
           setMimeType(resolvedMime);
 
           const resolved = resolveVariant(originalFileName, resolvedMime);

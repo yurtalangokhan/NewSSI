@@ -2,7 +2,7 @@
  * Unit tests for VertexAIOnboardingForm component
  */
 import React from "react";
-import { render, screen, waitFor, setupUser } from "@tests/setup/test-utils";
+import { render, screen, setupUser } from "@tests/setup/test-utils";
 import "@testing-library/jest-dom";
 import { VertexAIOnboardingForm } from "../VertexAIOnboardingForm";
 import {

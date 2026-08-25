@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import useSWR from "swr";
-import { ChatSession, ChatSessionSharedStatus } from "@/app/app/interfaces";
+import { ChatSession } from "@/app/app/interfaces";
 import {
   deleteChatSession,
   deleteAllChatSessions,
@@ -18,14 +18,7 @@ import {
   getChatSessionActivityTime,
   mergeChatSessionsByFreshness,
 } from "@/lib/chat/chatSessionActivity";
-import {
-  SvgTrash,
-  SvgX,
-  SvgCheck,
-  SvgEditBig,
-  SvgChevronLeft,
-  SvgChevronRight,
-} from "@opal/icons";
+import { SvgTrash, SvgX, SvgEditBig, SvgChevronLeft } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 
 function dedupeChatHistorySessions(sessions: ChatSession[]): ChatSession[] {

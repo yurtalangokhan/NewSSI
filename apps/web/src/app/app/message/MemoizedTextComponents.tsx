@@ -2,11 +2,7 @@ import {
   QuestionCardProps,
   DocumentCardProps,
 } from "@/components/search/results/Citation";
-import {
-  LoadedOnyxDocument,
-  MinimalOnyxDocument,
-  OnyxDocument,
-} from "@/lib/search/interfaces";
+import { MinimalOnyxDocument, OnyxDocument } from "@/lib/search/interfaces";
 import React, {
   memo,
   JSX,

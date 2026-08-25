@@ -81,10 +81,14 @@ class OllamaService:
                     "display_name": name,
                     "size": raw_model.get("size"),
                     "max_input_tokens": self._extract_context_length(raw_model, show_payload),
-                    "supports_image_input": self._infer_image_support(name, show_payload, raw_model),
+                    "supports_image_input": self._infer_image_support(
+                        name, show_payload, raw_model
+                    ),
                     "supports_reasoning": self._infer_reasoning_support(name, show_payload),
                     "supports_tools": self._infer_tools_support(name, show_payload),
-                    "supports_embedding": self._infer_embedding_support(name, show_payload, raw_model),
+                    "supports_embedding": self._infer_embedding_support(
+                        name, show_payload, raw_model
+                    ),
                     "supports_code": self._infer_code_support(name, show_payload),
                     "supports_audio": self._infer_audio_support(name, show_payload, raw_model),
                     "is_remote": bool(raw_model.get("remote_model")),

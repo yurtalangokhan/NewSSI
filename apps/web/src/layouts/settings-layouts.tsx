@@ -98,7 +98,10 @@ function SettingsRoot({
           DO NOT REMOVE this ID without updating SettingsHeader accordingly. */}
       <div className={cn("min-h-full", widthClasses[width])}>
         <div
-          className={cn("min-h-full animate-in fade-in duration-200", className)}
+          className={cn(
+            "min-h-full animate-in fade-in duration-200",
+            className
+          )}
           {...props}
         />
       </div>

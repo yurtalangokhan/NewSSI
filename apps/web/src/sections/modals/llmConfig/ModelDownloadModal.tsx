@@ -149,8 +149,14 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
   const [progress, setProgress] = useState<OllamaProgress | null>(null);
   const [done, setDone] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
-  const { aggregate, record, reset: resetAggregate } = useAggregatePullProgress();
+  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(
+    null
+  );
+  const {
+    aggregate,
+    record,
+    reset: resetAggregate,
+  } = useAggregatePullProgress();
 
   const reset = () => {
     setModelName("");
@@ -182,7 +188,10 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
       const res = await fetch("/api/admin/ollama/pull", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: modelName.trim(), provider_id: providerId }),
+        body: JSON.stringify({
+          model: modelName.trim(),
+          provider_id: providerId,
+        }),
       });
 
       if (!res.ok || !res.body) {
@@ -232,7 +241,8 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
     } catch (e: unknown) {
       setProgress(null);
       resetAggregate();
-      const message = e instanceof Error ? e.message : t("admin.llm.pullFailed");
+      const message =
+        e instanceof Error ? e.message : t("admin.llm.pullFailed");
       setErrorMessage(message);
       toast({ message, level: "error" });
     } finally {
@@ -247,7 +257,10 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
   return (
     <Modal open={open} onOpenChange={handleClose}>
       <Modal.Content width="sm">
-        <Modal.Header title={t("admin.llm.downloadOllamaModel")} onClose={handleClose} />
+        <Modal.Header
+          title={t("admin.llm.downloadOllamaModel")}
+          onClose={handleClose}
+        />
 
         <Modal.Body>
           <div className="space-y-4 w-full">
@@ -266,7 +279,12 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
             </div>
 
             {errorMessage && (
-              <Message error close={false} text={errorMessage} className="w-full" />
+              <Message
+                error
+                close={false}
+                text={errorMessage}
+                className="w-full"
+              />
             )}
 
             {progress && (
@@ -301,11 +319,19 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
         </Modal.Body>
 
         <Modal.Footer>
-          <Button prominence="secondary" onClick={handleClose} disabled={pulling && !done}>
+          <Button
+            prominence="secondary"
+            onClick={handleClose}
+            disabled={pulling && !done}
+          >
             {done ? t("modals.done") : t("modals.cancel")}
           </Button>
           {!done && (
-            <Button prominence="primary" onClick={handlePull} disabled={pulling}>
+            <Button
+              prominence="primary"
+              onClick={handlePull}
+              disabled={pulling}
+            >
               {pulling ? t("admin.llm.downloading") : t("admin.llm.download")}
             </Button>
           )}

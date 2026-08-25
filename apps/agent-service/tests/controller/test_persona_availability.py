@@ -44,8 +44,6 @@ def test_custom_model_missing_makes_agent_unavailable() -> None:
     }
 
 
-
-
 def test_default_model_ollama_alias_resolves_to_available_model() -> None:
     availability = build_agent_availability(
         {
@@ -94,6 +92,7 @@ def test_agent_with_ollama_model_override_resolves_to_concrete_model() -> None:
         "status": "ok",
         "message": "Model 'llama3.1:8b' is available.",
     }
+
 
 def test_default_model_uses_default_model_availability() -> None:
     availability = build_agent_availability(
@@ -399,6 +398,7 @@ async def test_catalog_fetches_rag_payload_once_for_all_agents(monkeypatch) -> N
         "controller.persona_controller.PersonaDB.list_all",
         fake_list_all,
     )
+
     async def fake_load_owner_emails(personas):
         return {}
 
@@ -475,7 +475,4 @@ async def test_catalog_fetches_mcp_tool_metadata_once_and_uses_real_descriptions
     assert len(custom_agents) == 3
     for agent in custom_agents:
         web_search_tool = next(t for t in agent["tools"] if t["name"] == "web_search")
-        assert (
-            web_search_tool["description"]
-            == "Searches the live web for current information."
-        )
+        assert web_search_tool["description"] == "Searches the live web for current information."

@@ -180,11 +180,7 @@ class TestInDocumentAnchors:
     """
 
     _MARKDOWN = (
-        "# Rapor\n\n"
-        "## Icindekiler\n"
-        "- [Yonetici Ozeti]({link})\n\n"
-        "## Yonetici Ozeti\n"
-        "Metin.\n"
+        "# Rapor\n\n## Icindekiler\n- [Yonetici Ozeti]({link})\n\n## Yonetici Ozeti\nMetin.\n"
     )
 
     def test_anchor_matching_a_heading_renders(self):

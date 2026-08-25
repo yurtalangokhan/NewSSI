@@ -189,8 +189,7 @@ export const FetchToolRenderer: MessageRenderer<FetchToolPacket, {}> = ({
           {errorDocuments.length > 0 && (
             <div className="flex flex-col gap-1 mt-2">
               {errorDocuments.map((doc) => {
-                const errorMsg =
-                  doc.error || doc.metadata?.error || doc.blurb;
+                const errorMsg = doc.error || doc.metadata?.error || doc.blurb;
                 return (
                   <div
                     key={`error-${doc.document_id}`}

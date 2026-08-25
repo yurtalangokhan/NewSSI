@@ -183,7 +183,9 @@ describe("Email/Password Login Workflow", () => {
 
     // ...it should be run through the same translation used by ErrorCallout.
     expect(
-      screen.getByText("An invalid response was received from the upstream server.")
+      screen.getByText(
+        "An invalid response was received from the upstream server."
+      )
     ).toBeInTheDocument();
   });
 

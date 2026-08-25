@@ -10,8 +10,16 @@ from src.tools.web_tools import (
 def test_format_web_search_results_joins_blocks_with_separator():
     formatted = format_web_search_results(
         [
-            {"title": "Onyx: Open Source AI Platform", "url": "https://onyx.app", "snippet": "Onyx is the open source generative AI platform."},
-            {"title": "Onyx Docs", "url": "https://docs.onyx.app", "snippet": "Documentation for Onyx."},
+            {
+                "title": "Onyx: Open Source AI Platform",
+                "url": "https://onyx.app",
+                "snippet": "Onyx is the open source generative AI platform.",
+            },
+            {
+                "title": "Onyx Docs",
+                "url": "https://docs.onyx.app",
+                "snippet": "Documentation for Onyx.",
+            },
         ]
     )
 

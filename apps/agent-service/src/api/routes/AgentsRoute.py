@@ -512,11 +512,7 @@ async def message_generator(
             # Separate the halves only when they would actually run together.
             # The model usually resumes an unfinished sentence after the tool
             # call, and breaking there would split the sentence instead.
-            if (
-                last_visible_char
-                and not last_visible_char.isspace()
-                and not text[:1].isspace()
-            ):
+            if last_visible_char and not last_visible_char.isspace() and not text[:1].isspace():
                 text = "\n\n" + text
         last_visible_char = text[-1:] or last_visible_char
         return f"data: {json.dumps({'type': 'token', 'content': text})}\n\n"
@@ -556,9 +552,7 @@ async def message_generator(
 
     try:
         async for stream_event in _with_idle_heartbeat(
-            agent.astream(
-                **kwargs, stream_mode=["updates", "messages", "custom"], subgraphs=True
-            ),
+            agent.astream(**kwargs, stream_mode=["updates", "messages", "custom"], subgraphs=True),
             settings.STREAM_HEARTBEAT_SECONDS,
         ):
             if isinstance(stream_event, _Heartbeat):
@@ -744,7 +738,9 @@ async def message_generator(
 
                     generated_file = parse_generated_file_payload(chat_message.content)
                     web_search_packets = (
-                        web_search_progress.on_tool_result(tool_name, chat_message.content, tool_call_id)
+                        web_search_progress.on_tool_result(
+                            tool_name, chat_message.content, tool_call_id
+                        )
                         if generated_file is None and is_web_search_tool(tool_name)
                         else None
                     )

@@ -20,7 +20,10 @@ describe("resolveActivePersonaId", () => {
 
   it("prefers the live agent's external_id over its numeric id when both are set", () => {
     expect(
-      resolveActivePersonaId(makeAgent({ id: 5, external_id: "ext-5" }), undefined)
+      resolveActivePersonaId(
+        makeAgent({ id: 5, external_id: "ext-5" }),
+        undefined
+      )
     ).toBe("ext-5");
   });
 

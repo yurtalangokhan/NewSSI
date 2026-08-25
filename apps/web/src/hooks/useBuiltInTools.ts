@@ -2,7 +2,11 @@
 
 import useSWR from "swr";
 import { useTranslation } from "react-i18next";
-import { authenticatedFetch, FetchError, getDefaultErrorMsg } from "@/lib/fetcher";
+import {
+  authenticatedFetch,
+  FetchError,
+  getDefaultErrorMsg,
+} from "@/lib/fetcher";
 
 export interface BuiltInTool {
   name: string;

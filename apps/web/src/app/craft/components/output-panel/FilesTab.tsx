@@ -145,7 +145,6 @@ export default function FilesTab({
         });
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     filesNeedsRefresh,
     sessionId,

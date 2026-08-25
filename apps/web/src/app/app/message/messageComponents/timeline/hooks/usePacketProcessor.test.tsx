@@ -335,9 +335,13 @@ describe("usePacketProcessor", () => {
 
       const batched = [
         ...initialPackets,
-        createPacket(PacketType.MESSAGE_DELTA, { turn_index: 0 }, {
-          content: "son kelime",
-        }),
+        createPacket(
+          PacketType.MESSAGE_DELTA,
+          { turn_index: 0 },
+          {
+            content: "son kelime",
+          }
+        ),
         createSearchToolStartPacket({ turn_index: 1 }),
       ];
       rerender({ packets: batched });
@@ -345,7 +349,9 @@ describe("usePacketProcessor", () => {
       expect(result.current.finalAnswerComing).toBe(false);
       const shown = result.current.displayGroups.flatMap((g) => g.packets);
       expect(
-        shown.some((p) => (p.obj as { content?: string }).content === "son kelime")
+        shown.some(
+          (p) => (p.obj as { content?: string }).content === "son kelime"
+        )
       ).toBe(true);
     });
 

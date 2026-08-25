@@ -3,7 +3,7 @@
 import { useState } from "react";
 import FileTile from "@/refresh-components/tiles/FileTile";
 import ButtonTile from "@/refresh-components/tiles/ButtonTile";
-import { SvgAddLines, SvgFilter, SvgMenu, SvgPlusCircle } from "@opal/icons";
+import { SvgAddLines, SvgPlusCircle } from "@opal/icons";
 import MemoriesModal from "@/refresh-components/modals/MemoriesModal";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import IconButton from "@/refresh-components/buttons/IconButton";
@@ -17,7 +17,11 @@ interface MemoriesProps {
   onDeleteMemory?: (id: string) => Promise<boolean>;
 }
 
-export default function Memories({ memories, onSaveMemories, onDeleteMemory }: MemoriesProps) {
+export default function Memories({
+  memories,
+  onSaveMemories,
+  onDeleteMemory,
+}: MemoriesProps) {
   const { t } = useTranslation("common", { keyPrefix: "memories" });
   const memoriesModal = useCreateModal();
   const [targetMemoryId, setTargetMemoryId] = useState<string | null>(null);
@@ -80,4 +84,3 @@ export default function Memories({ memories, onSaveMemories, onDeleteMemory }: M
     </>
   );
 }
-

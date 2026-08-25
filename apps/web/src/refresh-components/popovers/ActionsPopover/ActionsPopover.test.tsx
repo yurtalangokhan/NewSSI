@@ -265,7 +265,11 @@ describe("ActionsPopover", () => {
   });
 
   it("uses a translated tooltip for the manage-actions trigger, not a hardcoded English string", () => {
-    const tool = makeTool({ id: 1, name: "web_search", display_name: "Web Search" });
+    const tool = makeTool({
+      id: 1,
+      name: "web_search",
+      display_name: "Web Search",
+    });
 
     render(
       <ActionsPopover
@@ -329,7 +333,9 @@ describe("ActionsPopover", () => {
       "Searches the live web."
     );
     // No enable/disable affordance and no force-select click target.
-    expect(screen.queryByTestId("tool-option-web_search")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("tool-option-web_search")
+    ).not.toBeInTheDocument();
   });
 
   it("keeps classic system tools (Search, Web Search, Image Generation, Code Interpreter) fully interactive", () => {

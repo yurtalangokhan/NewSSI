@@ -88,7 +88,8 @@ export default function ChatDocumentDisplay({
     document.is_error ||
     Boolean(document.error) ||
     Boolean(document.metadata?.error) ||
-    (Boolean(document.blurb) && document.blurb.startsWith("Error fetching webpage"));
+    (Boolean(document.blurb) &&
+      document.blurb.startsWith("Error fetching webpage"));
   const errorMessage =
     document.error ||
     document.metadata?.error ||
@@ -133,7 +134,10 @@ export default function ChatDocumentDisplay({
         </div>
       ) : (
         <Text as="p" className="line-clamp-2 text-left" secondaryBody text03>
-          {buildDocumentSummaryDisplay(document.match_highlights, document.blurb)}
+          {buildDocumentSummaryDisplay(
+            document.match_highlights,
+            document.blurb
+          )}
         </Text>
       )}
     </div>

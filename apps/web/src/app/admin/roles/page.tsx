@@ -1072,284 +1072,189 @@ function RolesManager() {
             ) : (
               <>
                 {activeLayer === "composite" && selectedComp && (
-              <div className="mb-4 rounded-08 border border-border-01 bg-background-neutral-01 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Text headingH3 text05 className="truncate">
-                        {roleLabel(selectedComp.name)}
-                      </Text>
-                      {isBuiltin && (
-                        <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
-                          {t("builtInBadge")}
-                        </span>
-                      )}
-                    </div>
-                    {editingDescription ? (
-                      <div className="mt-2 flex items-center gap-2">
-                        <InputTypeIn
-                          className="min-w-0 flex-1"
-                          showClearButton={false}
-                          value={descriptionDraft}
-                          variant={isUpdatingDescription ? "disabled" : "primary"}
-                          onChange={(e) => setDescriptionDraft(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && !isUpdatingDescription) {
-                              void handleUpdateDescription(descriptionDraft);
-                            } else if (e.key === "Escape" && !isUpdatingDescription) {
-                              setEditingDescription(false);
-                            }
-                          }}
-                          autoFocus
-                        />
-                        <Button
-                          secondary
-                          size="md"
-                          disabled={isUpdatingDescription}
-                          onClick={() => void handleUpdateDescription(descriptionDraft)}
-                        >
-                          {isUpdatingDescription ? t("savingButton") : t("saveButton")}
-                        </Button>
-                        <Button
-                          secondary
-                          size="md"
-                          disabled={isUpdatingDescription}
-                          onClick={() => setEditingDescription(false)}
-                        >
-                          {t("cancelButton")}
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="mt-2 flex items-center gap-2">
-                        <Text
-                          secondaryBody
-                          text04
-                          className={cn(
-                            "min-w-0 truncate px-1 py-0.5",
-                            !selectedComp.description && "italic text-text-03"
+                  <div className="mb-4 rounded-08 border border-border-01 bg-background-neutral-01 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <Text headingH3 text05 className="truncate">
+                            {roleLabel(selectedComp.name)}
+                          </Text>
+                          {isBuiltin && (
+                            <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
+                              {t("builtInBadge")}
+                            </span>
                           )}
-                        >
-                          {selectedComp.description || t("noDescription")}
-                        </Text>
-                        {canMutate && (
-                          <IconButton
-                            icon={SvgEdit}
-                            internal
-                            className="shrink-0"
-                            onClick={() => {
-                              setDescriptionDraft(
-                                selectedComp.description ?? ""
-                              );
-                              setEditingDescription(true);
-                            }}
-                            tooltip={t("editRoleDescriptionAriaLabel")}
-                          />
-                        )}
-                      </div>
-                    )}
-                    <Text secondaryBody text04 className="mt-2 block">
-                      {isWildcard
-                        ? t("roleGrantsEveryPermission")
-                        : t("roleEffectivePermissionsSummary", {
-                            bundles: selectedRoleIds.size,
-                            permissions: effectivePermissions.length,
-                          })}
-                    </Text>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {isSavingRoleIds && (
-                      <div className="flex items-center gap-1.5 text-xs text-text-03">
-                        <SimpleLoader className="h-3.5 w-3.5" />
-                        <span>{t("savingButton")}</span>
-                      </div>
-                    )}
-                    <Button
-                      leftIcon={isSavingRoleIds ? SimpleLoader : SvgCheck}
-                      disabled={isSavingRoleIds || !canMutate}
-                      onClick={() => {
-                        if (selectedRole && roleIdsData?.role_ids) {
-                          void saveRoleIds({
-                            role_ids: roleIdsData.role_ids,
-                          });
-                        }
-                      }}
-                    >
-                      {isSavingRoleIds ? t("savingButton") : t("saveButton")}
-                    </Button>
-                    {canMutate && (
-                      <Button
-                        leftIcon={SvgTrash}
-                        secondary
-                        className="text-danger-03"
-                        onClick={() => setDeleteConfirmRole(selectedComp.name)}
-                      >
-                        {t("deleteButton")}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {selectedComp && (
-              <Card className="mb-4">
-                <CardHeader className="flex flex-row items-center justify-between gap-3">
-                  <div>
-                    <CardTitle className="text-sm">
-                      {t("includedServiceRolesTitle", {
-                        defaultValue: "Included service roles",
-                      })}
-                    </CardTitle>
-                    <Text secondaryBody text04 className="mt-1 block">
-                      {t("includedServiceRolesDescription", {
-                        defaultValue:
-                          "Inherited service roles contribute to this role's effective permissions.",
-                      })}
-                    </Text>
-                  </div>
-                  <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
-                    {t("includedServiceRolesSelectedCount", {
-                      count: selectedRoleIds.size,
-                      defaultValue: "{{count}} selected",
-                    })}
-                  </span>
-                </CardHeader>
-                <CardContent>
-                  <div className="relative mb-3">
-                    <InputTypeIn
-                      leftSearchIcon
-                      placeholder={t("searchIncludedRolesPlaceholder")}
-                      value={includedSearch}
-                      onChange={(e) => setIncludedSearch(e.target.value)}
-                    />
-                  </div>
-                  {includedCoarseRoles.length === 0 ? (
-                    <Text secondaryBody text04>
-                      {t("noServiceRolesMatchSearch", {
-                        defaultValue: "No service roles match",
-                      })}
-                    </Text>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
-                      {includedCoarseRoles.map((role) => (
-                        <label
-                          key={`${role.service_client}:${role.name}`}
-                          className={cn(
-                            "flex items-center gap-2 rounded-06 px-3 py-2",
-                            canMutate
-                              ? "cursor-pointer hover:bg-background-neutral-02"
-                              : ""
-                          )}
-                        >
-                          {canMutate && (
-                            <Checkbox
-                              checked={selectedRoleIds.has(role.name)}
-                              disabled={isSavingRoleIds}
-                              onCheckedChange={() =>
-                                handleToggleRole(role.name)
+                        </div>
+                        {editingDescription ? (
+                          <div className="mt-2 flex items-center gap-2">
+                            <InputTypeIn
+                              className="min-w-0 flex-1"
+                              showClearButton={false}
+                              value={descriptionDraft}
+                              variant={
+                                isUpdatingDescription ? "disabled" : "primary"
                               }
+                              onChange={(e) =>
+                                setDescriptionDraft(e.target.value)
+                              }
+                              onKeyDown={(e) => {
+                                if (
+                                  e.key === "Enter" &&
+                                  !isUpdatingDescription
+                                ) {
+                                  void handleUpdateDescription(
+                                    descriptionDraft
+                                  );
+                                } else if (
+                                  e.key === "Escape" &&
+                                  !isUpdatingDescription
+                                ) {
+                                  setEditingDescription(false);
+                                }
+                              }}
+                              autoFocus
                             />
-                          )}
-                          <span className="min-w-0">
-                            <Text
-                              secondaryBody
-                              text02
-                              className="block truncate"
+                            <Button
+                              secondary
+                              size="md"
+                              disabled={isUpdatingDescription}
+                              onClick={() =>
+                                void handleUpdateDescription(descriptionDraft)
+                              }
                             >
-                              {role.name}
-                            </Text>
+                              {isUpdatingDescription
+                                ? t("savingButton")
+                                : t("saveButton")}
+                            </Button>
+                            <Button
+                              secondary
+                              size="md"
+                              disabled={isUpdatingDescription}
+                              onClick={() => setEditingDescription(false)}
+                            >
+                              {t("cancelButton")}
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="mt-2 flex items-center gap-2">
                             <Text
                               secondaryBody
                               text04
-                              className="block truncate text-xs"
+                              className={cn(
+                                "min-w-0 truncate px-1 py-0.5",
+                                !selectedComp.description &&
+                                  "italic text-text-03"
+                              )}
                             >
-                              {t("serviceRolePermissionCount", {
-                                serviceClient: role.service_client,
-                                count: role.permissions.length,
-                                defaultValue:
-                                  "{{serviceClient}} · {{count}} permissions",
-                              })}
+                              {selectedComp.description || t("noDescription")}
                             </Text>
-                          </span>
-                        </label>
-                      ))}
+                            {canMutate && (
+                              <IconButton
+                                icon={SvgEdit}
+                                internal
+                                className="shrink-0"
+                                onClick={() => {
+                                  setDescriptionDraft(
+                                    selectedComp.description ?? ""
+                                  );
+                                  setEditingDescription(true);
+                                }}
+                                tooltip={t("editRoleDescriptionAriaLabel")}
+                              />
+                            )}
+                          </div>
+                        )}
+                        <Text secondaryBody text04 className="mt-2 block">
+                          {isWildcard
+                            ? t("roleGrantsEveryPermission")
+                            : t("roleEffectivePermissionsSummary", {
+                                bundles: selectedRoleIds.size,
+                                permissions: effectivePermissions.length,
+                              })}
+                        </Text>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {isSavingRoleIds && (
+                          <div className="flex items-center gap-1.5 text-xs text-text-03">
+                            <SimpleLoader className="h-3.5 w-3.5" />
+                            <span>{t("savingButton")}</span>
+                          </div>
+                        )}
+                        <Button
+                          leftIcon={isSavingRoleIds ? SimpleLoader : SvgCheck}
+                          disabled={isSavingRoleIds || !canMutate}
+                          onClick={() => {
+                            if (selectedRole && roleIdsData?.role_ids) {
+                              void saveRoleIds({
+                                role_ids: roleIdsData.role_ids,
+                              });
+                            }
+                          }}
+                        >
+                          {isSavingRoleIds
+                            ? t("savingButton")
+                            : t("saveButton")}
+                        </Button>
+                        {canMutate && (
+                          <Button
+                            leftIcon={SvgTrash}
+                            secondary
+                            className="text-danger-03"
+                            onClick={() =>
+                              setDeleteConfirmRole(selectedComp.name)
+                            }
+                          >
+                            {t("deleteButton")}
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+                  </div>
+                )}
 
-            {activeLayer === "coarse" && selectedCoarse && (
-              <div className="mb-4 rounded-08 border border-border-01 bg-background-neutral-01 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <Text
-                      headingH3
-                      text05
-                      className="block truncate capitalize"
-                    >
-                      {coarseRoleLabel(selectedCoarse.name)}
-                    </Text>
-                    <Text secondaryBody text04 className="mt-2 block">
-                      {selectedCoarse.description || t("noDescription")}
-                    </Text>
-                    <Text secondaryBody text04 className="mt-2 block">
-                      {selectedCoarseIsWildcard
-                        ? t("allPermissions")
-                        : t("permissionsSelectedCount", {
-                            count: selectedPermsSet.size,
+                {selectedComp && (
+                  <Card className="mb-4">
+                    <CardHeader className="flex flex-row items-center justify-between gap-3">
+                      <div>
+                        <CardTitle className="text-sm">
+                          {t("includedServiceRolesTitle", {
+                            defaultValue: "Included service roles",
                           })}
-                    </Text>
-                  </div>
-                  {!selectedCoarseIsWildcard && (
-                    <div className="flex shrink-0 items-center gap-2">
-                      {isSaving && (
-                        <div className="flex items-center gap-1.5 text-xs text-text-03">
-                          <SimpleLoader className="h-3.5 w-3.5" />
-                          <span>{t("savingButton")}</span>
-                        </div>
-                      )}
-                      <Button
-                        leftIcon={isSaving ? SimpleLoader : SvgCheck}
-                        disabled={isSaving || !canMutateCoarse}
-                        onClick={handleSave}
-                      >
-                        {isSaving ? t("savingButton") : t("saveButton")}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeLayer === "composite" ? (
-              <>
-                <div>
-                  <Text headingH3 text05 className="mb-2 block">
-                    {t("includedFeatureBundlesTitle")}
-                  </Text>
-                  <Text secondaryBody text04 className="mb-3 block">
-                    {t("includedFeatureBundlesDescription")}
-                  </Text>
-                  <div className="relative mb-3">
-                    <InputTypeIn
-                      leftSearchIcon
-                      placeholder={t("searchFeatureBundlesPlaceholder")}
-                      value={includedSearch}
-                      onChange={(e) => setIncludedSearch(e.target.value)}
-                    />
-                  </div>
-                  <Card className="rounded-08">
-                    <CardContent className="p-4">
+                        </CardTitle>
+                        <Text secondaryBody text04 className="mt-1 block">
+                          {t("includedServiceRolesDescription", {
+                            defaultValue:
+                              "Inherited service roles contribute to this role's effective permissions.",
+                          })}
+                        </Text>
+                      </div>
+                      <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
+                        {t("includedServiceRolesSelectedCount", {
+                          count: selectedRoleIds.size,
+                          defaultValue: "{{count}} selected",
+                        })}
+                      </span>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="relative mb-3">
+                        <InputTypeIn
+                          leftSearchIcon
+                          placeholder={t("searchIncludedRolesPlaceholder")}
+                          value={includedSearch}
+                          onChange={(e) => setIncludedSearch(e.target.value)}
+                        />
+                      </div>
                       {includedCoarseRoles.length === 0 ? (
-                        <Text secondaryBody text04 className="py-2">
-                          {t("noFeatureBundlesAvailable")}
+                        <Text secondaryBody text04>
+                          {t("noServiceRolesMatchSearch", {
+                            defaultValue: "No service roles match",
+                          })}
                         </Text>
                       ) : (
                         <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
                           {includedCoarseRoles.map((role) => (
                             <label
-                              key={role.name}
+                              key={`${role.service_client}:${role.name}`}
                               className={cn(
                                 "flex items-center gap-2 rounded-06 px-3 py-2",
                                 canMutate
@@ -1369,18 +1274,21 @@ function RolesManager() {
                               <span className="min-w-0">
                                 <Text
                                   secondaryBody
-                                  text05
-                                  className="block truncate capitalize"
+                                  text02
+                                  className="block truncate"
                                 >
-                                  {coarseRoleLabel(role.name)}
+                                  {role.name}
                                 </Text>
                                 <Text
                                   secondaryBody
                                   text04
-                                  className="block text-xs"
+                                  className="block truncate text-xs"
                                 >
-                                  {t("permissionsCount", {
+                                  {t("serviceRolePermissionCount", {
+                                    serviceClient: role.service_client,
                                     count: role.permissions.length,
+                                    defaultValue:
+                                      "{{serviceClient}} · {{count}} permissions",
                                   })}
                                 </Text>
                               </span>
@@ -1390,190 +1298,306 @@ function RolesManager() {
                       )}
                     </CardContent>
                   </Card>
-                </div>
+                )}
 
-                <div className="mt-6">
-                  <Text headingH3 text05 className="mb-2 block">
-                    {t("effectivePermissionsTitle")}
-                  </Text>
-                  <Text secondaryBody text04 className="mb-3 block">
-                    {t("effectivePermissionsDescription")}
-                  </Text>
-                  {effectivePermissions.length === 0 ? (
-                    <Text secondaryBody text04>
-                      {t("noEffectivePermissions")}
-                    </Text>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
-                      {effectivePermissions.map((permission) => (
-                        <div
-                          key={permission}
-                          className="rounded-06 bg-background-neutral-01 px-3 py-2"
+                {activeLayer === "coarse" && selectedCoarse && (
+                  <div className="mb-4 rounded-08 border border-border-01 bg-background-neutral-01 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <Text
+                          headingH3
+                          text05
+                          className="block truncate capitalize"
                         >
-                          <Text
-                            secondaryBody
-                            text04
-                            className="block truncate font-mono text-xs"
+                          {coarseRoleLabel(selectedCoarse.name)}
+                        </Text>
+                        <Text secondaryBody text04 className="mt-2 block">
+                          {selectedCoarse.description || t("noDescription")}
+                        </Text>
+                        <Text secondaryBody text04 className="mt-2 block">
+                          {selectedCoarseIsWildcard
+                            ? t("allPermissions")
+                            : t("permissionsSelectedCount", {
+                                count: selectedPermsSet.size,
+                              })}
+                        </Text>
+                      </div>
+                      {!selectedCoarseIsWildcard && (
+                        <div className="flex shrink-0 items-center gap-2">
+                          {isSaving && (
+                            <div className="flex items-center gap-1.5 text-xs text-text-03">
+                              <SimpleLoader className="h-3.5 w-3.5" />
+                              <span>{t("savingButton")}</span>
+                            </div>
+                          )}
+                          <Button
+                            leftIcon={isSaving ? SimpleLoader : SvgCheck}
+                            disabled={isSaving || !canMutateCoarse}
+                            onClick={handleSave}
                           >
-                            {permission}
-                          </Text>
+                            {isSaving ? t("savingButton") : t("saveButton")}
+                          </Button>
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                {selectedCoarseIsWildcard && (
-                  <div className="mb-4 rounded-08 border border-border-01 bg-background-neutral-01 p-6">
-                    <div className="flex items-center gap-2">
-                      <SvgShield size={18} className="text-text-03" />
-                      <Text headingH3 text05>
-                        {t("allPermissionsGrantedTitle")}
-                      </Text>
-                    </div>
-                    <Text secondaryBody text04 className="mt-2 block">
-                      {t("allPermissionsGrantedDescription")}
-                    </Text>
                   </div>
                 )}
 
-                <div className="relative mb-4">
-                  <InputTypeIn
-                    ref={permSearchRef}
-                    leftSearchIcon
-                    placeholder={t("searchPermissionsPlaceholder")}
-                    value={permSearch}
-                    onChange={(e) => setPermSearch(e.target.value)}
-                    onClear={() => setPermSearch("")}
-                  />
-                </div>
-
-                {orderedFeatures(filteredGrouped).map((feature) => {
-                  const entities = filteredGrouped[feature];
-                  if (!entities) return null;
-                  const featurePerms = Object.values(entities).flat();
-                  const featureSelected = featurePerms.filter((p) =>
-                    selectedPermsSet.has(p.name)
-                  ).length;
-                  const featureAll = featureSelected === featurePerms.length;
-                  return (
-                    <div key={feature} className="mb-5">
-                      <div className="mb-3 flex items-center gap-2">
-                        <div className="h-px flex-1 bg-border-01" />
-                        {canMutateCoarse && (
-                          <Checkbox
-                            checked={featureAll}
-                            onCheckedChange={(checked) =>
-                              handleSelectAll(featurePerms, !!checked)
-                            }
-                          />
-                        )}
-                        <Text headingH3 text05 className="capitalize">
-                          {featureLabel(feature, t)}
-                        </Text>
-                        <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
-                          {featureSelected}/{featurePerms.length}
-                        </span>
-                        <div className="h-px flex-1 bg-border-01" />
+                {activeLayer === "composite" ? (
+                  <>
+                    <div>
+                      <Text headingH3 text05 className="mb-2 block">
+                        {t("includedFeatureBundlesTitle")}
+                      </Text>
+                      <Text secondaryBody text04 className="mb-3 block">
+                        {t("includedFeatureBundlesDescription")}
+                      </Text>
+                      <div className="relative mb-3">
+                        <InputTypeIn
+                          leftSearchIcon
+                          placeholder={t("searchFeatureBundlesPlaceholder")}
+                          value={includedSearch}
+                          onChange={(e) => setIncludedSearch(e.target.value)}
+                        />
                       </div>
-                      {Object.entries(entities).map(([entity, perms]) => {
-                        const selectedCount = perms.filter((p) =>
-                          selectedPermsSet.has(p.name)
-                        ).length;
-                        const allSelected = selectedCount === perms.length;
-                        return (
-                          <Card key={entity} className="mb-2">
-                            <CardHeader className="flex flex-row items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                {canMutateCoarse && (
-                                  <Checkbox
-                                    checked={allSelected}
-                                    onCheckedChange={(checked) =>
-                                      handleSelectAll(perms, !!checked)
-                                    }
-                                  />
-                                )}
-                                <CardTitle className="capitalize text-sm">
-                                  {entity.replace(/_/g, " ")}
-                                </CardTitle>
-                                <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
-                                  {selectedCount}/{perms.length}
-                                </span>
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
-                                {perms.map((perm) => (
-                                  <label
-                                    key={perm.name}
-                                    className={cn(
-                                      "flex items-center gap-2 rounded-06 px-2 py-1.5 hover:bg-background-neutral-02",
-                                      canMutateCoarse ? "cursor-pointer" : ""
-                                    )}
-                                  >
+                      <Card className="rounded-08">
+                        <CardContent className="p-4">
+                          {includedCoarseRoles.length === 0 ? (
+                            <Text secondaryBody text04 className="py-2">
+                              {t("noFeatureBundlesAvailable")}
+                            </Text>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                              {includedCoarseRoles.map((role) => (
+                                <label
+                                  key={role.name}
+                                  className={cn(
+                                    "flex items-center gap-2 rounded-06 px-3 py-2",
+                                    canMutate
+                                      ? "cursor-pointer hover:bg-background-neutral-02"
+                                      : ""
+                                  )}
+                                >
+                                  {canMutate && (
+                                    <Checkbox
+                                      checked={selectedRoleIds.has(role.name)}
+                                      disabled={isSavingRoleIds}
+                                      onCheckedChange={() =>
+                                        handleToggleRole(role.name)
+                                      }
+                                    />
+                                  )}
+                                  <span className="min-w-0">
+                                    <Text
+                                      secondaryBody
+                                      text05
+                                      className="block truncate capitalize"
+                                    >
+                                      {coarseRoleLabel(role.name)}
+                                    </Text>
+                                    <Text
+                                      secondaryBody
+                                      text04
+                                      className="block text-xs"
+                                    >
+                                      {t("permissionsCount", {
+                                        count: role.permissions.length,
+                                      })}
+                                    </Text>
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <div className="mt-6">
+                      <Text headingH3 text05 className="mb-2 block">
+                        {t("effectivePermissionsTitle")}
+                      </Text>
+                      <Text secondaryBody text04 className="mb-3 block">
+                        {t("effectivePermissionsDescription")}
+                      </Text>
+                      {effectivePermissions.length === 0 ? (
+                        <Text secondaryBody text04>
+                          {t("noEffectivePermissions")}
+                        </Text>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                          {effectivePermissions.map((permission) => (
+                            <div
+                              key={permission}
+                              className="rounded-06 bg-background-neutral-01 px-3 py-2"
+                            >
+                              <Text
+                                secondaryBody
+                                text04
+                                className="block truncate font-mono text-xs"
+                              >
+                                {permission}
+                              </Text>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {selectedCoarseIsWildcard && (
+                      <div className="mb-4 rounded-08 border border-border-01 bg-background-neutral-01 p-6">
+                        <div className="flex items-center gap-2">
+                          <SvgShield size={18} className="text-text-03" />
+                          <Text headingH3 text05>
+                            {t("allPermissionsGrantedTitle")}
+                          </Text>
+                        </div>
+                        <Text secondaryBody text04 className="mt-2 block">
+                          {t("allPermissionsGrantedDescription")}
+                        </Text>
+                      </div>
+                    )}
+
+                    <div className="relative mb-4">
+                      <InputTypeIn
+                        ref={permSearchRef}
+                        leftSearchIcon
+                        placeholder={t("searchPermissionsPlaceholder")}
+                        value={permSearch}
+                        onChange={(e) => setPermSearch(e.target.value)}
+                        onClear={() => setPermSearch("")}
+                      />
+                    </div>
+
+                    {orderedFeatures(filteredGrouped).map((feature) => {
+                      const entities = filteredGrouped[feature];
+                      if (!entities) return null;
+                      const featurePerms = Object.values(entities).flat();
+                      const featureSelected = featurePerms.filter((p) =>
+                        selectedPermsSet.has(p.name)
+                      ).length;
+                      const featureAll =
+                        featureSelected === featurePerms.length;
+                      return (
+                        <div key={feature} className="mb-5">
+                          <div className="mb-3 flex items-center gap-2">
+                            <div className="h-px flex-1 bg-border-01" />
+                            {canMutateCoarse && (
+                              <Checkbox
+                                checked={featureAll}
+                                onCheckedChange={(checked) =>
+                                  handleSelectAll(featurePerms, !!checked)
+                                }
+                              />
+                            )}
+                            <Text headingH3 text05 className="capitalize">
+                              {featureLabel(feature, t)}
+                            </Text>
+                            <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
+                              {featureSelected}/{featurePerms.length}
+                            </span>
+                            <div className="h-px flex-1 bg-border-01" />
+                          </div>
+                          {Object.entries(entities).map(([entity, perms]) => {
+                            const selectedCount = perms.filter((p) =>
+                              selectedPermsSet.has(p.name)
+                            ).length;
+                            const allSelected = selectedCount === perms.length;
+                            return (
+                              <Card key={entity} className="mb-2">
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                  <div className="flex items-center gap-3">
                                     {canMutateCoarse && (
                                       <Checkbox
-                                        checked={selectedPermsSet.has(
-                                          perm.name
-                                        )}
-                                        onCheckedChange={() =>
-                                          handleToggle(perm.name)
+                                        checked={allSelected}
+                                        onCheckedChange={(checked) =>
+                                          handleSelectAll(perms, !!checked)
                                         }
                                       />
                                     )}
-                                    <div className="flex min-w-0 flex-col">
-                                      <Text
-                                        secondaryBody
-                                        text02
-                                        className="truncate"
+                                    <CardTitle className="capitalize text-sm">
+                                      {entity.replace(/_/g, " ")}
+                                    </CardTitle>
+                                    <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
+                                      {selectedCount}/{perms.length}
+                                    </span>
+                                  </div>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                                    {perms.map((perm) => (
+                                      <label
+                                        key={perm.name}
+                                        className={cn(
+                                          "flex items-center gap-2 rounded-06 px-2 py-1.5 hover:bg-background-neutral-02",
+                                          canMutateCoarse
+                                            ? "cursor-pointer"
+                                            : ""
+                                        )}
                                       >
-                                        {perm.label}
-                                      </Text>
-                                      {perm.description && (
-                                        <Text
-                                          secondaryBody
-                                          text04
-                                          className="truncate"
-                                        >
-                                          {perm.description}
-                                        </Text>
-                                      )}
-                                      <Text
-                                        secondaryBody
-                                        text04
-                                        className="truncate font-mono text-[0.7rem]"
-                                      >
-                                        {perm.action}
-                                      </Text>
-                                    </div>
-                                  </label>
-                                ))}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
+                                        {canMutateCoarse && (
+                                          <Checkbox
+                                            checked={selectedPermsSet.has(
+                                              perm.name
+                                            )}
+                                            onCheckedChange={() =>
+                                              handleToggle(perm.name)
+                                            }
+                                          />
+                                        )}
+                                        <div className="flex min-w-0 flex-col">
+                                          <Text
+                                            secondaryBody
+                                            text02
+                                            className="truncate"
+                                          >
+                                            {perm.label}
+                                          </Text>
+                                          {perm.description && (
+                                            <Text
+                                              secondaryBody
+                                              text04
+                                              className="truncate"
+                                            >
+                                              {perm.description}
+                                            </Text>
+                                          )}
+                                          <Text
+                                            secondaryBody
+                                            text04
+                                            className="truncate font-mono text-[0.7rem]"
+                                          >
+                                            {perm.action}
+                                          </Text>
+                                        </div>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
 
-                {Object.keys(filteredGrouped).length === 0 && (
-                  <div className="py-8 text-center">
-                    <Text secondaryBody text03>
-                      {permSearch
-                        ? t("noPermissionsMatchSearch")
-                        : t("noPermissionsFound")}
-                    </Text>
-                  </div>
+                    {Object.keys(filteredGrouped).length === 0 && (
+                      <div className="py-8 text-center">
+                        <Text secondaryBody text03>
+                          {permSearch
+                            ? t("noPermissionsMatchSearch")
+                            : t("noPermissionsFound")}
+                        </Text>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
-          </>
-        )}
-      </div>
-      </div>
+          </div>
+        </div>
       )}
 
       <CreateCompositeRoleModal
@@ -1590,11 +1614,7 @@ function RolesManager() {
           title={t("deleteRoleTitle")}
           onClose={() => setDeleteConfirmRole(null)}
           submit={
-            <Button
-              danger
-              onClick={handleDeleteRole}
-              disabled={isDeleting}
-            >
+            <Button danger onClick={handleDeleteRole} disabled={isDeleting}>
               {isDeleting ? t("deletingButton") : t("deleteButton")}
             </Button>
           }
@@ -1603,7 +1623,9 @@ function RolesManager() {
             <Text as="p" text04>
               {t("confirmDeleteRole", {
                 name: roleLabel(deleteConfirmRole),
-                defaultValue: `Are you sure you want to delete "${roleLabel(deleteConfirmRole)}"?`,
+                defaultValue: `Are you sure you want to delete "${roleLabel(
+                  deleteConfirmRole
+                )}"?`,
               })}
             </Text>
             <Text as="p" secondaryBody text03>

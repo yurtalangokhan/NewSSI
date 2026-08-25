@@ -31,7 +31,11 @@ export default function CollectionsPanel({
   isCollectionMutationLocked,
 }: CollectionsPanelProps) {
   const { t } = useTranslation();
-  const { collections: allCollections, isLoading: collectionsLoading, mutate } = useCollections();
+  const {
+    collections: allCollections,
+    isLoading: collectionsLoading,
+    mutate,
+  } = useCollections();
   const { datasources, isLoading: dsLoading } = useAirbyteDatasources();
   const isLoading = collectionsLoading || dsLoading;
 
@@ -82,9 +86,13 @@ export default function CollectionsPanel({
       onCollectionSelect(created.uuid);
       setNewName("");
       setIsCreating(false);
-      toast.success(t("admin.documentProcessing.collectionCreated", { name: created.name }));
+      toast.success(
+        t("admin.documentProcessing.collectionCreated", { name: created.name })
+      );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to create collection");
+      toast.error(
+        e instanceof Error ? e.message : "Failed to create collection"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -95,7 +103,8 @@ export default function CollectionsPanel({
     if (selectedIsDatasource) {
       toast.warning(
         t("admin.documentProcessing.datasourceReadOnlyActionsBlocked", {
-          defaultValue: "Airbyte datasource koleksiyonlarında bu işlem yapılamaz.",
+          defaultValue:
+            "Airbyte datasource koleksiyonlarında bu işlem yapılamaz.",
         })
       );
       return;
@@ -122,7 +131,9 @@ export default function CollectionsPanel({
       onCollectionSelect(null);
       toast.success(t("admin.documentProcessing.collectionDeleted"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to delete collection");
+      toast.error(
+        e instanceof Error ? e.message : "Failed to delete collection"
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -133,7 +144,8 @@ export default function CollectionsPanel({
     if (selectedIsDatasource) {
       toast.warning(
         t("admin.documentProcessing.datasourceReadOnlyActionsBlocked", {
-          defaultValue: "Airbyte datasource koleksiyonlarında bu işlem yapılamaz.",
+          defaultValue:
+            "Airbyte datasource koleksiyonlarında bu işlem yapılamaz.",
         })
       );
       return;
@@ -203,10 +215,15 @@ export default function CollectionsPanel({
                 <InputSelect
                   value={selectedCollectionId ?? ""}
                   onValueChange={(v) =>
-                    onCollectionSelect(v || null, v ? isDatasourceCollection(v) : undefined)
+                    onCollectionSelect(
+                      v || null,
+                      v ? isDatasourceCollection(v) : undefined
+                    )
                   }
                 >
-                  <InputSelect.Trigger placeholder={t("admin.documentProcessing.selectCollection")} />
+                  <InputSelect.Trigger
+                    placeholder={t("admin.documentProcessing.selectCollection")}
+                  />
                   <InputSelect.Content>
                     {collections.map((c) => (
                       <InputSelect.Item key={c.uuid} value={c.uuid}>
@@ -260,7 +277,9 @@ export default function CollectionsPanel({
                   selectedIsDatasource
                 }
               >
-                {isDeleting ? t("admin.documentProcessing.deleting") : t("modals.delete")}
+                {isDeleting
+                  ? t("admin.documentProcessing.deleting")
+                  : t("modals.delete")}
               </Button>
             )}
           </div>
@@ -319,17 +338,35 @@ export default function CollectionsPanel({
 
           {selectedCollection && (
             <div className="flex items-center gap-2 rounded-08 bg-background-neutral-01 border border-border-01 px-3 py-2">
-              <SvgHardDrive className="h-3.5 w-3.5 shrink-0 stroke-text-03" aria-hidden />
-              <Text as="p" mainContentMuted text03 className="font-mono text-xs">
+              <SvgHardDrive
+                className="h-3.5 w-3.5 shrink-0 stroke-text-03"
+                aria-hidden
+              />
+              <Text
+                as="p"
+                mainContentMuted
+                text03
+                className="font-mono text-xs"
+              >
                 {selectedCollection.uuid}
               </Text>
               {selectedIsDatasource && (
-                <Text as="span" mainContentMuted text03 className="text-xs italic ml-auto">
+                <Text
+                  as="span"
+                  mainContentMuted
+                  text03
+                  className="text-xs italic ml-auto"
+                >
                   {t("admin.documentProcessing.readOnlyDatasourceCollection")}
                 </Text>
               )}
               {!selectedIsDatasource && isCollectionMutationLocked && (
-                <Text as="span" mainContentMuted text03 className="text-xs italic ml-auto">
+                <Text
+                  as="span"
+                  mainContentMuted
+                  text03
+                  className="text-xs italic ml-auto"
+                >
                   {t("admin.documentProcessing.collectionMutationLocked", {
                     defaultValue:
                       "Graph RAG build devam ederken bu koleksiyon üzerinde değişiklik yapılamaz.",

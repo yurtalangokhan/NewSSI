@@ -8,12 +8,7 @@ import {
   updateDocumentSet,
   DocumentSetCreationRequest,
 } from "./lib";
-import {
-  ConnectorStatus,
-  DocumentSetSummary,
-  UserGroup,
-  FederatedConnectorConfig,
-} from "@/lib/types";
+import { ConnectorStatus, DocumentSetSummary, UserGroup } from "@/lib/types";
 import { TextFormField } from "@/components/Field";
 import Button from "@/refresh-components/buttons/Button";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";

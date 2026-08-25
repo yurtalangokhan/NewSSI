@@ -18,9 +18,12 @@ interface RawUsersResponse {
 export default function useShareableUsers({
   includeApiKeys,
 }: UseShareableUsersParams) {
-  const { data: rawData, error, mutate, isLoading } = useSWR<
-    MinimalUserSnapshot[] | RawUsersResponse
-  >(
+  const {
+    data: rawData,
+    error,
+    mutate,
+    isLoading,
+  } = useSWR<MinimalUserSnapshot[] | RawUsersResponse>(
     `/api/users?include_api_keys=${includeApiKeys}`,
     errorHandlingFetcher
   );

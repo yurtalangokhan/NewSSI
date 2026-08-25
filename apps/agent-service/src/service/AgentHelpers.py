@@ -434,7 +434,11 @@ async def _handle_input(
     # response yet; the caller then treats it exactly like a retry fork
     # (input=None) so the model regenerates without the old response — or
     # anything sent after it — in context. The old branch stays untouched.
-    if user_input.is_edit and user_input.edit_target_message_id is not None and user_input.message is not None:
+    if (
+        user_input.is_edit
+        and user_input.edit_target_message_id is not None
+        and user_input.message is not None
+    ):
         try:
             from service.CheckpointBranchService import find_fork_point_with_message
             from service.StoreService import get_thread_from_store

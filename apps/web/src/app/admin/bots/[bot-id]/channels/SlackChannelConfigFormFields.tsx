@@ -158,7 +158,6 @@ export function SlackChannelConfigFormFields({
       );
     }
     return false;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [values.knowledge_source, values.document_sets, values.persona_id]);
 
   return (
@@ -240,7 +239,11 @@ export function SlackChannelConfigFormFields({
                   <br />
                   {unselectableSets.length > 0 ? (
                     <span>
-                      {t("slackChannelConfigs.incompatibleDocSets", { visibility: viewUnselectableSets ? t("slackChannelConfigs.visible") : t("slackChannelConfigs.hidden") })}{" "}
+                      {t("slackChannelConfigs.incompatibleDocSets", {
+                        visibility: viewUnselectableSets
+                          ? t("slackChannelConfigs.visible")
+                          : t("slackChannelConfigs.hidden"),
+                      })}{" "}
                       <button
                         type="button"
                         onClick={() =>
@@ -299,7 +302,9 @@ export function SlackChannelConfigFormFields({
                               key={documentSet.id}
                               documentSet={documentSet}
                               disabled
-                              disabledTooltip={t("slackChannelConfigs.disabledDocSetTooltip")}
+                              disabledTooltip={t(
+                                "slackChannelConfigs.disabledDocSetTooltip"
+                              )}
                               isSelected={false}
                             />
                           ))}
@@ -432,15 +437,23 @@ export function SlackChannelConfigFormFields({
                     label={t("slackChannelConfigs.answerType")}
                     tooltip={t("slackChannelConfigs.answerTypeTooltip")}
                     options={[
-                      { name: t("slackChannelConfigs.answerTypeStandard"), value: "citations" },
-                      { name: t("slackChannelConfigs.answerTypeDetailed"), value: "quotes" },
+                      {
+                        name: t("slackChannelConfigs.answerTypeStandard"),
+                        value: "citations",
+                      },
+                      {
+                        name: t("slackChannelConfigs.answerTypeDetailed"),
+                        value: "quotes",
+                      },
                     ]}
                   />
                 </div>
                 <CheckboxField
                   name="answer_validity_check_enabled"
                   label={t("slackChannelConfigs.onlyRespondIfCitations")}
-                  tooltip={t("slackChannelConfigs.onlyRespondIfCitationsTooltip")}
+                  tooltip={t(
+                    "slackChannelConfigs.onlyRespondIfCitationsTooltip"
+                  )}
                 />
               </div>
             </AccordionContent>
@@ -448,7 +461,9 @@ export function SlackChannelConfigFormFields({
         )}
 
         <AccordionItem className="mt-4" value="general-options">
-          <AccordionTrigger>{t("slackChannelConfigs.generalConfig")}</AccordionTrigger>
+          <AccordionTrigger>
+            {t("slackChannelConfigs.generalConfig")}
+          </AccordionTrigger>
           <AccordionContent className="overflow-visible">
             <div className="space-y-4">
               <CheckboxField
@@ -469,7 +484,9 @@ export function SlackChannelConfigFormFields({
                 tooltip={t("slackChannelConfigs.stillNeedHelpTooltip")}
               />
               {values.still_need_help_enabled && (
-                <CollapsibleSection prompt={t("slackChannelConfigs.configureStillNeedHelp")}>
+                <CollapsibleSection
+                  prompt={t("slackChannelConfigs.configureStillNeedHelp")}
+                >
                   <TextArrayField
                     name="follow_up_tags"
                     label={t("slackChannelConfigs.optionalUsersGroupsTag")}
@@ -479,7 +496,9 @@ export function SlackChannelConfigFormFields({
                         {t("slackChannelConfigs.usersGroupsTagSubtext")}
                       </div>
                     }
-                    placeholder={t("slackChannelConfigs.userEmailGroupPlaceholder")}
+                    placeholder={t(
+                      "slackChannelConfigs.userEmailGroupPlaceholder"
+                    )}
                   />
                 </CollapsibleSection>
               )}
@@ -569,7 +588,11 @@ export function SlackChannelConfigFormFields({
             </Tooltip>
           </TooltipProvider>
         )}
-        <Button type="submit">{isUpdate ? t("slackChannelConfigs.update") : t("slackChannelConfigs.create")}</Button>
+        <Button type="submit">
+          {isUpdate
+            ? t("slackChannelConfigs.update")
+            : t("slackChannelConfigs.create")}
+        </Button>
         <Button secondary onClick={() => router.back()}>
           {t("slackChannelConfigs.cancel")}
         </Button>

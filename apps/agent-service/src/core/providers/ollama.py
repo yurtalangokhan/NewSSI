@@ -67,38 +67,140 @@ class OllamaProvider(LLMProvider):
                     model_info = show.get("model_info") if isinstance(show, dict) else None
 
                     supports_reasoning = (
-                        any(c in {"thinking", "reasoning"} for c in [str(item).lower() for item in caps_list])
-                        or any("reasoning" in str(k).lower() or "thinking" in str(k).lower() for k in (model_info or {}).keys())
-                        or any(p in model_name.lower() for p in ("r1", "qwq", "reasoning", "reasoner", "thinking", "cot", "deepseek-r1"))
+                        any(
+                            c in {"thinking", "reasoning"}
+                            for c in [str(item).lower() for item in caps_list]
+                        )
+                        or any(
+                            "reasoning" in str(k).lower() or "thinking" in str(k).lower()
+                            for k in (model_info or {}).keys()
+                        )
+                        or any(
+                            p in model_name.lower()
+                            for p in (
+                                "r1",
+                                "qwq",
+                                "reasoning",
+                                "reasoner",
+                                "thinking",
+                                "cot",
+                                "deepseek-r1",
+                            )
+                        )
                     )
                     self._reasoning_by_model[model_name] = supports_reasoning
 
                     supports_image_input = (
                         "vision" in [str(c).lower() for c in caps_list]
                         or bool((show or {}).get("projector_info"))
-                        or any("vision" in str(k).lower() or "clip" in str(k).lower() or "projector" in str(k).lower() for k in (model_info or {}).keys())
-                        or any(p in model_name.lower() for p in ("-vl", ":vl", "vl:", "vl-", "vision", "llava", "moondream", "minicpm-v", "pixtral", "bakllava", "qwen2.5vl", "qwen2.5-vl", "qwen2-vl", "qwen-vl", "llama3.2-vision", "llama-vision", "gemma3-vision"))
+                        or any(
+                            "vision" in str(k).lower()
+                            or "clip" in str(k).lower()
+                            or "projector" in str(k).lower()
+                            for k in (model_info or {}).keys()
+                        )
+                        or any(
+                            p in model_name.lower()
+                            for p in (
+                                "-vl",
+                                ":vl",
+                                "vl:",
+                                "vl-",
+                                "vision",
+                                "llava",
+                                "moondream",
+                                "minicpm-v",
+                                "pixtral",
+                                "bakllava",
+                                "qwen2.5vl",
+                                "qwen2.5-vl",
+                                "qwen2-vl",
+                                "qwen-vl",
+                                "llama3.2-vision",
+                                "llama-vision",
+                                "gemma3-vision",
+                            )
+                        )
                     )
 
                     supports_tools = (
                         "tools" in [str(c).lower() for c in caps_list]
-                        or any("tools" in str(k).lower() or "function_calling" in str(k).lower() for k in (model_info or {}).keys())
-                        or any(p in model_name.lower() for p in ("llama3.1", "llama3.2", "llama3.3", "qwen2.5", "qwen3", "mistral", "mixtral", "command-r", "firefunction", "granite", "functionary"))
+                        or any(
+                            "tools" in str(k).lower() or "function_calling" in str(k).lower()
+                            for k in (model_info or {}).keys()
+                        )
+                        or any(
+                            p in model_name.lower()
+                            for p in (
+                                "llama3.1",
+                                "llama3.2",
+                                "llama3.3",
+                                "qwen2.5",
+                                "qwen3",
+                                "mistral",
+                                "mixtral",
+                                "command-r",
+                                "firefunction",
+                                "granite",
+                                "functionary",
+                            )
+                        )
                     )
 
                     arch = str((model_info or {}).get("general.architecture", "")).lower()
                     supports_embedding = (
                         "embedding" in [str(c).lower() for c in caps_list]
-                        or any(v in arch for v in ("bert", "nomic-bert", "embedding", "xlm-roberta"))
-                        or any(p in model_name.lower() for p in ("embed", "bge", "minilm", "e5-", "e5_", "mxbai", "gte-", "snowflake-arctic-embed"))
+                        or any(
+                            v in arch for v in ("bert", "nomic-bert", "embedding", "xlm-roberta")
+                        )
+                        or any(
+                            p in model_name.lower()
+                            for p in (
+                                "embed",
+                                "bge",
+                                "minilm",
+                                "e5-",
+                                "e5_",
+                                "mxbai",
+                                "gte-",
+                                "snowflake-arctic-embed",
+                            )
+                        )
                     )
 
-                    supports_code = any(p in model_name.lower() for p in ("coder", "code", "codellama", "starcoder", "codegemma", "codegeex", "deepseek-coder", "qwen2.5-coder"))
+                    supports_code = any(
+                        p in model_name.lower()
+                        for p in (
+                            "coder",
+                            "code",
+                            "codellama",
+                            "starcoder",
+                            "codegemma",
+                            "codegeex",
+                            "deepseek-coder",
+                            "qwen2.5-coder",
+                        )
+                    )
 
                     supports_audio = (
-                        any(c in {"audio", "speech", "voice"} for c in [str(item).lower() for item in caps_list])
+                        any(
+                            c in {"audio", "speech", "voice"}
+                            for c in [str(item).lower() for item in caps_list]
+                        )
                         or any(v in arch for v in ("whisper", "audio", "speech", "seamless"))
-                        or any(p in model_name.lower() for p in ("audio", "whisper", "speech", "voice", "seamless", "bark", "tts", "stt"))
+                        or any(
+                            p in model_name.lower()
+                            for p in (
+                                "audio",
+                                "whisper",
+                                "speech",
+                                "voice",
+                                "seamless",
+                                "bark",
+                                "tts",
+                                "stt",
+                            )
+                        )
                     )
 
                     ctx_len = None

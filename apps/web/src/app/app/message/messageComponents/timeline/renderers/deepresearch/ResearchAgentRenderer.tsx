@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from "react";
-import { SvgCircle, SvgCheckCircle, SvgBookOpen } from "@opal/icons";
+import { SvgCircle, SvgBookOpen } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 
 import {

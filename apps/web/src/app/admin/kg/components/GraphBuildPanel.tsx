@@ -28,8 +28,7 @@ function StatusBadge({ status }: { status: GraphBuildStatus }) {
     {
       pending: {
         label: t("admin.kg.status.pending"),
-        className:
-          "border-border-01 bg-background-neutral-01 text-text-03",
+        className: "border-border-01 bg-background-neutral-01 text-text-03",
       },
       extracting: {
         label: t("admin.kg.status.extracting"),
@@ -98,25 +97,29 @@ export default function GraphBuildPanel({
   const [isPollingStopped, setIsPollingStopped] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [lastKnownSnapshot, setLastKnownSnapshot] =
-    useState<{ collectionId: string; status: GraphBuildStatusResponse } | null>(null);
+  const [lastKnownSnapshot, setLastKnownSnapshot] = useState<{
+    collectionId: string;
+    status: GraphBuildStatusResponse;
+  } | null>(null);
 
-  const {
-    graphCollections,
-    mutate: mutateGraphCollections,
-  } = useGraphCollections();
+  const { graphCollections, mutate: mutateGraphCollections } =
+    useGraphCollections();
 
   const graphCollectionSet = useMemo(
     () => new Set(graphCollections),
     [graphCollections]
   );
 
-  const selectedHasGraph = !!collectionId && graphCollectionSet.has(collectionId);
+  const selectedHasGraph =
+    !!collectionId && graphCollectionSet.has(collectionId);
 
   const { documents, isLoading: docsLoading } = useDocuments(collectionId);
   const hasDocuments = documents.length > 0;
 
-  const { status, mutate: mutateStatus } = useGraphBuildStatus(collectionId, pollActive);
+  const { status, mutate: mutateStatus } = useGraphBuildStatus(
+    collectionId,
+    pollActive
+  );
 
   useEffect(() => {
     if (status && collectionId) {
@@ -126,7 +129,9 @@ export default function GraphBuildPanel({
 
   const effectiveStatus =
     status ??
-    (lastKnownSnapshot?.collectionId === collectionId ? lastKnownSnapshot.status : null);
+    (lastKnownSnapshot?.collectionId === collectionId
+      ? lastKnownSnapshot.status
+      : null);
 
   const currentStatus = effectiveStatus?.status;
 
@@ -136,7 +141,7 @@ export default function GraphBuildPanel({
           (effectiveStatus.processed_chunks / effectiveStatus.total_chunks) *
             100
         )
-      : (effectiveStatus?.progress_percent ?? 0);
+      : effectiveStatus?.progress_percent ?? 0;
 
   const inProgress =
     currentStatus === "pending" ||
@@ -222,7 +227,9 @@ export default function GraphBuildPanel({
       setPollActive(true);
       toast.success(t("admin.kg.graphBuildStarted"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("admin.kg.graphBuildStartFailed"));
+      toast.error(
+        e instanceof Error ? e.message : t("admin.kg.graphBuildStartFailed")
+      );
       setIsSubmitting(false);
     }
   };
@@ -275,12 +282,7 @@ export default function GraphBuildPanel({
 
   const handleDelete = async () => {
     if (!collectionId) return;
-    if (
-      !window.confirm(
-        t("admin.kg.deleteConfirm")
-      )
-    )
-      return;
+    if (!window.confirm(t("admin.kg.deleteConfirm"))) return;
     setIsDeleting(true);
     try {
       await deleteGraph(collectionId);
@@ -288,7 +290,9 @@ export default function GraphBuildPanel({
       setPollActive(false);
       mutateGraphCollections();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("admin.kg.graphDeleteFailed"));
+      toast.error(
+        e instanceof Error ? e.message : t("admin.kg.graphDeleteFailed")
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -301,7 +305,8 @@ export default function GraphBuildPanel({
           {t("admin.kg.buildGraph")}
         </Text>
         <Text as="p" mainContentBody text04 className="leading-relaxed">
-          {t("admin.kg.buildGraphDescription")}{" "}{t("admin.kg.selectCollectionToBuild")}
+          {t("admin.kg.buildGraphDescription")}{" "}
+          {t("admin.kg.selectCollectionToBuild")}
         </Text>
       </div>
 
@@ -315,7 +320,12 @@ export default function GraphBuildPanel({
           {!inProgress && !docsLoading && !hasDocuments && (
             <div className="flex items-start gap-2 rounded-08 border border-status-error-03 bg-status-error-01 p-3">
               <SvgAlertTriangle className="h-4 w-4 shrink-0 stroke-status-error-06 mt-0.5" />
-              <Text as="p" mainContentBody text04 className="text-xs text-status-error-06">
+              <Text
+                as="p"
+                mainContentBody
+                text04
+                className="text-xs text-status-error-06"
+              >
                 {t("admin.kg.noDocumentsForBuild")}
               </Text>
             </div>
@@ -349,7 +359,12 @@ export default function GraphBuildPanel({
           {effectiveStatus && (inProgress || currentStatus === "completed") && (
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
-                <Text as="p" mainContentMuted text03 className="text-xs font-medium uppercase tracking-wide">
+                <Text
+                  as="p"
+                  mainContentMuted
+                  text03
+                  className="text-xs font-medium uppercase tracking-wide"
+                >
                   {t("admin.kg.progress")}
                 </Text>
                 <StatusBadge status={effectiveStatus.status} />
@@ -380,10 +395,22 @@ export default function GraphBuildPanel({
               )}
 
               <div className="grid grid-cols-4 gap-3">
-                <StatCounter label={t("admin.kg.chunks")} value={effectiveStatus.total_chunks} />
-                <StatCounter label={t("admin.kg.processed")} value={effectiveStatus.processed_chunks} />
-                <StatCounter label={t("admin.kg.entities")} value={effectiveStatus.extracted_entities} />
-                <StatCounter label={t("admin.kg.relations")} value={effectiveStatus.extracted_relations} />
+                <StatCounter
+                  label={t("admin.kg.chunks")}
+                  value={effectiveStatus.total_chunks}
+                />
+                <StatCounter
+                  label={t("admin.kg.processed")}
+                  value={effectiveStatus.processed_chunks}
+                />
+                <StatCounter
+                  label={t("admin.kg.entities")}
+                  value={effectiveStatus.extracted_entities}
+                />
+                <StatCounter
+                  label={t("admin.kg.relations")}
+                  value={effectiveStatus.extracted_relations}
+                />
               </div>
             </div>
           )}
@@ -454,13 +481,25 @@ export default function GraphBuildPanel({
           {/* Document list */}
           {!docsLoading && hasDocuments && (
             <div className="flex flex-col gap-2">
-              <Text as="p" mainContentMuted text03 className="text-xs font-medium uppercase tracking-wide">
+              <Text
+                as="p"
+                mainContentMuted
+                text03
+                className="text-xs font-medium uppercase tracking-wide"
+              >
                 {t("admin.kg.collectionDocuments")} ({documents.length})
               </Text>
               <div className="flex flex-col gap-1 max-h-48 overflow-y-auto rounded-08 border border-border-01 bg-background-neutral-01 p-2">
                 {documents.map((doc) => (
-                  <div key={doc.id} className="flex items-center gap-2 px-2 py-1 rounded-04 hover:bg-background-neutral-02 text-xs text-text-03 truncate">
-                    <span className="truncate">{(doc.metadata?.filename as string) || (doc.metadata?.title as string) || doc.id}</span>
+                  <div
+                    key={doc.id}
+                    className="flex items-center gap-2 px-2 py-1 rounded-04 hover:bg-background-neutral-02 text-xs text-text-03 truncate"
+                  >
+                    <span className="truncate">
+                      {(doc.metadata?.filename as string) ||
+                        (doc.metadata?.title as string) ||
+                        doc.id}
+                    </span>
                   </div>
                 ))}
               </div>

@@ -13,7 +13,9 @@ interface AgentAvailabilityBadgeProps {
 }
 
 function labelForStatus(
-  status: NonNullable<MinimalPersonaSnapshot["availability"]>["status"] | undefined,
+  status:
+    | NonNullable<MinimalPersonaSnapshot["availability"]>["status"]
+    | undefined,
   t: ReturnType<typeof useTranslation>["t"]
 ) {
   if (status === "available") {

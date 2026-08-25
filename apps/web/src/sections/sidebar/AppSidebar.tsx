@@ -413,15 +413,12 @@ const MemoizedAppSidebarInner = memo(
     const [activeChatSession, setActiveChatSession] =
       useState<ChatSession | null>(null);
 
-    const handleChatProjectDragStart = useCallback(
-      (event: DragStartEvent) => {
-        const activeData = event.active.data.current;
-        if (activeData?.type === DRAG_TYPES.CHAT) {
-          setActiveChatSession(activeData.chatSession as ChatSession);
-        }
-      },
-      []
-    );
+    const handleChatProjectDragStart = useCallback((event: DragStartEvent) => {
+      const activeData = event.active.data.current;
+      if (activeData?.type === DRAG_TYPES.CHAT) {
+        setActiveChatSession(activeData.chatSession as ChatSession);
+      }
+    }, []);
 
     const handleChatProjectDragCancel = useCallback(() => {
       setActiveChatSession(null);

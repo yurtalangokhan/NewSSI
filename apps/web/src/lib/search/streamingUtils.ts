@@ -225,7 +225,14 @@ export async function* handleSSEStream<T extends PacketType>(
         if (line.trim() === "") continue;
 
         const trimmedLine = line.trim();
-        if (trimmedLine === "data: [DONE]" || trimmedLine === "[DONE]" || trimmedLine === "data:") {
+        if (trimmedLine.startsWith(":")) {
+          continue;
+        }
+        if (
+          trimmedLine === "data: [DONE]" ||
+          trimmedLine === "[DONE]" ||
+          trimmedLine === "data:"
+        ) {
           yield {
             placement: { turn_index: turnIndex, sub_turn_index: null },
             obj: { type: "stop", stop_reason: "finished" },
@@ -259,10 +266,6 @@ export async function* handleSSEStream<T extends PacketType>(
             continue;
           }
 
-          if (backendPacket.type === "token") {
-            sawTokenForCurrentAnswer = true;
-          }
-
           if (backendPacket.type === "message" && sawTokenForCurrentAnswer) {
             // Token stream already provided this answer incrementally.
             // Skip duplicated full-message payload.
@@ -278,7 +281,13 @@ export async function* handleSSEStream<T extends PacketType>(
           // They ride the current turn and get their own group from the
           // "genfile" group suffix instead, so the card renders after the text.
           const isGeneratedFilePkt =
-            getCategoryFor(backendPacket.type)?.id === GENERATED_FILE_CATEGORY_ID;
+            getCategoryFor(backendPacket.type)?.id ===
+            GENERATED_FILE_CATEGORY_ID;
+          const isReasoningPkt =
+            backendPacket.type === "reasoning_start" ||
+            backendPacket.type === "reasoning_delta";
+          const isMidAnswerReasoningPkt =
+            isReasoningPkt && sawTokenForCurrentAnswer;
           const isToolPkt =
             TOOL_PACKET_TYPES.has(backendPacket.type) &&
             !isGeneratedFilePkt &&
@@ -292,12 +301,20 @@ export async function* handleSSEStream<T extends PacketType>(
             const isCallStartType = CALL_START_TYPES.has(backendPacket.type);
             const isNewCallStart =
               isCallStartType &&
-              ((callId && !toolCallTurns.has(callId)) || (!callId && lastToolPacketType !== null));
+              ((callId && !toolCallTurns.has(callId)) ||
+                (!callId && lastToolPacketType !== null));
             if (!sawToolPackets) {
               turnIndex++; // display → tool: pre-tool text gets its own group
               sawTokenForCurrentAnswer = false;
               hasMessageStartForCurrentAnswer = false;
-            } else if (lastToolPacketType && shouldSplitCategories(lastToolPacketType, backendPacket.type)) {
+            } else if (isNewCallStart) {
+              turnIndex++;
+              sawTokenForCurrentAnswer = false;
+              hasMessageStartForCurrentAnswer = false;
+            } else if (
+              lastToolPacketType &&
+              shouldSplitCategories(lastToolPacketType, backendPacket.type)
+            ) {
               turnIndex++;
               sawTokenForCurrentAnswer = false;
               hasMessageStartForCurrentAnswer = false;
@@ -313,6 +330,10 @@ export async function* handleSSEStream<T extends PacketType>(
             lastToolPacketType = null;
             sawTokenForCurrentAnswer = false;
             hasMessageStartForCurrentAnswer = false;
+          }
+
+          if (backendPacket.type === "token") {
+            sawTokenForCurrentAnswer = true;
           }
 
           if (backendPacket.type === "stop") {

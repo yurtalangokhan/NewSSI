@@ -15,7 +15,6 @@ import {
   TimelineUIState,
 } from "@/app/app/message/messageComponents/timeline/hooks/useTimelineUIState";
 import {
-  isResearchAgentPackets,
   isSearchToolPackets,
   stepSupportsCollapsedStreaming,
   stepHasCollapsedStreamingContent,

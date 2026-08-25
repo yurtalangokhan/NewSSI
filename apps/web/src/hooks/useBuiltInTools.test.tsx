@@ -53,9 +53,7 @@ describe("useBuiltInTools", () => {
     await waitFor(() => expect(authenticatedFetch).toHaveBeenCalledTimes(1));
 
     const [, init] = authenticatedFetchMock().mock.calls[0]!;
-    expect((init?.headers as Record<string, string>)["X-Language"]).toBe(
-      "en"
-    );
+    expect((init?.headers as Record<string, string>)["X-Language"]).toBe("en");
   });
 
   it("refetches with the new language when the app's language changes", async () => {

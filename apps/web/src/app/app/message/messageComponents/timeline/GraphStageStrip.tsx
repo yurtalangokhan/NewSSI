@@ -28,7 +28,10 @@ function getStringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function extractStageLabel(stage: Record<string, unknown>, index: number): string {
+function extractStageLabel(
+  stage: Record<string, unknown>,
+  index: number
+): string {
   return (
     getStringValue(stage.name) ??
     getStringValue(stage.title) ??
@@ -77,7 +80,9 @@ function getStageProgress(
       continue;
     }
 
-    const stageName = getStringValue((packet.obj as { stage_name?: unknown }).stage_name);
+    const stageName = getStringValue(
+      (packet.obj as { stage_name?: unknown }).stage_name
+    );
     if (!stageName) {
       continue;
     }

@@ -117,7 +117,6 @@ function BedrockModalInternals({
       formikProps.setFieldValue(FIELD_AWS_ACCESS_KEY_ID, "");
       formikProps.setFieldValue(FIELD_AWS_SECRET_ACCESS_KEY, "");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authMethod]);
 
   const currentModels =
@@ -162,7 +161,9 @@ function BedrockModalInternals({
           }
         >
           <Tabs.List>
-            <Tabs.Trigger value={AUTH_METHOD_IAM}>{t("llmConfig.iamRole")}</Tabs.Trigger>
+            <Tabs.Trigger value={AUTH_METHOD_IAM}>
+              {t("llmConfig.iamRole")}
+            </Tabs.Trigger>
             <Tabs.Trigger value={AUTH_METHOD_ACCESS_KEY}>
               {t("llmConfig.accessKey")}
             </Tabs.Trigger>

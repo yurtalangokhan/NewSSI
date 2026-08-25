@@ -12,10 +12,7 @@ import Text from "@/refresh-components/texts/Text";
 import { Button } from "@opal/components";
 import { SvgLink, SvgSearch, SvgSearchMenu, SvgX } from "@opal/icons";
 import Separator from "@/refresh-components/Separator";
-import {
-  groupSourcesByDomain,
-  splitMessageSources,
-} from "./webSourceGrouping";
+import { groupSourcesByDomain, splitMessageSources } from "./webSourceGrouping";
 import DomainGroupedSources from "./DomainGroupedSources";
 
 import { useTranslation } from "react-i18next";
@@ -146,19 +143,20 @@ const DocumentsSidebar = memo(
       return { citedDocumentIds, citationOrder };
     }, [idOfMessageToDisplay, selectedMessage?.packets]);
 
-    const { readDocuments, searchDocuments, internalDocuments } = useMemo(() => {
-      if (!selectedMessage) {
-        return {
-          readDocuments: [],
-          searchDocuments: [],
-          internalDocuments: [],
-        };
-      }
-      return splitMessageSources(
-        selectedMessage.packets || [],
-        selectedMessage.documents || []
-      );
-    }, [selectedMessage?.packets, selectedMessage?.documents]);
+    const { readDocuments, searchDocuments, internalDocuments } =
+      useMemo(() => {
+        if (!selectedMessage) {
+          return {
+            readDocuments: [],
+            searchDocuments: [],
+            internalDocuments: [],
+          };
+        }
+        return splitMessageSources(
+          selectedMessage.packets || [],
+          selectedMessage.documents || []
+        );
+      }, [selectedMessage?.packets, selectedMessage?.documents]);
 
     const citedInternalDocuments = useMemo(() => {
       return internalDocuments
@@ -237,7 +235,9 @@ const DocumentsSidebar = memo(
           {hasSearch && (
             <div className="flex flex-col gap-2">
               <SectionHeader
-                title={t("searchResultsHeader", { count: searchDocuments.length })}
+                title={t("searchResultsHeader", {
+                  count: searchDocuments.length,
+                })}
                 icon={<SvgSearch className="w-4 h-4 stroke-text-03" />}
               />
               <DomainGroupedSources
@@ -251,9 +251,7 @@ const DocumentsSidebar = memo(
 
           {hasCitedInternal && (
             <div className="flex flex-col gap-2">
-              <SectionHeader
-                title={t("citedSourcesHeader")}
-              />
+              <SectionHeader title={t("citedSourcesHeader")} />
               <ChatDocumentDisplayWrapper>
                 {citedInternalDocuments.map((document) => (
                   <ChatDocumentDisplay
@@ -275,10 +273,8 @@ const DocumentsSidebar = memo(
               <SectionHeader
                 title={
                   hasCitedInternal
-                   
-                  ? t("moreSourcesHeader")
-                   
-                  : t("foundSourcesHeader")
+                    ? t("moreSourcesHeader")
+                    : t("foundSourcesHeader")
                 }
               />
               <ChatDocumentDisplayWrapper>
@@ -299,9 +295,7 @@ const DocumentsSidebar = memo(
 
           {hasUserFiles && humanFileDescriptors && (
             <div className="flex flex-col gap-2">
-              <SectionHeader
-                title={t("userFilesHeader")}
-              />
+              <SectionHeader title={t("userFilesHeader")} />
               <ChatDocumentDisplayWrapper>
                 {humanFileDescriptors.map((file) => (
                   <ChatDocumentDisplay

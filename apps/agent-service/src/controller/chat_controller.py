@@ -582,27 +582,19 @@ class ChatController(BaseController):
         # (older ThreadController stand-ins, a checkpointer without alist
         # support, or any failure) — never breaks a page load over this.
         try:
-            checkpoints = await self._thread_controller.get_thread_state_history(
-                chat_session_id
-            )
+            checkpoints = await self._thread_controller.get_thread_state_history(chat_session_id)
         except Exception:
-            logger.exception(
-                "Failed to load thread state history for session %s", chat_session_id
-            )
+            logger.exception("Failed to load thread state history for session %s", chat_session_id)
             checkpoints = []
 
         if checkpoints:
-            messages, packets_2d = reconstruct_message_tree(
-                checkpoints, metadata, chat_session_id
-            )
+            messages, packets_2d = reconstruct_message_tree(checkpoints, metadata, chat_session_id)
         else:
             try:
                 state = await self._thread_controller.get_thread_state(chat_session_id)
                 langgraph_messages = state.get("values", {}).get("messages", [])
             except Exception:
-                logger.exception(
-                    "Failed to load thread state for session %s", chat_session_id
-                )
+                logger.exception("Failed to load thread state for session %s", chat_session_id)
                 langgraph_messages = []
 
             messages, packets_2d = reconstruct_messages(

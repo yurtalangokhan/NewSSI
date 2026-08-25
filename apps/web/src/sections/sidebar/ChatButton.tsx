@@ -147,16 +147,15 @@ const ChatButton = memo(
 
     // Drag and drop setup for chat sessions
     const dragId = `${DRAG_TYPES.CHAT}-${chatSession.id}`;
-    const { attributes, listeners, setNodeRef, isDragging } =
-      useDraggable({
-        id: dragId,
-        data: {
-          type: DRAG_TYPES.CHAT,
-          chatSession,
-          projectId: project?.id,
-        },
-        disabled: !draggable || renaming,
-      });
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+      id: dragId,
+      data: {
+        type: DRAG_TYPES.CHAT,
+        chatSession,
+        projectId: project?.id,
+      },
+      disabled: !draggable || renaming,
+    });
 
     // Sync local name state when chatSession.name changes (e.g., after auto-naming)
     useEffect(() => {

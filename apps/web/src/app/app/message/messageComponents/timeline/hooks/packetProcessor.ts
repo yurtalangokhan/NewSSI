@@ -18,7 +18,6 @@ import {
   isActualToolCallPacket,
   isToolPacket,
   isDisplayPacket,
-  getTextContent,
   getReasoningTextContent,
 } from "@/app/app/services/packetUtils";
 import { parseToolKey } from "@/app/app/message/messageComponents/toolDisplayHelpers";
@@ -328,7 +327,10 @@ function handleTurnTransition(state: ProcessorState, packet: Packet): void {
 }
 
 /** True for a tool-call group that has a start but no result yet. */
-function isPendingToolCallGroup(state: ProcessorState, groupKey: string): boolean {
+function isPendingToolCallGroup(
+  state: ProcessorState,
+  groupKey: string
+): boolean {
   const packets = state.groupedPacketsMap.get(groupKey);
   if (!packets) return false;
   const hasStart = packets.some(

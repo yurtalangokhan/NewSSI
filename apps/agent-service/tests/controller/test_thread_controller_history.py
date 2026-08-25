@@ -49,9 +49,7 @@ async def test_get_thread_state_history_returns_every_checkpoint_with_parent_lin
             ),
         ]
     )
-    monkeypatch.setattr(
-        "controller.thread_controller.get_checkpointer", lambda: fake_saver
-    )
+    monkeypatch.setattr("controller.thread_controller.get_checkpointer", lambda: fake_saver)
 
     controller = ThreadController()
     history = await controller.get_thread_state_history("thread-1")
@@ -85,9 +83,7 @@ async def test_get_thread_state_history_returns_empty_list_on_checkpointer_failu
             raise RuntimeError("boom")
             yield  # pragma: no cover - never reached, makes this an async generator
 
-    monkeypatch.setattr(
-        "controller.thread_controller.get_checkpointer", lambda: _BoomSaver()
-    )
+    monkeypatch.setattr("controller.thread_controller.get_checkpointer", lambda: _BoomSaver())
 
     controller = ThreadController()
     history = await controller.get_thread_state_history("thread-1")

@@ -276,7 +276,9 @@ export default function MessageToolbar({
               variant="select"
               selected={isFeedbackTransient("like")}
               tooltip={
-                currentFeedback === "like" ? t("messageToolbar.removeLike") : t("messageToolbar.goodResponse")
+                currentFeedback === "like"
+                  ? t("messageToolbar.removeLike")
+                  : t("messageToolbar.goodResponse")
               }
               data-testid="AgentMessage/like-button"
             />

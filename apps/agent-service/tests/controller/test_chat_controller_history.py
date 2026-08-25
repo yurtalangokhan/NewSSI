@@ -296,9 +296,24 @@ async def test_get_chat_session_pairs_parallel_tool_calls_by_id_not_arrival_orde
                     ],
                 },
                 # Results arrive out of order and interleaved with each other.
-                {"type": "tool", "name": "generic_tool_b", "content": "result c", "tool_call_id": "call-c"},
-                {"type": "tool", "name": "generic_tool_a", "content": "result b", "tool_call_id": "call-b"},
-                {"type": "tool", "name": "generic_tool_a", "content": "result a", "tool_call_id": "call-a"},
+                {
+                    "type": "tool",
+                    "name": "generic_tool_b",
+                    "content": "result c",
+                    "tool_call_id": "call-c",
+                },
+                {
+                    "type": "tool",
+                    "name": "generic_tool_a",
+                    "content": "result b",
+                    "tool_call_id": "call-b",
+                },
+                {
+                    "type": "tool",
+                    "name": "generic_tool_a",
+                    "content": "result a",
+                    "tool_call_id": "call-a",
+                },
             ]
         }
     }
@@ -471,6 +486,7 @@ async def test_get_chat_session_skips_generated_file_packet_for_plain_tool_resul
 
     assert not any(p["obj"]["type"] == "generated_file" for p in all_packets)
 
+
 @pytest.mark.asyncio
 async def test_get_chat_session_keeps_text_written_before_a_tool_call():
     """A model often writes a sentence before calling its tools.
@@ -489,9 +505,7 @@ async def test_get_chat_session_keeps_text_written_before_a_tool_call():
                 {
                     "type": "ai",
                     "content": "Simdi en onemli kaynaklari inceleyelim.",
-                    "tool_calls": [
-                        {"name": "generic_tool_a", "args": {"query": "a"}, "id": "c1"}
-                    ],
+                    "tool_calls": [{"name": "generic_tool_a", "args": {"query": "a"}, "id": "c1"}],
                 },
                 {"type": "tool", "name": "generic_tool_a", "content": "ok", "tool_call_id": "c1"},
                 AIMessage(content="Sonuclari derledim."),
@@ -506,13 +520,12 @@ async def test_get_chat_session_keeps_text_written_before_a_tool_call():
 
     result = await controller.get_chat_session("thread-preamble")
     starts = [
-        p["obj"].get("content")
-        for p in result["packets"][0]
-        if p["obj"]["type"] == "message_start"
+        p["obj"].get("content") for p in result["packets"][0] if p["obj"]["type"] == "message_start"
     ]
 
     assert "Simdi en onemli kaynaklari inceleyelim." in starts
     assert "Sonuclari derledim." in starts
+
 
 @pytest.mark.asyncio
 async def test_get_chat_session_uses_per_message_persona_id_over_thread_metadata():
@@ -691,13 +704,9 @@ async def test_get_chat_session_supports_three_way_branching_from_repeated_retri
             "messages": [
                 HumanMessage(content="soru"),
                 AIMessage(content="cevap 1"),
-                HumanMessage(
-                    content="soru", additional_kwargs={"is_regenerate": True}
-                ),
+                HumanMessage(content="soru", additional_kwargs={"is_regenerate": True}),
                 AIMessage(content="cevap 2"),
-                HumanMessage(
-                    content="soru", additional_kwargs={"is_regenerate": True}
-                ),
+                HumanMessage(content="soru", additional_kwargs={"is_regenerate": True}),
                 AIMessage(content="cevap 3"),
             ]
         }

@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AgentId,
@@ -9,7 +9,6 @@ import {
   FullPersona,
 } from "@/app/admin/agents/interfaces";
 import { languageKeyedFetcher } from "@/lib/fetcher";
-import { pinAgents } from "@/lib/agents";
 import {
   AGENT_CATALOG_API_PATH,
   buildAgentDetailApiPath,

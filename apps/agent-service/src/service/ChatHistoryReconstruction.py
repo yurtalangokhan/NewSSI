@@ -396,9 +396,7 @@ def _process_raw_message(
     if raw_type == "system":
         system_text = _extract_content(raw_msg)
         if "[Long-Term Memory — Previously learned facts about this user]" in system_text:
-            facts = [
-                line for line in system_text.splitlines() if line.strip().startswith("- ")
-            ]
+            facts = [line for line in system_text.splitlines() if line.strip().startswith("- ")]
             if facts:
                 state.pending_ltm_recalled_from_system = len(facts)
         return
@@ -496,9 +494,7 @@ def _process_raw_message(
                     }
                 )
                 if call_id:
-                    state.open_tool_call_positions[call_id] = (
-                        len(state.pending_tool_packets) - 1
-                    )
+                    state.open_tool_call_positions[call_id] = len(state.pending_tool_packets) - 1
             return
 
         if not msg_content:
@@ -587,9 +583,7 @@ def _process_raw_message(
             )
             turn_counter += 1
 
-        duration_sec = _extra.get("processing_duration_seconds") or _extra.get(
-            "duration_seconds"
-        )
+        duration_sec = _extra.get("processing_duration_seconds") or _extra.get("duration_seconds")
         if duration_sec is None and reasoning_text:
             duration_sec = max(5, min(300, int(len(reasoning_text) / 25)))
         elif duration_sec is None and turn_packets:
@@ -896,9 +890,7 @@ def reconstruct_message_tree(
     by_id = {c["checkpoint_id"]: c for c in checkpoints}
     children_by_parent: dict[str | None, list[str]] = {}
     for c in checkpoints:
-        children_by_parent.setdefault(c["parent_checkpoint_id"], []).append(
-            c["checkpoint_id"]
-        )
+        children_by_parent.setdefault(c["parent_checkpoint_id"], []).append(c["checkpoint_id"])
 
     initial_state = ReconstructionState(current_persona_id=thread_metadata.get("persona_id"))
     state_after: dict[str, ReconstructionState] = {}

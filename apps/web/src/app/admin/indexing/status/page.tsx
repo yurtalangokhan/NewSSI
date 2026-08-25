@@ -42,7 +42,9 @@ export default function Status() {
       ? all.filter(
           (d) =>
             d.name.toLowerCase().includes(search.toLowerCase()) ||
-            d.connector_display_name.toLowerCase().includes(search.toLowerCase())
+            d.connector_display_name
+              .toLowerCase()
+              .includes(search.toLowerCase())
         )
       : all;
 
@@ -84,7 +86,9 @@ export default function Status() {
             : route.title
         }
         rightChildren={
-          <Button href="/admin/add-connector">{t("admin.indexingStatus.addConnector")}</Button>
+          <Button href="/admin/add-connector">
+            {t("admin.indexingStatus.addConnector")}
+          </Button>
         }
         separator
       />
@@ -145,14 +149,18 @@ export default function Status() {
             className="flex items-center gap-1 text-sm text-link hover:underline"
           >
             <FiChevronDown size={16} />
-            <Text as="span" secondaryBody>{t("admin.indexingStatus.expandAll")}</Text>
+            <Text as="span" secondaryBody>
+              {t("admin.indexingStatus.expandAll")}
+            </Text>
           </button>
           <button
             onClick={collapseAll}
             className="flex items-center gap-1 text-sm text-link hover:underline"
           >
             <FiChevronRight size={16} />
-            <Text as="span" secondaryBody>{t("admin.indexingStatus.collapseAll")}</Text>
+            <Text as="span" secondaryBody>
+              {t("admin.indexingStatus.collapseAll")}
+            </Text>
           </button>
         </div>
 

@@ -60,11 +60,17 @@ describe("useTimelineHeader", () => {
               packets: [
                 {
                   placement: { turn_index: 0, tab_index: 0 },
-                  obj: { type: PacketType.SEARCH_TOOL_START, is_internet_search: true },
+                  obj: {
+                    type: PacketType.SEARCH_TOOL_START,
+                    is_internet_search: true,
+                  },
                 },
                 {
                   placement: { turn_index: 0, tab_index: 0 },
-                  obj: { type: PacketType.SEARCH_TOOL_QUERIES_DELTA, queries: ["Onyx"] },
+                  obj: {
+                    type: PacketType.SEARCH_TOOL_QUERIES_DELTA,
+                    queries: ["Onyx"],
+                  },
                 },
               ],
             },
@@ -92,7 +98,10 @@ describe("useTimelineHeader", () => {
               packets: [
                 {
                   placement: { turn_index: 0, tab_index: 0 },
-                  obj: { type: PacketType.SEARCH_TOOL_START, is_internet_search: true },
+                  obj: {
+                    type: PacketType.SEARCH_TOOL_START,
+                    is_internet_search: true,
+                  },
                 },
               ],
             },

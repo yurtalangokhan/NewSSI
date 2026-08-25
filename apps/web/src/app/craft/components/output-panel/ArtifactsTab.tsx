@@ -96,7 +96,6 @@ export default function ArtifactsTab({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, JSON.stringify(rawEntries.map((e) => e.path))]);
 
   const handleWebappDownload = () => {

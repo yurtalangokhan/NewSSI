@@ -1,12 +1,5 @@
 import React from "react";
-import {
-  Table,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-  TableHeader,
-} from "@/components/ui/table";
+import { Table, TableRow, TableBody, TableCell } from "@/components/ui/table";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
 
 // Staggered loading animation skeleton with proper table column alignment

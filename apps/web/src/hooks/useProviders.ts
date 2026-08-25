@@ -5,10 +5,8 @@ import useSWR from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import {
   AllProvidersResponse,
-  ApiKeyProvider,
   BuiltinOllamaStatus,
   OllamaModelResponse,
-  UrlBasedProvider,
   WellKnownLangChainProvider,
 } from "@/interfaces/llm";
 
@@ -57,11 +55,12 @@ export function useApiKeyProviders() {
 }
 
 export function useWellKnownLangChainProviders() {
-  const { data, error, isLoading, mutate } = useSWR<WellKnownLangChainProvider[]>(
-    "/api/admin/providers/well-known",
-    errorHandlingFetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60000 }
-  );
+  const { data, error, isLoading, mutate } = useSWR<
+    WellKnownLangChainProvider[]
+  >("/api/admin/providers/well-known", errorHandlingFetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000,
+  });
   return {
     data: data ?? [],
     isLoading,
@@ -107,7 +106,9 @@ export function useDeleteBuiltinOllamaModel() {
 
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      throw new Error(payload.detail || payload.error || "Failed to delete model");
+      throw new Error(
+        payload.detail || payload.error || "Failed to delete model"
+      );
     }
   }, []);
 }

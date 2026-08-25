@@ -23,9 +23,12 @@ export default function useShareableGroups() {
   const isPaidEnterpriseFeaturesEnabled =
     combinedSettings && combinedSettings.enterpriseSettings !== null;
 
-  const { data: rawData, error, mutate, isLoading } = useSWR<
-    MinimalUserGroupSnapshot[] | RawGroupsResponse
-  >(
+  const {
+    data: rawData,
+    error,
+    mutate,
+    isLoading,
+  } = useSWR<MinimalUserGroupSnapshot[] | RawGroupsResponse>(
     isPaidEnterpriseFeaturesEnabled ? "/api/manage/user-groups/minimal" : null,
     errorHandlingFetcher
   );

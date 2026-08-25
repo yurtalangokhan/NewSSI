@@ -143,7 +143,7 @@ class Env:
 
     @property
     def DEFAULT_MODEL(self) -> str:
-        return os.environ.get("DEFAULT_MODEL") or os.environ.get("OLLAMA_MODEL") or "llama3.1:8b" 
+        return os.environ.get("DEFAULT_MODEL") or os.environ.get("OLLAMA_MODEL") or "llama3.1:8b"
 
     @property
     def EMBEDDING_PROVIDER(self) -> str:

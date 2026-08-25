@@ -1520,11 +1520,23 @@ export default function AgentEditorPage({
                                           <SvgInfo className="w-5 h-5" />
                                         </div>
                                         <div className="flex flex-col gap-1">
-                                          <Text mainUiAction text03 className="font-semibold text-amber-800 dark:text-amber-200">
-                                            {t("agentEditor.actionsChatbotWarningTitle")}
+                                          <Text
+                                            mainUiAction
+                                            text03
+                                            className="font-semibold text-amber-800 dark:text-amber-200"
+                                          >
+                                            {t(
+                                              "agentEditor.actionsChatbotWarningTitle"
+                                            )}
                                           </Text>
-                                          <Text mainUiMuted text03 className="text-amber-700/90 dark:text-amber-300/90 leading-relaxed">
-                                            {t("agentEditor.actionsChatbotWarningDescription")}
+                                          <Text
+                                            mainUiMuted
+                                            text03
+                                            className="text-amber-700/90 dark:text-amber-300/90 leading-relaxed"
+                                          >
+                                            {t(
+                                              "agentEditor.actionsChatbotWarningDescription"
+                                            )}
                                           </Text>
                                         </div>
                                       </div>
@@ -1533,10 +1545,17 @@ export default function AgentEditorPage({
                                           type="button"
                                           secondary
                                           size="md"
-                                          onClick={() => setFieldValue("base_agent", "configurable-mcp-agent")}
+                                          onClick={() =>
+                                            setFieldValue(
+                                              "base_agent",
+                                              "configurable-mcp-agent"
+                                            )
+                                          }
                                           className="w-full sm:w-auto"
                                         >
-                                          {t("agentEditor.actionsChatbotSwitchToMcpButton")}
+                                          {t(
+                                            "agentEditor.actionsChatbotSwitchToMcpButton"
+                                          )}
                                         </Button>
                                       </div>
                                     </div>
@@ -1628,7 +1647,9 @@ export default function AgentEditorPage({
                                           />
                                           <InputSelect.Content>
                                             {mailConfigs
-                                              .filter((config) => config.is_active)
+                                              .filter(
+                                                (config) => config.is_active
+                                              )
                                               .map((config) => (
                                                 <InputSelect.Item
                                                   key={config.id}

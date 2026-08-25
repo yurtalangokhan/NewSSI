@@ -55,7 +55,7 @@ export function useDebounce<T extends unknown[]>(
       clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => fn(...args), delay);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [fn, delay]
   );
 }

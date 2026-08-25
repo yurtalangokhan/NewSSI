@@ -60,9 +60,7 @@ export default function SidebarWrapper({
       )}
     >
       <LogoSection folded={folded} onFoldClick={onFoldClick} />
-      <div className="flex-1 min-h-0 overflow-hidden w-full">
-        {children}
-      </div>
+      <div className="flex-1 min-h-0 overflow-hidden w-full">{children}</div>
     </aside>
   );
 }

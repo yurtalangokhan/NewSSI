@@ -31,7 +31,10 @@ function Main() {
       t("admin.bots.unknownError");
 
     return (
-      <ErrorCallout errorTitle={t("admin.bots.errorLoadingApps")} errorMsg={`${errorMsg}`} />
+      <ErrorCallout
+        errorTitle={t("admin.bots.errorLoadingApps")}
+        errorMsg={`${errorMsg}`}
+      />
     );
   }
 
@@ -57,12 +60,14 @@ function Main() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          {t("admin.bots.guideLink")} {" "}
+          {t("admin.bots.guideLink")}{" "}
         </a>
         {t("admin.bots.guideSuffix")}
       </p>
 
-      <CreateButton href="/admin/bots/new">{t("admin.bots.newSlackBotButton")}</CreateButton>
+      <CreateButton href="/admin/bots/new">
+        {t("admin.bots.newSlackBotButton")}
+      </CreateButton>
 
       <SlackBotTable slackBots={slackBots} />
     </div>
@@ -75,7 +80,15 @@ export default function Page() {
 
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header icon={route.icon} title={route.titleKey ? t(route.titleKey, { defaultValue: route.title }) : route.title} separator />
+      <SettingsLayouts.Header
+        icon={route.icon}
+        title={
+          route.titleKey
+            ? t(route.titleKey, { defaultValue: route.title })
+            : route.title
+        }
+        separator
+      />
       <SettingsLayouts.Body>
         <AdminOverviewPanel
           icon={route.icon}

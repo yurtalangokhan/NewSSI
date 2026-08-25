@@ -618,7 +618,9 @@ describe("OrganizationTree single-root action", () => {
     await user.type(input, "Acme Corp");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
-    expect(handlers.onUpdateOrg).toHaveBeenCalledWith("root", { name: "Acme Corp" });
+    expect(handlers.onUpdateOrg).toHaveBeenCalledWith("root", {
+      name: "Acme Corp",
+    });
   });
 
   it("cancels inline rename with Escape or Cancel button", async () => {

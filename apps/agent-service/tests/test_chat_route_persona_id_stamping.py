@@ -6,6 +6,7 @@ thread-level metadata.persona_id, which only reflects the most recent send.
 """
 
 from collections.abc import AsyncIterator
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
@@ -54,6 +55,10 @@ def _install_common_mocks(monkeypatch, captured: dict) -> None:
     )
 
 
+def _idempotency_headers(label: str) -> dict[str, str]:
+    return {"Idempotency-Key": f"{label}-{uuid4()}"}
+
+
 def test_send_chat_message_stamps_persona_id_for_default_and_builtin_personas(
     monkeypatch,
 ) -> None:
@@ -68,6 +73,7 @@ def test_send_chat_message_stamps_persona_id_for_default_and_builtin_personas(
     with TestClient(app) as client:
         no_persona_response = client.post(
             "/api/v1/chat/send-chat-message",
+            headers=_idempotency_headers("persona-stamping-default"),
             json={
                 "message": "hello",
                 "chat_session_id": "3a19f671-7d34-4cfd-9ea4-21e17491b3f5",
@@ -78,6 +84,7 @@ def test_send_chat_message_stamps_persona_id_for_default_and_builtin_personas(
 
         builtin_persona_response = client.post(
             "/api/v1/chat/send-chat-message",
+            headers=_idempotency_headers("persona-stamping-builtin"),
             json={
                 "message": "hello",
                 "chat_session_id": "9b6b8f2a-2e2f-4c4a-9a8b-1d2e3f4a5b6c",
@@ -95,6 +102,7 @@ def test_send_chat_message_forwards_is_regenerate_flag(monkeypatch) -> None:
     with TestClient(app) as client:
         normal_response = client.post(
             "/api/v1/chat/send-chat-message",
+            headers=_idempotency_headers("regenerate-forward-normal"),
             json={
                 "message": "hello",
                 "chat_session_id": "3a19f671-7d34-4cfd-9ea4-21e17491b3f5",
@@ -105,6 +113,7 @@ def test_send_chat_message_forwards_is_regenerate_flag(monkeypatch) -> None:
 
         retry_response = client.post(
             "/api/v1/chat/send-chat-message",
+            headers=_idempotency_headers("regenerate-forward-retry"),
             json={
                 "message": "hello",
                 "chat_session_id": "9b6b8f2a-2e2f-4c4a-9a8b-1d2e3f4a5b6c",

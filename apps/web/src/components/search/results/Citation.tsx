@@ -3,7 +3,6 @@ import { CompactDocumentCard, CompactQuestionCard } from "../DocumentDisplay";
 import {
   LoadedOnyxDocument,
   MinimalOnyxDocument,
-  OnyxDocument,
 } from "@/lib/search/interfaces";
 import {
   Tooltip,

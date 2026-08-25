@@ -173,7 +173,9 @@ def validate_outbound_http_url(
 
     if https_only:
         if parsed.scheme != "https":
-            raise SSRFBlockedException(f"Invalid URL scheme '{parsed.scheme}'. Only https is allowed.")
+            raise SSRFBlockedException(
+                f"Invalid URL scheme '{parsed.scheme}'. Only https is allowed."
+            )
     elif parsed.scheme not in ("http", "https"):
         raise SSRFBlockedException(
             f"Invalid URL scheme '{parsed.scheme}'. Only http and https are allowed."

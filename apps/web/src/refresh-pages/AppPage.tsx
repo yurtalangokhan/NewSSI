@@ -698,22 +698,22 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   // actually has citations/documents, so mounting this unconditionally
   // costs nothing when there is nothing to show.
   const desktopDocumentSidebar = !settings.isMobile ? (
-      <div
-        className={cn(
-          "flex-shrink-0 overflow-hidden transition-all duration-300 ease-in-out",
-          documentSidebarVisible ? "w-[25rem]" : "w-[0rem]"
-        )}
-      >
-        <div className="h-full w-[25rem]">
-          <DocumentsSidebar
-            setPresentingDocument={setPresentingDocument}
-            modal={false}
-            closeSidebar={handleDesktopDocumentSidebarClose}
-            selectedDocuments={selectedDocuments}
-          />
-        </div>
+    <div
+      className={cn(
+        "flex-shrink-0 overflow-hidden transition-all duration-300 ease-in-out",
+        documentSidebarVisible ? "w-[25rem]" : "w-[0rem]"
+      )}
+    >
+      <div className="h-full w-[25rem]">
+        <DocumentsSidebar
+          setPresentingDocument={setPresentingDocument}
+          modal={false}
+          closeSidebar={handleDesktopDocumentSidebarClose}
+          selectedDocuments={selectedDocuments}
+        />
       </div>
-    ) : null;
+    </div>
+  ) : null;
 
   // When no chat session exists but a project is selected, fetch the
   // total tokens for the project's files so upload UX can compare

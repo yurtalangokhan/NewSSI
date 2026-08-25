@@ -144,9 +144,7 @@ class ThreadController(BaseController):
                 )
                 parent_config = checkpoint_tuple.parent_config
                 parent_checkpoint_id = (
-                    parent_config["configurable"].get("checkpoint_id")
-                    if parent_config
-                    else None
+                    parent_config["configurable"].get("checkpoint_id") if parent_config else None
                 )
                 history.append(
                     {

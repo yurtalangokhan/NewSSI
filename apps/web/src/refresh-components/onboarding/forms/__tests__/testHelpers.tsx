@@ -1,7 +1,6 @@
 /**
  * Shared test helpers and mocks for onboarding form tests
  */
-import React from "react";
 
 // Mock Element.prototype.scrollIntoView for JSDOM (not implemented in jsdom)
 Element.prototype.scrollIntoView = jest.fn();

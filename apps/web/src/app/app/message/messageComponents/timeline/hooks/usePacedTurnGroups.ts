@@ -152,7 +152,7 @@ export function usePacedTurnGroups(
   // arrives. Without this, the useEffect delay causes the renderer to mount
   // only after the stop packet is present, which sets animate=false and
   // disables the streaming animation entirely.
-  const hasAnyToolSteps = toolTurnGroups.some(tg => tg.steps.length > 0);
+  const hasAnyToolSteps = toolTurnGroups.some((tg) => tg.steps.length > 0);
   if (!hasAnyToolSteps && !state.toolPacingComplete && !shouldBypassPacing) {
     state.toolPacingComplete = true;
   }
@@ -358,7 +358,6 @@ export function usePacedTurnGroups(
 
     prevPacedRef.current = result;
     return result;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toolTurnGroups, revealTrigger, shouldBypassPacing]);
 
   // Only advance display groups to their latest content when tool pacing is
@@ -366,21 +365,27 @@ export function usePacedTurnGroups(
   // tool step, or text already on screen would flash away and back.
   const pacedDisplayGroups = useMemo(() => {
     if (shouldBypassPacing || state.toolPacingComplete) {
-      lastDisplayGroupKeysRef.current = new Set(displayGroups.map((g) => g.key));
+      lastDisplayGroupKeysRef.current = new Set(
+        displayGroups.map((g) => g.key)
+      );
       return displayGroups;
     }
     // Re-select from the live groups so their latest content shows, instead
     // of replaying a copy captured before the pacing window opened.
     const shownKeys = lastDisplayGroupKeysRef.current;
     return displayGroups.filter((g) => shownKeys.has(g.key));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.toolPacingComplete, displayGroups, revealTrigger, shouldBypassPacing]);
+  }, [
+    state.toolPacingComplete,
+    displayGroups,
+    revealTrigger,
+    shouldBypassPacing,
+  ]);
 
   // Paced signals for header state consistency
   // Only signal finalAnswerComing when tool pacing is complete (or bypassing)
   const pacedFinalAnswerComing = useMemo(
     () => (shouldBypassPacing || state.toolPacingComplete) && finalAnswerComing,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [
       state.toolPacingComplete,
       finalAnswerComing,

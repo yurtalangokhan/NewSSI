@@ -31,7 +31,9 @@ function connectorIconSrc(connector: AirbyteConnector): string | null {
       if (connector.icon_url.length > MAX_INLINE_SVG_LENGTH) {
         return null;
       }
-      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(connector.icon_url)}`;
+      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+        connector.icon_url
+      )}`;
     }
     return connector.icon_url;
   }
@@ -56,10 +58,7 @@ function ConnectorTile({
   preSelect?: boolean;
   onClick: (c: AirbyteConnector) => void;
 }) {
-  const iconSrc = useMemo(
-    () => connectorIconSrc(connector),
-    [connector]
-  );
+  const iconSrc = useMemo(() => connectorIconSrc(connector), [connector]);
   return (
     <button
       onClick={() => onClick(connector)}
@@ -68,17 +67,17 @@ function ConnectorTile({
       }`}
     >
       {iconSrc ? (
-        <img
-          src={iconSrc}
-          alt=""
-          className="h-8 w-8 shrink-0 object-contain"
-        />
+        <img src={iconSrc} alt="" className="h-8 w-8 shrink-0 object-contain" />
       ) : (
         <span className="h-8 w-8 shrink-0 rounded bg-background-tint-02 flex items-center justify-center text-sm font-bold text-text-02">
           {connector.display_name[0]}
         </span>
       )}
-      <Text as="span" secondaryBody className="text-xs leading-tight line-clamp-2 text-center">
+      <Text
+        as="span"
+        secondaryBody
+        className="text-xs leading-tight line-clamp-2 text-center"
+      >
         {connector.display_name}
       </Text>
     </button>
@@ -106,16 +105,16 @@ export default function Page() {
     isLoading,
     error,
     mutate: refreshConnectors,
-  } = useAirbyteConnectors(
-    searchTerm || undefined
-  );
+  } = useAirbyteConnectors(searchTerm || undefined);
 
   // When searching, we get a flat list; otherwise grouped by category
   const byCategory = useMemo<Record<string, AirbyteConnector[]>>(() => {
     if (!connectorsData) return {};
     if (connectorsData.connectors) {
       // search result — put everything under a virtual "Results" category
-      return connectorsData.connectors.length > 0 ? { Results: connectorsData.connectors } : {};
+      return connectorsData.connectors.length > 0
+        ? { Results: connectorsData.connectors }
+        : {};
     }
     return connectorsData.by_category ?? {};
   }, [connectorsData]);
@@ -134,12 +133,15 @@ export default function Page() {
     return connectorsData.category_labels ?? {};
   }, [connectorsData]);
 
-  const handleConnectorClick = useCallback((connector: AirbyteConnector) => {
-    // connector.name is e.g. "source-postgres" → route slug is "source-postgres"
-    // replace underscores with hyphens to match route convention
-    const slug = connector.name.replace(/_/g, "-");
-    router.push(`/admin/connectors/${slug}`);
-  }, [router]);
+  const handleConnectorClick = useCallback(
+    (connector: AirbyteConnector) => {
+      // connector.name is e.g. "source-postgres" → route slug is "source-postgres"
+      // replace underscores with hyphens to match route convention
+      const slug = connector.name.replace(/_/g, "-");
+      router.push(`/admin/connectors/${slug}`);
+    },
+    [router]
+  );
 
   // First result for keyboard Enter shortcut
   const firstConnector = useMemo<AirbyteConnector | null>(() => {
@@ -275,7 +277,8 @@ export default function Page() {
                   <Text as="p" headingH3>
                     {searchTerm
                       ? t("admin.addConnector.results")
-                      : (categoryLabels[cat] ?? cat.charAt(0).toUpperCase() + cat.slice(1))}
+                      : categoryLabels[cat] ??
+                        cat.charAt(0).toUpperCase() + cat.slice(1)}
                   </Text>
                   <div className="flex flex-wrap gap-4 p-4">
                     {(byCategory[cat] ?? []).map((connector, sourceInd) => (

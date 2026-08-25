@@ -17,10 +17,7 @@ import { useSettingsContext } from "@/providers/SettingsProvider";
 import { useCurrentAgent } from "@/hooks/useAgents";
 import { useProjectsContext } from "@/providers/ProjectsContext";
 import Text from "@/refresh-components/texts/Text";
-import {
-  useChatSearchOptimistic,
-  FilterableChat,
-} from "./useChatSearchOptimistic";
+import { useChatSearchOptimistic } from "./useChatSearchOptimistic";
 import {
   SvgEditBig,
   SvgFolder,

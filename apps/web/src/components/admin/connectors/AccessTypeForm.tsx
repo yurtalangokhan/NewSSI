@@ -63,7 +63,6 @@ export function AccessTypeForm({
     },
     [
       // Only run this effect once when the component mounts
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     ]
   );
 
@@ -90,7 +89,9 @@ export function AccessTypeForm({
       value: "sync",
       description: t("admin.connectorForm.documentAccess.syncDescription"),
       disabled: isSyncDisabledByAuth,
-      disabledReason: t("admin.connectorForm.documentAccess.syncDisabledReason"),
+      disabledReason: t(
+        "admin.connectorForm.documentAccess.syncDisabledReason"
+      ),
     });
   }
 
@@ -99,7 +100,9 @@ export function AccessTypeForm({
       {isPaidEnterpriseEnabled && (
         <>
           <div>
-            <label className="text-text-950 font-medium">{t("admin.connectorForm.documentAccess.label")}</label>
+            <label className="text-text-950 font-medium">
+              {t("admin.connectorForm.documentAccess.label")}
+            </label>
             <p className="text-sm text-text-500">
               {t("admin.connectorForm.documentAccess.description")}
             </p>

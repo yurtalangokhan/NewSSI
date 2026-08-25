@@ -4,7 +4,6 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { LoadingAnimation } from "@/components/Loading";
-import { toast } from "@/hooks/useToast";
 import { CCPairBasicInfo, ValidSources } from "@/lib/types";
 import {
   Credential,

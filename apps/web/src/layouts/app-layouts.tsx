@@ -47,7 +47,6 @@ import FrostedDiv from "@/refresh-components/FrostedDiv";
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
 import { PopoverSearchInput } from "@/sections/sidebar/ChatButton";
 import SimplePopover from "@/refresh-components/SimplePopover";
-import { Interactive } from "@opal/core";
 import { Button, OpenButton } from "@opal/components";
 import { useAppSidebarContext } from "@/providers/AppSidebarProvider";
 import useScreenSize from "@/hooks/useScreenSize";
@@ -131,7 +130,9 @@ function Header() {
         appFocus.isNewSession() &&
         !classification
     );
-  const hasCenterContent = Boolean(pageWithHeaderContent && customHeaderContent);
+  const hasCenterContent = Boolean(
+    pageWithHeaderContent && customHeaderContent
+  );
   const hasRightContent = Boolean(appFocus.isChat() && currentChatSession);
 
   const availableProjects = useMemo(() => {

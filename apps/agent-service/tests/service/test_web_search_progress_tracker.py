@@ -101,12 +101,7 @@ def test_fetch_webpage_result_reuses_the_url_from_its_own_tool_call():
     tracker = WebSearchProgressTracker()
     tracker.on_tool_call("fetch_webpage", {"url": "https://onyx.app"}, "call-1")
 
-    content = (
-        "TITLE: Onyx\n"
-        "DESCRIPTION: Open source AI platform.\n"
-        "---\n"
-        "Full page body text here."
-    )
+    content = "TITLE: Onyx\nDESCRIPTION: Open source AI platform.\n---\nFull page body text here."
 
     packets = tracker.on_tool_result("fetch_webpage", content, "call-1")
 
@@ -150,9 +145,7 @@ def test_fetch_webpage_result_with_error_or_no_title_gracefully_emits_url_docume
 
 def test_fetch_webpage_result_with_unknown_call_id_emits_empty_documents():
     tracker = WebSearchProgressTracker()
-    packets = tracker.on_tool_result(
-        "fetch_webpage", "Error: failed", "call-unknown"
-    )
+    packets = tracker.on_tool_result("fetch_webpage", "Error: failed", "call-unknown")
 
     assert _types(packets) == ["open_url_documents"]
     assert packets[0]["documents"] == []
@@ -172,5 +165,15 @@ def test_clone_is_independent_of_the_original():
     cloned.on_tool_call("fetch_webpage", {"url": "https://docs.onyx.app"}, "call-2")
 
     # The clone learned about call-2; the original must not have.
-    assert tracker.on_tool_result("fetch_webpage", "TITLE: Docs\n---\nbody", "call-2")[0]["documents"][0]["document_id"] == "Docs"
-    assert cloned.on_tool_result("fetch_webpage", "TITLE: Docs\n---\nbody", "call-2")[0]["documents"][0]["document_id"] == "https://docs.onyx.app"
+    assert (
+        tracker.on_tool_result("fetch_webpage", "TITLE: Docs\n---\nbody", "call-2")[0]["documents"][
+            0
+        ]["document_id"]
+        == "Docs"
+    )
+    assert (
+        cloned.on_tool_result("fetch_webpage", "TITLE: Docs\n---\nbody", "call-2")[0]["documents"][
+            0
+        ]["document_id"]
+        == "https://docs.onyx.app"
+    )

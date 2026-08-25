@@ -1,6 +1,6 @@
 import { renderHook, act } from "@testing-library/react";
 import useUserPersonalization from "./useUserPersonalization";
-import { User, UserPersonalization } from "@/lib/types";
+import { User } from "@/lib/types";
 
 describe("useUserPersonalization", () => {
   const mockUser: User = {

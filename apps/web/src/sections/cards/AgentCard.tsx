@@ -205,18 +205,15 @@ export default function AgentCard({ agent }: AgentCardProps) {
             title={t("agentsPage.deleteModalTitle", { name: agent.name })}
             onClose={() => deleteModal.toggle(false)}
             submit={
-              <Button
-                danger
-                onClick={handleDelete}
-                disabled={isDeleting}
-              >
+              <Button danger onClick={handleDelete} disabled={isDeleting}>
                 {isDeleting
                   ? t("agentsPage.deleteModalDeleting")
                   : t("agentsPage.deleteModalButton")}
               </Button>
             }
           >
-            This agent will be permanently deleted. This action cannot be undone.
+            This agent will be permanently deleted. This action cannot be
+            undone.
           </ConfirmationModalLayout>
         )}
       </deleteModal.Provider>
@@ -239,17 +236,19 @@ export default function AgentCard({ agent }: AgentCardProps) {
               description={agent.description}
               rightChildren={
                 <>
-                  {isOwnedByUser && isPaidEnterpriseFeaturesEnabled && !isDynamicAgent && (
-                    <IconButton
-                      icon={SvgBarChart}
-                      tertiary
-                      onClick={noProp(() =>
-                        router.push(`/ee/agents/stats/${agent.id}` as Route)
-                      )}
-                      tooltip={t("agentsPage.viewAgentStatsTooltip")}
-                      className="hidden group-hover/AgentCard:flex"
-                    />
-                  )}
+                  {isOwnedByUser &&
+                    isPaidEnterpriseFeaturesEnabled &&
+                    !isDynamicAgent && (
+                      <IconButton
+                        icon={SvgBarChart}
+                        tertiary
+                        onClick={noProp(() =>
+                          router.push(`/ee/agents/stats/${agent.id}` as Route)
+                        )}
+                        tooltip={t("agentsPage.viewAgentStatsTooltip")}
+                        className="hidden group-hover/AgentCard:flex"
+                      />
+                    )}
                   {canEdit && (
                     <IconButton
                       icon={SvgEdit}

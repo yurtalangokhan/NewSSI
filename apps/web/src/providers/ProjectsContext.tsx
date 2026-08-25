@@ -19,13 +19,10 @@ import type {
   UserFileDeleteResult,
 } from "@/app/app/projects/projectsService";
 import {
-  fetchProjects as svcFetchProjects,
   createProject as svcCreateProject,
   uploadFiles as svcUploadFiles,
   getRecentFiles as svcGetRecentFiles,
   getFilesInProject as svcGetFilesInProject,
-  getProject as svcGetProject,
-  getProjectInstructions as svcGetProjectInstructions,
   upsertProjectInstructions as svcUpsertProjectInstructions,
   getProjectDetails as svcGetProjectDetails,
   ProjectDetails,

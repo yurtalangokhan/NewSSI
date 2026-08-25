@@ -48,7 +48,11 @@ export function SettingsProvider({
       enableSearchRuntimeStatus &&
       settings.settings.search_ui_enabled !== false &&
       ccPairs.length > 0,
-    [enableSearchRuntimeStatus, settings.settings.search_ui_enabled, ccPairs.length]
+    [
+      enableSearchRuntimeStatus,
+      settings.settings.search_ui_enabled,
+      ccPairs.length,
+    ]
   );
 
   const contextValue = useMemo(

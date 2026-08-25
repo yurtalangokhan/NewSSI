@@ -5,6 +5,10 @@ USER_1_HEADERS = {
 }
 
 
+def idempotency_headers(base_headers: dict[str, str], key: str) -> dict[str, str]:
+    return {**base_headers, "Idempotency-Key": key}
+
+
 async def test_chunks_endpoint_paginates_large_files() -> None:
     async with get_async_test_client() as client:
         col_resp = await client.post(
@@ -21,7 +25,7 @@ async def test_chunks_endpoint_paginates_large_files() -> None:
         upload_resp = await client.post(
             f"/api/v1/collections/{collection_id}/documents",
             files=files,
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "chunks-pagination-upload"),
         )
         assert upload_resp.status_code == 200
 

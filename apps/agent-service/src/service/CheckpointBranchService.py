@@ -23,8 +23,7 @@ class _StateHistorySnapshot(Protocol):
 
 
 class _AgentWithStateHistory(Protocol):
-    def aget_state_history(self, config: RunnableConfig):
-        ...
+    def aget_state_history(self, config: RunnableConfig): ...
 
 
 async def find_fork_point_with_message(
@@ -44,9 +43,7 @@ async def find_fork_point_with_message(
     history_config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
     async for snapshot in agent.aget_state_history(history_config):
         raw_messages = snapshot.values.get("messages", [])
-        messages, _ = reconstruct_messages(
-            raw_messages, thread_metadata, thread_id
-        )
+        messages, _ = reconstruct_messages(raw_messages, thread_metadata, thread_id)
         if not messages:
             continue
         last = messages[-1]
@@ -68,6 +65,9 @@ async def find_fork_point(
     a retry over this.
     """
     config, _ = await find_fork_point_with_message(
-        agent, thread_id=thread_id, target_message_id=target_message_id, thread_metadata=thread_metadata
+        agent,
+        thread_id=thread_id,
+        target_message_id=target_message_id,
+        thread_metadata=thread_metadata,
     )
     return config

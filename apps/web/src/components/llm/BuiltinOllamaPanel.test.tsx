@@ -1,6 +1,9 @@
 import React from "react";
 import { render, screen, setupUser, waitFor } from "@tests/setup/test-utils";
-import { BuiltinOllamaPanel, BuiltinOllamaPanelView } from "@/sections/llmConfig/BuiltinOllamaPanel";
+import {
+  BuiltinOllamaPanel,
+  BuiltinOllamaPanelView,
+} from "@/sections/llmConfig/BuiltinOllamaPanel";
 import * as providerHooks from "@/hooks/useProviders";
 
 jest.mock("@/hooks/useProviders", () => ({
@@ -131,7 +134,9 @@ describe("BuiltinOllamaPanelView", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Delete llama3.1:8b" }));
+    await user.click(
+      screen.getByRole("button", { name: "Delete llama3.1:8b" })
+    );
 
     expect(onDeleteModel).toHaveBeenCalledWith("llama3.1:8b");
   });
@@ -168,7 +173,9 @@ describe("BuiltinOllamaPanel (Integration with Confirmation Modal)", () => {
       mutate: mockModelsMutate,
     });
     mockDeleteModel.mockResolvedValue({ success: true });
-    (providerHooks.useDeleteBuiltinOllamaModel as jest.Mock).mockReturnValue(mockDeleteModel);
+    (providerHooks.useDeleteBuiltinOllamaModel as jest.Mock).mockReturnValue(
+      mockDeleteModel
+    );
   });
 
   test("opens confirmation modal when delete icon is clicked and deletes on confirm", async () => {
@@ -177,11 +184,17 @@ describe("BuiltinOllamaPanel (Integration with Confirmation Modal)", () => {
     render(<BuiltinOllamaPanel onDownload={jest.fn()} />);
 
     // Click trash button on the model item
-    await user.click(screen.getByRole("button", { name: "Delete llama3.1:8b" }));
+    await user.click(
+      screen.getByRole("button", { name: "Delete llama3.1:8b" })
+    );
 
     // Confirmation modal should be visible
     expect(screen.getByText("Delete Model")).toBeInTheDocument();
-    expect(screen.getByText(/Are you sure you want to delete the model "llama3.1:8b"/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Are you sure you want to delete the model "llama3.1:8b"/
+      )
+    ).toBeInTheDocument();
 
     // Confirm deletion
     const deleteSubmitButton = screen.getByRole("button", { name: "Delete" });
@@ -197,7 +210,9 @@ describe("BuiltinOllamaPanel (Integration with Confirmation Modal)", () => {
 
     render(<BuiltinOllamaPanel onDownload={jest.fn()} />);
 
-    await user.click(screen.getByRole("button", { name: "Delete llama3.1:8b" }));
+    await user.click(
+      screen.getByRole("button", { name: "Delete llama3.1:8b" })
+    );
 
     expect(screen.getByText("Delete Model")).toBeInTheDocument();
 

@@ -15,7 +15,6 @@ import { transformPacketGroups } from "../transformers";
 import {
   createPacket,
   createStopPacket,
-  createCitationPacket,
   createBranchingPacket,
   createMessageStartPacket,
   createImageDeltaPacket,
@@ -416,17 +415,25 @@ describe("packetProcessor", () => {
       // new turn must not mark the previous, still-running call complete.
       const state = createInitialState(1);
       const packets = [
-        createPacket(PacketType.CUSTOM_TOOL_START, { turn_index: 0 }, {
-          tool_name: "web_search",
-          args: { query: "a" },
-          call_id: "call-a",
-        }),
+        createPacket(
+          PacketType.CUSTOM_TOOL_START,
+          { turn_index: 0 },
+          {
+            tool_name: "web_search",
+            args: { query: "a" },
+            call_id: "call-a",
+          }
+        ),
         // Next call's start opens turn 1 before call-a's own result exists.
-        createPacket(PacketType.CUSTOM_TOOL_START, { turn_index: 1 }, {
-          tool_name: "web_search",
-          args: { query: "b" },
-          call_id: "call-b",
-        }),
+        createPacket(
+          PacketType.CUSTOM_TOOL_START,
+          { turn_index: 1 },
+          {
+            tool_name: "web_search",
+            args: { query: "b" },
+            call_id: "call-b",
+          }
+        ),
       ];
       const result = processPackets(state, packets);
 
@@ -436,23 +443,35 @@ describe("packetProcessor", () => {
     test("closes a custom tool call's own turn the moment its result arrives", () => {
       const state = createInitialState(1);
       const packets = [
-        createPacket(PacketType.CUSTOM_TOOL_START, { turn_index: 0 }, {
-          tool_name: "web_search",
-          args: { query: "a" },
-          call_id: "call-a",
-        }),
-        createPacket(PacketType.CUSTOM_TOOL_START, { turn_index: 1 }, {
-          tool_name: "web_search",
-          args: { query: "b" },
-          call_id: "call-b",
-        }),
+        createPacket(
+          PacketType.CUSTOM_TOOL_START,
+          { turn_index: 0 },
+          {
+            tool_name: "web_search",
+            args: { query: "a" },
+            call_id: "call-a",
+          }
+        ),
+        createPacket(
+          PacketType.CUSTOM_TOOL_START,
+          { turn_index: 1 },
+          {
+            tool_name: "web_search",
+            args: { query: "b" },
+            call_id: "call-b",
+          }
+        ),
         // call-a's result is routed back to turn 0 by streamingUtils.ts.
-        createPacket(PacketType.CUSTOM_TOOL_DELTA, { turn_index: 0 }, {
-          tool_name: "web_search",
-          response_type: "tool_result",
-          data: "result a",
-          call_id: "call-a",
-        }),
+        createPacket(
+          PacketType.CUSTOM_TOOL_DELTA,
+          { turn_index: 0 },
+          {
+            tool_name: "web_search",
+            response_type: "tool_result",
+            data: "result a",
+            call_id: "call-a",
+          }
+        ),
       ];
       const result = processPackets(state, packets);
 
@@ -1409,9 +1428,13 @@ describe("packetProcessor", () => {
     test("tracks how long the stream has been silent", () => {
       const state = createInitialState(1);
       const result = processPackets(state, [
-        createPacket(PacketType.STREAM_PROGRESS, { turn_index: 0 }, {
-          elapsed_seconds: 45,
-        }),
+        createPacket(
+          PacketType.STREAM_PROGRESS,
+          { turn_index: 0 },
+          {
+            elapsed_seconds: 45,
+          }
+        ),
       ]);
 
       expect(result.streamSilentSeconds).toBe(45);
@@ -1423,9 +1446,13 @@ describe("packetProcessor", () => {
       // finally lands.
       const state = createInitialState(1);
       const result = processPackets(state, [
-        createPacket(PacketType.STREAM_PROGRESS, { turn_index: 0 }, {
-          elapsed_seconds: 15,
-        }),
+        createPacket(
+          PacketType.STREAM_PROGRESS,
+          { turn_index: 0 },
+          {
+            elapsed_seconds: 15,
+          }
+        ),
       ]);
 
       expect(result.groupedPacketsMap.size).toBe(0);
@@ -1436,9 +1463,13 @@ describe("packetProcessor", () => {
     test("clears as soon as the stream produces again", () => {
       const state = createInitialState(1);
       const result = processPackets(state, [
-        createPacket(PacketType.STREAM_PROGRESS, { turn_index: 0 }, {
-          elapsed_seconds: 30,
-        }),
+        createPacket(
+          PacketType.STREAM_PROGRESS,
+          { turn_index: 0 },
+          {
+            elapsed_seconds: 30,
+          }
+        ),
         createMessageStartPacket({ turn_index: 0 }),
       ]);
 

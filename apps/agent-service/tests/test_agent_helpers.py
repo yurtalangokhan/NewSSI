@@ -237,9 +237,7 @@ class DummyAgentWithHistory(DummyAgent):
 class _FakeSnapshot:
     def __init__(self, messages, checkpoint_id):
         self.values = {"messages": messages}
-        self.config = {
-            "configurable": {"thread_id": "thread-1", "checkpoint_id": checkpoint_id}
-        }
+        self.config = {"configurable": {"thread_id": "thread-1", "checkpoint_id": checkpoint_id}}
 
 
 @pytest.mark.asyncio

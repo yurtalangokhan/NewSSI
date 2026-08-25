@@ -15,16 +15,14 @@ describe("parseSseLine", () => {
   });
 
   it("parses a normal progress frame", () => {
-    expect(
-      parseSseLine('data: {"status":"pulling manifest"}')
-    ).toEqual({ status: "pulling manifest" });
+    expect(parseSseLine('data: {"status":"pulling manifest"}')).toEqual({
+      status: "pulling manifest",
+    });
   });
 
   it("surfaces the 'error' field Ollama sends for an unknown model name, so it isn't mistaken for a normal status update", () => {
     expect(
-      parseSseLine(
-        'data: {"error":"pull model manifest: file does not exist"}'
-      )
+      parseSseLine('data: {"error":"pull model manifest: file does not exist"}')
     ).toEqual({ error: "pull model manifest: file does not exist" });
   });
 });
@@ -76,21 +74,23 @@ describe("recordLayerProgress", () => {
 
 describe("classifyPullError", () => {
   it("classifies the real Ollama 'unknown model' error text as notFound", () => {
-    expect(
-      classifyPullError("pull model manifest: file does not exist")
-    ).toBe("notFound");
+    expect(classifyPullError("pull model manifest: file does not exist")).toBe(
+      "notFound"
+    );
   });
 
   it("classifies a differently-worded not-found message as notFound too", () => {
     expect(
-      classifyPullError('model "totally-bogus-model" not found, try pulling it first')
+      classifyPullError(
+        'model "totally-bogus-model" not found, try pulling it first'
+      )
     ).toBe("notFound");
   });
 
   it("is case-insensitive", () => {
-    expect(
-      classifyPullError("Pull Model Manifest: File Does Not Exist")
-    ).toBe("notFound");
+    expect(classifyPullError("Pull Model Manifest: File Does Not Exist")).toBe(
+      "notFound"
+    );
   });
 
   it("falls back to generic for unrecognized error text", () => {

@@ -69,13 +69,12 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [combinedSettings, user, authTypeMetadata, locale] =
-    await Promise.all([
-      fetchSettingsSS(),
-      getCurrentUserSS(),
-      getAuthTypeMetadataSS(),
-      resolveLocaleSS(),
-    ]);
+  const [combinedSettings, user, authTypeMetadata, locale] = await Promise.all([
+    fetchSettingsSS(),
+    getCurrentUserSS(),
+    getAuthTypeMetadataSS(),
+    resolveLocaleSS(),
+  ]);
 
   const { folded } = await fetchAppSidebarMetadata(user);
 

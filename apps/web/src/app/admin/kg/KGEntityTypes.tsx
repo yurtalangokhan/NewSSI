@@ -97,7 +97,6 @@ function TableRow({ entityType }: { entityType: EntityType }) {
         );
       }, 1000)
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entityTypeState.description]);
 
   return (
@@ -230,7 +229,9 @@ export default function KGEntityTypes({
           className="h-9"
           onClick={allClosed ? handleExpandAll : handleCollapseAll}
         >
-          {allClosed ? t("kgEntityTypes.expandAll") : t("kgEntityTypes.collapseAll")}
+          {allClosed
+            ? t("kgEntityTypes.expandAll")
+            : t("kgEntityTypes.collapseAll")}
         </Button>
       </div>
       <div className="flex flex-col gap-y-4 w-full">

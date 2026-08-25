@@ -243,7 +243,9 @@ function OrganizationDesignerCanvas({
   const [closingNodeIds, setClosingNodeIds] = useState<Set<string>>(
     () => new Set()
   );
-  const closeTimeoutsRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const closeTimeoutsRef = useRef(
+    new Map<string, ReturnType<typeof setTimeout>>()
+  );
 
   useEffect(
     () => () => {
@@ -572,8 +574,6 @@ function OrganizationDesignerCanvas({
       resetViewportResolverRef.current = null;
     })();
   }, [nodes, nodesInitialized, pendingResetPositions, t]);
-
-
 
   useEffect(() => {
     if (!revealRequest || completedRevealIdRef.current === revealRequest.id) {
@@ -1033,9 +1033,9 @@ function OrganizationDesignerCanvas({
                   // rearrangement reads as a slide instead of a jump. Skip
                   // while the user is actively dragging so drag stays 1:1
                   // with the pointer.
-                  "[&_.react-flow\_\_node]:transition-transform [&_.react-flow\_\_node]:duration-300 [&_.react-flow\_\_node]:ease-in-out motion-reduce:[&_.react-flow\_\_node]:transition-none",
-                  "[&_.react-flow\_\_node.dragging]:transition-none",
-                  "[&_.react-flow\_\_edge-path]:transition-[opacity,stroke] [&_.react-flow\_\_edge-path]:duration-200 motion-reduce:[&_.react-flow\_\_edge-path]:transition-none"
+                  "[&_.react-flow__node]:transition-transform [&_.react-flow__node]:duration-300 [&_.react-flow__node]:ease-in-out motion-reduce:[&_.react-flow__node]:transition-none",
+                  "[&_.react-flow__node.dragging]:transition-none",
+                  "[&_.react-flow__edge-path]:transition-[opacity,stroke] [&_.react-flow__edge-path]:duration-200 motion-reduce:[&_.react-flow__edge-path]:transition-none"
                 )}
               >
                 <Background color="var(--border-01)" gap={24} size={1} />
@@ -1043,12 +1043,12 @@ function OrganizationDesignerCanvas({
                   showInteractive={false}
                   className={cn(
                     "!border !border-border-02 !bg-background-neutral-00 !shadow-md !rounded-12 !overflow-hidden",
-                    "[&_.react-flow\_\_controls-button]:!bg-background-neutral-00",
-                    "[&_.react-flow\_\_controls-button]:!border-border-02",
-                    "[&_.react-flow\_\_controls-button]:!text-text-04",
-                    "[&_.react-flow\_\_controls-button:hover]:!bg-background-neutral-02",
-                    "[&_.react-flow\_\_controls-button:hover]:!text-text-05",
-                    "[&_.react-flow\_\_controls-button_svg]:!fill-current"
+                    "[&_.react-flow__controls-button]:!bg-background-neutral-00",
+                    "[&_.react-flow__controls-button]:!border-border-02",
+                    "[&_.react-flow__controls-button]:!text-text-04",
+                    "[&_.react-flow__controls-button:hover]:!bg-background-neutral-02",
+                    "[&_.react-flow__controls-button:hover]:!text-text-05",
+                    "[&_.react-flow__controls-button_svg]:!fill-current"
                   )}
                 />
                 <MiniMap

@@ -9,7 +9,16 @@ import { ContentAction } from "@opal/layouts";
 import { Button } from "@opal/components";
 import { Section } from "@/layouts/general-layouts";
 import { Hoverable } from "@opal/core";
-import { SvgTrash, SvgDownload, SvgChevronDown, SvgChevronUp, SvgRefreshCw, SvgCheckCircle, SvgAlertCircle, SvgSettings } from "@opal/icons";
+import {
+  SvgTrash,
+  SvgDownload,
+  SvgChevronDown,
+  SvgChevronUp,
+  SvgRefreshCw,
+  SvgCheckCircle,
+  SvgAlertCircle,
+  SvgSettings,
+} from "@opal/icons";
 import { getProviderIcon } from "@/lib/llmConfig/providers";
 import { useTranslation } from "react-i18next";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
@@ -120,7 +129,11 @@ function CapabilityBadges({
   );
 }
 
-export function UrlProviderCard({ provider, onDownload, readOnly = false }: Props) {
+export function UrlProviderCard({
+  provider,
+  onDownload,
+  readOnly = false,
+}: Props) {
   const { t } = useTranslation();
   const { mutate } = useSWRConfig();
   const deleteModal = useCreateModal();
@@ -157,12 +170,16 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
         setTestStatus("ok");
       } else {
         setTestStatus("error");
-        toast({ message: data.error || t("admin.llm.connectionFailed"), level: "error" });
+        toast({
+          message: data.error || t("admin.llm.connectionFailed"),
+          level: "error",
+        });
       }
     } catch (e) {
       setTestStatus("error");
       toast({
-        message: e instanceof Error ? e.message : t("admin.llm.connectionFailed"),
+        message:
+          e instanceof Error ? e.message : t("admin.llm.connectionFailed"),
         level: "error",
       });
     }
@@ -198,27 +215,30 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const res = await fetch(`/api/admin/providers/${provider.id}/sync-models`, {
-        method: "POST",
-      });
+      const res = await fetch(
+        `/api/admin/providers/${provider.id}/sync-models`,
+        {
+          method: "POST",
+        }
+      );
       if (!res.ok) throw new Error(t("admin.llm.syncFailed"));
       const updated = await res.json();
       // Preserve size from previous live fetch (not stored in DB)
       const sizeMap = new Map((liveModels ?? []).map((m) => [m.name, m.size]));
-      const synced: LiveModel[] = (updated?.config?.model_configurations ?? []).map(
-        (m: ProviderModelConfig) => ({
-          name: m.name,
-          max_input_tokens: m.max_input_tokens,
-          supports_image_input: m.supports_image_input,
-          supports_reasoning: m.supports_reasoning,
-          supports_tools: m.supports_tools,
-          supports_embedding: m.supports_embedding,
-          supports_code: m.supports_code,
-          supports_audio: m.supports_audio,
-          is_remote: m.is_remote,
-          size: sizeMap.get(m.name),
-        })
-      );
+      const synced: LiveModel[] = (
+        updated?.config?.model_configurations ?? []
+      ).map((m: ProviderModelConfig) => ({
+        name: m.name,
+        max_input_tokens: m.max_input_tokens,
+        supports_image_input: m.supports_image_input,
+        supports_reasoning: m.supports_reasoning,
+        supports_tools: m.supports_tools,
+        supports_embedding: m.supports_embedding,
+        supports_code: m.supports_code,
+        supports_audio: m.supports_audio,
+        is_remote: m.is_remote,
+        size: sizeMap.get(m.name),
+      }));
       setLiveModels(synced);
       await mutate("/api/admin/providers");
       toast({ message: t("admin.llm.syncedModels", { count: synced.length }) });
@@ -234,7 +254,9 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/admin/providers/${provider.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/providers/${provider.id}`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
       toast({ message: t("admin.llm.providerDeletedSuccess") });
       deleteModal.toggle(false);
@@ -261,8 +283,16 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
           title={t("admin.llm.deleteProviderTitle", { name: provider.name })}
           onClose={() => !isDeleting && deleteModal.toggle(false)}
           submit={
-            <Button variant="danger" disabled={isDeleting} onClick={handleDelete}>
-              {isDeleting ? t("admin.builtinOllama.deletingModel", { defaultValue: "Deleting..." }) : t("sidebar.delete")}
+            <Button
+              variant="danger"
+              disabled={isDeleting}
+              onClick={handleDelete}
+            >
+              {isDeleting
+                ? t("admin.builtinOllama.deletingModel", {
+                    defaultValue: "Deleting...",
+                  })
+                : t("sidebar.delete")}
             </Button>
           }
         >
@@ -278,88 +308,166 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
           <ContentAction
             icon={getProviderIcon(provider.provider_type)}
             title={provider.name}
-            description={`${provider.base_url}${provider.user_config?.default_model ? ` · ${provider.user_config.default_model}` : ""}`}
+            description={`${provider.base_url}${
+              provider.user_config?.default_model
+                ? ` · ${provider.user_config.default_model}`
+                : ""
+            }`}
             sizePreset="main-content"
             variant="section"
             rightChildren={
               <Section flexDirection="row" gap={0} alignItems="center">
-              <Hoverable.Item group={GROUP(provider.id)} variant="opacity-on-hover">
-                <button
-                  type="button"
-                  className={[
-                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors disabled:opacity-50",
-                    testStatus === "ok"
-                      ? "text-green-600 bg-green-50 dark:bg-green-950/40 dark:text-green-400"
-                      : testStatus === "error"
-                      ? "text-red-600 bg-red-50 dark:bg-red-950/40 dark:text-red-400"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  ].join(" ")}
-                  onClick={handleTest}
-                  disabled={testStatus === "testing"}
+                <Hoverable.Item
+                  group={GROUP(provider.id)}
+                  variant="opacity-on-hover"
                 >
-                  {testStatus === "ok" && <SvgCheckCircle className="h-4 w-4" />}
-                  {testStatus === "error" && <SvgAlertCircle className="h-4 w-4" />}
-                  <span>
-                    {testStatus === "testing"
-                      ? t("admin.llm.testing")
-                      : testStatus === "ok" && testLatency !== null
-                      ? `${testLatency}ms`
-                      : t("admin.llm.test")}
-                  </span>
-                </button>
-              </Hoverable.Item>
+                  <button
+                    type="button"
+                    className={[
+                      "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors disabled:opacity-50",
+                      testStatus === "ok"
+                        ? "text-green-600 bg-green-50 dark:bg-green-950/40 dark:text-green-400"
+                        : testStatus === "error"
+                          ? "text-red-600 bg-red-50 dark:bg-red-950/40 dark:text-red-400"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    ].join(" ")}
+                    onClick={handleTest}
+                    disabled={testStatus === "testing"}
+                  >
+                    {testStatus === "ok" && (
+                      <SvgCheckCircle className="h-4 w-4" />
+                    )}
+                    {testStatus === "error" && (
+                      <SvgAlertCircle className="h-4 w-4" />
+                    )}
+                    <span>
+                      {testStatus === "testing"
+                        ? t("admin.llm.testing")
+                        : testStatus === "ok" && testLatency !== null
+                          ? `${testLatency}ms`
+                          : t("admin.llm.test")}
+                    </span>
+                  </button>
+                </Hoverable.Item>
 
-              <Hoverable.Item group={GROUP(provider.id)} variant="opacity-on-hover">
-                <Button
-                  prominence="tertiary"
-                  icon={expanded ? SvgChevronUp : SvgChevronDown}
-                  onClick={handleToggleModels}
-                />
-              </Hoverable.Item>
-
-              {!readOnly && provider.provider_type === "ollama" && onDownload && (
-                <Hoverable.Item group={GROUP(provider.id)} variant="opacity-on-hover">
+                <Hoverable.Item
+                  group={GROUP(provider.id)}
+                  variant="opacity-on-hover"
+                >
                   <Button
-                    icon={SvgDownload}
                     prominence="tertiary"
-                    onClick={() => onDownload(provider.id)}
+                    icon={expanded ? SvgChevronUp : SvgChevronDown}
+                    onClick={handleToggleModels}
                   />
                 </Hoverable.Item>
-              )}
 
-              {!readOnly && (
-                <>
-                  <Hoverable.Item group={GROUP(provider.id)} variant="opacity-on-hover">
-                    <Button
-                      icon={SvgSettings}
-                      prominence="tertiary"
-                      aria-label={t("admin.llm.editProviderAria")}
-                      onClick={() => setEditOpen(true)}
-                    />
-                  </Hoverable.Item>
-                  <Hoverable.Item group={GROUP(provider.id)} variant="opacity-on-hover">
-                    <Button
-                      icon={SvgTrash}
-                      prominence="tertiary"
-                      aria-label={t("admin.llm.deleteProviderAria")}
-                      onClick={() => deleteModal.toggle(true)}
-                    />
-                  </Hoverable.Item>
-                </>
-              )}
-            </Section>
-          }
-        />
+                {!readOnly &&
+                  provider.provider_type === "ollama" &&
+                  onDownload && (
+                    <Hoverable.Item
+                      group={GROUP(provider.id)}
+                      variant="opacity-on-hover"
+                    >
+                      <Button
+                        icon={SvgDownload}
+                        prominence="tertiary"
+                        onClick={() => onDownload(provider.id)}
+                      />
+                    </Hoverable.Item>
+                  )}
 
-        {expanded && (
-          <div className="w-full mt-1 pt-2 border-t border-border">
-            {modelsLoading ? (
-              <ModelLoadingSpinner loadingLabel={t("admin.llm.loadingModels")} />
-            ) : displayModels.length > 0 ? (
-              <div className="flex flex-col gap-0.5">
-                <div className="flex items-center justify-between px-1 mb-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    {t("admin.llm.modelsCount", { count: displayModels.length })}
+                {!readOnly && (
+                  <>
+                    <Hoverable.Item
+                      group={GROUP(provider.id)}
+                      variant="opacity-on-hover"
+                    >
+                      <Button
+                        icon={SvgSettings}
+                        prominence="tertiary"
+                        aria-label={t("admin.llm.editProviderAria")}
+                        onClick={() => setEditOpen(true)}
+                      />
+                    </Hoverable.Item>
+                    <Hoverable.Item
+                      group={GROUP(provider.id)}
+                      variant="opacity-on-hover"
+                    >
+                      <Button
+                        icon={SvgTrash}
+                        prominence="tertiary"
+                        aria-label={t("admin.llm.deleteProviderAria")}
+                        onClick={() => deleteModal.toggle(true)}
+                      />
+                    </Hoverable.Item>
+                  </>
+                )}
+              </Section>
+            }
+          />
+
+          {expanded && (
+            <div className="w-full mt-1 pt-2 border-t border-border">
+              {modelsLoading ? (
+                <ModelLoadingSpinner
+                  loadingLabel={t("admin.llm.loadingModels")}
+                />
+              ) : displayModels.length > 0 ? (
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center justify-between px-1 mb-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      {t("admin.llm.modelsCount", {
+                        count: displayModels.length,
+                      })}
+                    </p>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        className={syncButtonClass}
+                        onClick={handleSync}
+                        disabled={syncing}
+                      >
+                        <SvgRefreshCw
+                          className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`}
+                        />
+                        <span>
+                          {syncing
+                            ? t("admin.llm.syncing")
+                            : t("admin.llm.sync")}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                  {displayModels.map((m) => (
+                    <div
+                      key={m.name}
+                      className="flex w-full items-center px-2 py-1.5 rounded-md hover:bg-muted transition-colors"
+                    >
+                      <span className="text-sm font-mono text-foreground truncate mr-2">
+                        {"display_name" in m
+                          ? m.display_name || m.name
+                          : m.name}
+                      </span>
+                      <CapabilityBadges model={m} t={t} />
+                      <span className="flex-1" />
+                      {m.max_input_tokens != null && (
+                        <span className="text-xs text-muted-foreground tabular-nums mr-3">
+                          {m.max_input_tokens.toLocaleString()}{" "}
+                          {t("admin.llm.contextShort")}
+                        </span>
+                      )}
+                      {"size" in m && m.size != null && m.size >= 5e7 && (
+                        <span className="text-xs text-muted-foreground tabular-nums w-14 text-right">
+                          {(m.size / 1e9).toFixed(1)} GB
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between px-1 py-1">
+                  <p className="text-sm text-muted-foreground">
+                    {t("app.llmPopover.noModelsFound")}
                   </p>
                   {!readOnly && (
                     <button
@@ -368,55 +476,18 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
                       onClick={handleSync}
                       disabled={syncing}
                     >
-                      <SvgRefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-                      <span>{syncing ? t("admin.llm.syncing") : t("admin.llm.sync")}</span>
+                      <SvgRefreshCw
+                        className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`}
+                      />
+                      <span>
+                        {syncing ? t("admin.llm.syncing") : t("admin.llm.sync")}
+                      </span>
                     </button>
                   )}
                 </div>
-                {displayModels.map((m) => (
-                  <div
-                    key={m.name}
-                    className="flex w-full items-center px-2 py-1.5 rounded-md hover:bg-muted transition-colors"
-                  >
-                    <span className="text-sm font-mono text-foreground truncate mr-2">
-                      {"display_name" in m ? m.display_name || m.name : m.name}
-                    </span>
-                    <CapabilityBadges
-                      model={m}
-                      t={t}
-                    />
-                    <span className="flex-1" />
-                    {m.max_input_tokens != null && (
-                      <span className="text-xs text-muted-foreground tabular-nums mr-3">
-                        {m.max_input_tokens.toLocaleString()} {t("admin.llm.contextShort")}
-                      </span>
-                    )}
-                    {"size" in m && m.size != null && m.size >= 5e7 && (
-                      <span className="text-xs text-muted-foreground tabular-nums w-14 text-right">
-                        {(m.size / 1e9).toFixed(1)} GB
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex items-center justify-between px-1 py-1">
-                <p className="text-sm text-muted-foreground">{t("app.llmPopover.noModelsFound")}</p>
-                {!readOnly && (
-                  <button
-                    type="button"
-                    className={syncButtonClass}
-                    onClick={handleSync}
-                    disabled={syncing}
-                  >
-                    <SvgRefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-                    <span>{syncing ? t("admin.llm.syncing") : t("admin.llm.sync")}</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
         </Card>
       </Hoverable.Root>
 
@@ -430,4 +501,3 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
     </>
   );
 }
-

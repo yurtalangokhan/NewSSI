@@ -51,10 +51,14 @@ describe("CreateProjectModal", () => {
   it("disables the create button when project name is empty or only whitespace", () => {
     render(<CreateProjectModal />);
 
-    const createButton = screen.getByRole("button", { name: /create project/i });
+    const createButton = screen.getByRole("button", {
+      name: /create project/i,
+    });
     expect(createButton).toBeDisabled();
 
-    const input = screen.getByPlaceholderText("modals.createProject.namePlaceholder");
+    const input = screen.getByPlaceholderText(
+      "modals.createProject.namePlaceholder"
+    );
     fireEvent.change(input, { target: { value: "   " } });
     expect(createButton).toBeDisabled();
 
@@ -71,14 +75,18 @@ describe("CreateProjectModal", () => {
 
     render(<CreateProjectModal initialProjectName="Test Project" />);
 
-    const createButton = screen.getByRole("button", { name: /create project/i });
+    const createButton = screen.getByRole("button", {
+      name: /create project/i,
+    });
     expect(createButton).not.toBeDisabled();
 
     fireEvent.click(createButton);
 
     // During submission
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /creating\.\.\./i })).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: /creating\.\.\./i })
+      ).toBeDisabled();
     });
     expect(screen.getByRole("button", { name: /cancel/i })).toBeDisabled();
 
@@ -120,16 +128,22 @@ describe("CreateProjectModal", () => {
 
     render(<CreateProjectModal initialProjectName="Error Project" />);
 
-    const createButton = screen.getByRole("button", { name: /create project/i });
+    const createButton = screen.getByRole("button", {
+      name: /create project/i,
+    });
     fireEvent.click(createButton);
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith("Failed to create the project Error Project");
+      expect(toast.error).toHaveBeenCalledWith(
+        "Failed to create the project Error Project"
+      );
     });
 
     // After failure, button should be re-enabled
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /create project/i })).not.toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: /create project/i })
+      ).not.toBeDisabled();
     });
   });
 });

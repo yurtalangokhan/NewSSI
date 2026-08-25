@@ -225,7 +225,9 @@ def _extract_file_blocks(data_b64: str, mime: str, filename: str) -> list[dict]:
             from service.FileService import normalize_image_for_llm
 
             norm_data, norm_mime = normalize_image_for_llm(data_b64, m or "image/jpeg")
-            return [{"type": "image_url", "image_url": {"url": f"data:{norm_mime};base64,{norm_data}"}}]
+            return [
+                {"type": "image_url", "image_url": {"url": f"data:{norm_mime};base64,{norm_data}"}}
+            ]
 
         return [
             {

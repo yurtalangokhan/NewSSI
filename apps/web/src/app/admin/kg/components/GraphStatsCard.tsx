@@ -3,7 +3,10 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import CardSection from "@/components/admin/CardSection";
 import Text from "@/refresh-components/texts/Text";
-import { type PaginatedCounts, type PaginatedCountItem } from "@/lib/langconnect";
+import {
+  type PaginatedCounts,
+  type PaginatedCountItem,
+} from "@/lib/langconnect";
 import { cn } from "@/lib/utils";
 import { snakeToHumanReadable } from "@/app/admin/kg/utils";
 import { useTranslation } from "react-i18next";
@@ -93,7 +96,9 @@ export default function GraphStatsCard({
   const filteredLabelItems = useMemo(() => {
     const q = labelsSearch.trim().toLowerCase();
     if (!q) return availableLabels;
-    return availableLabels.filter((item) => item.name.toLowerCase().includes(q));
+    return availableLabels.filter((item) =>
+      item.name.toLowerCase().includes(q)
+    );
   }, [availableLabels, labelsSearch]);
 
   const labelData: PaginatedCounts = useMemo(() => {
@@ -133,7 +138,9 @@ export default function GraphStatsCard({
   const filteredRelItems = useMemo(() => {
     const q = relSearch.trim().toLowerCase();
     if (!q) return availableRelTypes;
-    return availableRelTypes.filter((item) => item.name.toLowerCase().includes(q));
+    return availableRelTypes.filter((item) =>
+      item.name.toLowerCase().includes(q)
+    );
   }, [availableRelTypes, relSearch]);
 
   const relData: PaginatedCounts = useMemo(() => {
@@ -169,16 +176,30 @@ export default function GraphStatsCard({
         </Text>
         <div className="flex flex-wrap gap-2">
           <div className="flex items-center gap-1.5 rounded-full border border-border-01 px-2.5 py-1">
-            <Text as="span" mainContentMuted text03 className="text-xs">{t("admin.kg.nodes")}</Text>
-            <Text as="span" mainUiAction text04 className="text-xs font-semibold tabular-nums">
+            <Text as="span" mainContentMuted text03 className="text-xs">
+              {t("admin.kg.nodes")}
+            </Text>
+            <Text
+              as="span"
+              mainUiAction
+              text04
+              className="text-xs font-semibold tabular-nums"
+            >
               {visibleNodes < totalNodes
                 ? `${visibleNodes.toLocaleString()} / ${totalNodes.toLocaleString()}`
                 : totalNodes.toLocaleString()}
             </Text>
           </div>
           <div className="flex items-center gap-1.5 rounded-full border border-border-01 px-2.5 py-1">
-            <Text as="span" mainContentMuted text03 className="text-xs">{t("admin.kg.edges")}</Text>
-            <Text as="span" mainUiAction text04 className="text-xs font-semibold tabular-nums">
+            <Text as="span" mainContentMuted text03 className="text-xs">
+              {t("admin.kg.edges")}
+            </Text>
+            <Text
+              as="span"
+              mainUiAction
+              text04
+              className="text-xs font-semibold tabular-nums"
+            >
               {visibleEdges < totalEdges
                 ? `${visibleEdges.toLocaleString()} / ${totalEdges.toLocaleString()}`
                 : totalEdges.toLocaleString()}
@@ -215,8 +236,15 @@ export default function GraphStatsCard({
         {/* Search */}
         <div className="relative">
           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-text-03 pointer-events-none">
-            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            <svg
+              className="h-3 w-3"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
             </svg>
           </span>
           <input
@@ -257,7 +285,12 @@ export default function GraphStatsCard({
                 >
                   {t("admin.kg.prev")}
                 </button>
-                <Text as="span" mainContentMuted text03 className="text-[10px] tabular-nums">
+                <Text
+                  as="span"
+                  mainContentMuted
+                  text03
+                  className="text-[10px] tabular-nums"
+                >
                   {labelPage} / {Math.ceil(labelData.total / PAGE_SIZE)}
                 </Text>
                 <button
@@ -272,7 +305,9 @@ export default function GraphStatsCard({
           </>
         ) : (
           <Text as="p" mainContentMuted text03 className="text-xs">
-            {labelsSearch ? t("admin.kg.noMatchingLabels") : t("admin.kg.noLabels")}
+            {labelsSearch
+              ? t("admin.kg.noMatchingLabels")
+              : t("admin.kg.noLabels")}
           </Text>
         )}
       </div>
@@ -295,7 +330,9 @@ export default function GraphStatsCard({
           </Text>
           {selectedRelTypes.size > 0 && (
             <button
-              onClick={() => Array.from(selectedRelTypes).forEach(onToggleRelType)}
+              onClick={() =>
+                Array.from(selectedRelTypes).forEach(onToggleRelType)
+              }
               className="text-[10px] text-theme-primary-05 hover:underline"
             >
               {t("admin.kg.clear")}
@@ -305,8 +342,15 @@ export default function GraphStatsCard({
         {/* Search */}
         <div className="relative">
           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-text-03 pointer-events-none">
-            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            <svg
+              className="h-3 w-3"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
             </svg>
           </span>
           <input
@@ -339,7 +383,12 @@ export default function GraphStatsCard({
                 >
                   {t("admin.kg.prev")}
                 </button>
-                <Text as="span" mainContentMuted text03 className="text-[10px] tabular-nums">
+                <Text
+                  as="span"
+                  mainContentMuted
+                  text03
+                  className="text-[10px] tabular-nums"
+                >
                   {relPage} / {Math.ceil(relData.total / PAGE_SIZE)}
                 </Text>
                 <button

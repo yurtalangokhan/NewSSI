@@ -1,9 +1,6 @@
 import useSWR from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
-import {
-  BuildConnectorConfig,
-  ConnectorStatus,
-} from "@/app/craft/v1/configure/components/ConnectorCard";
+import { BuildConnectorConfig } from "@/app/craft/v1/configure/components/ConnectorCard";
 
 interface BuildConnectorListResponse {
   connectors: BuildConnectorConfig[];

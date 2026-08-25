@@ -56,27 +56,11 @@ const isWordFormat = (fileType: string) =>
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
   );
 
-const isImageFormat = (fileType: string) => fileType.startsWith("image/");
-const isJsonFormat = (mimeType: string) =>
-  mimeType.startsWith("application/json");
-
 const isPptxFormat = (fileType: string) =>
   fileType.startsWith(
     "application/vnd.openxmlformats-officedocument.presentationml.presentation"
   );
-const isImageFormat = (mimeType: string) =>
-  ["image/png", "image/jpeg", "image/gif", "image/svg+xml"].some((f) =>
-    mimeType.startsWith(f)
-  );
-
-const isSupportedIframeFormat = (mimeType: string) =>
-  [
-    "application/pdf",
-    "image/png",
-    "image/jpeg",
-    "image/gif",
-    "image/svg+xml",
-  ].some((f) => mimeType.startsWith(f));
+const isImageFormat = (fileType: string) => fileType.startsWith("image/");
 
 export default function TextViewModal({
   presentingDocument,
@@ -132,7 +116,8 @@ export default function TextViewModal({
       ) {
         if (!isCancelled) {
           setFileUrl((prev) => {
-            if (prev && prev.startsWith("blob:")) window.URL.revokeObjectURL(prev);
+            if (prev && prev.startsWith("blob:"))
+              window.URL.revokeObjectURL(prev);
             return docPreviewUrl;
           });
           setFileName(docName || t("filePreview.document"));
@@ -163,7 +148,8 @@ export default function TextViewModal({
         const url = window.URL.createObjectURL(blob);
         if (!isCancelled) {
           setFileUrl((prev) => {
-            if (prev && prev.startsWith("blob:")) window.URL.revokeObjectURL(prev);
+            if (prev && prev.startsWith("blob:"))
+              window.URL.revokeObjectURL(prev);
             return url;
           });
 
@@ -184,19 +170,17 @@ export default function TextViewModal({
             } else if (lowerName.endsWith(".json")) {
               contentType = "application/json";
             } else if (
-            lowerName.endsWith(".docx") ||
-            lowerName.endsWith(".doc")
-          ) {
+              lowerName.endsWith(".docx") ||
+              lowerName.endsWith(".doc")
+            ) {
               contentType =
-               
-              "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             } else if (
-            lowerName.endsWith(".pptx") ||
-            lowerName.endsWith(".ppt")
-          ) {
+              lowerName.endsWith(".pptx") ||
+              lowerName.endsWith(".ppt")
+            ) {
               contentType =
-               
-              "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation";
             }
           }
           setFileType(contentType);

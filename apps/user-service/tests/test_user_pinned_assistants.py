@@ -1,8 +1,11 @@
 import uuid
-import pytest
-from unittest.mock import AsyncMock
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+import pytest
+
 from src.service.user_service import UserService
+
 
 @pytest.mark.asyncio
 async def test_get_current_user_includes_pinned_assistants_in_preferences():
@@ -41,7 +44,6 @@ async def test_get_current_user_includes_pinned_assistants_in_preferences():
         long_term_memory_enabled=False,
         extract_memory=False,
     )
-
 
     service = UserService()
     service.user_repo = SimpleNamespace(

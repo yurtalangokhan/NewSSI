@@ -1,5 +1,4 @@
 import { SOURCE_METADATA_MAP } from "../sources";
-import { MCPServer } from "./interfaces";
 import { DatabaseIcon, FileIcon } from "@/components/icons/icons";
 import type { IconProps } from "@opal/types";
 import { SvgServer } from "@opal/icons";

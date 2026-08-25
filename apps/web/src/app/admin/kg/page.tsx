@@ -88,7 +88,11 @@ function CollectionSelector({
     return datasources.map((ds) => ({
       id: ds.id,
       // Prefer the datasource's own name; fall back to collection name if set
-      name: ds.name || collectionNameMap.get(ds.id) || ds.connector_display_name || "Unnamed",
+      name:
+        ds.name ||
+        collectionNameMap.get(ds.id) ||
+        ds.connector_display_name ||
+        "Unnamed",
       hasGraph: graphCollectionSet.has(ds.id),
     }));
   }, [datasources, collections, graphCollectionSet]);
@@ -122,11 +126,15 @@ function CollectionSelector({
           }}
           error={highlight}
         >
-          <InputSelect.Trigger placeholder={t("admin.kg.selectCollectionPlaceholder")} />
+          <InputSelect.Trigger
+            placeholder={t("admin.kg.selectCollectionPlaceholder")}
+          />
           <InputSelect.Content>
             {ragCollections.length > 0 && (
               <InputSelect.Group>
-                <InputSelect.Label>{t("admin.kg.collections")}</InputSelect.Label>
+                <InputSelect.Label>
+                  {t("admin.kg.collections")}
+                </InputSelect.Label>
                 {ragCollections.map((c) => {
                   const hasGraph = graphCollectionSet.has(c.uuid);
                   return (
@@ -142,7 +150,9 @@ function CollectionSelector({
             )}
             {datasourceItems.length > 0 && (
               <InputSelect.Group>
-                <InputSelect.Label>{t("admin.kg.dataSources")}</InputSelect.Label>
+                <InputSelect.Label>
+                  {t("admin.kg.dataSources")}
+                </InputSelect.Label>
                 {datasourceItems.map((ds) => (
                   <InputSelect.Item key={ds.id} value={ds.id}>
                     <span className="flex items-center">
@@ -165,7 +175,12 @@ function CollectionSelector({
       )}
       {!highlight && hasUnbuilt && (
         <Text as="p" mainContentMuted text03 className="text-xs">
-          {t("admin.kg.noGraphHintPrefix")} <span className="inline-flex items-center rounded-04 border border-status-warning-03 bg-status-warning-01 px-1 text-[10px] font-medium text-status-warning-06">{t("admin.kg.noGraph")}</span> {t("admin.kg.noGraphHintSuffix")} <strong>{t("admin.kg.buildTab")}</strong>.
+          {t("admin.kg.noGraphHintPrefix")}{" "}
+          <span className="inline-flex items-center rounded-04 border border-status-warning-03 bg-status-warning-01 px-1 text-[10px] font-medium text-status-warning-06">
+            {t("admin.kg.noGraph")}
+          </span>{" "}
+          {t("admin.kg.noGraphHintSuffix")}{" "}
+          <strong>{t("admin.kg.buildTab")}</strong>.
         </Text>
       )}
     </CardSection>
@@ -182,13 +197,20 @@ function ExplorerTab({
   isActive: boolean;
 }) {
   const { t } = useTranslation();
-  const [scalableData, setScalableData] = useState<ClusteredGraphData | null>(null);
+  const [scalableData, setScalableData] = useState<ClusteredGraphData | null>(
+    null
+  );
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [explorerLoading, setExplorerLoading] = useState(false);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<Set<string>>(new Set());
-  const [selectedRelTypes, setSelectedRelTypes] = useState<Set<string>>(new Set());
-  const [visibleCounts, setVisibleCounts] = useState({ nodeCount: 0, edgeCount: 0 });
+  const [selectedRelTypes, setSelectedRelTypes] = useState<Set<string>>(
+    new Set()
+  );
+  const [visibleCounts, setVisibleCounts] = useState({
+    nodeCount: 0,
+    edgeCount: 0,
+  });
 
   const loadData = useCallback(async (id: string) => {
     setExplorerLoading(true);
@@ -231,7 +253,9 @@ function ExplorerTab({
       try {
         const data = await fetchScalableGraphData(collectionId, params);
         setScalableData(data);
-      } catch { /* ignore */ } finally {
+      } catch {
+        /* ignore */
+      } finally {
         setExplorerLoading(false);
       }
     },
@@ -240,7 +264,12 @@ function ExplorerTab({
 
   const handleClusterExpand = useCallback(
     (clusterLabel: string) =>
-      loadScalable({ mode: "expand", clusterLabel, nodeLimit: 200, edgeLimit: 500 }),
+      loadScalable({
+        mode: "expand",
+        clusterLabel,
+        nodeLimit: 200,
+        edgeLimit: 500,
+      }),
     [loadScalable]
   );
 
@@ -345,31 +374,36 @@ function ExplorerTab({
       </div>
 
       {/* Entity preview below the graph */}
-      {selectedNode && (() => {
-        // In expand/neighborhood/full mode the scalableData contains the
-        // actual individual nodes + edges for the current view. Use that
-        // instead of the limited flat graphData so all connections show.
-        const useScalable =
-          scalableData &&
-          scalableData.mode !== "overview" &&
-          scalableData.nodes.some((n) => n.id === selectedNode.id);
-        const previewNodes: GraphNode[] = useScalable
-          ? scalableData!.nodes.filter((n): n is GraphNode => !isClusterNode(n))
-          : (graphData?.nodes ?? []);
-        const previewEdges: GraphEdge[] = useScalable
-          ? scalableData!.edges.filter((e): e is GraphEdge => !isClusterEdge(e))
-          : (graphData?.edges ?? []);
-        if (!previewNodes.length && !graphData) return null;
-        return (
-          <EntityPreview
-            node={selectedNode}
-            edges={previewEdges}
-            nodes={previewNodes}
-            onClose={() => setSelectedNode(null)}
-            onNodeSelect={setSelectedNode}
-          />
-        );
-      })()}
+      {selectedNode &&
+        (() => {
+          // In expand/neighborhood/full mode the scalableData contains the
+          // actual individual nodes + edges for the current view. Use that
+          // instead of the limited flat graphData so all connections show.
+          const useScalable =
+            scalableData &&
+            scalableData.mode !== "overview" &&
+            scalableData.nodes.some((n) => n.id === selectedNode.id);
+          const previewNodes: GraphNode[] = useScalable
+            ? scalableData!.nodes.filter(
+                (n): n is GraphNode => !isClusterNode(n)
+              )
+            : graphData?.nodes ?? [];
+          const previewEdges: GraphEdge[] = useScalable
+            ? scalableData!.edges.filter(
+                (e): e is GraphEdge => !isClusterEdge(e)
+              )
+            : graphData?.edges ?? [];
+          if (!previewNodes.length && !graphData) return null;
+          return (
+            <EntityPreview
+              node={selectedNode}
+              edges={previewEdges}
+              nodes={previewNodes}
+              onClose={() => setSelectedNode(null)}
+              onNodeSelect={setSelectedNode}
+            />
+          );
+        })()}
     </div>
   );
 }
@@ -407,9 +441,8 @@ function Main({
   );
   const ragCollectionCount = useMemo(
     () =>
-      collections.filter(
-        (collection) => !datasourceIdSet.has(collection.uuid)
-      ).length,
+      collections.filter((collection) => !datasourceIdSet.has(collection.uuid))
+        .length,
     [collections, datasourceIdSet]
   );
   const knowledgeSourceCount = ragCollectionCount + datasources.length;
@@ -451,10 +484,7 @@ function Main({
     [collectionId, selectedHasGraph, triggerCollectionRequired, onTabChange]
   );
 
-  const handleBuildComplete = useCallback(
-    () => {},
-    []
-  );
+  const handleBuildComplete = useCallback(() => {}, []);
 
   const isExplorer = activeTab === "explorer";
 

@@ -29,9 +29,7 @@ class _RecordingModelNode:
         self.seen_message_contents: list[list[str]] = []
 
     async def __call__(self, state: MessagesState):
-        self.seen_message_contents.append(
-            [getattr(m, "content", "") for m in state["messages"]]
-        )
+        self.seen_message_contents.append([getattr(m, "content", "") for m in state["messages"]])
         return {"messages": [AIMessage(content=next(self.responses))]}
 
 
@@ -85,7 +83,10 @@ async def test_retry_forks_the_checkpoint_and_never_sees_the_rejected_response(
     # Invoke the retry from the forked checkpoint with NO new human message —
     # exactly what AgentHelpers._handle_input does (input=None) once forking
     # succeeds.
-    retry_config = {**config, "configurable": {**config["configurable"], **fork_config["configurable"]}}
+    retry_config = {
+        **config,
+        "configurable": {**config["configurable"], **fork_config["configurable"]},
+    }
     retry_result = await graph.ainvoke(None, config=retry_config)
     assert retry_result["messages"][-1].content == "retry cevabı"
 

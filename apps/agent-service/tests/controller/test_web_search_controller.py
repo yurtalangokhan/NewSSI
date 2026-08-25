@@ -18,7 +18,9 @@ class TestWebSearchController:
         controller = WebSearchController()
         providers = controller.list_content_providers()
         assert len(providers) >= 1
-        atlas_provider = next((p for p in providers if p["provider_type"] == "atlas_web_crawler"), None)
+        atlas_provider = next(
+            (p for p in providers if p["provider_type"] == "atlas_web_crawler"), None
+        )
         assert atlas_provider is not None
         assert atlas_provider["name"] == "ATLAS Web Crawler"
         assert atlas_provider["is_active"] is True

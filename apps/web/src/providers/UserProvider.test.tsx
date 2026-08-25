@@ -33,9 +33,9 @@ function wrapper({ children }: { children: React.ReactNode }) {
 
 describe("UserProvider updateUserDefaultModel", () => {
   beforeEach(() => {
-    jest.spyOn(global, "fetch").mockResolvedValue(
-      new Response(null, { status: 200 })
-    );
+    jest
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response(null, { status: 200 }));
   });
 
   afterEach(() => {

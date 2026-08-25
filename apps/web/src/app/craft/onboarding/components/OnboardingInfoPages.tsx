@@ -2,23 +2,12 @@
 
 import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
-import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import {
   WorkArea,
   Level,
   getPersonaInfo,
   getPositionText,
-  DEMO_COMPANY_NAME,
 } from "@/app/craft/onboarding/constants";
-import {
-  GoogleDriveIcon,
-  GithubIcon,
-  HubSpotIcon,
-  LinearIcon,
-  FirefliesIcon,
-  GmailIcon,
-  ColorSlackIcon,
-} from "@/components/icons/icons";
 
 interface OnboardingInfoPagesProps {
   step: "page1" | "page2";

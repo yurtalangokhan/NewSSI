@@ -279,7 +279,7 @@ describe("handleSSEStream", () => {
       'data: {"type":"reasoning_start"}\n',
       'data: {"type":"reasoning_delta","reasoning":"more thinking"}\n',
       'data: {"type":"token","content":"the rest."}\n',
-      'data: [DONE]\n',
+      "data: [DONE]\n",
     ]);
 
     const packets: any[] = [];
@@ -295,7 +295,9 @@ describe("handleSSEStream", () => {
 
     // Only one message_start was ever synthesized for this answer — the
     // resumed reasoning must not have forced a second one.
-    const messageStarts = packets.filter((p) => p.obj?.type === "message_start");
+    const messageStarts = packets.filter(
+      (p) => p.obj?.type === "message_start"
+    );
     expect(messageStarts).toHaveLength(1);
   });
 
@@ -309,7 +311,7 @@ describe("handleSSEStream", () => {
       'data: {"type":"custom_tool_start","tool_name":"web_search","args":{"query":"b"},"call_id":"call-b"}\n',
       'data: {"type":"custom_tool_delta","tool_name":"web_search","response_type":"tool_result","data":"result a","call_id":"call-a"}\n',
       'data: {"type":"custom_tool_delta","tool_name":"web_search","response_type":"tool_result","data":"result b","call_id":"call-b"}\n',
-      'data: [DONE]\n',
+      "data: [DONE]\n",
     ]);
 
     const packets: any[] = [];
@@ -344,10 +346,10 @@ describe("handleSSEStream", () => {
     // packet and must not surface as parse errors or stray packets.
     const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
     const response = createStreamingResponse([
-      ': keep-alive\n',
+      ": keep-alive\n",
       'data: {"type":"token","content":"Hi"}\n',
-      ': keep-alive\n',
-      'data: [DONE]\n',
+      ": keep-alive\n",
+      "data: [DONE]\n",
     ]);
 
     const packets: any[] = [];
@@ -376,7 +378,7 @@ describe("handleSSEStream", () => {
     const response = createStreamingResponse([
       'data: {"type":"token","content":"Hi"}\n',
       'data: {"user_message_id": 1, "reserved_assistant_message_id": 2}\n',
-      'data: [DONE]\n',
+      "data: [DONE]\n",
     ]);
 
     const packets: any[] = [];
@@ -400,7 +402,7 @@ describe("handleSSEStream", () => {
       'data: {"type":"open_url_urls","urls":["https://site2.com"],"call_id":"fetch-2"}\n',
       'data: {"type":"open_url_documents","documents":[{"document_id":"https://site1.com","semantic_identifier":"Site 1"}],"call_id":"fetch-1"}\n',
       'data: {"type":"open_url_documents","documents":[{"document_id":"https://site2.com","semantic_identifier":"Site 2"}],"call_id":"fetch-2"}\n',
-      'data: [DONE]\n',
+      "data: [DONE]\n",
     ]);
 
     const packets: any[] = [];
@@ -433,7 +435,7 @@ describe("handleSSEStream", () => {
       'data: {"type":"open_url_documents","documents":[{"document_id":"https://site1.com","semantic_identifier":"Site 1"}],"call_id":"fetch-1"}\n',
       'data: {"type":"search_tool_documents_delta","documents":[{"document_id":"https://res1.com","semantic_identifier":"Res 1"}],"call_id":"search-1"}\n',
       'data: {"type":"search_tool_documents_delta","documents":[{"document_id":"https://res2.com","semantic_identifier":"Res 2"}],"call_id":"search-2"}\n',
-      'data: [DONE]\n',
+      "data: [DONE]\n",
     ]);
 
     const packets: any[] = [];

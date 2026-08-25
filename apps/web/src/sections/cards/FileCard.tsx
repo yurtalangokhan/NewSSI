@@ -153,7 +153,6 @@ export function FileCard({
       return `/api/chat/file/${file.file_id}`;
     }
     return null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isImage,
     file.file_id,

@@ -30,7 +30,9 @@ interface ToolCallState {
  * next start) belong to it — never collapse them into a single "last delta
  * wins" summary, or every earlier call's query and result just disappears.
  */
-function constructCustomToolCalls(packets: CustomToolPacket[]): ToolCallState[] {
+function constructCustomToolCalls(
+  packets: CustomToolPacket[]
+): ToolCallState[] {
   const calls: ToolCallState[] = [];
   let current: ToolCallState | null = null;
 
@@ -69,7 +71,10 @@ function constructCustomToolCalls(packets: CustomToolPacket[]): ToolCallState[] 
   return calls;
 }
 
-function formatToolContent(args: CustomToolStart["args"], data: any): string | null {
+function formatToolContent(
+  args: CustomToolStart["args"],
+  data: any
+): string | null {
   if (data !== undefined && data !== null) {
     if (typeof data === "string") {
       try {
@@ -157,41 +162,15 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
 
   const icon = FiTool;
 
-  const formattedData = useMemo(() => {
-    if (data !== undefined && data !== null) {
-      if (typeof data === "string") {
-        try {
-          const parsed = JSON.parse(data);
-          return JSON.stringify(parsed, null, 2);
-        } catch {
-          return data;
-        }
-      }
-      return JSON.stringify(data, null, 2);
-    }
-    if (args !== undefined && args !== null) {
-      let parsedArgs: any = args;
-      if (typeof args === "string") {
-        try {
-          parsedArgs = JSON.parse(args);
-        } catch {
-          return args;
-        }
-      }
-      if (typeof parsedArgs === "object" && parsedArgs !== null) {
-        const cleaned: Record<string, any> = { ...parsedArgs };
-        if (
-          typeof cleaned.content === "string" &&
-          cleaned.content.length > 150
-        ) {
-          cleaned.content = `[Doküman İçeriği: ${cleaned.content.length} karakter]`;
-        }
-        return JSON.stringify(cleaned, null, 2);
-      }
-      return String(parsedArgs);
-    }
-    return null;
-  }, [data, args]);
+  const formattedCalls = useMemo(
+    () =>
+      calls.map((call) => ({
+        args: formatToolContent(call.args, undefined),
+        result: formatToolContent(undefined, call.data),
+      })),
+    [calls]
+  );
+  const hasAnyContent = formattedCalls.some((call) => call.args || call.result);
 
   if (renderType === RenderType.COMPACT) {
     return children([

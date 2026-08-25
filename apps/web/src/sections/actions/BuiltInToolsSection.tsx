@@ -37,7 +37,9 @@ function ToolCard({
 }) {
   return (
     <div className="border border-border-01 rounded-lg p-4 hover:bg-background-tint-00 transition-colors">
-      <h3 className="font-medium truncate mb-2">{tool.title || _.startCase(tool.name)}</h3>
+      <h3 className="font-medium truncate mb-2">
+        {tool.title || _.startCase(tool.name)}
+      </h3>
       <p className="text-sm text-text-03 line-clamp-2 mb-3">
         {tool.description || t("toolPlayground.noDescription")}
       </p>

@@ -16,7 +16,6 @@ import Separator from "@/refresh-components/Separator";
 import { DocumentSetSummary } from "@/lib/types";
 import { useState } from "react";
 import { useDocumentSets } from "./hooks";
-import { ConnectorTitle } from "@/components/admin/connectors/ConnectorTitle";
 import { deleteDocumentSet } from "./lib";
 import { toast } from "@/hooks/useToast";
 import * as SettingsLayouts from "@/layouts/settings-layouts";

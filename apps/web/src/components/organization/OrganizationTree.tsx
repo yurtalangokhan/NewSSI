@@ -16,8 +16,12 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Tree, NodeRendererProps,
-  RowRendererProps, type TreeApi } from "react-arborist";
+import {
+  Tree,
+  NodeRendererProps,
+  RowRendererProps,
+  type TreeApi,
+} from "react-arborist";
 import { useTranslation } from "react-i18next";
 import { OrganizationSearchCombobox } from "@/components/organization/OrganizationSearchCombobox";
 import type {
@@ -90,7 +94,10 @@ function OrganizationTreeRow<T>({
         width: "100%",
         boxSizing: "border-box",
       }}
-      className={cn("w-full max-w-full overflow-hidden box-border", attrs.className)}
+      className={cn(
+        "w-full max-w-full overflow-hidden box-border",
+        attrs.className
+      )}
     >
       {children}
     </div>
@@ -238,7 +245,9 @@ function Node({
   );
 
   const isExpandable =
-    (node.children !== null && node.children !== undefined && node.children.length > 0) ||
+    (node.children !== null &&
+      node.children !== undefined &&
+      node.children.length > 0) ||
     (node.data.children !== undefined && node.data.children.length > 0) ||
     node.data.has_children === true ||
     (node.data.children_count !== undefined && node.data.children_count > 0);

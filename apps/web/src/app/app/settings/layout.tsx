@@ -18,7 +18,11 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <AppLayouts.Root>
       <SettingsLayouts.Root width="lg">
-        <SettingsLayouts.Header icon={SvgSliders} title={t("settingsLayout.title")} separator />
+        <SettingsLayouts.Header
+          icon={SvgSliders}
+          title={t("settingsLayout.title")}
+          separator
+        />
 
         <SettingsLayouts.Body>
           <div className="grid grid-cols-[auto_1fr]">

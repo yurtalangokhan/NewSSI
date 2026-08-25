@@ -42,7 +42,6 @@ const CsvContent: React.FC<ContentComponentProps> = ({
     }
 
     fetchCSV(fileDescriptor.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fileDescriptor.id]);
 
   const fetchCSV = async (id: string) => {
@@ -173,8 +172,7 @@ const CsvContent: React.FC<ContentComponentProps> = ({
                   </Text>
                   <Text as="p" text04 mainUiBody>
                     {headers.length === 0
-                      ? errorMessage ||
-                        t("filePreview.csvMayBeTooLarge")
+                      ? errorMessage || t("filePreview.csvMayBeTooLarge")
                       : ""}
                   </Text>
                 </div>

@@ -41,7 +41,6 @@ import {
   WellKnownLLMProviderDescriptor,
   UrlBasedProvider,
   ApiKeyProvider,
-  WellKnownLangChainProvider,
 } from "@/interfaces/llm";
 import { LLM_PROVIDERS_ADMIN_URL } from "@/lib/llmConfig/constants";
 import { resolveDefaultModelSelection } from "@/lib/llmConfig/utils";
@@ -174,8 +173,16 @@ function ExistingProviderCard({
           title={t("admin.llm.deleteProviderTitle", { name: provider.name })}
           onClose={() => !isDeleting && deleteModal.toggle(false)}
           submit={
-            <Button variant="danger" disabled={isDeleting} onClick={handleDelete}>
-              {isDeleting ? t("admin.builtinOllama.deletingModel", { defaultValue: "Deleting..." }) : t("sidebar.delete")}
+            <Button
+              variant="danger"
+              disabled={isDeleting}
+              onClick={handleDelete}
+            >
+              {isDeleting
+                ? t("admin.builtinOllama.deletingModel", {
+                    defaultValue: "Deleting...",
+                  })
+                : t("sidebar.delete")}
             </Button>
           }
         >
@@ -185,9 +192,7 @@ function ExistingProviderCard({
               {t("admin.llm.deleteProviderBodySuffix")}
             </Text>
             {isLastProvider && (
-              <Text text03>
-                {t("admin.llm.connectAnotherProvider")}
-              </Text>
+              <Text text03>{t("admin.llm.connectAnotherProvider")}</Text>
             )}
           </Section>
         </ConfirmationModalLayout>
@@ -339,7 +344,9 @@ function ApiKeyProviderCard({ provider, onDeleted }: ApiKeyProviderCardProps) {
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/admin/user-providers/${provider.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/user-providers/${provider.id}`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
       toast({ message: t("admin.llm.providerDeletedSuccess") });
       deleteModal.toggle(false);
@@ -359,8 +366,16 @@ function ApiKeyProviderCard({ provider, onDeleted }: ApiKeyProviderCardProps) {
           title={t("admin.llm.deleteProviderTitle", { name: provider.name })}
           onClose={() => !isDeleting && deleteModal.toggle(false)}
           submit={
-            <Button variant="danger" disabled={isDeleting} onClick={handleDelete}>
-              {isDeleting ? t("admin.builtinOllama.deletingModel", { defaultValue: "Deleting..." }) : t("sidebar.delete")}
+            <Button
+              variant="danger"
+              disabled={isDeleting}
+              onClick={handleDelete}
+            >
+              {isDeleting
+                ? t("admin.builtinOllama.deletingModel", {
+                    defaultValue: "Deleting...",
+                  })
+                : t("sidebar.delete")}
             </Button>
           }
         >
@@ -378,12 +393,17 @@ function ApiKeyProviderCard({ provider, onDeleted }: ApiKeyProviderCardProps) {
           <ContentAction
             icon={getProviderIcon(provider.provider_type)}
             title={provider.name}
-            description={`${provider.provider_type} · ${provider.user_config.default_model ?? t("admin.llm.noDefault")}`}
+            description={`${provider.provider_type} · ${
+              provider.user_config.default_model ?? t("admin.llm.noDefault")
+            }`}
             sizePreset="main-content"
             variant="section"
             rightChildren={
               <Section flexDirection="row" gap={0} alignItems="start">
-                <Hoverable.Item group={`cloud-provider-${provider.id}`} variant="opacity-on-hover">
+                <Hoverable.Item
+                  group={`cloud-provider-${provider.id}`}
+                  variant="opacity-on-hover"
+                >
                   <Button
                     icon={SvgSettings}
                     prominence="tertiary"
@@ -391,7 +411,10 @@ function ApiKeyProviderCard({ provider, onDeleted }: ApiKeyProviderCardProps) {
                     onClick={() => setEditOpen(true)}
                   />
                 </Hoverable.Item>
-                <Hoverable.Item group={`cloud-provider-${provider.id}`} variant="opacity-on-hover">
+                <Hoverable.Item
+                  group={`cloud-provider-${provider.id}`}
+                  variant="opacity-on-hover"
+                >
                   <Button
                     icon={SvgTrash}
                     prominence="tertiary"
@@ -429,14 +452,17 @@ export default function LLMConfigurationPage() {
 
   // New DB-based providers
   const { data: urlProviders = [] } = useUrlProviders();
-  const { data: apiKeyProviders = [], mutate: mutateApiKeyProviders } = useApiKeyProviders();
-  const { data: wellKnownLangChainProviders = [] } = useWellKnownLangChainProviders();
+  const { data: apiKeyProviders = [], mutate: mutateApiKeyProviders } =
+    useApiKeyProviders();
+  const { data: wellKnownLangChainProviders = [] } =
+    useWellKnownLangChainProviders();
   const builtinProviders = allProviders?.builtin ?? [];
 
   const [urlProviderModalOpen, setUrlProviderModalOpen] = useState(false);
   const [apiKeyProviderModalOpen, setApiKeyProviderModalOpen] = useState(false);
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
-  const [selectedProviderForDownload, setSelectedProviderForDownload] = useState<string | null>(null);
+  const [selectedProviderForDownload, setSelectedProviderForDownload] =
+    useState<string | null>(null);
 
   const knownModelsByProviderType = useMemo(
     () =>
@@ -478,25 +504,30 @@ export default function LLMConfigurationPage() {
   const currentDefaultValue = user?.preferences?.default_model ?? undefined;
   const currentDefaultProviderId = user?.preferences?.default_provider_id;
 
-  const { providerKey: selectedDefaultProviderKey, modelName: selectedDefaultModelName } =
-    resolveDefaultModelSelection(
-      currentDefaultValue,
-      currentDefaultProviderId,
-      allDbProviderGroups
-    );
+  const {
+    providerKey: selectedDefaultProviderKey,
+    modelName: selectedDefaultModelName,
+  } = resolveDefaultModelSelection(
+    currentDefaultValue,
+    currentDefaultProviderId,
+    allDbProviderGroups
+  );
 
   // For display purposes
   const selectedDefaultProviderType = selectedDefaultProviderKey
-    ? allDbProviderGroups.find((group) => group.providerKey === selectedDefaultProviderKey)?.providerType
+    ? allDbProviderGroups.find(
+        (group) => group.providerKey === selectedDefaultProviderKey
+      )?.providerType
     : undefined;
   const SelectedDefaultProviderIcon = selectedDefaultProviderType
     ? getProviderIcon(selectedDefaultProviderType)
     : null;
 
   // Create the composite value for the dropdown (providerId:modelName)
-  const dropdownCurrentValue = selectedDefaultProviderKey && selectedDefaultModelName
-    ? `${selectedDefaultProviderKey}:${selectedDefaultModelName}`
-    : undefined;
+  const dropdownCurrentValue =
+    selectedDefaultProviderKey && selectedDefaultModelName
+      ? `${selectedDefaultProviderKey}:${selectedDefaultModelName}`
+      : undefined;
 
   async function handleDefaultModelChange(compositeValue: string) {
     try {
@@ -515,7 +546,10 @@ export default function LLMConfigurationPage() {
       toast({ message: t("admin.llm.defaultModelUpdatedSuccess") });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown error";
-      toast({ message: t("admin.llm.setDefaultModelFailed", { message }), level: "error" });
+      toast({
+        message: t("admin.llm.setDefaultModelFailed", { message }),
+        level: "error",
+      });
     }
   }
 
@@ -587,7 +621,9 @@ export default function LLMConfigurationPage() {
                       {SelectedDefaultProviderIcon && (
                         <SelectedDefaultProviderIcon className="h-4 w-4 text-text-04" />
                       )}
-                      <span className="truncate">{selectedDefaultModelName}</span>
+                      <span className="truncate">
+                        {selectedDefaultModelName}
+                      </span>
                     </span>
                   ) : null}
                 </InputSelect.Trigger>
@@ -605,7 +641,10 @@ export default function LLMConfigurationPage() {
                             </span>
                           </InputSelect.Label>
                           {models.map((model) => (
-                            <InputSelect.Item key={`${providerKey}:${model}`} value={`${providerKey}:${model}`}>
+                            <InputSelect.Item
+                              key={`${providerKey}:${model}`}
+                              value={`${providerKey}:${model}`}
+                            >
                               {model}
                             </InputSelect.Item>
                           ))}
@@ -690,11 +729,14 @@ export default function LLMConfigurationPage() {
               sizePreset="main-content"
               variant="section"
             />
-            <Button prominence="primary" onClick={() => setUrlProviderModalOpen(true)}>
+            <Button
+              prominence="primary"
+              onClick={() => setUrlProviderModalOpen(true)}
+            >
               {t("admin.llm.addProviderCta")}
             </Button>
           </div>
-          
+
           {urlProviders.length === 0 ? (
             <Text secondaryBody>{t("admin.llm.noLocalProvidersYet")}</Text>
           ) : (
@@ -743,7 +785,10 @@ export default function LLMConfigurationPage() {
               sizePreset="main-content"
               variant="section"
             />
-            <Button prominence="primary" onClick={() => setApiKeyProviderModalOpen(true)}>
+            <Button
+              prominence="primary"
+              onClick={() => setApiKeyProviderModalOpen(true)}
+            >
               {t("admin.llm.addProviderCta")}
             </Button>
           </div>

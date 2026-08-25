@@ -33,9 +33,7 @@ class _RecursionLimitAgent:
     async def astream(self, *args, **kwargs):
         if False:
             yield None
-        raise GraphRecursionError(
-            "Recursion limit of 25 reached without hitting a stop condition."
-        )
+        raise GraphRecursionError("Recursion limit of 25 reached without hitting a stop condition.")
 
 
 class _FakeAssistantService:

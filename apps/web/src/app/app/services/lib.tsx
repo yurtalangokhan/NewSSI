@@ -186,6 +186,9 @@ export async function* sendMessage({
   additionalContext,
   projectId,
   personaId,
+  isRegenerate,
+  editTargetMessageId,
+  idempotencyKey,
 }: SendMessageParams): AsyncGenerator<PacketType, void, unknown> {
   // Build payload for new send-chat-message API
   const payload = {

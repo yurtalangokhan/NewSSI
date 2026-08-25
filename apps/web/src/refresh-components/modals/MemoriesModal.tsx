@@ -161,15 +161,11 @@ export default function MemoriesModal({
       void refreshUser();
     }
     // Only run on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const internalSaveMemories = useCallback(
     async (newMemories: MemoryItem[]): Promise<boolean> => {
-      const result = await handleSavePersonalization(
-        {},
-        true
-      );
+      const result = await handleSavePersonalization({}, true);
       return !!result;
     },
     [handleSavePersonalization]
@@ -297,4 +293,3 @@ export default function MemoriesModal({
     </Modal>
   );
 }
-

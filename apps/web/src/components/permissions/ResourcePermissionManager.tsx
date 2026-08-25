@@ -21,10 +21,8 @@ import {
   User,
   Users,
   Buildings,
-  CaretDown,
   Plus,
   Trash,
-  Warning,
   Check,
   X,
 } from "@phosphor-icons/react";
@@ -148,19 +146,17 @@ export function ResourcePermissionManager({
     if (!rawOrganizations) return undefined;
     if (Array.isArray(rawOrganizations)) return rawOrganizations;
     if (Array.isArray(rawOrganizations.items)) return rawOrganizations.items;
-    if (Array.isArray(rawOrganizations.organizations)) return rawOrganizations.organizations;
+    if (Array.isArray(rawOrganizations.organizations))
+      return rawOrganizations.organizations;
     return [];
   }, [rawOrganizations]);
 
   // Fetch users for search
-  const { data: rawUsers } = useSWR<any>(
-    "/api/users",
-    async (url: string) => {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Failed to fetch users");
-      return res.json();
-    }
-  );
+  const { data: rawUsers } = useSWR<any>("/api/users", async (url: string) => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Failed to fetch users");
+    return res.json();
+  });
 
   const users = useMemo<UserInfo[] | undefined>(() => {
     if (!rawUsers) return undefined;
@@ -396,7 +392,9 @@ export function ResourcePermissionManager({
           <section>
             <div className="flex items-center gap-2 mb-4">
               <Users size={18} className="text-text-02" />
-              <Text className="font-medium text-text-01">Inherited Permissions</Text>
+              <Text className="font-medium text-text-01">
+                Inherited Permissions
+              </Text>
               <span className="px-2 py-1 rounded bg-background-neutral-02 text-xs text-text-03">
                 {groupedPermissions.inherited.length}
               </span>
@@ -495,7 +493,9 @@ function PermissionRow({
       <div className="flex items-center gap-3 flex-1">
         {icon}
         <div className="flex-1">
-          <Text className="text-sm font-medium text-text-01">{displayName}</Text>
+          <Text className="text-sm font-medium text-text-01">
+            {displayName}
+          </Text>
           {permission.is_inherited && permission.source && (
             <Text className="text-xs text-text-03">
               Inherited from {permission.source}

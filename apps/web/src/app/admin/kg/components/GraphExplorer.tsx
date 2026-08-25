@@ -41,17 +41,14 @@ import {
 
 // Lazy-load 3D renderer — Three.js uses WebGL constants at import time which
 // crashes in Node/SSR. next/dynamic with ssr:false ensures browser-only eval.
-const ForceGraph3DLazy = dynamic(
-  () => import("./ForceGraph3DWrapper"),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-full items-center justify-center">
-        <ThreeDotsLoader />
-      </div>
-    ),
-  }
-);
+const ForceGraph3DLazy = dynamic(() => import("./ForceGraph3DWrapper"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full items-center justify-center">
+      <ThreeDotsLoader />
+    </div>
+  ),
+});
 
 // ── Color palette ──────────────────────────────────────────────────────────
 const LABEL_COLORS: Record<string, string> = {
@@ -132,18 +129,28 @@ interface GraphExplorerProps {
    * never from a separately-scoped backend query — so it can't list types
    * that belong to no edge actually visible in the current view.
    */
-  onRelTypeFacetCountsChange?: (items: { name: string; count: number }[]) => void;
+  onRelTypeFacetCountsChange?: (
+    items: { name: string; count: number }[]
+  ) => void;
   /** Reports the exact node/edge counts actually rendered (after all active filters). */
-  onVisibleCountsChange?: (counts: { nodeCount: number; edgeCount: number }) => void;
+  onVisibleCountsChange?: (counts: {
+    nodeCount: number;
+    edgeCount: number;
+  }) => void;
 }
 
 // Cluster/sub-cluster views never carry real edges (the backend summarizes
 // relationship info into each cluster node's `_rel_type_counts` instead of
 // returning edge records), so edge-derived filtering can't see them. Fall
 // back to that per-node aggregate for cluster nodes.
-function clusterNodeMatchesRelTypes(n: ScalableNode, relSet: Set<string>): boolean {
+function clusterNodeMatchesRelTypes(
+  n: ScalableNode,
+  relSet: Set<string>
+): boolean {
   if (!isClusterNode(n)) return false;
-  const counts = n.properties?._rel_type_counts as Record<string, number> | undefined;
+  const counts = n.properties?._rel_type_counts as
+    | Record<string, number>
+    | undefined;
   if (!counts) return false;
   return Object.keys(counts).some((rt) => relSet.has(rt));
 }
@@ -182,13 +189,20 @@ export default function GraphExplorer({
 
   // Settling overlay while force simulation stabilizes
   const [settling, setSettling] = useState(true);
-  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  );
   const prevDataFingerprintRef = useRef("");
 
   // Server-side cluster search
-  const [serverClusterMatches, setServerClusterMatches] = useState<Record<string, number> | null>(null);
+  const [serverClusterMatches, setServerClusterMatches] = useState<Record<
+    string,
+    number
+  > | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
-  const searchDebounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  );
 
   const serverMatchedClusterLabels = useMemo(() => {
     if (!serverClusterMatches) return new Map<string, number>();
@@ -196,8 +210,10 @@ export default function GraphExplorer({
   }, [serverClusterMatches]);
 
   const currentMode = scalableData?.mode ?? "full";
-  const totalNodes = scalableData?.total_node_count ?? graphData?.nodes.length ?? 0;
-  const totalEdges = scalableData?.total_edge_count ?? graphData?.edges.length ?? 0;
+  const totalNodes =
+    scalableData?.total_node_count ?? graphData?.nodes.length ?? 0;
+  const totalEdges =
+    scalableData?.total_edge_count ?? graphData?.edges.length ?? 0;
 
   // Dynamic import of react-force-graph-2d
   useEffect(() => {
@@ -220,7 +236,9 @@ export default function GraphExplorer({
       const rh = node.clientHeight;
       if (rw > 0 && rh > 0) {
         setDimensions((prev) =>
-          prev.width === rw && prev.height === rh ? prev : { width: rw, height: rh }
+          prev.width === rw && prev.height === rh
+            ? prev
+            : { width: rw, height: rh }
         );
       }
     });
@@ -239,7 +257,9 @@ export default function GraphExplorer({
       const rh = node.clientHeight;
       if (rw > 0 && rh > 0) {
         setDimensions((prev) =>
-          prev.width === rw && prev.height === rh ? prev : { width: rw, height: rh }
+          prev.width === rw && prev.height === rh
+            ? prev
+            : { width: rw, height: rh }
         );
       }
     };
@@ -262,7 +282,9 @@ export default function GraphExplorer({
       const rh = node.clientHeight;
       if (rw > 0 && rh > 0) {
         setDimensions((prev) =>
-          prev.width === rw && prev.height === rh ? prev : { width: rw, height: rh }
+          prev.width === rw && prev.height === rh
+            ? prev
+            : { width: rw, height: rh }
         );
       }
     };
@@ -304,9 +326,13 @@ export default function GraphExplorer({
         if (!typeMatches) return false;
         const src = nodeMap.get(e.source);
         const tgt = nodeMap.get(e.target);
-        return (src && labelSet.has(src.label)) || (tgt && labelSet.has(tgt.label));
+        return (
+          (src && labelSet.has(src.label)) || (tgt && labelSet.has(tgt.label))
+        );
       });
-      const connectedIds = new Set(filteredEdges.flatMap((e) => [e.source, e.target]));
+      const connectedIds = new Set(
+        filteredEdges.flatMap((e) => [e.source, e.target])
+      );
       filteredNodes = rawNodes.filter(
         (n) =>
           connectedIds.has(n.id) ||
@@ -319,7 +345,9 @@ export default function GraphExplorer({
           ? e.relationship_types.some((rt) => relSet.has(rt))
           : relSet.has(e.type)
       );
-      const connectedIds = new Set(filteredEdges.flatMap((e) => [e.source, e.target]));
+      const connectedIds = new Set(
+        filteredEdges.flatMap((e) => [e.source, e.target])
+      );
       filteredNodes = rawNodes.filter(
         (n) => connectedIds.has(n.id) || clusterNodeMatchesRelTypes(n, relSet)
       );
@@ -442,12 +470,16 @@ export default function GraphExplorer({
             const labelSet = selectedLabels!;
             const src = nodeMap.get(e.source);
             const tgt = nodeMap.get(e.target);
-            return (src && labelSet.has(src.label)) || (tgt && labelSet.has(tgt.label));
+            return (
+              (src && labelSet.has(src.label)) ||
+              (tgt && labelSet.has(tgt.label))
+            );
           })
         : rawEdges;
       for (const e of edges) {
         if (isClusterEdge(e)) {
-          for (const rt of e.relationship_types) counts.set(rt, (counts.get(rt) ?? 0) + 1);
+          for (const rt of e.relationship_types)
+            counts.set(rt, (counts.get(rt) ?? 0) + 1);
         } else {
           counts.set(e.type, (counts.get(e.type) ?? 0) + 1);
         }
@@ -458,7 +490,9 @@ export default function GraphExplorer({
         : rawNodes;
       for (const n of nodes) {
         if (!isClusterNode(n)) continue;
-        const relCounts = n.properties?._rel_type_counts as Record<string, number> | undefined;
+        const relCounts = n.properties?._rel_type_counts as
+          | Record<string, number>
+          | undefined;
         if (!relCounts) continue;
         for (const [rt, c] of Object.entries(relCounts)) {
           counts.set(rt, (counts.get(rt) ?? 0) + c);
@@ -512,8 +546,10 @@ export default function GraphExplorer({
   const degreeMap = useMemo(() => {
     const map = new Map<string, number>();
     for (const l of forceData.links) {
-      const src = typeof l.source === "object" ? (l.source as any).id : l.source;
-      const tgt = typeof l.target === "object" ? (l.target as any).id : l.target;
+      const src =
+        typeof l.source === "object" ? (l.source as any).id : l.source;
+      const tgt =
+        typeof l.target === "object" ? (l.target as any).id : l.target;
       map.set(src, (map.get(src) || 0) + 1);
       map.set(tgt, (map.get(tgt) || 0) + 1);
     }
@@ -525,15 +561,19 @@ export default function GraphExplorer({
     const pairCount = new Map<string, number>();
     const pairIndex = new Map<string, number>();
     for (const l of forceData.links) {
-      const src = typeof l.source === "object" ? (l.source as any).id : l.source;
-      const tgt = typeof l.target === "object" ? (l.target as any).id : l.target;
+      const src =
+        typeof l.source === "object" ? (l.source as any).id : l.source;
+      const tgt =
+        typeof l.target === "object" ? (l.target as any).id : l.target;
       const key = src < tgt ? `${src}||${tgt}` : `${tgt}||${src}`;
       pairCount.set(key, (pairCount.get(key) || 0) + 1);
     }
     const curvatures = new Map<number, number>();
     forceData.links.forEach((l, idx) => {
-      const src = typeof l.source === "object" ? (l.source as any).id : l.source;
-      const tgt = typeof l.target === "object" ? (l.target as any).id : l.target;
+      const src =
+        typeof l.source === "object" ? (l.source as any).id : l.source;
+      const tgt =
+        typeof l.target === "object" ? (l.target as any).id : l.target;
       const key = src < tgt ? `${src}||${tgt}` : `${tgt}||${src}`;
       const count = pairCount.get(key) || 1;
       if (count <= 1) {
@@ -554,8 +594,10 @@ export default function GraphExplorer({
     if (!selectedNodeId) return new Set<string>();
     const ids = new Set<string>([selectedNodeId]);
     for (const l of forceData.links) {
-      const src = typeof l.source === "object" ? (l.source as any).id : l.source;
-      const tgt = typeof l.target === "object" ? (l.target as any).id : l.target;
+      const src =
+        typeof l.source === "object" ? (l.source as any).id : l.source;
+      const tgt =
+        typeof l.target === "object" ? (l.target as any).id : l.target;
       if (src === selectedNodeId) ids.add(tgt);
       if (tgt === selectedNodeId) ids.add(src);
     }
@@ -577,17 +619,23 @@ export default function GraphExplorer({
     );
     const matchedIds = new Set(matchedNodes.map((n) => n.id));
     const connectedLinks = forceData.links.filter((l) => {
-      const src = typeof l.source === "object" ? (l.source as any).id : l.source;
-      const tgt = typeof l.target === "object" ? (l.target as any).id : l.target;
+      const src =
+        typeof l.source === "object" ? (l.source as any).id : l.source;
+      const tgt =
+        typeof l.target === "object" ? (l.target as any).id : l.target;
       return matchedIds.has(src) || matchedIds.has(tgt);
     });
     const connectedNodeIds = new Set<string>();
     connectedLinks.forEach((l) => {
       connectedNodeIds.add(
-        typeof l.source === "object" ? (l.source as any).id : (l.source as string)
+        typeof l.source === "object"
+          ? (l.source as any).id
+          : (l.source as string)
       );
       connectedNodeIds.add(
-        typeof l.target === "object" ? (l.target as any).id : (l.target as string)
+        typeof l.target === "object"
+          ? (l.target as any).id
+          : (l.target as string)
       );
     });
     return {
@@ -613,15 +661,27 @@ export default function GraphExplorer({
       if (!fgRef.current) return;
       const fg = fgRef.current;
       const chargeStrength = is3D
-        ? isDense ? -500 : -350
-        : isDense ? -300 : -180;
-      fg.d3Force("charge")?.strength(chargeStrength).distanceMax(is3D ? 800 : 500);
-      fg.d3Force("link")?.distance(is3D ? (isDense ? 140 : 100) : isDense ? 80 : 55);
+        ? isDense
+          ? -500
+          : -350
+        : isDense
+          ? -300
+          : -180;
+      fg
+        .d3Force("charge")
+        ?.strength(chargeStrength)
+        .distanceMax(is3D ? 800 : 500);
+      fg
+        .d3Force("link")
+        ?.distance(is3D ? (isDense ? 140 : 100) : isDense ? 80 : 55);
       const collide = d3ForceCollide()
         .radius((node: any) => {
           if (node.__linkMid) return (node.__linkMidR || 4) + (is3D ? 4 : 0);
           if (node.isCluster) {
-            const size = Math.max(8, Math.min(24, Math.sqrt(node.nodeCount || 10) * 2.5));
+            const size = Math.max(
+              8,
+              Math.min(24, Math.sqrt(node.nodeCount || 10) * 2.5)
+            );
             return size + 10 + (is3D ? 8 : 0);
           }
           const deg = degreeMap.get(node.id) || 0;
@@ -655,7 +715,10 @@ export default function GraphExplorer({
     setSearchLoading(true);
     searchDebounce.current = setTimeout(async () => {
       try {
-        const results = await searchGraphEntityClusters(collectionId, searchQuery);
+        const results = await searchGraphEntityClusters(
+          collectionId,
+          searchQuery
+        );
         setServerClusterMatches(results);
       } catch {
         setServerClusterMatches(null);
@@ -672,7 +735,11 @@ export default function GraphExplorer({
       if (node.isCluster && onClusterExpand) {
         setSelectedNodeId(null);
         setHoveredNodeId(null);
-        try { fgRef.current?.pauseAnimation?.(); } catch { /* noop */ }
+        try {
+          fgRef.current?.pauseAnimation?.();
+        } catch {
+          /* noop */
+        }
         const expandId =
           typeof node.id === "string" && node.id.startsWith("subcluster__")
             ? node.id
@@ -724,7 +791,11 @@ export default function GraphExplorer({
       if (onNeighborhoodRequest && !node.isCluster) {
         setSelectedNodeId(null);
         setHoveredNodeId(null);
-        try { fgRef.current?.pauseAnimation?.(); } catch { /* noop */ }
+        try {
+          fgRef.current?.pauseAnimation?.();
+        } catch {
+          /* noop */
+        }
         setBreadcrumbs((prev) => [
           ...prev,
           {
@@ -749,14 +820,18 @@ export default function GraphExplorer({
 
   const handleBreadcrumbClick = useCallback(
     (index: number) => {
-      if (index < 0) { handleBackToOverview(); return; }
+      if (index < 0) {
+        handleBackToOverview();
+        return;
+      }
       setSelectedNodeId(null);
       setHoveredNodeId(null);
       const crumb = breadcrumbs[index];
       if (!crumb) return;
       setBreadcrumbs((prev) => prev.slice(0, index + 1));
       if (crumb.mode === "expand") onClusterExpand?.(crumb.label);
-      else if (crumb.mode === "neighborhood" && crumb.nodeId) onNeighborhoodRequest?.(crumb.nodeId);
+      else if (crumb.mode === "neighborhood" && crumb.nodeId)
+        onNeighborhoodRequest?.(crumb.nodeId);
       else if (crumb.mode === "overview") handleBackToOverview();
     },
     [breadcrumbs, onClusterExpand, onNeighborhoodRequest, handleBackToOverview]
@@ -767,7 +842,11 @@ export default function GraphExplorer({
     if (!fgRef.current) return;
     if (is3D) {
       const p = fgRef.current.cameraPosition();
-      fgRef.current.cameraPosition({ x: p.x * 0.7, y: p.y * 0.7, z: p.z * 0.7 }, undefined, 300);
+      fgRef.current.cameraPosition(
+        { x: p.x * 0.7, y: p.y * 0.7, z: p.z * 0.7 },
+        undefined,
+        300
+      );
     } else {
       fgRef.current.zoom(fgRef.current.zoom() * 1.3, 300);
     }
@@ -776,7 +855,11 @@ export default function GraphExplorer({
     if (!fgRef.current) return;
     if (is3D) {
       const p = fgRef.current.cameraPosition();
-      fgRef.current.cameraPosition({ x: p.x * 1.4, y: p.y * 1.4, z: p.z * 1.4 }, undefined, 300);
+      fgRef.current.cameraPosition(
+        { x: p.x * 1.4, y: p.y * 1.4, z: p.z * 1.4 },
+        undefined,
+        300
+      );
     } else {
       fgRef.current.zoom(fgRef.current.zoom() / 1.3, 300);
     }
@@ -784,7 +867,11 @@ export default function GraphExplorer({
   const handleReset = () => {
     if (!fgRef.current) return;
     if (is3D) {
-      fgRef.current.cameraPosition({ x: 0, y: 0, z: 500 }, { x: 0, y: 0, z: 0 }, 500);
+      fgRef.current.cameraPosition(
+        { x: 0, y: 0, z: 500 },
+        { x: 0, y: 0, z: 0 },
+        500
+      );
     } else {
       fgRef.current.zoomToFit(400);
     }
@@ -826,26 +913,35 @@ export default function GraphExplorer({
     const src = typeof link.source === "object" ? link.source.id : link.source;
     const tgt = typeof link.target === "object" ? link.target.id : link.target;
     if (selectedNodeId && (src === selectedNodeId || tgt === selectedNodeId)) {
-      return link.weight ? Math.min(8, Math.max(2.5, Math.sqrt(link.weight) * 1.5)) : 2.5;
+      return link.weight
+        ? Math.min(8, Math.max(2.5, Math.sqrt(link.weight) * 1.5))
+        : 2.5;
     }
-    if (hoveredNodeId && !selectedNodeId && (src === hoveredNodeId || tgt === hoveredNodeId)) {
+    if (
+      hoveredNodeId &&
+      !selectedNodeId &&
+      (src === hoveredNodeId || tgt === hoveredNodeId)
+    ) {
       return 2;
     }
     return link.weight
       ? Math.min(6, Math.max(1, Math.sqrt(link.weight)))
-      : isDense ? 0.8 : 1.5;
+      : isDense
+        ? 0.8
+        : 1.5;
   };
 
   // Canvas node object (2D only)
   const nodeCanvasObject = useCallback(
     (node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
       const isSelected = node.id === selectedNodeId;
-      const isDimmed = selectedNodeId != null && !selectedNeighborIds.has(node.id);
+      const isDimmed =
+        selectedNodeId != null && !selectedNeighborIds.has(node.id);
       const nodeColor = isDimmed
         ? "rgba(148,163,184,0.25)"
         : isSelected
-        ? SELECTED_COLOR
-        : node.color || "#6b7280";
+          ? SELECTED_COLOR
+          : node.color || "#6b7280";
 
       let clusterMatchCount = 0;
       if (node.isCluster) {
@@ -859,7 +955,10 @@ export default function GraphExplorer({
       const degree = degreeMap.get(node.id) || 0;
 
       if (node.isCluster) {
-        const size = Math.max(8, Math.min(24, Math.sqrt(node.nodeCount || 10) * 2.5));
+        const size = Math.max(
+          8,
+          Math.min(24, Math.sqrt(node.nodeCount || 10) * 2.5)
+        );
         if (isClusterMatch) {
           ctx.beginPath();
           for (let i = 0; i < 6; i++) {
@@ -888,8 +987,8 @@ export default function GraphExplorer({
         ctx.strokeStyle = isSelected
           ? SELECTED_COLOR
           : isClusterMatch
-          ? "#ef4444"
-          : CLUSTER_BORDER_COLOR;
+            ? "#ef4444"
+            : CLUSTER_BORDER_COLOR;
         ctx.lineWidth = isClusterMatch ? 3 / globalScale : 2 / globalScale;
         ctx.stroke();
         const countText = isClusterMatch
@@ -905,7 +1004,11 @@ export default function GraphExplorer({
           const lfs = Math.max(10 / globalScale, 1.5);
           ctx.font = `${lfs}px Inter, sans-serif`;
           ctx.textBaseline = "top";
-          ctx.fillStyle = isClusterMatch ? "#dc2626" : isDarkMode ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.8)";
+          ctx.fillStyle = isClusterMatch
+            ? "#dc2626"
+            : isDarkMode
+              ? "rgba(255,255,255,0.9)"
+              : "rgba(0,0,0,0.8)";
           ctx.fillText(node.name, node.x, node.y + size + 2);
         }
       } else {
@@ -925,7 +1028,9 @@ export default function GraphExplorer({
           ctx.font = `${fontSize}px Inter, sans-serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "top";
-          ctx.fillStyle = isDarkMode ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.8)";
+          ctx.fillStyle = isDarkMode
+            ? "rgba(255,255,255,0.9)"
+            : "rgba(0,0,0,0.8)";
           ctx.fillText(node.name, node.x, node.y + radius + 2);
         }
       }
@@ -953,7 +1058,9 @@ export default function GraphExplorer({
   if (!scalableData || scalableData.nodes.length === 0) {
     return (
       <CardSection className="flex w-full flex-col gap-2 min-h-[200px] items-center justify-center">
-        <Text as="p" headingH3 text05>{t("admin.kg.graphExplorerTitle")}</Text>
+        <Text as="p" headingH3 text05>
+          {t("admin.kg.graphExplorerTitle")}
+        </Text>
         <Text as="p" mainContentBody text04 className="text-center max-w-sm">
           {t("admin.kg.noGraphDataAvailable")}
         </Text>
@@ -966,9 +1073,7 @@ export default function GraphExplorer({
     <div
       className={cn(
         "flex flex-col gap-2 rounded-08 border border-border-01 bg-background-tint-00 overflow-hidden",
-        isFullscreen
-          ? "fixed inset-4 z-50 shadow-xl"
-          : "w-full min-h-[700px]"
+        isFullscreen ? "fixed inset-4 z-50 shadow-xl" : "w-full min-h-[700px]"
       )}
     >
       {/* Toolbar */}
@@ -978,7 +1083,12 @@ export default function GraphExplorer({
             <Text as="p" mainUiAction text04 className="text-sm font-medium">
               {t("admin.kg.graphExplorerTitle")}
             </Text>
-            <Text as="span" mainContentMuted text03 className="text-xs tabular-nums">
+            <Text
+              as="span"
+              mainContentMuted
+              text03
+              className="text-xs tabular-nums"
+            >
               {totalNodes > forceData.nodes.length
                 ? t("admin.kg.graphExplorerSummaryWithTotal", {
                     nodes: forceData.nodes.length,
@@ -1041,7 +1151,11 @@ export default function GraphExplorer({
             <button
               onClick={() => setIsFullscreen((f) => !f)}
               className="rounded-04 p-1 hover:bg-background-neutral-01 transition-colors"
-              title={isFullscreen ? t("admin.kg.exitFullscreen") : t("admin.kg.fullscreen")}
+              title={
+                isFullscreen
+                  ? t("admin.kg.exitFullscreen")
+                  : t("admin.kg.fullscreen")
+              }
             >
               {isFullscreen ? (
                 <SvgFold className="h-4 w-4 stroke-text-03" />
@@ -1116,14 +1230,20 @@ export default function GraphExplorer({
               height={dimensions.height}
               nodeLabel={(node: ForceGraphNode) =>
                 node.isCluster
-                  ? `⬡ ${node.name} (${t("admin.kg.nodeCount", { count: node.nodeCount })})\n${t("admin.kg.top")}: ${(node.topEntities || []).slice(0, 3).join(", ")}`
+                  ? `⬡ ${node.name} (${t("admin.kg.nodeCount", {
+                      count: node.nodeCount,
+                    })})\n${t("admin.kg.top")}: ${(node.topEntities || [])
+                      .slice(0, 3)
+                      .join(", ")}`
                   : `${node.name} (${node.label})`
               }
               nodeRelSize={5}
               nodeVal={(node: ForceGraphNode) => node.val || 3}
               linkLabel={(link: ForceGraphLink) =>
                 (link.relationshipTypes as string[] | undefined)?.length
-                  ? `${link.type} (${(link.relationshipTypes as string[]).join(", ")})`
+                  ? `${link.type} (${(link.relationshipTypes as string[]).join(
+                      ", "
+                    )})`
                   : link.type
               }
               nodeCanvasObject={nodeCanvasObject}
@@ -1159,7 +1279,9 @@ export default function GraphExplorer({
               height={dimensions.height}
               nodeLabel={(node: ForceGraphNode) =>
                 node.isCluster
-                  ? `⬡ ${node.name} (${t("admin.kg.nodeCount", { count: node.nodeCount })})`
+                  ? `⬡ ${node.name} (${t("admin.kg.nodeCount", {
+                      count: node.nodeCount,
+                    })})`
                   : `${node.name} (${node.label})`
               }
               nodeRelSize={5}
@@ -1221,11 +1343,14 @@ export default function GraphExplorer({
 
           {/* Interaction hint */}
           <div className="absolute bottom-2 left-2 select-none pointer-events-none">
-            <Text as="p" mainContentMuted text03 className="text-[10px] opacity-60">
-              {currentMode === "overview" &&
-                t("admin.kg.overviewHint")}
-              {currentMode === "expand" &&
-                t("admin.kg.expandHint")}
+            <Text
+              as="p"
+              mainContentMuted
+              text03
+              className="text-[10px] opacity-60"
+            >
+              {currentMode === "overview" && t("admin.kg.overviewHint")}
+              {currentMode === "expand" && t("admin.kg.expandHint")}
               {currentMode === "neighborhood" && t("admin.kg.neighborhoodHint")}
               {currentMode === "full" &&
                 forceData.nodes.length > 200 &&

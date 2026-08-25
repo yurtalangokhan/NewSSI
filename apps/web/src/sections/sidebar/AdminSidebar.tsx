@@ -229,7 +229,28 @@ export default function AdminSidebar({
             {!folded && (
               <SidebarSection title={collection.name}>
                 <div className="flex flex-col w-full">
-                  {collection.items.map(({ link, icon: Icon, name }, itemIndex) => (
+                  {collection.items.map(
+                    ({ link, icon: Icon, name }, itemIndex) => (
+                      <SidebarTab
+                        key={itemIndex}
+                        href={link}
+                        transient={pathname.startsWith(link)}
+                        leftIcon={({ className }) => (
+                          <Icon className={className} size={16} />
+                        )}
+                        folded={folded}
+                      >
+                        {name}
+                      </SidebarTab>
+                    )
+                  )}
+                </div>
+              </SidebarSection>
+            )}
+            {folded && (
+              <div className="flex flex-col w-full gap-0.5 mb-2">
+                {collection.items.map(
+                  ({ link, icon: Icon, name }, itemIndex) => (
                     <SidebarTab
                       key={itemIndex}
                       href={link}
@@ -241,25 +262,8 @@ export default function AdminSidebar({
                     >
                       {name}
                     </SidebarTab>
-                  ))}
-                </div>
-              </SidebarSection>
-            )}
-            {folded && (
-              <div className="flex flex-col w-full gap-0.5 mb-2">
-                {collection.items.map(({ link, icon: Icon, name }, itemIndex) => (
-                  <SidebarTab
-                    key={itemIndex}
-                    href={link}
-                    transient={pathname.startsWith(link)}
-                    leftIcon={({ className }) => (
-                      <Icon className={className} size={16} />
-                    )}
-                    folded={folded}
-                  >
-                    {name}
-                  </SidebarTab>
-                ))}
+                  )
+                )}
               </div>
             )}
           </div>

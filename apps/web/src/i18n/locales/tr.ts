@@ -1012,7 +1012,8 @@ const tr = {
     pinToSidebarTooltip: "Kenar Çubuğuna Sabitle",
     unpinFromSidebarTooltip: "Kenar Çubuğundan Kaldır",
     deleteModalTitle: '"{{name}}" Ajanını Sil',
-    deleteModalDescription: "Bu ajan kalıcı olarak silinecektir. Bu işlem geri alınamaz.",
+    deleteModalDescription:
+      "Bu ajan kalıcı olarak silinecektir. Bu işlem geri alınamaz.",
     deleteModalButton: "Sil",
     deleteModalDeleting: "Siliniyor…",
     deleteSuccess: '"{{name}}" ajanı silindi.',
@@ -1496,9 +1497,11 @@ const tr = {
       "Kullanıcıların bu ajanın neler yapabileceğini ve onunla nasıl etkileşim kurabileceğini anlamalarına yardımcı olacak örnek mesajlar.",
     actionsLabel: "Eylemler",
     actionsDescription: "Bu ajanın kullanabileceği araçlar ve yetenekler.",
-    actionsChatbotDescription: "Chatbot tipi ajanlar doğrudan sohbet için yapılandırılmıştır ve araç çağrılarını desteklemez.",
+    actionsChatbotDescription:
+      "Chatbot tipi ajanlar doğrudan sohbet için yapılandırılmıştır ve araç çağrılarını desteklemez.",
     actionsChatbotWarningTitle: "Chatbot Ajanlarında Eylemler Kullanılamaz",
-    actionsChatbotWarningDescription: "Chatbot tipi ajanlar harici araç veya MCP eylemi çağırmadan doğrudan sohbet için tasarlanmıştır. MCP araçlarını veya diğer eylemleri eklemek için temel ajan türünü 'Yapılandırılabilir MCP Ajanı' veya 'Dinamik Ajan' olarak değiştirin.",
+    actionsChatbotWarningDescription:
+      "Chatbot tipi ajanlar harici araç veya MCP eylemi çağırmadan doğrudan sohbet için tasarlanmıştır. MCP araçlarını veya diğer eylemleri eklemek için temel ajan türünü 'Yapılandırılabilir MCP Ajanı' veya 'Dinamik Ajan' olarak değiştirin.",
     actionsChatbotSwitchToMcpButton: "Yapılandırılabilir MCP Ajanına Geç",
     imageGenerationLabel: "Görsel Oluşturma",
     imageGenerationDescription:
@@ -2081,7 +2084,8 @@ const tr = {
       contextSuffix: "bağlam",
       deleteModelAriaLabel: "{{model}} modelini sil",
       deleteModelConfirmTitle: "Modeli Sil",
-      deleteModelConfirmBody: "\"{{model}}\" modelini silmek istediğinizden emin misiniz? İndirilen model dosyaları sistemden silinecektir ve bu işlem geri alınamaz.",
+      deleteModelConfirmBody:
+        '"{{model}}" modelini silmek istediğinizden emin misiniz? İndirilen model dosyaları sistemden silinecektir ve bu işlem geri alınamaz.',
       deletingModel: "Siliniyor...",
       noModelsInstalled: "Yüklü model yok",
       deletedToast: "{{model}} silindi",
@@ -2629,7 +2633,7 @@ const tr = {
       pullCleaningUp: "Temizleniyor…",
       pullSuccess: "İndirme tamamlandı",
       pullDownloadingLayer: "İndiriliyor…",
-      pullModelNotFound: "\"{{model}}\" adlı model bulunamadı.",
+      pullModelNotFound: '"{{model}}" adlı model bulunamadı.',
       pullErrorGeneric: "İndirme başarısız: {{message}}",
       editLocalProviderTitle: "Yerel / Self-Hosted Sağlayıcıyı Düzenle",
       editCloudProviderTitle: "Bulut Sağlayıcıyı Düzenle",
@@ -3237,15 +3241,20 @@ const tr = {
       optionalDescriptionPlaceholder: "İsteğe bağlı açıklama",
       creatingButton: "Oluşturuluyor...",
       createCompositeRoleTitle: "Bileşik Rol Oluştur",
-      createCompositeRoleDescription: "İzinleri ve servis rollerini paketlemek için yeni bir bileşik rol profili oluşturun.",
+      createCompositeRoleDescription:
+        "İzinleri ve servis rollerini paketlemek için yeni bir bileşik rol profili oluşturun.",
       compositeRoleNameLabel: "Bileşik Rol Adı",
       compositeRoleNamePlaceholder: "örn. agent-admin",
-      compositeRoleNameDescription: "Bu rol için benzersiz tanımlayıcı (örn. analist, veri-bilimci).",
-      compositeRoleDescriptionHelper: "Bu rolün sağladığı erişim ve sorumlulukların özeti.",
+      compositeRoleNameDescription:
+        "Bu rol için benzersiz tanımlayıcı (örn. analist, veri-bilimci).",
+      compositeRoleDescriptionHelper:
+        "Bu rolün sağladığı erişim ve sorumlulukların özeti.",
       optionalParenthetical: "(İsteğe bağlı)",
       permissionsSavedToast: "İzinler kaydedildi",
-      roleAssignmentSavedToast_one: "Rol ataması kaydedildi — {{count}} etkin izin",
-      roleAssignmentSavedToast_other: "Rol ataması kaydedildi — {{count}} etkin izin",
+      roleAssignmentSavedToast_one:
+        "Rol ataması kaydedildi — {{count}} etkin izin",
+      roleAssignmentSavedToast_other:
+        "Rol ataması kaydedildi — {{count}} etkin izin",
       syncedToKeycloakToast: "Keycloak ile eşitlendi",
       serviceRolesTitle: "Servis rolleri",
       serviceRolesDescription:
@@ -3282,8 +3291,10 @@ const tr = {
       roleEffectivePermissionsSummary:
         "{{bundles}} özellik paketi · {{permissions}} etkili izin",
       deleteRoleTitle: "Rolü Sil",
-      confirmDeleteRole: "\"{{name}}\" rolünü silmek istediğinizden emin misiniz?",
-      deleteRoleWarning: "Bu işlem geri alınamaz ve bu rolü kalıcı olarak siler.",
+      confirmDeleteRole:
+        '"{{name}}" rolünü silmek istediğinizden emin misiniz?',
+      deleteRoleWarning:
+        "Bu işlem geri alınamaz ve bu rolü kalıcı olarak siler.",
       confirmDeletePrefix: "Silmek istediğinizden emin misiniz",
       confirmDeleteSuffix: "?",
       deletingButton: "Siliniyor...",
@@ -3796,7 +3807,8 @@ const tr = {
       collectionDeleted: "Koleksiyon silindi.",
       collectionDeleteFailed: "Koleksiyon silinemedi",
       collectionEntity: "Koleksiyon",
-      deleteCollectionWarning: "Bu işlem içindeki tüm belgeleri de kaldıracaktır.",
+      deleteCollectionWarning:
+        "Bu işlem içindeki tüm belgeleri de kaldıracaktır.",
       documentEntity: "Belge",
       documentDeleted: "Belge silindi.",
       deleteDocumentAria: "Belgeyi sil",
@@ -4015,7 +4027,8 @@ const tr = {
       next: "sonraki →",
       noMatchingLabels: "Eşleşen etiket yok",
       noLabels: "Etiket yok",
-      onlyOneLabelInScope: "Bu görünümde tek bir varlık etiketi var, filtreleme gerekmiyor",
+      onlyOneLabelInScope:
+        "Bu görünümde tek bir varlık etiketi var, filtreleme gerekmiyor",
       noMatchingRelationshipTypes: "Eşleşen ilişki türü yok",
       noRelationshipTypes: "İlişki türü yok",
       graphExplorerTitle: "Grafik Gezgini",

@@ -23,7 +23,6 @@ import {
   hasPermission as hasPermissionValue,
 } from "@/lib/auth/permissions";
 import { authenticatedFetch } from "@/lib/fetcher";
-import { canAccessAnyAdminRoute } from "@/lib/admin-access";
 
 interface UserContextType {
   user: User | null;

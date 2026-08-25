@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  ConfigurableSources,
-  FederatedConnectorDetail,
-  federatedSourceToRegularSource,
-  ValidSources,
-} from "@/lib/types";
+import { ConfigurableSources } from "@/lib/types";
 import AddConnector from "./AddConnectorPage";
 import { FormProvider } from "@/components/context/FormContext";
 import Sidebar from "../../../../sections/sidebar/CreateConnectorSidebar";
@@ -15,12 +10,6 @@ import { isValidSource, getSourceMetadata } from "@/lib/sources";
 import { FederatedConnectorForm } from "@/components/admin/federated/FederatedConnectorForm";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "next/navigation";
-import useSWR from "swr";
-import { errorHandlingFetcher } from "@/lib/fetcher";
-import { buildSimilarCredentialInfoURL } from "@/app/admin/connector/[ccPairId]/lib";
-import { Credential } from "@/lib/connectors/credentials";
-import { useFederatedConnectors } from "@/lib/hooks";
-import Text from "@/refresh-components/texts/Text";
 
 export default function ConnectorWrapper({
   connector,

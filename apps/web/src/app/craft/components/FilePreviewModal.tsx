@@ -76,7 +76,7 @@ export default function FilePreviewModal({
             </Text>
           ) : isImage ? (
             <div className="flex items-center justify-center p-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {}
               <img
                 src={downloadUrl}
                 alt={entry.name}

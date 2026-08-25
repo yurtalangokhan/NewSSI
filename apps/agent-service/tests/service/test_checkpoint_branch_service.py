@@ -15,9 +15,7 @@ from service.CheckpointBranchService import find_fork_point, find_fork_point_wit
 class _FakeSnapshot:
     def __init__(self, messages, checkpoint_id):
         self.values = {"messages": messages}
-        self.config = {
-            "configurable": {"thread_id": "t1", "checkpoint_id": checkpoint_id}
-        }
+        self.config = {"configurable": {"thread_id": "t1", "checkpoint_id": checkpoint_id}}
 
 
 class _FakeAgentWithHistory:

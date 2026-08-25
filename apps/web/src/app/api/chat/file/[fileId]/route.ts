@@ -6,7 +6,11 @@ export async function GET(
   { params }: { params: Promise<{ fileId: string }> }
 ) {
   const { fileId } = await params;
-  return proxyToBackend(request, `/api/chat/file/${encodeURIComponent(fileId)}`, {
-    backendService: "agent",
-  });
+  return proxyToBackend(
+    request,
+    `/api/chat/file/${encodeURIComponent(fileId)}`,
+    {
+      backendService: "agent",
+    }
+  );
 }

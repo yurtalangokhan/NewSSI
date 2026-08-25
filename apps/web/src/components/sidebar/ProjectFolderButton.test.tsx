@@ -75,7 +75,7 @@ describe("ProjectFolderButton", () => {
     const { container } = render(<ProjectFolderButton project={project} />);
 
     expect(screen.getAllByText("Launch planning")).toHaveLength(2);
-    expect(container.querySelector("[data-state=\"active\"]")).not.toBeNull();
+    expect(container.querySelector('[data-state="active"]')).not.toBeNull();
     expect(screen.queryByTestId("project-drop-zone")).toBeNull();
   });
 

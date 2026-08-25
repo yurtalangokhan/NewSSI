@@ -41,7 +41,9 @@ export function FetchModelsButton({
       }
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : t("llmConfig.unknownErrorOccurred");
+        err instanceof Error
+          ? err.message
+          : t("llmConfig.unknownErrorOccurred");
       setFetchModelsError(errorMessage);
     } finally {
       setIsFetchingModels(false);
@@ -54,7 +56,6 @@ export function FetchModelsButton({
     if (autoFetchOnInitialLoad && !isDisabled) {
       handleFetchModels();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

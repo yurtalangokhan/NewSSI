@@ -22,7 +22,6 @@ import {
   SvgEdit,
   SvgGlobe,
   SvgLoader,
-  SvgOnyxLogo,
   SvgX,
 } from "@opal/icons";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";

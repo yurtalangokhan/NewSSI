@@ -61,11 +61,7 @@ export const PACKET_CATEGORIES: ReadonlyArray<PacketCategory> = [
   },
   {
     id: "fetch",
-    types: new Set([
-      "open_url_start",
-      "open_url_urls",
-      "open_url_documents",
-    ]),
+    types: new Set(["open_url_start", "open_url_urls", "open_url_documents"]),
     splitsFromOthers: true,
   },
   {
@@ -79,18 +75,12 @@ export const PACKET_CATEGORIES: ReadonlyArray<PacketCategory> = [
   },
   {
     id: "python_tool",
-    types: new Set([
-      "python_tool_start",
-      "python_tool_delta",
-    ]),
+    types: new Set(["python_tool_start", "python_tool_delta"]),
     splitsFromOthers: true,
   },
   {
     id: "file_reader",
-    types: new Set([
-      "file_reader_start",
-      "file_reader_result",
-    ]),
+    types: new Set(["file_reader_start", "file_reader_result"]),
     splitsFromOthers: true,
   },
   {
@@ -104,10 +94,7 @@ export const PACKET_CATEGORIES: ReadonlyArray<PacketCategory> = [
   },
   {
     id: "deep_research_plan",
-    types: new Set([
-      "deep_research_plan_start",
-      "deep_research_plan_delta",
-    ]),
+    types: new Set(["deep_research_plan_start", "deep_research_plan_delta"]),
     splitsFromOthers: true,
   },
   {

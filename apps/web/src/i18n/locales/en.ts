@@ -999,7 +999,8 @@ const en = {
     pinToSidebarTooltip: "Pin to Sidebar",
     unpinFromSidebarTooltip: "Unpin from Sidebar",
     deleteModalTitle: 'Delete "{{name}}"',
-    deleteModalDescription: "This agent will be permanently deleted. This action cannot be undone.",
+    deleteModalDescription:
+      "This agent will be permanently deleted. This action cannot be undone.",
     deleteModalButton: "Delete",
     deleteModalDeleting: "Deleting…",
     deleteSuccess: 'Agent "{{name}}" deleted.',
@@ -1478,9 +1479,11 @@ const en = {
     actionsLabel: "Actions",
     actionsDescription:
       "Tools and capabilities available for this agent to use.",
-    actionsChatbotDescription: "Chatbot agents are configured for direct conversation and do not support tool calling.",
+    actionsChatbotDescription:
+      "Chatbot agents are configured for direct conversation and do not support tool calling.",
     actionsChatbotWarningTitle: "Actions Are Not Available for Chatbot Agents",
-    actionsChatbotWarningDescription: "Chatbot agents are designed for direct conversation without invoking external tools or MCP actions. To enable MCP tools and actions, change the base agent type to 'Configurable MCP Agent' or 'Dynamic Agent'.",
+    actionsChatbotWarningDescription:
+      "Chatbot agents are designed for direct conversation without invoking external tools or MCP actions. To enable MCP tools and actions, change the base agent type to 'Configurable MCP Agent' or 'Dynamic Agent'.",
     actionsChatbotSwitchToMcpButton: "Switch to Configurable MCP Agent",
     imageGenerationLabel: "Image Generation",
     imageGenerationDescription:
@@ -2058,7 +2061,8 @@ const en = {
       contextSuffix: "ctx",
       deleteModelAriaLabel: "Delete {{model}}",
       deleteModelConfirmTitle: "Delete Model",
-      deleteModelConfirmBody: "Are you sure you want to delete the model \"{{model}}\"? This will delete the downloaded model files from the system and cannot be undone.",
+      deleteModelConfirmBody:
+        'Are you sure you want to delete the model "{{model}}"? This will delete the downloaded model files from the system and cannot be undone.',
       deletingModel: "Deleting...",
       noModelsInstalled: "No models installed",
       deletedToast: "Deleted {{model}}",
@@ -2595,7 +2599,7 @@ const en = {
       pullCleaningUp: "Cleaning up…",
       pullSuccess: "Download complete",
       pullDownloadingLayer: "Downloading…",
-      pullModelNotFound: "Model \"{{model}}\" not found.",
+      pullModelNotFound: 'Model "{{model}}" not found.',
       pullErrorGeneric: "Download failed: {{message}}",
       editLocalProviderTitle: "Edit Local / Self-Hosted Provider",
       editCloudProviderTitle: "Edit Cloud Provider",
@@ -3192,15 +3196,20 @@ const en = {
       optionalDescriptionPlaceholder: "Optional description",
       creatingButton: "Creating...",
       createCompositeRoleTitle: "Create Composite Role",
-      createCompositeRoleDescription: "Create a composite role profile to bundle permissions and service roles.",
+      createCompositeRoleDescription:
+        "Create a composite role profile to bundle permissions and service roles.",
       compositeRoleNameLabel: "Composite Role Name",
       compositeRoleNamePlaceholder: "e.g. agent-admin",
-      compositeRoleNameDescription: "Unique identifier for this role (e.g. analyst, data-scientist).",
-      compositeRoleDescriptionHelper: "Summary of the access and responsibilities granted by this role.",
+      compositeRoleNameDescription:
+        "Unique identifier for this role (e.g. analyst, data-scientist).",
+      compositeRoleDescriptionHelper:
+        "Summary of the access and responsibilities granted by this role.",
       optionalParenthetical: "(Optional)",
       permissionsSavedToast: "Permissions saved",
-      roleAssignmentSavedToast_one: "Role assignment saved — {{count}} effective permission",
-      roleAssignmentSavedToast_other: "Role assignment saved — {{count}} effective permissions",
+      roleAssignmentSavedToast_one:
+        "Role assignment saved — {{count}} effective permission",
+      roleAssignmentSavedToast_other:
+        "Role assignment saved — {{count}} effective permissions",
       syncedToKeycloakToast: "Synced to Keycloak",
       serviceRolesTitle: "Service roles",
       serviceRolesDescription:
@@ -3237,8 +3246,9 @@ const en = {
       roleEffectivePermissionsSummary:
         "{{bundles}} feature bundles · {{permissions}} effective permissions",
       deleteRoleTitle: "Delete Role",
-      confirmDeleteRole: "Are you sure you want to delete \"{{name}}\"?",
-      deleteRoleWarning: "This action cannot be undone and will permanently remove this role.",
+      confirmDeleteRole: 'Are you sure you want to delete "{{name}}"?',
+      deleteRoleWarning:
+        "This action cannot be undone and will permanently remove this role.",
       confirmDeletePrefix: "Are you sure you want to delete",
       confirmDeleteSuffix: "?",
       deletingButton: "Deleting...",
@@ -3969,7 +3979,8 @@ const en = {
       next: "next →",
       noMatchingLabels: "No matching labels",
       noLabels: "No labels",
-      onlyOneLabelInScope: "Only one entity label in this view, filtering isn't needed",
+      onlyOneLabelInScope:
+        "Only one entity label in this view, filtering isn't needed",
       noMatchingRelationshipTypes: "No matching relationship types",
       noRelationshipTypes: "No relationship types",
       graphExplorerTitle: "Graph Explorer",

@@ -9,7 +9,7 @@ import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import CardSection from "@/components/admin/CardSection";
 import { DocumentSetCreationForm } from "../DocumentSetCreationForm";
-import {  useRouter , notFound } from "next/navigation";
+import { useRouter, notFound } from "next/navigation";
 import { useTranslation } from "react-i18next";
 
 function Main({ documentSetId }: { documentSetId: number }) {
@@ -64,7 +64,9 @@ function Main({ documentSetId }: { documentSetId: number }) {
     return (
       <ErrorCallout
         errorTitle={t("admin.documentSets.documentSetNotFound")}
-        errorMsg={t("admin.documentSets.documentSetNotFoundMsg", { id: documentSetId })}
+        errorMsg={t("admin.documentSets.documentSetNotFoundMsg", {
+          id: documentSetId,
+        })}
       />
     );
   }

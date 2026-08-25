@@ -329,6 +329,7 @@ export const errorHandlingFetcher = async <T>(url: string): Promise<T> => {
  * `[url, language]` instead (this fetcher's expected key shape) makes a
  * language switch look like a key change, which SWR does refetch on.
  */
-export const languageKeyedFetcher = async <T>(
-  [url]: readonly [string, string]
-): Promise<T> => errorHandlingFetcher<T>(url);
+export const languageKeyedFetcher = async <T>([url]: readonly [
+  string,
+  string,
+]): Promise<T> => errorHandlingFetcher<T>(url);

@@ -307,9 +307,7 @@ async def test_get_mcp_tool_metadata_uses_title_tag_as_display_name(monkeypatch)
             ]
         }
 
-    monkeypatch.setattr(
-        "service.MCPToolService.MCPToolService", _FakeMCPToolService
-    )
+    monkeypatch.setattr("service.MCPToolService.MCPToolService", _FakeMCPToolService)
 
     class _FakeProxyController:
         async def get_builtin_mcp_tools(self, url):

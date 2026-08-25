@@ -76,17 +76,22 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
   const acceptedUsers = useMemo<MinimalUserSnapshot[]>(() => {
     if (!usersData) return [];
     if (Array.isArray(usersData)) return usersData;
-    if (Array.isArray((usersData as any).users)) return (usersData as any).users;
-    if (Array.isArray((usersData as any).items)) return (usersData as any).items;
-    if (Array.isArray((usersData as any).accepted)) return (usersData as any).accepted;
+    if (Array.isArray((usersData as any).users))
+      return (usersData as any).users;
+    if (Array.isArray((usersData as any).items))
+      return (usersData as any).items;
+    if (Array.isArray((usersData as any).accepted))
+      return (usersData as any).accepted;
     return [];
   }, [usersData]);
 
   const groups = useMemo<MinimalUserGroupSnapshot[]>(() => {
     if (!groupsData) return [];
     if (Array.isArray(groupsData)) return groupsData;
-    if (Array.isArray((groupsData as any).groups)) return (groupsData as any).groups;
-    if (Array.isArray((groupsData as any).items)) return (groupsData as any).items;
+    if (Array.isArray((groupsData as any).groups))
+      return (groupsData as any).groups;
+    if (Array.isArray((groupsData as any).items))
+      return (groupsData as any).items;
     return [];
   }, [groupsData]);
 

@@ -1,4 +1,4 @@
-import { ValidSources, ProcessingMode } from "@/lib/types";
+import { ValidSources } from "@/lib/types";
 import { Credential } from "@/lib/connectors/credentials";
 import { createConnector } from "@/lib/connector";
 import { linkCredential } from "@/lib/credential";

@@ -9,7 +9,12 @@ from service.web_search.url import DNSResolutionError, SSRFBlockedException
 
 
 def _sample_html() -> bytes:
-    body = "<p>" + "This is a detailed test article content that contains enough text to satisfy the minimum direct text length requirements for standard crawler extraction without triggering low information fallback. " * 3 + "</p>"
+    body = (
+        "<p>"
+        + "This is a detailed test article content that contains enough text to satisfy the minimum direct text length requirements for standard crawler extraction without triggering low information fallback. "
+        * 3
+        + "</p>"
+    )
     return f"<html><head><title>Test Page</title></head><body><h1>Hello World</h1>{body}</body></html>".encode()
 
 
@@ -135,7 +140,9 @@ class TestAtlasWebCrawlerRetry:
     @patch("service.web_search.onyx_web_crawler.ssrf_safe_get")
     def test_retry_on_transient_dns_error(self, mock_get, mock_sleep):
         mock_get.side_effect = [
-            DNSResolutionError("Could not resolve hostname 'example.com': Temporary failure in name resolution"),
+            DNSResolutionError(
+                "Could not resolve hostname 'example.com': Temporary failure in name resolution"
+            ),
             _mock_response(status_code=200),
         ]
 
@@ -164,7 +171,12 @@ class TestAtlasWebCrawlerRetry:
     def test_exhaust_all_retries_on_503(self, mock_get, mock_sleep):
         mock_get.return_value = _mock_response(status_code=503)
 
-        crawler = AtlasWebCrawler(max_retries=2, retry_backoff_factor=0.01, retry_jitter=False, playwright_fallback_enabled=False)
+        crawler = AtlasWebCrawler(
+            max_retries=2,
+            retry_backoff_factor=0.01,
+            retry_jitter=False,
+            playwright_fallback_enabled=False,
+        )
         result = crawler.contents(["https://example.com/test"])[0]
 
         assert result.scrape_successful is False
@@ -208,12 +220,16 @@ class TestAtlasWebCrawlerRetry:
         mock_pw.side_effect = [
             None,
             RenderedPage(
-                html="<html><head><title>Rendered</title></head><body><p>" + "Rendered full content for test extraction paragraph with sufficient text. " * 3 + "</p></body></html>",
+                html="<html><head><title>Rendered</title></head><body><p>"
+                + "Rendered full content for test extraction paragraph with sufficient text. " * 3
+                + "</p></body></html>",
                 final_url="https://example.com/pw-test",
             ),
         ]
 
-        crawler = AtlasWebCrawler(max_retries=0, playwright_max_retries=1, playwright_fallback_enabled=True)
+        crawler = AtlasWebCrawler(
+            max_retries=0, playwright_max_retries=1, playwright_fallback_enabled=True
+        )
         result = crawler.contents(["https://example.com/pw-test"])[0]
 
         assert result.scrape_successful is True
@@ -231,15 +247,23 @@ class TestRetryHelpers:
         assert _parse_retry_after("invalid") is None
 
     def test_calculate_retry_delay_exponential(self):
-        delay_1 = _calculate_retry_delay(attempt=1, backoff_factor=0.5, max_delay=10.0, jitter=False)
-        delay_2 = _calculate_retry_delay(attempt=2, backoff_factor=0.5, max_delay=10.0, jitter=False)
-        delay_3 = _calculate_retry_delay(attempt=3, backoff_factor=0.5, max_delay=10.0, jitter=False)
-        delay_4 = _calculate_retry_delay(attempt=4, backoff_factor=0.5, max_delay=10.0, jitter=False)
+        delay_1 = _calculate_retry_delay(
+            attempt=1, backoff_factor=0.5, max_delay=10.0, jitter=False
+        )
+        delay_2 = _calculate_retry_delay(
+            attempt=2, backoff_factor=0.5, max_delay=10.0, jitter=False
+        )
+        delay_3 = _calculate_retry_delay(
+            attempt=3, backoff_factor=0.5, max_delay=10.0, jitter=False
+        )
+        delay_4 = _calculate_retry_delay(
+            attempt=4, backoff_factor=0.5, max_delay=10.0, jitter=False
+        )
 
-        assert delay_1 == 0.5   # 0.5 * 2^0
-        assert delay_2 == 1.0   # 0.5 * 2^1
-        assert delay_3 == 2.0   # 0.5 * 2^2
-        assert delay_4 == 4.0   # 0.5 * 2^3
+        assert delay_1 == 0.5  # 0.5 * 2^0
+        assert delay_2 == 1.0  # 0.5 * 2^1
+        assert delay_3 == 2.0  # 0.5 * 2^2
+        assert delay_4 == 4.0  # 0.5 * 2^3
 
     def test_calculate_retry_delay_max_cap(self):
         delay = _calculate_retry_delay(attempt=10, backoff_factor=1.0, max_delay=5.0, jitter=False)

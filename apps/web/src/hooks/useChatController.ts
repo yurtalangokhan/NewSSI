@@ -1059,7 +1059,8 @@ export default function useChatController({
                   ...initialUserNode,
                   messageId: resolveStreamedMessageId(
                     newUserMessageId,
-                    finalMessage?.parent_message ?? finalMessage?.parentMessageId
+                    finalMessage?.parent_message ??
+                      finalMessage?.parentMessageId
                   ),
                   files: userMessageFiles,
                 },

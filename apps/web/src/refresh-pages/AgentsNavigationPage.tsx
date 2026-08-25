@@ -44,7 +44,9 @@ import { useTranslation } from "react-i18next";
 // distinct orphaned owner id.
 const UNKNOWN_OWNER_FILTER_ID = "__unknown_owner__";
 
-function creatorFilterId(owner: { id: string; email: string } | null | undefined) {
+function creatorFilterId(
+  owner: { id: string; email: string } | null | undefined
+) {
   if (!owner) return undefined;
   return owner.email === UNKNOWN_AGENT_OWNER_EMAIL
     ? UNKNOWN_OWNER_FILTER_ID

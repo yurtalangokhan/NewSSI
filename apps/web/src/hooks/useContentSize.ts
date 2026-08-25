@@ -116,7 +116,6 @@ export function useContentSize(
   // 3. The caller passes their own dependency array to control when measurement happens
   useEffect(() => {
     measureSize();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, dependencies);
 
   // Observe resize if enabled

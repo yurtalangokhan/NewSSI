@@ -85,13 +85,9 @@ function UsersTables({
   );
   const pendingUsersCount =
     pendingUsers === undefined ? null : pendingUsers.length;
-  const {
-    data: rolesData,
-    isLoading: rolesLoading,
-  } = useSWR<{ roles: { name: string }[] }>(
-    "/api/user-service/roles",
-    errorHandlingFetcher
-  );
+  const { data: rolesData, isLoading: rolesLoading } = useSWR<{
+    roles: { name: string }[];
+  }>("/api/user-service/roles", errorHandlingFetcher);
 
   const currentUsersContent = (
     <Card className="w-full rounded-12 border-border-01 bg-background-neutral-00 shadow-none">
@@ -225,9 +221,7 @@ function UsersTables({
           },
           {
             label: t("admin.users.rolesAvailableLabel"),
-            value: rolesLoading
-              ? "..."
-              : String(rolesData?.roles?.length ?? 0),
+            value: rolesLoading ? "..." : String(rolesData?.roles?.length ?? 0),
           },
         ]}
         actions={[
