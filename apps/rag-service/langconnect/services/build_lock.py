@@ -1,4 +1,4 @@
-from fastapi import HTTPException, status
+from error_contract import ConflictError, ForbiddenError
 from i18n import t
 
 from langconnect.services.graph_rag_service import get_build_progress
@@ -10,9 +10,10 @@ def ensure_collection_mutable(collection_id: str) -> None:
     """Raise HTTP 409 when a graph build is currently running for this collection."""
     progress = get_build_progress(collection_id)
     if progress and progress.status in _ACTIVE_BUILD_STATUSES:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=t("collection.locked_graph_build_in_progress"),
+        raise ConflictError(
+            code="collection.locked_graph_build_in_progress",
+            message=t("collection.locked_graph_build_in_progress"),
+            details={"collection_id": collection_id},
         )
 
 
@@ -28,7 +29,8 @@ async def ensure_not_connector_managed_collection(collection_id: str) -> None:
     metadata = collection.get("metadata") or {}
     connector_type = metadata.get("connector_type")
     if connector_type:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=t("collection.connector_managed_readonly"),
+        raise ForbiddenError(
+            code="collection.connector_managed_readonly",
+            message=t("collection.connector_managed_readonly"),
+            details={"collection_id": collection_id, "connector_type": connector_type},
         )

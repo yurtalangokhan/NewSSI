@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import Text from "@/components/ui/text";
+import { getErrorMsg } from "@/lib/fetchUtils";
 import { RequestNewVerificationEmail } from "../waiting-on-verification/RequestNewVerificationEmail";
 import { User } from "@/lib/types";
 import Logo from "@/refresh-components/Logo";
@@ -44,7 +45,7 @@ export default function Verify({ user }: VerifyProps) {
     } else {
       let errorDetail = "unknown error";
       try {
-        errorDetail = (await response.json()).detail;
+        errorDetail = (await getErrorMsg(response)) ?? errorDetail;
       } catch (e) {
         console.error("Failed to parse verification error response:", e);
       }

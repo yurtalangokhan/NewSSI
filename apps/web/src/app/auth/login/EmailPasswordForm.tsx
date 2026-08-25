@@ -15,6 +15,7 @@ import { FormField } from "@/refresh-components/form/FormField";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import PasswordInputTypeIn from "@/refresh-components/inputs/PasswordInputTypeIn";
 import { validateInternalRedirect } from "@/lib/auth/redirectValidation";
+import { parseApiErrorResponse } from "@/lib/api/errors";
 import { APIFormFieldState } from "@/refresh-components/form/types";
 import { SvgArrowRightCircle } from "@opal/icons";
 import { useCaptcha } from "@/lib/hooks/useCaptcha";
@@ -65,18 +66,10 @@ export default function EmailPasswordForm({
 
   const readErrorMessage = async (response: Response): Promise<string> => {
     try {
-      const jsonResponse =
+      const errorResponse =
         typeof response.clone === "function" ? response.clone() : response;
-      const payload = await jsonResponse.json();
-      for (const key of ["detail", "error", "message"] as const) {
-        const value = payload?.[key];
-        if (typeof value === "string") {
-          return value;
-        }
-        if (typeof value === "object" && value?.reason) {
-          return value.reason;
-        }
-      }
+      const parsedError = await parseApiErrorResponse(errorResponse);
+      return parsedError.userMessage;
     } catch {
       // Fall back to raw text below.
     }
@@ -168,28 +161,11 @@ export default function EmailPasswordForm({
               setIsWorking(false);
 
               let errorMsg: string = t("auth.unknownError");
-              let errorDetail: any = null;
-              try {
-                const responseData: any = await response.json();
-                errorDetail = responseData.detail;
-
-                if (typeof errorDetail === "object") {
-                  if (errorDetail.reason) {
-                    errorMsg = errorDetail.reason;
-                  } else if (Array.isArray(errorDetail)) {
-                    // Handle Pydantic validation errors (array format)
-                    const messages = errorDetail
-                      .map((err: any) => err.msg || err.message || String(err))
-                      .filter(Boolean);
-                    errorMsg = messages.join(", ");
-                  }
-                } else if (errorDetail === "REGISTER_USER_ALREADY_EXISTS") {
-                  errorMsg = t("auth.accountAlreadyExists");
-                } else if (typeof errorDetail === "string") {
-                  errorMsg = errorDetail;
-                }
-              } catch (e) {
-                // If JSON parsing fails, keep the unknown error message
+              const errorDetail = await readErrorMessage(response);
+              if (errorDetail === "REGISTER_USER_ALREADY_EXISTS") {
+                errorMsg = t("auth.accountAlreadyExists");
+              } else if (errorDetail) {
+                errorMsg = formatErrorMessage(errorDetail);
               }
 
               if (response.status === 429) {

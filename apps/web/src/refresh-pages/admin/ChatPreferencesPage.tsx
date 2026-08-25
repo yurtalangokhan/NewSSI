@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Formik, Form, useFormikContext } from "formik";
 import useSWR from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
+import { getErrorMsg } from "@/lib/fetchUtils";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import * as InputLayouts from "@/layouts/input-layouts";
 import { Section } from "@/layouts/general-layouts";
@@ -247,7 +248,7 @@ function ChatPreferencesForm() {
               body: JSON.stringify({ tool_ids: newToolIds }),
             });
             if (!response.ok) {
-              const errorMsg = (await response.json()).detail;
+              const errorMsg = (await getErrorMsg(response)) ?? "Unknown error";
               throw new Error(errorMsg);
             }
             return optimisticData;
@@ -301,7 +302,7 @@ function ChatPreferencesForm() {
         });
 
         if (!response.ok) {
-          const errorMsg = (await response.json()).detail;
+          const errorMsg = (await getErrorMsg(response)) ?? "Unknown error";
           throw new Error(errorMsg);
         }
 
@@ -758,7 +759,8 @@ function ChatPreferencesForm() {
                     }),
                   });
                   if (!response.ok) {
-                    const errorMsg = (await response.json()).detail;
+                    const errorMsg =
+                      (await getErrorMsg(response)) ?? "Unknown error";
                     throw new Error(errorMsg);
                   }
                   await mutateDefaultAgent();

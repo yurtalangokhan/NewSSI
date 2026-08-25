@@ -7,10 +7,10 @@ from contextvars import ContextVar
 from typing import Any
 
 import httpx
-from fastapi import HTTPException, status
 
 from core.api_versioning import USER_SERVICE_API_PREFIX
 from core.env import env
+from core.exceptions import ApplicationError, DependencyUnavailableError
 
 DEFAULT_INTERNAL_SERVICE_TOKEN = ""
 _USER_BY_KEYCLOAK_ID_CACHE: dict[str, dict[str, Any] | None] = {}
@@ -105,15 +105,18 @@ async def _request(
                 json=json_body,
             )
     except httpx.HTTPError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"User service request failed: {exc}",
+        raise DependencyUnavailableError(
+            code="user_service.request_failed",
+            message="User service request failed.",
+            details={"error": str(exc)},
         ) from exc
 
     if resp.status_code >= 400:
-        raise HTTPException(
+        raise ApplicationError(
             status_code=resp.status_code,
-            detail=f"User service error: {resp.text}",
+            code="user_service.error",
+            message="User service returned an error.",
+            details={"body": resp.text},
         )
 
     if not resp.content:
@@ -473,7 +476,7 @@ async def get_user_by_keycloak_id(
         if use_cache:
             _USER_BY_KEYCLOAK_ID_CACHE[normalized] = None
         return None
-    except HTTPException as exc:
+    except ApplicationError as exc:
         if exc.status_code == 404:
             if use_cache:
                 _USER_BY_KEYCLOAK_ID_CACHE[normalized] = None

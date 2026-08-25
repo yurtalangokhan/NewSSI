@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+from error_contract import register_error_handlers
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from i18n import I18nMiddleware, init_service_i18n
@@ -200,6 +201,8 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
         lifespan=lifespan,
     )
+
+    register_error_handlers(app, service_name="user-service")
 
     app.add_middleware(
         CORSMiddleware,

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import time
 
-from fastapi import HTTPException
-
 from core.env import env
+from core.exceptions import ApplicationError
 
 
 class AuthorizationClient:
@@ -48,7 +47,7 @@ class AuthorizationClient:
         try:
             decision = await authorize_user_permission(user_id, permission, access_token)
             return bool(decision.get("allowed"))
-        except HTTPException:
+        except ApplicationError:
             permissions_data = await get_user_permissions(user_id, access_token)
             permissions = permissions_data.get("permissions", [])
             return permissions == ["*"] or permission in permissions

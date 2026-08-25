@@ -5,6 +5,7 @@
 import {
   authenticatedFetch,
   errorHandlingFetcher,
+  FetchError,
   getSessionExpiredRedirectUrl,
   clearAuthRefreshFailed,
   getLoginRedirectUrl,
@@ -339,5 +340,50 @@ describe("errorHandlingFetcher", () => {
         headers: expect.objectContaining({ "X-Language": "tr" }),
       })
     );
+  });
+
+  it("throws FetchError with parsed standard contract fields", async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      jsonResponse(
+        {
+          error: {
+            code: "collection.not_found",
+            message: "Collection not found.",
+            details: { collection_id: "abc" },
+            field_errors: [
+              {
+                field: "name",
+                code: "required",
+                message: "Name is required.",
+              },
+            ],
+            request_id: "req_123",
+          },
+        },
+        404
+      )
+    );
+
+    await expect(
+      errorHandlingFetcher("/api/rag/collections/abc")
+    ).rejects.toMatchObject({
+      status: 404,
+      code: "collection.not_found",
+      message: "Collection not found.",
+      userMessage: "Collection not found.",
+      details: { collection_id: "abc" },
+      fieldErrors: [
+        {
+          field: "name",
+          code: "required",
+          message: "Name is required.",
+        },
+      ],
+      requestId: "req_123",
+    });
+
+    await expect(
+      errorHandlingFetcher("/api/rag/collections/abc")
+    ).rejects.toBeInstanceOf(FetchError);
   });
 });

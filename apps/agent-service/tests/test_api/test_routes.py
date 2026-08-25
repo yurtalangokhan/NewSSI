@@ -63,8 +63,8 @@ class TestAPIDependencies:
     def test_verify_bearer_with_invalid_key(self):
         """Test verify_bearer with invalid key."""
         import pytest
-        from fastapi import HTTPException
 
+        from core.exceptions import UnauthorizedError
         from service.AuthService import verify_bearer
 
         class MockCredentials:
@@ -74,7 +74,7 @@ class TestAPIDependencies:
         with (
             patch("service.AuthService._is_keycloak_enabled", return_value=False),
             patch("service.AuthService._get_valid_api_keys", return_value={"test-key"}),
-            pytest.raises(HTTPException) as exc,
+            pytest.raises(UnauthorizedError) as exc,
         ):
             verify_bearer(_request(), MockCredentials())
 

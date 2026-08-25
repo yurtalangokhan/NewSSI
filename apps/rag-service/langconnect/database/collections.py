@@ -12,8 +12,7 @@ import json
 import logging
 from typing import Any, Optional
 
-from fastapi import status
-from fastapi.exceptions import HTTPException
+from error_contract import BadRequestError, NotFoundError
 from i18n import t
 from langchain_core.documents import Document
 
@@ -88,20 +87,19 @@ class CollectionsManager:
     ) -> CollectionDetails:
         """Update collection metadata / name."""
         if metadata is None and name is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=t("collection.update_requires_attribute"),
+            raise BadRequestError(
+                code="collection.update_requires_attribute",
+                message=t("collection.update_requires_attribute"),
             )
 
         result = await self._repo.update_collection(
             collection_id, name=name, metadata=metadata
         )
         if result is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=t(
-                    "collection.not_found_or_not_owned", collection_id=collection_id
-                ),
+            raise NotFoundError(
+                code="collection.not_found",
+                message=t("collection.not_found_or_not_owned", collection_id=collection_id),
+                details={"collection_id": collection_id},
             )
         return result
 
@@ -130,7 +128,11 @@ class Collection:
         """Return collection metadata from Postgres; raise 404 if missing."""
         details = await self._col_repo.get_collection(self.collection_id)
         if not details:
-            raise HTTPException(status_code=404, detail=t("collection.not_found"))
+            raise NotFoundError(
+                code="collection.not_found",
+                message=t("collection.not_found"),
+                details={"collection_id": self.collection_id},
+            )
         return details
 
     async def ensure_exists(self) -> None:
@@ -321,7 +323,11 @@ class Collection:
             rows = []
 
         if not rows:
-            raise HTTPException(status_code=404, detail=t("document.not_found"))
+            raise NotFoundError(
+                code="document.not_found",
+                message=t("document.not_found"),
+                details={"document_id": document_id, "collection_id": self.collection_id},
+            )
 
         row = rows[0]
         return {

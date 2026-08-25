@@ -1,9 +1,9 @@
 from unittest.mock import AsyncMock
 
 import pytest
-from fastapi import HTTPException
 from starlette.requests import Request
 
+from core.exceptions import UnauthorizedError
 from service import AuthService
 from service.AuthService import require_user, require_user_or_internal_service_token
 
@@ -52,7 +52,7 @@ async def test_require_user_falls_back_to_user_service_token_validation(monkeypa
     monkeypatch.setattr(AuthService.AuthService, "is_keycloak_enabled", staticmethod(lambda: True))
 
     def raise_invalid_keycloak_token(token: str) -> dict:
-        raise HTTPException(status_code=401, detail="Invalid bearer token")
+        raise UnauthorizedError(message="Invalid bearer token")
 
     user_service_user = {
         "id": "4bde69c3-aec6-42c7-a4e0-5d73bf033594",

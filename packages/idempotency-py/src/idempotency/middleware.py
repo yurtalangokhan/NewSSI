@@ -450,7 +450,17 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
     @staticmethod
     def _error_response(status_code: int, code: str, message: str) -> Response:
         return Response(
-            content=json.dumps({"error": {"code": code, "message": message}}),
+            content=json.dumps(
+                {
+                    "error": {
+                        "code": code,
+                        "message": message,
+                        "details": {},
+                        "field_errors": [],
+                        "request_id": None,
+                    }
+                }
+            ),
             status_code=status_code,
             media_type="application/json",
             headers={"Cache-Control": "no-store"},

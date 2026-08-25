@@ -450,6 +450,28 @@ wheels = [
 ]
 
 [[package]]
+name = "error-contract"
+version = "0.1.0"
+source = { directory = "../../packages/error-contract-py" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.110" },
+    { name = "pydantic", specifier = ">=2.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "ruff", specifier = ">=0.8" },
+]
+
+[[package]]
 name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -962,6 +984,7 @@ source = { editable = "." }
 dependencies = [
     { name = "asyncpg" },
     { name = "ddgs" },
+    { name = "error-contract" },
     { name = "fastmcp" },
     { name = "httpx" },
     { name = "i18n-py" },
@@ -982,6 +1005,7 @@ dev = [
 requires-dist = [
     { name = "asyncpg", specifier = ">=0.29.0" },
     { name = "ddgs", specifier = ">=9.0.0" },
+    { name = "error-contract", directory = "../../packages/error-contract-py" },
     { name = "fastmcp", specifier = ">=2.0.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "i18n-py", directory = "../../packages/i18n-py" },

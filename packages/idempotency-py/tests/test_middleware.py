@@ -363,7 +363,15 @@ def test_required_route_rejects_missing_key(fake_redis: FakeRedis) -> None:
     response = client.post("/required", json={"value": 1})
 
     assert response.status_code == 400
-    assert response.json()["error"]["code"] == "idempotency_key_required"
+    assert response.json() == {
+        "error": {
+            "code": "idempotency_key_required",
+            "message": "Idempotency-Key header is required for this endpoint.",
+            "details": {},
+            "field_errors": [],
+            "request_id": None,
+        }
+    }
 
 
 def test_policy_can_enforce_missing_key_without_global_required_enforcement(

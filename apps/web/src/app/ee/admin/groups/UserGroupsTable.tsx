@@ -8,6 +8,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { toast } from "@/hooks/useToast";
+import { getErrorMsg } from "@/lib/fetchUtils";
 import { LoadingAnimation } from "@/components/Loading";
 import { ConnectorTitle } from "@/components/admin/connectors/ConnectorTitle";
 import { deleteUserGroup } from "./lib";
@@ -161,7 +162,8 @@ export const UserGroupsTable = ({
                             t("admin.groups.deleted", { name: userGroup.name })
                           );
                         } else {
-                          const errorMsg = (await response.json()).detail;
+                          const errorMsg =
+                            (await getErrorMsg(response)) ?? "Unknown error";
                           toast.error(
                             t("admin.groups.deleteFailed", { errorMsg })
                           );

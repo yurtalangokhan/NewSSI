@@ -7,6 +7,7 @@ import {
   LLM_ADMIN_URL,
   LLM_PROVIDERS_ADMIN_URL,
 } from "@/lib/llmConfig/constants";
+import { getErrorMsg } from "@/lib/fetchUtils";
 import { toast } from "@/hooks/useToast";
 import * as Yup from "yup";
 import isEqual from "lodash/isEqual";
@@ -228,7 +229,7 @@ export const submitLLMProvider = async <T extends BaseLLMFormValues>({
     setIsTesting(false);
 
     if (!response.ok) {
-      const errorMsg = (await response.json()).detail;
+      const errorMsg = (await getErrorMsg(response)) ?? "Unknown error";
       setTestError(errorMsg);
       setSubmitting(false);
       return;
@@ -253,7 +254,7 @@ export const submitLLMProvider = async <T extends BaseLLMFormValues>({
   );
 
   if (!response.ok) {
-    const errorMsg = (await response.json()).detail;
+    const errorMsg = (await getErrorMsg(response)) ?? "Unknown error";
     const fullErrorMsg = existingLlmProvider
       ? `Failed to update provider: ${errorMsg}`
       : `Failed to enable provider: ${errorMsg}`;

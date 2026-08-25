@@ -15,10 +15,12 @@ RUN apt-get update && \
 COPY apps/rag-service/pyproject.toml apps/rag-service/uv.lock apps/rag-service/README.md ./
 COPY packages/idempotency-py/ packages/idempotency-py/
 COPY packages/i18n-py/ packages/i18n-py/
+COPY packages/error-contract-py/ packages/error-contract-py/
 
 RUN sed -i \
     -e 's|path = "../../packages/idempotency-py"|path = "packages/idempotency-py"|' \
     -e 's|path = "../../packages/i18n-py"|path = "packages/i18n-py"|' \
+    -e 's|path = "../../packages/error-contract-py"|path = "packages/error-contract-py"|' \
     pyproject.toml \
     && uv lock \
     && uv sync --frozen --no-dev --no-install-project \

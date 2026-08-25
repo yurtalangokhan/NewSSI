@@ -11,10 +11,12 @@ RUN pip install --no-cache-dir --upgrade pip uv
 COPY apps/user-service/pyproject.toml apps/user-service/uv.lock apps/user-service/README.md ./
 COPY packages/idempotency-py/ packages/idempotency-py/
 COPY packages/i18n-py/ packages/i18n-py/
+COPY packages/error-contract-py/ packages/error-contract-py/
 
 RUN sed -i \
     -e 's|path = "../../packages/idempotency-py"|path = "packages/idempotency-py"|' \
     -e 's|path = "../../packages/i18n-py"|path = "packages/i18n-py"|' \
+    -e 's|path = "../../packages/error-contract-py"|path = "packages/error-contract-py"|' \
     pyproject.toml \
     && uv lock \
     && uv sync --frozen --no-dev --no-install-project \

@@ -13,6 +13,7 @@ import {
   MCPAuthenticationPerformer,
 } from "@/lib/tools/interfaces";
 import i18n from "@/i18n/config";
+import { getErrorMsg } from "@/lib/fetchUtils";
 import { authenticatedFetch } from "@/lib/fetcher";
 import {
   createIdempotencyKey,
@@ -203,7 +204,7 @@ export async function upsertMCPServer(serverData: {
     });
 
     if (!response.ok) {
-      const errorDetail = (await response.json()).detail;
+      const errorDetail = (await getErrorMsg(response)) ?? "Unknown error";
       return {
         data: null,
         error: `Failed to create MCP server: ${errorDetail}`,

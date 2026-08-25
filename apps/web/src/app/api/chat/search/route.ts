@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { internalServerErrorResponse } from "@/lib/api/errorResponse";
+
 export async function GET(request: Request) {
   try {
     // For now, return empty search results
@@ -10,6 +12,6 @@ export async function GET(request: Request) {
       next_page: null,
     });
   } catch (error) {
-    return NextResponse.json({ error: "Search failed" }, { status: 500 });
+    return internalServerErrorResponse("Search failed");
   }
 }

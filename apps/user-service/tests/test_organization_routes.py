@@ -8,6 +8,7 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from error_contract import register_error_handlers
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -19,6 +20,7 @@ from src.core.exceptions import ConflictError
 def app():
     """FastAPI app with organizations router."""
     app = FastAPI()
+    register_error_handlers(app, service_name="user-service-test")
     app.include_router(organizations_router)
     for route in app.routes:
         dependant = getattr(route, "dependant", None)
@@ -136,7 +138,15 @@ class TestOrganizationRoutes:
         )
 
         assert response.status_code == 409
-        assert response.json() == {"detail": "A root organization already exists"}
+        assert response.json() == {
+            "error": {
+                "code": "request.conflict",
+                "message": "A root organization already exists",
+                "details": {},
+                "field_errors": [],
+                "request_id": None,
+            }
+        }
 
     @patch("src.api.routes.organizations_route.get_organization_service")
     def test_get_organization(self, mock_get_service, client, mock_service):

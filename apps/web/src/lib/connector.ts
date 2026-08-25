@@ -4,6 +4,9 @@ import {
   ConnectorBase,
   ConnectorSnapshot,
 } from "./connectors/connectors";
+import { parseApiErrorPayload } from "./api/errors";
+import { getErrorMsg } from "./fetchUtils";
+
 async function handleResponse(
   response: Response
 ): Promise<[string | null, any]> {
@@ -11,7 +14,10 @@ async function handleResponse(
   if (response.ok) {
     return [null, responseJson];
   }
-  return [responseJson.detail, null];
+  return [
+    parseApiErrorPayload(responseJson, response.status).userMessage,
+    null,
+  ];
 }
 
 export async function fetchConnectors(
@@ -98,7 +104,7 @@ export async function deleteConnector(
   if (response.ok) {
     return null;
   }
-  return (await response.json()).detail;
+  return (await getErrorMsg(response)) ?? "Unknown error";
 }
 
 export async function runConnector(
@@ -116,7 +122,7 @@ export async function runConnector(
     }),
   });
   if (!response.ok) {
-    return (await response.json()).detail;
+    return (await getErrorMsg(response)) ?? "Unknown error";
   }
   return null;
 }

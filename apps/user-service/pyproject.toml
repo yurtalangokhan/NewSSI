@@ -20,6 +20,7 @@ dependencies = [
     "httpx>=0.28.0",
     "PyJWT>=2.10.0",
     "cryptography>=44.0.0",
+    "error-contract",
     "passlib[bcrypt]>=1.7.4",
     "python-multipart>=0.0.20",
     "python-jose[cryptography]>=3.3.0",
@@ -31,6 +32,7 @@ dependencies = [
 [tool.uv.sources]
 idempotency = { path = "../../packages/idempotency-py" }
 i18n-py = { path = "../../packages/i18n-py" }
+error-contract = { path = "../../packages/error-contract-py" }
 
 
 [project.optional-dependencies]

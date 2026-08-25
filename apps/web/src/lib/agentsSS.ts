@@ -1,4 +1,5 @@
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { getErrorMsg } from "./fetchUtils";
 import { fetchSS } from "./utilsSS";
 
 export type FetchAgentsResponse = [MinimalPersonaSnapshot[], string | null];
@@ -9,5 +10,5 @@ export async function fetchAgentsSS(): Promise<FetchAgentsResponse> {
   if (response.ok) {
     return [(await response.json()) as MinimalPersonaSnapshot[], null];
   }
-  return [[], (await response.json()).detail || "Unknown Error"];
+  return [[], (await getErrorMsg(response)) || "Unknown Error"];
 }

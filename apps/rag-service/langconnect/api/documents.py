@@ -3,6 +3,7 @@ import logging
 from typing import Annotated, Any
 from uuid import UUID
 
+from error_contract import ApplicationError
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -141,8 +142,8 @@ async def documents_create(
 
         return response_data
 
-    except HTTPException as http_exc:
-        # Reraise HTTPExceptions from add_documents_to_vectorstore or previous checks
+    except (HTTPException, ApplicationError) as http_exc:
+        # Reraise edge/domain exceptions from vector store operations.
         raise http_exc
     except Exception as add_exc:
         # Handle exceptions during the vector store addition process

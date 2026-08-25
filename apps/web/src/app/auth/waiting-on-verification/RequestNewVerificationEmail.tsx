@@ -1,6 +1,7 @@
 "use client";
 
 import { toast } from "@/hooks/useToast";
+import { getErrorMsg } from "@/lib/fetchUtils";
 import { requestEmailVerification } from "../lib";
 import { useTranslation } from "react-i18next";
 import { Spinner } from "@/components/Spinner";
@@ -28,7 +29,7 @@ export function RequestNewVerificationEmail({
         if (response.ok) {
           toast.success(t("auth.waitingOnVerification.toastVerificationSent"));
         } else {
-          const errorDetail = (await response.json()).detail;
+          const errorDetail = await getErrorMsg(response);
           toast.error(
             t("auth.waitingOnVerification.toastVerificationFailed", {
               error: errorDetail,

@@ -3,6 +3,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from error_contract import register_error_handlers
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from i18n import I18nMiddleware, init_service_i18n
@@ -89,6 +90,8 @@ APP = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+register_error_handlers(APP, service_name="rag-service")
 
 APP.add_middleware(I18nMiddleware)
 

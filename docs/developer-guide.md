@@ -102,6 +102,10 @@ api/routes/*.py  →  controller/*.py  →  service/*.py  →  repository/*.py
 - **Services**: Pure domain logic. Raise `ValueError`, `NotFoundError` etc. Never HTTP exceptions.
 - **Repositories**: Wrap SQLAlchemy async sessions. Auto-commit on context manager exit.
 - **Core exceptions**: All domain exceptions live in `core/exceptions.py`.
+- **Error contract**: HTTP errors use the shared envelope in
+  `docs/error-handling.md`. New backend code raises `ApplicationError`
+  subclasses or service-local aliases; route/controller edges and app handlers
+  translate those errors to HTTP.
 
 **Singleton pattern:**
 ```python

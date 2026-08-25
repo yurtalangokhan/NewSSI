@@ -1,5 +1,6 @@
 import { getInternalUrl } from "@/lib/env.server";
 import { NextRequest, NextResponse } from "next/server";
+import { internalServerErrorResponse } from "@/lib/api/errorResponse";
 import { getCookieValue } from "@/lib/api/proxy";
 
 const INTERNAL_URL = getInternalUrl();
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
     return await proxyLangGraphRequest(request, "GET");
   } catch (error) {
     console.error("LangGraph proxy GET error:", error);
-    return NextResponse.json({ error: "Proxy error" }, { status: 500 });
+    return internalServerErrorResponse("Proxy error");
   }
 }
 
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
     return await proxyLangGraphRequest(request, "POST");
   } catch (error) {
     console.error("LangGraph proxy POST error:", error);
-    return NextResponse.json({ error: "Proxy error" }, { status: 500 });
+    return internalServerErrorResponse("Proxy error");
   }
 }
 
@@ -101,7 +102,7 @@ export async function PATCH(request: NextRequest) {
     return await proxyLangGraphRequest(request, "PATCH");
   } catch (error) {
     console.error("LangGraph proxy PATCH error:", error);
-    return NextResponse.json({ error: "Proxy error" }, { status: 500 });
+    return internalServerErrorResponse("Proxy error");
   }
 }
 
@@ -110,6 +111,6 @@ export async function DELETE(request: NextRequest) {
     return await proxyLangGraphRequest(request, "DELETE");
   } catch (error) {
     console.error("LangGraph proxy DELETE error:", error);
-    return NextResponse.json({ error: "Proxy error" }, { status: 500 });
+    return internalServerErrorResponse("Proxy error");
   }
 }

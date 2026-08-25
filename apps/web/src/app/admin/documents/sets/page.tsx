@@ -14,6 +14,7 @@ import Text from "@/components/ui/text";
 import Title from "@/components/ui/title";
 import Separator from "@/refresh-components/Separator";
 import { DocumentSetSummary } from "@/lib/types";
+import { getErrorMsg } from "@/lib/fetchUtils";
 import { useState } from "react";
 import { useDocumentSets } from "./hooks";
 import { deleteDocumentSet } from "./lib";
@@ -333,7 +334,8 @@ const DocumentSetTable = ({
                               })
                             );
                           } else {
-                            const errorMsg = (await response.json()).detail;
+                            const errorMsg =
+                              (await getErrorMsg(response)) ?? "Unknown error";
                             toast.error(
                               t("admin.documentSets.deleteScheduleFailed", {
                                 error: errorMsg,

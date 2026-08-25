@@ -1,5 +1,6 @@
 import { ModelConfiguration } from "@/interfaces/llm";
 import { parseAzureTargetUri } from "@/lib/azureTargetUri";
+import { getErrorMsg } from "@/lib/fetchUtils";
 
 export const buildInitialValues = () => ({
   name: "",
@@ -42,7 +43,7 @@ const submitLlmTestRequest = async (
     });
 
     if (!response.ok) {
-      const errorMsg = (await response.json()).detail;
+      const errorMsg = (await getErrorMsg(response)) ?? fallbackErrorMessage;
       return { ok: false, errorMessage: errorMsg };
     }
 

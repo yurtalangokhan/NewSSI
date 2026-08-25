@@ -8,6 +8,7 @@ import contextlib
 import sys
 from pathlib import Path
 
+from error_contract import ErrorContractMiddleware
 from fastmcp import FastMCP
 from starlette.middleware import Middleware
 from starlette.requests import Request
@@ -72,6 +73,7 @@ def build_idempotency_middleware() -> list[Middleware]:
     """Build service middleware for the FastMCP HTTP app."""
     settings = get_settings()
     return [
+        Middleware(ErrorContractMiddleware, service_name="tools-service"),
         Middleware(I18nMiddleware),
         Middleware(
             IdempotencyMiddleware,

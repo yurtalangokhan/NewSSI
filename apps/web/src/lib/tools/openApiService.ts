@@ -1,4 +1,5 @@
 import { MethodSpec, ApiResponse, ToolSnapshot } from "@/lib/tools/interfaces";
+import { getErrorMsg } from "@/lib/fetchUtils";
 
 const SUPPORTED_HTTP_METHODS = new Set([
   "get",
@@ -71,7 +72,7 @@ export async function validateToolDefinition(toolData: {
     });
 
     if (!response.ok) {
-      const errorDetail = (await response.json()).detail;
+      const errorDetail = (await getErrorMsg(response)) ?? "Unknown error";
       return { data: null, error: errorDetail };
     }
 
@@ -100,7 +101,7 @@ export async function createCustomTool(toolData: {
     });
 
     if (!response.ok) {
-      const errorDetail = (await response.json()).detail;
+      const errorDetail = (await getErrorMsg(response)) ?? "Unknown error";
       return { data: null, error: `Failed to create tool: ${errorDetail}` };
     }
 
@@ -135,7 +136,7 @@ export async function updateCustomTool(
     });
 
     if (!response.ok) {
-      const errorDetail = (await response.json()).detail;
+      const errorDetail = (await getErrorMsg(response)) ?? "Unknown error";
       return { data: null, error: `Failed to update tool: ${errorDetail}` };
     }
 
@@ -159,7 +160,7 @@ export async function deleteCustomTool(
     });
 
     if (!response.ok) {
-      const errorDetail = (await response.json()).detail;
+      const errorDetail = (await getErrorMsg(response)) ?? "Unknown error";
       return { data: false, error: `Failed to delete tool: ${errorDetail}` };
     }
 

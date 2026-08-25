@@ -1,4 +1,5 @@
 import { toast } from "@/hooks/useToast";
+import { getErrorMsg } from "./fetchUtils";
 import { DeletionAttemptSnapshot } from "./types";
 
 export async function scheduleDeletionJobForConnector(
@@ -21,7 +22,7 @@ export async function scheduleDeletionJobForConnector(
   if (response.ok) {
     return null;
   }
-  return (await response.json()).detail;
+  return (await getErrorMsg(response)) ?? "Unknown error";
 }
 
 export async function deleteCCPair(

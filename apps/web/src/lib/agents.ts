@@ -4,6 +4,7 @@ import {
   Persona,
 } from "@/app/admin/agents/interfaces";
 import { User } from "./types";
+import { getErrorMsg } from "./fetchUtils";
 
 import { personaComparator } from "@/app/admin/agents/lib";
 
@@ -119,7 +120,7 @@ export async function deleteAgent(agentId: AgentId): Promise<string | null> {
       return null;
     }
 
-    const errorMessage = (await response.json()).detail || "Unknown error";
+    const errorMessage = (await getErrorMsg(response)) || "Unknown error";
     return errorMessage;
   } catch (error) {
     console.error("deleteAgent: Network error", error);
@@ -180,7 +181,7 @@ export async function updateAgentSharedStatus(
       return null;
     }
 
-    const errorMessage = (await response.json()).detail || "Unknown error";
+    const errorMessage = (await getErrorMsg(response)) || "Unknown error";
     return errorMessage;
   } catch (error) {
     console.error("updateAgentSharedStatus: Network error", error);
@@ -210,7 +211,7 @@ export async function updateAgentLabels(
       return null;
     }
 
-    const errorMessage = (await response.json()).detail || "Unknown error";
+    const errorMessage = (await getErrorMsg(response)) || "Unknown error";
     return errorMessage;
   } catch (error) {
     console.error("updateAgentLabels: Network error", error);
@@ -240,7 +241,7 @@ export async function updateAgentFeaturedStatus(
       return null;
     }
 
-    const errorMessage = (await response.json()).detail || "Unknown error";
+    const errorMessage = (await getErrorMsg(response)) || "Unknown error";
     return errorMessage;
   } catch (error) {
     console.error("updateAgentFeaturedStatus: Network error", error);

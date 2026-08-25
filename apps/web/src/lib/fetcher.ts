@@ -1,14 +1,31 @@
 import i18n from "@/i18n/config";
 
+import { ParsedApiError, parseApiErrorResponse } from "@/lib/api/errors";
 import { createIdempotencyKey } from "@/lib/api/idempotency";
 
 export class FetchError extends Error {
   status: number;
   info: any;
-  constructor(message: string, status: number, info: any) {
+  code: string;
+  userMessage: string;
+  details: Record<string, unknown>;
+  fieldErrors: ParsedApiError["fieldErrors"];
+  requestId?: string;
+
+  constructor(
+    message: string,
+    status: number,
+    info: any,
+    parsedError?: ParsedApiError
+  ) {
     super(message);
     this.status = status;
     this.info = info;
+    this.code = parsedError?.code ?? "request.invalid";
+    this.userMessage = parsedError?.userMessage ?? message;
+    this.details = parsedError?.details ?? {};
+    this.fieldErrors = parsedError?.fieldErrors ?? [];
+    this.requestId = parsedError?.requestId;
     Object.setPrototypeOf(this, FetchError.prototype);
   }
 }
@@ -302,16 +319,22 @@ export const errorHandlingFetcher = async <T>(url: string): Promise<T> => {
     headers: { "X-Language": i18n.language },
   });
 
+  if (!res.ok) {
+    const parsedError = await parseApiErrorResponse(res);
+    const error = new FetchError(
+      parsedError.userMessage,
+      res.status,
+      parsedError.raw,
+      parsedError
+    );
+    throw error;
+  }
+
   let payload: any = null;
   try {
     payload = await res.json();
   } catch {
     payload = {};
-  }
-
-  if (!res.ok) {
-    const error = new FetchError(getDefaultErrorMsg(), res.status, payload);
-    throw error;
   }
 
   return payload as T;

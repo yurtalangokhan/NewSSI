@@ -13,6 +13,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from error_contract import register_error_handlers
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
@@ -136,6 +137,8 @@ if not locales_dir.exists():
 init_service_i18n(locales_dir)
 
 app = FastAPI(lifespan=lifespan, generate_unique_id_function=custom_generate_unique_id)
+
+register_error_handlers(app, service_name="agent-service")
 
 app.add_middleware(I18nMiddleware)
 

@@ -13,6 +13,7 @@ import {
   LLM_ADMIN_URL,
   LLM_PROVIDERS_ADMIN_URL,
 } from "@/lib/llmConfig/constants";
+import { getErrorMsg } from "@/lib/fetchUtils";
 
 /**
  * Test the default LLM provider.
@@ -49,7 +50,7 @@ export async function setDefaultLlmModel(
   });
 
   if (!response.ok) {
-    const errorMsg = (await response.json()).detail;
+    const errorMsg = (await getErrorMsg(response)) ?? "Unknown error";
     throw new Error(errorMsg);
   }
 }
@@ -65,7 +66,7 @@ export async function deleteLlmProvider(providerId: number): Promise<void> {
   });
 
   if (!response.ok) {
-    const errorMsg = (await response.json()).detail;
+    const errorMsg = (await getErrorMsg(response)) ?? "Unknown error";
     throw new Error(errorMsg);
   }
 }

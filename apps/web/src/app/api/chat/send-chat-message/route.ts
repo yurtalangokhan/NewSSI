@@ -1,5 +1,9 @@
-import { getInternalUrl } from "@/lib/env.server";
+import {
+  apiErrorResponse,
+  internalServerErrorResponse,
+} from "@/lib/api/errorResponse";
 import { buildServiceUrl } from "@/lib/api/gatewayRouting";
+import { getInternalUrl } from "@/lib/env.server";
 import { NextRequest, NextResponse } from "next/server";
 
 const INTERNAL_URL = getInternalUrl();
@@ -36,16 +40,26 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      return NextResponse.json(
-        { error: `Backend error: ${response.status}`, details: errorText },
-        { status: response.status }
-      );
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json") && errorText.trim()) {
+        return new NextResponse(errorText, {
+          status: response.status,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      return apiErrorResponse({
+        status: response.status,
+        code:
+          response.status >= 500 ? "internal.server_error" : "request.invalid",
+        message: `Backend error: ${response.status}`,
+      });
     }
 
     // Stream the response back to the client
     const stream = response.body;
     if (!stream) {
-      return NextResponse.json({ error: "No response body" }, { status: 500 });
+      return internalServerErrorResponse("No response body");
     }
 
     // Return the streaming response with proper headers
@@ -60,9 +74,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Chat proxy error:", error);
-    return NextResponse.json(
-      { error: "Failed to send chat message", details: String(error) },
-      { status: 500 }
-    );
+    return internalServerErrorResponse("Failed to send chat message");
   }
 }

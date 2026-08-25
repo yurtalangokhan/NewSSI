@@ -19,6 +19,7 @@ dependencies = [
     "cryptography>=42.0.0",
     "docx2txt ~=0.8",
     "duckduckgo-search>=7.3.0",
+    "error-contract",
     "fastapi ~=0.115.5",
     "grpcio >=1.68.0",
     "httpx ~=0.28.0",
@@ -83,6 +84,7 @@ dependencies = [
 [tool.uv.sources]
 idempotency = { path = "../../packages/idempotency-py" }
 i18n-py = { path = "../../packages/i18n-py" }
+error-contract = { path = "../../packages/error-contract-py" }
 
 
 [dependency-groups]

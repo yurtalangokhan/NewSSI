@@ -1,4 +1,5 @@
 import { getInternalUrl } from "@/lib/env.server";
+import { internalServerErrorResponse } from "@/lib/api/errorResponse";
 import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!upstream.body) {
-      return NextResponse.json({ error: "No body" }, { status: 500 });
+      return internalServerErrorResponse("No body");
     }
 
     return new NextResponse(upstream.body, {
@@ -40,6 +41,6 @@ export async function POST(request: NextRequest) {
       headers: { "Content-Type": "text/event-stream" },
     });
   } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return internalServerErrorResponse("Failed");
   }
 }

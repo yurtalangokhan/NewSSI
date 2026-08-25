@@ -3,7 +3,8 @@ import logging
 import re
 import uuid
 
-from fastapi import HTTPException, UploadFile
+from error_contract import ApplicationError
+from fastapi import UploadFile
 from i18n import t
 from langchain_community.document_loaders.parsers import BS4HTMLParser, PDFMinerParser
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
@@ -500,14 +501,20 @@ async def process_document(
     if len(contents) > MAX_FILE_SIZE_BYTES:
         size_mb = len(contents) / (1024 * 1024)
         limit_mb = MAX_FILE_SIZE_BYTES / (1024 * 1024)
-        raise HTTPException(
+        raise ApplicationError(
             status_code=413,
-            detail=t(
+            code="document.file_too_large",
+            message=t(
                 "document.file_too_large",
                 filename=file.filename,
                 size_mb=f"{size_mb:.1f}",
                 limit_mb=f"{limit_mb:.0f}",
             ),
+            details={
+                "filename": file.filename or "",
+                "size_mb": f"{size_mb:.1f}",
+                "limit_mb": f"{limit_mb:.0f}",
+            },
         )
 
     blob = Blob(data=contents, mimetype=file.content_type or "text/plain")

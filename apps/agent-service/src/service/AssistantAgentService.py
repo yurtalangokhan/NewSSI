@@ -5,6 +5,7 @@ from typing import Any
 from uuid import uuid4
 
 from core.db.repositories import AssistantRepository
+from core.exceptions import NotFoundError
 from core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -278,10 +279,13 @@ class AssistantAgentService:
         # ------------------------------------------------------------------
         agent_entry = agents.get(graph_id)
         if not agent_entry:
-            from fastapi import HTTPException
             from i18n import t
 
-            raise HTTPException(status_code=404, detail=t("agent.not_found", agent_id=graph_id))
+            raise NotFoundError(
+                code="agent.not_found",
+                message=t("agent.not_found", agent_id=graph_id),
+                details={"agent_id": graph_id},
+            )
 
         graph_like = agent_entry.graph_like
 

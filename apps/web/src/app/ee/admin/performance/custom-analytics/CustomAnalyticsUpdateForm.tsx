@@ -2,6 +2,7 @@
 
 import { Label, SubLabel } from "@/components/Field";
 import { toast } from "@/hooks/useToast";
+import { getErrorMsg } from "@/lib/fetchUtils";
 import { SettingsContext } from "@/providers/SettingsProvider";
 import Button from "@/refresh-components/buttons/Button";
 import { Callout } from "@/components/ui/callout";
@@ -20,7 +21,12 @@ export function CustomAnalyticsUpdateForm() {
   const [secretKey, setSecretKey] = useState<string>("");
 
   if (!settings) {
-    return <Callout type="danger" title={t("admin.performance.customAnalytics.fetchFailed")}></Callout>;
+    return (
+      <Callout
+        type="danger"
+        title={t("admin.performance.customAnalytics.fetchFailed")}
+      ></Callout>
+    );
   }
 
   return (
@@ -45,10 +51,8 @@ export function CustomAnalyticsUpdateForm() {
           if (response.ok) {
             toast.success("Custom analytics script updated successfully!");
           } else {
-            const errorMsg = (await response.json()).detail;
-            toast.error(
-              t("admin.performance.customAnalytics.updatedSuccess")
-            );
+            const errorMsg = (await getErrorMsg(response)) ?? "Unknown error";
+            toast.error(t("admin.performance.customAnalytics.updatedSuccess"));
           }
           setSecretKey("");
         }}

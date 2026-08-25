@@ -22,6 +22,10 @@ def idempotency_headers(base_headers: dict[str, str], key: str) -> dict[str, str
     return {**base_headers, "Idempotency-Key": key}
 
 
+def error_body(response):
+    return response.json()["error"]
+
+
 async def test_documents_create_and_list_and_delete_and_search() -> None:
     """Test creating, listing, deleting, and searching documents."""
     async with get_async_test_client() as client:
@@ -152,7 +156,8 @@ async def test_documents_search_empty_query() -> None:
             headers=USER_1_HEADERS,
         )
         assert resp.status_code == 400
-        assert "Search query cannot be empty" in resp.json()["detail"]
+        assert error_body(resp)["code"] == "request.invalid"
+        assert "Search query cannot be empty" in error_body(resp)["message"]
 
 
 async def test_documents_in_nonexistent_collection() -> None:
@@ -175,7 +180,8 @@ async def test_documents_in_nonexistent_collection() -> None:
             headers=idempotency_headers(USER_1_HEADERS, "docs-missing-collection"),
         )
         assert upload_resp.status_code == 404
-        assert "Collection not found" in upload_resp.json()["detail"]
+        assert error_body(upload_resp)["code"] == "collection.not_found"
+        assert "Collection not found" in error_body(upload_resp)["message"]
 
         # Try deleting from missing collection/document
         del_resp = await client.delete(
@@ -325,8 +331,7 @@ async def test_documents_create_with_empty_file() -> None:
 
         # Empty files should be rejected with 400 Bad Request
         assert response.status_code == 400
-        data = response.json()
-        assert "Failed to process any documents" in data["detail"]
+        assert "Failed to process any documents" in error_body(response)["message"]
 
 
 async def test_documents_create_with_invalid_metadata_format() -> None:
@@ -440,8 +445,8 @@ async def test_documents_create_with_non_existent_collection() -> None:
         )
 
         assert response.status_code == 404
-        data = response.json()
-        assert "Collection not found" in data["detail"]
+        assert error_body(response)["code"] == "collection.not_found"
+        assert "Collection not found" in error_body(response)["message"]
 
 
 async def test_documents_create_with_multiple_files():
@@ -525,8 +530,7 @@ async def test_documents_create_with_mismatched_metadata():
         )
 
         assert response.status_code == 400
-        data = response.json()
-        assert "does not match number of files" in data["detail"]
+        assert "does not match number of files" in error_body(response)["message"]
 
 
 async def test_documents_create_ownership_validation():
@@ -556,5 +560,5 @@ async def test_documents_create_ownership_validation():
 
         # Should return 404 as USER_2 can't see USER_1's collection
         assert response.status_code == 404
-        data = response.json()
-        assert "Collection not found" in data["detail"]
+        assert error_body(response)["code"] == "collection.not_found"
+        assert "Collection not found" in error_body(response)["message"]

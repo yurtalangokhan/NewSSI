@@ -4,6 +4,7 @@ import {
   StreamStopInfo,
 } from "@/lib/search/interfaces";
 import { handleSSEStream } from "@/lib/search/streamingUtils";
+import { getErrorMsg } from "@/lib/fetchUtils";
 import { FeedbackType } from "@/app/app/interfaces";
 import {
   BackendMessage,
@@ -540,7 +541,12 @@ export async function uploadFilesForChat(
     body: formData,
   });
   if (!response.ok) {
-    return [[], `Failed to upload files - ${(await response.json()).detail}`];
+    return [
+      [],
+      `Failed to upload files - ${
+        (await getErrorMsg(response)) ?? "Unknown error"
+      }`,
+    ];
   }
   const responseJson = await response.json();
 

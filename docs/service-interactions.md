@@ -205,6 +205,34 @@ use `REDIS_HOST=redis`. Redis listens on port `6379` and persists data in the
 
 ---
 
+## Error response contract
+
+Backend services and Next.js API routes return one error envelope for non-2xx
+responses:
+
+```json
+{
+  "error": {
+    "code": "request.invalid",
+    "message": "Invalid request.",
+    "details": {},
+    "field_errors": [],
+    "request_id": null
+  }
+}
+```
+
+The HTTP status controls transport behavior. `error.code` is the stable
+programmatic contract for clients and localization, while `error.message` is a
+safe fallback for display. Frontend callers use the central parser in
+`apps/web/src/lib/api/errors.ts` or `getErrorMsg` from
+`apps/web/src/lib/fetchUtils.ts`; new code should not parse `detail` directly.
+
+Idempotency middleware returns this envelope itself because it may reject a
+request before FastAPI handlers run.
+
+---
+
 ## Request lifecycle: chat message
 
 ```

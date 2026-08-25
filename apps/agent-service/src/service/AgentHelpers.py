@@ -11,7 +11,6 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from fastapi import HTTPException
 from i18n import t
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
@@ -20,6 +19,7 @@ from langgraph.types import Command
 
 from agents import AgentGraph
 from core import settings
+from core.exceptions import BadRequestError, NotFoundError, ValidationFailedError
 from core.logger import get_logger
 from models.chat import UserInput
 
@@ -191,7 +191,11 @@ async def get_configured_agent(agent_id: str | int, agent_config: dict) -> Agent
     # Get the base agent
     agent_entry = agents.get(graph_id)
     if not agent_entry:
-        raise HTTPException(status_code=404, detail=t("agent.not_found", agent_id=graph_id))
+        raise NotFoundError(
+            code="agent.not_found",
+            message=t("agent.not_found", agent_id=graph_id),
+            details={"agent_id": graph_id},
+        )
 
     graph_like = agent_entry.graph_like
 
@@ -331,9 +335,10 @@ async def _handle_input(
         reserved_keys = {"thread_id", "user_id"}
         if overlap := reserved_keys & user_input.agent_config.keys():
             logger.warning(f"agent_config contains reserved keys: {overlap}")
-            raise HTTPException(
-                status_code=422,
-                detail=t("agent.reserved_keys_in_config", keys=overlap),
+            raise ValidationFailedError(
+                code="agent.reserved_keys_in_config",
+                message=t("agent.reserved_keys_in_config", keys=overlap),
+                details={"keys": sorted(overlap)},
             )
         # Map model_version from llm_override to model key
         agent_cfg = user_input.agent_config.copy()
@@ -576,7 +581,10 @@ async def _handle_input(
                     ]
                 }
     else:
-        raise HTTPException(status_code=400, detail=t("agent.message_or_messages_required"))
+        raise BadRequestError(
+            code="agent.message_or_messages_required",
+            message=t("agent.message_or_messages_required"),
+        )
 
     kwargs = {
         "input": input,

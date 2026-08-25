@@ -10,6 +10,7 @@ import {
   LLM_ADMIN_URL,
   LLM_PROVIDERS_ADMIN_URL,
 } from "@/lib/llmConfig/constants";
+import { getErrorMsg } from "@/lib/fetchUtils";
 import { OnboardingActions, OnboardingState } from "../types";
 import { APIFormFieldState } from "@/refresh-components/form/types";
 import {
@@ -212,7 +213,7 @@ export function OnboardingFormWrapper<T extends Record<string, any>>({
     );
 
     if (!response.ok) {
-      const errorMsg = (await response.json()).detail;
+      const errorMsg = (await getErrorMsg(response)) ?? "Unknown error";
       console.error("Failed to create LLM provider", errorMsg);
       setErrorMessage(errorMsg);
       setApiStatus("error");

@@ -2,6 +2,7 @@
 
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { getErrorMsg } from "@/lib/fetchUtils";
 import Button from "@/refresh-components/buttons/Button";
 import {
   AppearanceThemeSettings,
@@ -58,7 +59,7 @@ export default function ThemePage() {
       router.refresh();
       return true;
     } else {
-      const errorMsg = (await response.json()).detail;
+      const errorMsg = (await getErrorMsg(response)) ?? "Unknown error";
       toast.error(t("admin.theme.failedToUpdateSettings", { error: errorMsg }));
       return false;
     }
@@ -112,7 +113,8 @@ export default function ThemePage() {
       )
       .when("show_first_visit_notice", {
         is: true,
-        then: (schema) => schema.required(t("admin.theme.noticeHeaderRequired")),
+        then: (schema) =>
+          schema.required(t("admin.theme.noticeHeaderRequired")),
         otherwise: (schema) => schema.nullable(),
       }),
     custom_popup_content: Yup.string()
@@ -124,7 +126,8 @@ export default function ThemePage() {
       )
       .when("show_first_visit_notice", {
         is: true,
-        then: (schema) => schema.required(t("admin.theme.noticeContentRequired")),
+        then: (schema) =>
+          schema.required(t("admin.theme.noticeContentRequired")),
         otherwise: (schema) => schema.nullable(),
       }),
     enable_consent_screen: Yup.boolean().nullable(),
@@ -175,8 +178,10 @@ export default function ThemePage() {
             body: formData,
           });
           if (!response.ok) {
-            const errorMsg = (await response.json()).detail;
-            toast.error(t("admin.theme.failedToUploadLogo", { error: errorMsg }));
+            const errorMsg = (await getErrorMsg(response)) ?? "Unknown error";
+            toast.error(
+              t("admin.theme.failedToUploadLogo", { error: errorMsg })
+            );
             formikHelpers.setSubmitting(false);
             return;
           }

@@ -11,6 +11,7 @@ import asyncio
 import logging
 from typing import Any
 
+from error_contract import ApplicationError
 from fastapi import status
 
 from langconnect.database.collections import Collection
@@ -465,8 +466,6 @@ class GraphRAGService:
         limit: int = 5,
     ) -> list[dict[str, Any]]:
         """Cosine similarity search via Milvus."""
-        from fastapi.exceptions import HTTPException
-
         try:
             # Use "internal-service" to bypass owner_id check.
             # Datasource collections (created by agent-service) have no
@@ -485,7 +484,7 @@ class GraphRAGService:
                 }
                 for r in results
             ]
-        except HTTPException as exc:
+        except ApplicationError as exc:
             if exc.status_code == status.HTTP_404_NOT_FOUND:
                 # Expected for datasource-only collections that have a
                 # graph but no vector embeddings. BM25 will still work.
