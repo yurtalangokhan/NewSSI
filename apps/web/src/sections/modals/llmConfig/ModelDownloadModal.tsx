@@ -9,6 +9,7 @@ import { Button } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
 import { useTranslation } from "react-i18next";
 import { cn, formatBytes } from "@/lib/utils";
+import { authenticatedFetch } from "@/lib/fetcher";
 
 interface Props {
   open: boolean;
@@ -185,7 +186,7 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
     setProgress({ status: t("admin.llm.starting") });
 
     try {
-      const res = await fetch("/api/admin/ollama/pull", {
+      const res = await authenticatedFetch("/api/admin/ollama/pull", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

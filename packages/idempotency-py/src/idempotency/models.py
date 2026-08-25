@@ -26,7 +26,9 @@ class IdempotencyPolicy(BaseModel):
         normalized_path = path.rstrip("/") or "/"
         if normalized_policy_path == normalized_path:
             return True
-        pattern = re.sub(r"\{[^/]+\}", r"[^/]+", normalized_policy_path)
+        pattern = re.escape(normalized_policy_path)
+        pattern = re.sub(r"\\\{[^/{}:]+:path\\\}", r".+", pattern)
+        pattern = re.sub(r"\\\{[^/{}]+\\\}", r"[^/]+", pattern)
         return re.fullmatch(pattern, normalized_path) is not None
 
 

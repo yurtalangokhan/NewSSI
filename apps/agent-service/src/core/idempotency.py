@@ -50,10 +50,10 @@ def build_idempotency_policy(api_prefix: str = API_PREFIX) -> IdempotencyPolicyC
             "/admin/ollama/pull",
             "/admin/web-search/content-providers/crawl",
             "/admin/persona/upload-image",
-            "/api/chat/create-chat-message-feedback",
+            "/chat/create-chat-message-feedback",
         ],
         "DELETE": [
-            "/admin/ollama/models/{model_name}",
+            "/admin/ollama/models/{model_name:path}",
         ],
     }
     required_replay = {
@@ -84,8 +84,8 @@ def build_idempotency_policy(api_prefix: str = API_PREFIX) -> IdempotencyPolicyC
             "/datasources/{id}",
         ],
         "PUT": [
-            "/api/chat/update-chat-session-model",
-            "/api/chat/update-chat-session-temperature",
+            "/chat/update-chat-session-model",
+            "/chat/update-chat-session-temperature",
             "/providers/{provider_id}",
         ],
         "DELETE": [

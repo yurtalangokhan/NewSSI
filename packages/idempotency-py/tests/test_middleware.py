@@ -340,6 +340,23 @@ def test_route_policy_matches_optional_trailing_slash(fake_redis: FakeRedis) -> 
     assert policy.resolve("POST", "/users/").mode == IdempotencyMode.REQUIRED_REPLAY
 
 
+def test_route_policy_matches_path_converter_parameters(fake_redis: FakeRedis) -> None:
+    policy = IdempotencyPolicyConfig(
+        route_policies=[
+            IdempotencyPolicy(
+                method="DELETE",
+                path="/models/{model_name:path}",
+                mode=IdempotencyMode.DOMAIN_REQUIRED,
+            ),
+        ],
+    )
+
+    assert policy.resolve("DELETE", "/models/llama3.2").mode == (IdempotencyMode.DOMAIN_REQUIRED)
+    assert policy.resolve("DELETE", "/models/hf.co/bartowski/model").mode == (
+        IdempotencyMode.DOMAIN_REQUIRED
+    )
+
+
 def test_required_route_rejects_missing_key(fake_redis: FakeRedis) -> None:
     client = make_client()
 

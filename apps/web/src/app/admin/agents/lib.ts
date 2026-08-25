@@ -3,6 +3,7 @@ import {
   Persona,
   StarterMessage,
 } from "@/app/admin/agents/interfaces";
+import { authenticatedFetch } from "@/lib/fetcher";
 
 interface PersonaUpsertRequest {
   name: string;
@@ -189,7 +190,7 @@ function buildPersonaUpsertRequest({
 export async function uploadFile(file: File): Promise<string | null> {
   const formData = new FormData();
   formData.append("file", file);
-  const response = await fetch("/api/admin/persona/upload-image", {
+  const response = await authenticatedFetch("/api/admin/persona/upload-image", {
     method: "POST",
     body: formData,
     credentials: "include",

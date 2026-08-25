@@ -55,6 +55,7 @@ import SquareButton from "@/refresh-components/buttons/SquareButton";
 import { useAgents } from "@/hooks/useAgents";
 import {
   createPersona,
+  uploadFile,
   updatePersona,
   PersonaUpsertParameters,
 } from "@/app/admin/agents/lib";
@@ -127,21 +128,14 @@ function AgentIconEditor({ existingAgent }: AgentIconEditorProps) {
 
     // Upload the file
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const response = await fetch("/api/admin/persona/upload-image", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
+      const fileId = await uploadFile(file);
+      if (!fileId) {
         console.error("Failed to upload image");
         setUploadedImagePreview(null);
         return;
       }
 
-      const { file_id } = await response.json();
-      setFieldValue("uploaded_image_id", file_id);
+      setFieldValue("uploaded_image_id", fileId);
       setPopoverOpen(false);
     } catch (error) {
       console.error("Upload error:", error);

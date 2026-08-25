@@ -9,10 +9,18 @@
 import { useMemo } from "react";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
+import {
+  createIdempotencyKey,
+  withIdempotencyKey,
+} from "@/lib/api/idempotency";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 
 const RAG = "/api/rag";
 const CHUNKS_PAGE_SIZE = 20;
+
+function withRagIdempotency(headers: HeadersInit = {}): HeadersInit {
+  return withIdempotencyKey(headers, createIdempotencyKey());
+}
 
 // ============================================================================
 // Types — Collections
@@ -419,7 +427,7 @@ export async function createCollection(
 ): Promise<RagCollection> {
   const res = await fetch(`${RAG}/collections`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withRagIdempotency({ "Content-Type": "application/json" }),
     body: JSON.stringify(input),
   });
   if (!res.ok) {
@@ -435,7 +443,7 @@ export async function updateCollection(
 ): Promise<RagCollection> {
   const res = await fetch(`${RAG}/collections/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: withRagIdempotency({ "Content-Type": "application/json" }),
     body: JSON.stringify(input),
   });
   if (!res.ok) {
@@ -446,7 +454,10 @@ export async function updateCollection(
 }
 
 export async function deleteCollection(id: string): Promise<void> {
-  const res = await fetch(`${RAG}/collections/${id}`, { method: "DELETE" });
+  const res = await fetch(`${RAG}/collections/${id}`, {
+    method: "DELETE",
+    headers: withRagIdempotency(),
+  });
   if (!res.ok && res.status !== 204) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.detail || "Failed to delete collection");
@@ -473,6 +484,7 @@ export async function uploadDocuments(
   }
   const res = await fetch(`${RAG}/collections/${collectionId}/documents`, {
     method: "POST",
+    headers: withRagIdempotency(),
     body: formData,
   });
   if (!res.ok) {
@@ -499,7 +511,7 @@ export async function startUploadJob(
   }
   const res = await fetch(
     `${RAG}/collections/${collectionId}/documents/upload-jobs`,
-    { method: "POST", body: formData }
+    { method: "POST", headers: withRagIdempotency(), body: formData }
   );
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -527,7 +539,7 @@ export async function deleteDocument(
 ): Promise<void> {
   const res = await fetch(
     `${RAG}/collections/${collectionId}/documents/${documentId}`,
-    { method: "DELETE" }
+    { method: "DELETE", headers: withRagIdempotency() }
   );
   if (!res.ok && res.status !== 204) {
     const err = await res.json().catch(() => ({}));
@@ -543,7 +555,7 @@ export async function searchDocuments(
     `${RAG}/collections/${collectionId}/documents/search`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: withRagIdempotency({ "Content-Type": "application/json" }),
       body: JSON.stringify(input),
     }
   );
@@ -561,7 +573,7 @@ export async function searchDocuments(
 export async function buildGraph(input: GraphBuildInput): Promise<void> {
   const res = await fetch(`${RAG}/graph/build`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withRagIdempotency({ "Content-Type": "application/json" }),
     body: JSON.stringify(input),
   });
   if (!res.ok) {
@@ -573,6 +585,7 @@ export async function buildGraph(input: GraphBuildInput): Promise<void> {
 export async function pauseGraphBuild(collectionId: string): Promise<void> {
   const res = await fetch(`${RAG}/graph/build/${collectionId}/pause`, {
     method: "POST",
+    headers: withRagIdempotency(),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -583,6 +596,7 @@ export async function pauseGraphBuild(collectionId: string): Promise<void> {
 export async function resumeGraphBuild(collectionId: string): Promise<void> {
   const res = await fetch(`${RAG}/graph/build/${collectionId}/resume`, {
     method: "POST",
+    headers: withRagIdempotency(),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -593,6 +607,7 @@ export async function resumeGraphBuild(collectionId: string): Promise<void> {
 export async function stopGraphBuild(collectionId: string): Promise<void> {
   const res = await fetch(`${RAG}/graph/build/${collectionId}/stop`, {
     method: "POST",
+    headers: withRagIdempotency(),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -603,6 +618,7 @@ export async function stopGraphBuild(collectionId: string): Promise<void> {
 export async function deleteGraph(collectionId: string): Promise<void> {
   const res = await fetch(`${RAG}/graph/collections/${collectionId}`, {
     method: "DELETE",
+    headers: withRagIdempotency(),
   });
   if (!res.ok && res.status !== 204) {
     const err = await res.json().catch(() => ({}));
@@ -626,7 +642,7 @@ export async function searchGraph(
 ): Promise<GraphSearchResult> {
   const res = await fetch(`${RAG}/graph/search`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withRagIdempotency({ "Content-Type": "application/json" }),
     body: JSON.stringify(input),
   });
   if (!res.ok) {

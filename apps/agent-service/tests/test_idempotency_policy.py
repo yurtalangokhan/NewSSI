@@ -63,6 +63,9 @@ def test_agent_idempotency_policy_classifies_spec_named_domain_routes() -> None:
     assert policy.resolve("DELETE", "/api/v9/admin/ollama/models/llama3.2").mode == (
         IdempotencyMode.DOMAIN_REQUIRED
     )
+    assert policy.resolve("DELETE", "/api/v9/admin/ollama/models/hf.co/bartowski/model").mode == (
+        IdempotencyMode.DOMAIN_REQUIRED
+    )
 
 
 def test_agent_idempotency_policy_enforces_ready_domain_routes() -> None:
@@ -89,6 +92,7 @@ def test_agent_idempotency_policy_enforces_ready_domain_routes() -> None:
         ("POST", "/api/v9/admin/web-search/content-providers/crawl"),
         ("POST", "/api/v9/admin/persona/upload-image"),
         ("DELETE", "/api/v9/admin/ollama/models/llama3.2"),
+        ("DELETE", "/api/v9/admin/ollama/models/hf.co/bartowski/model"),
     ]:
         resolved = policy.resolve(method, path)
         assert resolved.mode == IdempotencyMode.DOMAIN_REQUIRED
@@ -103,12 +107,17 @@ def test_agent_idempotency_policy_covers_rebased_side_effects() -> None:
     for method, path, expected_mode in [
         (
             "POST",
-            "/api/v9/api/chat/create-chat-message-feedback",
+            "/api/v9/chat/create-chat-message-feedback",
             IdempotencyMode.DOMAIN_REQUIRED,
         ),
         (
             "PUT",
-            "/api/v9/api/chat/update-chat-session-model",
+            "/api/v9/chat/update-chat-session-model",
+            IdempotencyMode.OPTIONAL_REPLAY,
+        ),
+        (
+            "PUT",
+            "/api/v9/chat/update-chat-session-temperature",
             IdempotencyMode.OPTIONAL_REPLAY,
         ),
         ("POST", "/api/v9/providers", IdempotencyMode.REQUIRED_REPLAY),
