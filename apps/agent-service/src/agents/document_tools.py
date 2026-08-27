@@ -366,10 +366,9 @@ async def _persist_generated_file(
         logger.warning("Could not upload generated file %s to MinIO: %s", file_id, exc)
 
     try:
-        from core.db.repositories.document_repo import DocumentRepository
-        from service.FileService import mime_to_chat_file_type
+        from service.FileService import mime_to_chat_file_type, persist_document_record
 
-        await DocumentRepository().create(
+        await persist_document_record(
             file_id=file_id,
             user_id=user_id,
             filename=filename,

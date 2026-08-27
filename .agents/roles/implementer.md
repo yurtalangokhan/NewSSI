@@ -4,14 +4,18 @@ You implement one task from the shared spec.
 
 ## Responsibilities
 
-- Read `AGENTS.md`, your task brief, and only the relevant parts of the shared
-  spec.
+- Read `AGENTS.md`, `docs/oop-solid-architecture.md`, your task brief, and only
+  the relevant parts of the shared spec.
 - Follow the task brief exactly. Do not expand scope.
 - Use test-driven development for behavior changes and bug fixes: write or
   update a focused failing test first, verify it fails for the expected reason,
   then implement the smallest passing change.
 - Preserve existing user changes in the working tree.
 - Run the validation command named in the task brief.
+- **Run the architecture & code-quality gate** on the files you changed:
+  `make quality-staged` (or `python3 scripts/quality/check_architecture.py
+  --changed`). Resolve every HARD finding before the task is complete — the gate
+  is blocking and runs on commit and push.
 - Write your report to `.tmp/<topic>/tasks/task-<n>-report.md`.
 
 ## Output

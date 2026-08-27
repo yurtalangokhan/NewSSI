@@ -1,4 +1,3 @@
-import io
 import logging
 from typing import Annotated, Any
 from uuid import UUID
@@ -19,14 +18,18 @@ from langchain_core.documents import Document
 from pydantic import TypeAdapter, ValidationError
 
 from langconnect.auth import AuthenticatedUser, require_permission
-from langconnect.database.collections import Collection
 from langconnect.models import SearchQuery, SearchResult
-from langconnect.models.documents import UploadJobStartResponse, UploadProgress
+from langconnect.models.documents import (
+    FileUploadDTO,
+    UploadJobStartResponse,
+    UploadProgress,
+)
 from langconnect.services import document_upload_service, process_document
 from langconnect.services.build_lock import (
     ensure_collection_mutable,
     ensure_not_connector_managed_collection,
 )
+from langconnect.services.collections import Collection
 
 # Create a TypeAdapter that enforces “list of dict”
 _metadata_adapter = TypeAdapter(list[dict[str, Any]])
@@ -34,6 +37,21 @@ _metadata_adapter = TypeAdapter(list[dict[str, Any]])
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["documents"])
+
+
+async def _upload_file_to_dto(file: UploadFile) -> FileUploadDTO:
+    """Read a FastAPI ``UploadFile`` into a framework-agnostic DTO.
+
+    All byte reading happens here, at the API boundary, so downstream
+    services never depend on FastAPI or Starlette types.
+    """
+    content = await file.read()
+    return FileUploadDTO(
+        filename=file.filename or "",
+        content_type=file.content_type,
+        size=len(content),
+        content=content,
+    )
 
 
 @router.post("/collections/{collection_id}/documents", response_model=dict[str, Any])
@@ -76,26 +94,31 @@ async def documents_create(
     processed_files_count = 0
     failed_files = []
 
+    # Convert UploadFile objects to framework-agnostic DTOs once, up-front,
+    # so that all downstream code (services, processors) never sees FastAPI
+    # types.
+    file_dtos: list[FileUploadDTO] = [await _upload_file_to_dto(f) for f in files]
+
     # Pair files with their corresponding metadata
-    for file, metadata in zip(files, metadatas, strict=False):
+    for file_dto, metadata in zip(file_dtos, metadatas, strict=False):
         try:
             # Pass metadata to process_document
-            langchain_docs = await process_document(file, metadata=metadata)
+            langchain_docs = await process_document(file_dto, metadata=metadata)
             if langchain_docs:
                 docs_to_index.extend(langchain_docs)
                 processed_files_count += 1
             else:
                 logger.info(
-                    f"Warning: File {file.filename} resulted "
+                    f"Warning: File {file_dto.filename} resulted "
                     f"in no processable documents."
                 )
                 # Decide if this constitutes a failure
-                # failed_files.append(file.filename)
+                # failed_files.append(file_dto.filename)
 
         except Exception as proc_exc:
             # Log the error and the file that caused it
-            logger.info(f"Error processing file {file.filename}: {proc_exc}")
-            failed_files.append(file.filename)
+            logger.info(f"Error processing file {file_dto.filename}: {proc_exc}")
+            failed_files.append(file_dto.filename)
             # Decide on behavior: continue processing others or fail fast?
             # For now, let's collect failures and report them, but continue processing.
 
@@ -208,18 +231,11 @@ async def documents_upload_job_start(
             message=t("document.upload_already_in_progress"),
         )
 
-    # Read file contents up front and rewrap them as fresh in-memory
-    # UploadFile objects. Starlette closes the original UploadFile handles
-    # once this request finishes, which happens before a BackgroundTasks
-    # callback gets a chance to read from them.
-    detached_files: list[UploadFile] = []
-    for f in files:
-        contents = await f.read()
-        detached_files.append(
-            UploadFile(
-                file=io.BytesIO(contents), filename=f.filename, headers=f.headers
-            )
-        )
+    # Read file contents up-front and convert to framework-agnostic DTOs.
+    # Starlette closes the original UploadFile handles once this request
+    # finishes, which happens before a BackgroundTasks callback gets a
+    # chance to read from them, so all bytes must be consumed here.
+    file_dtos: list[FileUploadDTO] = [await _upload_file_to_dto(f) for f in files]
 
     document_upload_service.initialize_upload_progress(
         str(collection_id), total_files=len(files)
@@ -228,7 +244,7 @@ async def documents_upload_job_start(
         document_upload_service.run_upload_job,
         str(collection_id),
         user.identity,
-        detached_files,
+        file_dtos,
         metadatas,
     )
 
@@ -270,7 +286,7 @@ async def documents_list(
     offset: int = Query(0, ge=0),
 ):
     """Lists documents within a specific collection."""
-    from langconnect.database.collections import CollectionsManager
+    from langconnect.services.collections import CollectionsManager
 
     # Connector-managed collections (e.g. Airbyte) are created without owner_id.
     # Use internal access so the ownership filter doesn't block the read.

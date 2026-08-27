@@ -165,7 +165,7 @@ class AssistantAgentService:
 
         # Check if agent_id is a persona ID (numeric)
         if agent_id.isdigit():
-            from service.PersonaRepository import PersonaDB
+            from repository.persona_repository import PersonaDB
 
             try:
                 persona = await PersonaDB.get(int(agent_id))

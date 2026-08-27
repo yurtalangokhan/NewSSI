@@ -1,13 +1,10 @@
-"""
-Datasource–Airbyte Mapping Database Manager.
+"""Airbyte mapping repository facade.
+
+Canonical location for the ``AirbyteMappingDB`` facade that delegates to
+:class:`~core.db.repositories.AirbyteMappingRepository`.
 
 Manages the ``datasource_airbyte_mapping`` table which links local
 datasource IDs to their Airbyte source/connection/destination IDs.
-
-All database access is now delegated to
-:class:`~core.db.repositories.AirbyteMappingRepository`.
-This module keeps the ``AirbyteMappingDB`` façade (same static-method
-signatures) so that existing callers continue to work unchanged.
 """
 
 from __future__ import annotations

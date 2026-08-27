@@ -6,7 +6,7 @@ must never be rendered in the chat — but it is also the only sign that a long
 document is being written, so it is reported rather than silently dropped.
 """
 
-from api.routes.AgentsRoute import ThinkingTagProcessor
+from service.thinking_tag_processor import ThinkingTagProcessor
 
 
 def _feed_all(processor: ThinkingTagProcessor, chunks: list[str]) -> list[dict]:

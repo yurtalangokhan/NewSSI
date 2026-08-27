@@ -162,6 +162,15 @@ ignore = [
   "TC001",
   "TC003",
 ]
+"langconnect/services/collections.py" = [
+  "ANN202",  # LangChain vector store return type is not stable
+  "ANN401",  # metadata comes from external stores
+  "D107",    # simple dependency-capturing constructors
+  "PERF401", # clarity over micro-optimizing adapter row mapping
+  "SLF001",  # LangChain/Milvus adapter fields are required here
+  "TC001",
+  "TC003",
+]
 "langconnect/database/neo4j/graph_store.py" = [
   "D102",
   "D107",

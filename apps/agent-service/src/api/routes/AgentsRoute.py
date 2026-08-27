@@ -5,24 +5,21 @@ Endpoints: /info, /invoke, /stream, /feedback, /history
 plus the ``message_generator`` streaming helper.
 """
 
-import asyncio
-import inspect
 import json
 import logging
 import re
 import time
-from collections.abc import AsyncGenerator, AsyncIterator
+from collections.abc import AsyncGenerator
 from typing import Any
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from i18n import t
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
-from langgraph.errors import GraphRecursionError
 from langgraph.types import Interrupt
 
+from agent_composition import ComponentKind, list_available
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
 from api.dependencies import AuthenticatedUser, require_permission, require_user
 from controller import get_persona_controller
@@ -38,6 +35,7 @@ from models.chat import (
     UserInput,
 )
 from service.AgentHelpers import _handle_input
+from service.ai_message import _create_ai_message
 from service.AssistantAgentService import AssistantAgentService
 from service.AuthService import extract_user_id_from_token
 from service.DocumentProgressTracker import DocumentProgressTracker, is_document_tool
@@ -45,282 +43,18 @@ from service.GeneratedFilePacket import (
     build_generated_file_packet_obj,
     parse_generated_file_payload,
 )
-from service.Utils import (
+from service.message_conversion import (
     convert_message_content_to_string,
     langchain_to_chat_message,
     remove_tool_calls,
 )
+from service.stream_helpers import Heartbeat, stream_error_payload, with_idle_heartbeat
+from service.thinking_tag_processor import ThinkingTagProcessor
 from service.WebSearchProgressTracker import WebSearchProgressTracker, is_web_search_tool
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/agents", tags=["agents"], dependencies=[Depends(require_user)])
-
-
-class _Heartbeat:
-    """Yielded by `_with_idle_heartbeat` while the wrapped stream is quiet.
-
-    Carries how long the current silence has lasted so the client can show
-    the user that work is still happening rather than a frozen screen.
-    """
-
-    __slots__ = ("silent_seconds",)
-
-    def __init__(self, silent_seconds: float) -> None:
-        self.silent_seconds = silent_seconds
-
-
-async def _with_idle_heartbeat(
-    source: AsyncIterator[Any], interval: float
-) -> AsyncGenerator[Any, None]:
-    """Re-yield `source`, injecting `_HEARTBEAT` during silent stretches.
-
-    A model writing a document emits the whole body as tool-call arguments,
-    and providers that only hand over the *completed* call (Ollama via
-    langchain-ollama) send nothing at all while that happens — a long
-    document can take minutes. `DocumentProgressTracker` cannot fill that
-    gap for them because it has no argument chunks to count. Meanwhile any
-    proxy in front of the stream sees an idle connection: Kong defaults to a
-    60s read timeout and tears it down mid-generation, which surfaces in the
-    browser as ERR_INCOMPLETE_CHUNKED_ENCODING.
-    """
-    iterator = source.__aiter__()
-    pending: asyncio.Future | None = None
-    try:
-        while True:
-            pending = asyncio.ensure_future(iterator.__anext__())
-            quiet_since = time.monotonic()
-            while True:
-                done, _ = await asyncio.wait({pending}, timeout=interval)
-                if pending in done:
-                    break
-                yield _Heartbeat(time.monotonic() - quiet_since)
-            try:
-                item = pending.result()
-            except StopAsyncIteration:
-                return
-            finally:
-                pending = None
-            yield item
-    finally:
-        if pending is not None and not pending.done():
-            pending.cancel()
-
-
-def _stream_error_payload(exc: Exception) -> dict[str, Any]:
-    if isinstance(exc, httpx.ConnectError | httpx.ConnectTimeout | httpx.ReadTimeout):
-        return {
-            "type": "error",
-            "error": "LLM provider is unreachable. Check the provider URL, network, or model server status.",
-            "content": "LLM provider is unreachable. Check the provider URL, network, or model server status.",
-            "error_code": "provider_unavailable",
-            "is_retryable": True,
-            "details": {"exception_type": type(exc).__name__},
-        }
-
-    if isinstance(exc, GraphRecursionError):
-        return {
-            "type": "error",
-            "error": "The agent took too many steps to finish this turn (too many searches/tool calls in a row) and was stopped.",
-            "content": "The agent took too many steps to finish this turn (too many searches/tool calls in a row) and was stopped.",
-            "error_code": "recursion_limit_exceeded",
-            "is_retryable": True,
-            "details": {"exception_type": type(exc).__name__},
-        }
-
-    if isinstance(exc, httpx.HTTPStatusError):
-        status_code = exc.response.status_code if exc.response else None
-        return {
-            "type": "error",
-            "error": "LLM provider returned an error.",
-            "content": "LLM provider returned an error.",
-            "error_code": "provider_http_error",
-            "is_retryable": bool(status_code is None or status_code >= 500),
-            "details": {
-                "exception_type": type(exc).__name__,
-                "status_code": status_code,
-            },
-        }
-
-    return {
-        "type": "error",
-        "error": "Internal server error",
-        "content": "Internal server error",
-        "error_code": "internal_error",
-        "is_retryable": True,
-        "details": {"exception_type": type(exc).__name__},
-    }
-
-
-class ThinkingTagProcessor:
-    """Tag-based thinking models (<think>...</think>) için streaming state machine.
-
-    Also strips tool-call markup: models that are not natively tool-calling emit
-    `<tool_call>{...}</tool_call>` as ordinary text, and whatever the provider's
-    parser leaves behind would otherwise be rendered in the chat. That text is
-    reported as `tool_call_text` events instead of being dropped outright, so
-    callers can still see what the model is writing (a document body streamed
-    this way is the only progress signal available for those models).
-    """
-
-    OPEN_TAGS = ("<thinking>", "<think>")
-    CLOSE_TAGS = ("</thinking>", "</think>")
-    TOOL_OPEN_TAGS = ("<tool_call>", "<tool_use>")
-    # A leading "<" is sometimes consumed by the provider's own parser, leaving
-    # a bare "/tool_call>" in the text.
-    TOOL_CLOSE_TAGS = ("</tool_call>", "</tool_use>", "/tool_call>", "/tool_use>")
-    MAX_TAG_LEN = max(len(t) for t in OPEN_TAGS + CLOSE_TAGS + TOOL_OPEN_TAGS + TOOL_CLOSE_TAGS)
-    MAX_TAG_LEN = max(len(t) for t in OPEN_TAGS + CLOSE_TAGS + TOOL_OPEN_TAGS + TOOL_CLOSE_TAGS)
-
-    def __init__(self):
-        self.in_thinking = False
-        self.in_tool_call = False
-        self.reasoning_started = False
-        self.buffer = ""
-        self.pending_prefix = ""
-
-    def feed(self, text: str) -> list[dict]:
-        self.buffer += text
-        events: list[dict] = []
-
-        while self.buffer:
-            if self.in_tool_call:
-                if not self._consume_tool_call(events):
-                    break
-            elif not self.in_thinking:
-                if not self._consume_answer(events):
-                    break
-            elif not self._consume_thinking(events):
-                break
-
-        return events
-
-    def _consume_tool_call(self, events: list[dict]) -> bool:
-        """Inside tool-call markup: report it separately, never as answer text."""
-        pos, tag = self._find_tag(self.buffer, self.TOOL_CLOSE_TAGS)
-        if pos is not None:
-            if pos > 0:
-                events.append({"type": "tool_call_text", "content": self.buffer[:pos]})
-            self.in_tool_call = False
-            self.buffer = self.pending_prefix + self.buffer[pos + len(tag) :]
-            self.pending_prefix = ""
-            return True
-
-        safe_len = max(0, len(self.buffer) - self.MAX_TAG_LEN)
-        if safe_len > 0:
-            events.append({"type": "tool_call_text", "content": self.buffer[:safe_len]})
-            self.buffer = self.buffer[safe_len:]
-        return False
-
-    def _consume_answer(self, events: list[dict]) -> bool:
-        pos, tag, kind = self._find_first(
-            self.buffer,
-            (self.OPEN_TAGS, "think"),
-            (self.TOOL_OPEN_TAGS, "tool"),
-            (self.TOOL_CLOSE_TAGS, "stray"),
-        )
-        if pos is not None:
-            if pos > 0:
-                content = self.buffer[:pos]
-                if kind == "tool" and not content.endswith(
-                    (" ", "\n", "\t", ".", "!", "?", ":", ";", ",")
-                ):
-                    last_space = max(content.rfind(" "), content.rfind("\n"), content.rfind("\t"))
-                    if last_space != -1:
-                        events.append({"type": "token", "content": content[: last_space + 1]})
-                        self.pending_prefix = content[last_space + 1 :]
-                        self.buffer = self.buffer[pos + len(tag) :]
-                    else:
-                        events.append({"type": "token", "content": content})
-                        self.buffer = self.buffer[pos + len(tag) :]
-                else:
-                    events.append({"type": "token", "content": content})
-                    self.buffer = self.buffer[pos + len(tag) :]
-            else:
-                self.buffer = self.buffer[pos + len(tag) :]
-
-            if kind == "think":
-                if not self.reasoning_started:
-                    events.append({"type": "reasoning_start"})
-                    self.reasoning_started = True
-                self.in_thinking = True
-            elif kind == "tool":
-                self.in_tool_call = True
-            # "stray": an unmatched close tag is simply dropped.
-            return True
-
-        has_partial_tag = False
-        last_lt = self.buffer.rfind("<")
-        if last_lt != -1 and (len(self.buffer) - last_lt) <= self.MAX_TAG_LEN:
-            has_partial_tag = True
-
-        safe_len = max(0, last_lt) if has_partial_tag else len(self.buffer)
-        if safe_len > 0:
-            target_content = self.buffer[:safe_len]
-            last_space = max(
-                target_content.rfind(" "),
-                target_content.rfind("\n"),
-                target_content.rfind("\t"),
-            )
-            if last_space != -1:
-                events.append({"type": "token", "content": self.buffer[: last_space + 1]})
-                self.buffer = self.buffer[last_space + 1 :]
-        return False
-
-    def _consume_thinking(self, events: list[dict]) -> bool:
-        pos, tag, kind = self._find_first(
-            self.buffer,
-            (self.CLOSE_TAGS, "think_end"),
-            (self.TOOL_OPEN_TAGS, "tool"),
-        )
-        if pos is not None:
-            if pos > 0:
-                events.append({"type": "reasoning_delta", "reasoning": self.buffer[:pos]})
-            self.buffer = self.buffer[pos + len(tag) :]
-            if kind == "think_end":
-                self.in_thinking = False
-            else:
-                # Models write their tool call inside the reasoning block too.
-                self.in_tool_call = True
-            return True
-
-        safe_len = max(0, len(self.buffer) - self.MAX_TAG_LEN)
-        if safe_len > 0:
-            events.append({"type": "reasoning_delta", "reasoning": self.buffer[:safe_len]})
-            self.buffer = self.buffer[safe_len:]
-        return False
-
-    def flush(self) -> list[dict]:
-        """Stream bitişinde kalan buffer'ı emit et."""
-        if not self.buffer:
-            return []
-        if self.in_tool_call:
-            event = {"type": "tool_call_text", "content": self.buffer}
-        elif self.in_thinking:
-            event = {"type": "reasoning_delta", "reasoning": self.buffer}
-        else:
-            event = {"type": "token", "content": self.buffer}
-        self.buffer = ""
-        return [event]
-
-    @classmethod
-    def _find_first(cls, text: str, *groups: tuple) -> tuple:
-        """Find the earliest tag across several labelled tag groups."""
-        best_pos, best_tag, best_kind = None, None, None
-        for tags, kind in groups:
-            pos, tag = cls._find_tag(text, tags)
-            if pos is not None and (best_pos is None or pos < best_pos):
-                best_pos, best_tag, best_kind = pos, tag, kind
-        return best_pos, best_tag, best_kind
-
-    @staticmethod
-    def _find_tag(text: str, tags: tuple) -> tuple:
-        best_pos, best_tag = None, None
-        for tag in tags:
-            pos = text.find(tag)
-            if pos != -1 and (best_pos is None or pos < best_pos):
-                best_pos, best_tag = pos, tag
-        return best_pos, best_tag
 
 
 # =============================================================================
@@ -362,6 +96,24 @@ async def agent_catalog(
 ) -> list[dict[str, Any]]:
     """Return lightweight product agent summaries for catalog and chat selection."""
     return await get_persona_controller().get_agent_catalog(user)
+
+
+@router.get("/composition/catalog")
+async def agent_composition_catalog(
+    _user: AuthenticatedUser = Depends(require_permission("persona:read")),
+    kind: str | None = None,
+) -> dict[str, Any]:
+    """Return available agent composition components from the canonical catalog.
+
+    Query param ``kind`` filters by component kind:
+    brain, perceptron, graph_strategy, runtime_policy.
+    When omitted returns all available entries.
+    """
+    component_kind: ComponentKind | None = ComponentKind(kind) if kind else None
+    return {
+        "components": list_available(component_kind),
+        "kinds": [k.value for k in ComponentKind],
+    }
 
 
 @router.get("/{agent_id}")
@@ -551,14 +303,14 @@ async def message_generator(
         return _flush_pending_answer_text()
 
     try:
-        async for stream_event in _with_idle_heartbeat(
+        async for stream_event in with_idle_heartbeat(
             agent.astream(**kwargs, stream_mode=["updates", "messages", "custom"], subgraphs=True),
             settings.STREAM_HEARTBEAT_SECONDS,
         ):
-            if isinstance(stream_event, _Heartbeat):
+            if isinstance(stream_event, Heartbeat):
                 # An SSE comment: no packet type, so clients ignore it, but it
                 # keeps proxies from seeing an idle connection while the model
-                # writes a long tool call (see `_with_idle_heartbeat`).
+                # writes a long tool call (see ``with_idle_heartbeat``).
                 yield ": keep-alive\n\n"
                 # Nothing more is coming for now, so anything the tag
                 # processor is still holding back belongs on screen rather
@@ -1032,7 +784,7 @@ async def message_generator(
                 )
 
     except Exception as e:
-        payload = _stream_error_payload(e)
+        payload = stream_error_payload(e)
         if payload["error_code"].startswith("provider_"):
             logger.warning(
                 "Provider error in message generator: %s: %s",
@@ -1055,13 +807,6 @@ async def message_generator(
         for packet in document_progress.flush():
             yield f"data: {json.dumps(packet)}\n\n"
         yield "data: [DONE]\n\n"
-
-
-def _create_ai_message(parts: dict) -> AIMessage:
-    sig = inspect.signature(AIMessage)
-    valid_keys = set(sig.parameters)
-    filtered = {k: v for k, v in parts.items() if k in valid_keys}
-    return AIMessage(**filtered)
 
 
 def _extract_reasoning_text(message: AIMessageChunk) -> str:

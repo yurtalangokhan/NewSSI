@@ -95,6 +95,9 @@ class UserController(BaseController):
         )
         return {"users": users, "total": total, "skip": skip, "limit": limit}
 
+    async def get_invited_users(self) -> list[dict[str, Any]]:
+        return await self.user_service.get_invited_users()
+
     async def create_user(self, **payload: Any) -> dict[str, Any]:
         try:
             return await self.user_service.create_user(**payload)
@@ -107,6 +110,10 @@ class UserController(BaseController):
             if not user:
                 self._raise_not_found("user.not_found")
             return user
+        except ForbiddenError as e:
+            self._raise_forbidden(str(e))
+        except NotFoundError as e:
+            self._raise_not_found(str(e))
         except ValueError as e:
             self._raise_bad_request(str(e))
 

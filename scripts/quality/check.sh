@@ -271,6 +271,20 @@ if has_changed_path '^(apps/(agent-service|rag-service|user-service|tools-servic
   run "backend i18n check" python3 scripts/quality/check_i18n.py
 fi
 
+# Architecture & code-quality gate (blocking). Enforces docs/oop-solid-architecture.md
+# and the "Architecture & code-quality gate" section of docs/coding-standards.md.
+# Runs on commit and push; pre-existing offenders do not block unless they are part
+# of the current diff (changed-files-only policy).
+if has_changed_path '^(apps/(agent-service|rag-service|user-service|tools-service)/|apps/web/)'; then
+  export QUALITY_FILES="$FILES"
+  run "architecture & code-quality gate" python3 scripts/quality/check_architecture.py --changed
+  if [[ "$MODE" == "all" ]]; then
+    run "quality score report" python3 scripts/quality/score.py --changed
+  else
+    run "quality score threshold" python3 scripts/quality/score.py --changed --min-score "${QUALITY_SCORE_MIN:-80}"
+  fi
+fi
+
 
 if has_changed_path '^apps/web/(src|tests|package.json|package-lock.json|Makefile|next.config|tsconfig|jest.config|playwright.config)'; then
   run "web validate" run_web_checks

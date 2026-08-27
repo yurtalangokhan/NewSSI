@@ -349,14 +349,31 @@ and ESLint `--fix` on changed web source files. During pre-commit, the hook
 refreshes only those auto-fixed staged files before it runs whitespace,
 lint, typecheck, and test gates.
 
+The hook also runs the **architecture & code-quality gate**
+(`scripts/quality/check_architecture.py`), which enforces the SOLID / clean-architecture
+rules from `docs/oop-solid-architecture.md` on the changed files. HARD violations
+block the commit/push. Run it standalone with `make architecture-check` (full-tree
+report) or see `docs/coding-standards.md` ("Architecture & code-quality gate").
+
+**Agents must run this gate locally during development and resolve every HARD
+finding in the files they change before committing or pushing.** The hook will
+block the push otherwise. This is a mandatory part of the development lifecycle
+and validation workflow, not an optional check.
+
 Before committing:
 ```sh
-make quality-staged   # whitespace, shell syntax, changed-service validate, docker-config
+make quality-staged   # whitespace, shell syntax, changed-service validate, architecture gate, docker-config
 ```
 
-Before pushing:
+Before pushing (confirm the architecture gate is green for your changed files):
 ```sh
 make quality-push     # same as staged against upstream diff, plus docker-verify
+```
+
+Run the gate on specific files while iterating:
+```sh
+QUALITY_FILES="apps/agent-service/src/service/foo.py" \
+  python3 scripts/quality/check_architecture.py --changed
 ```
 
 Fast path per service:

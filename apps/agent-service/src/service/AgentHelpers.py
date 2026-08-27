@@ -76,7 +76,7 @@ async def get_graph_and_config(agent_id: str | int) -> tuple[str, dict]:
 
     # Check if agent_id is a persona ID (numeric) - for custom agents
     if agent_id.isdigit():
-        from service.PersonaRepository import PersonaDB
+        from repository.persona_repository import PersonaDB
 
         try:
             persona = await PersonaDB.get(int(agent_id))
@@ -497,7 +497,7 @@ async def _handle_input(
             f"aget_state failed (no checkpointer?): {e} — treating as fresh conversation"
         )
 
-    from service.Utils import convert_input_messages
+    from service.message_conversion import convert_input_messages
 
     input: Command | dict[str, Any] | None
     if interrupted_tasks:

@@ -278,3 +278,29 @@ function stringOrUndefined(value: unknown): string | undefined {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
+/**
+ * Parse a non-ok Response into the shared error contract and throw an Error
+ * with the best available user-facing message.  Falls back to `fallback` when
+ * the body cannot be parsed or is empty.
+ *
+ * This replaces the manual `res.json().catch(…) → err.detail || fallback`
+ * pattern found across API client modules.
+ */
+export async function throwParsedApiError(
+  response: Response,
+  fallback: string
+): Promise<never> {
+  let bodyText: string | null = null;
+  try {
+    bodyText =
+      typeof response.text === "function" ? await response.text() : null;
+  } catch {
+    // Ignore read errors.
+  }
+  if (!bodyText) {
+    throw new Error(fallback);
+  }
+  const parsed = parseApiErrorPayload(bodyText, response.status);
+  throw new Error(parsed.userMessage);
+}

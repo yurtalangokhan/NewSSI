@@ -25,6 +25,7 @@
 | `docs/env-variables.md` | Consolidated env vars for all services + infrastructure |
 | `docs/service-interactions.md` | Request flows, auth chain, service dependency map, integration patterns |
 | `docs/code-review-skills.md` | Code review skill recommendations |
+| `AGENTS.md § Progress tracking rule` | Mandatory progress.md updates after each task completion |
 | `docs/api/agent-service.md` | Agent service endpoints (100+ routes) |
 | `docs/api/user-service.md` | User service endpoints (auth, users, roles) |
 | `docs/api/rag-service.md` | RAG service endpoints (collections, graph, search) |
@@ -185,6 +186,29 @@ Load the relevant skill first:
 - `fastapi` / `fastapi-expert` — FastAPI, Pydantic, SQLAlchemy, auth
 - `frontend-design` — UI changes
 
+### Architecture & code-quality rules (SOLID, OOP, clean architecture)
+
+Committed and pushed code must obey the SOLID principles and clean-architecture
+rules documented in `docs/oop-solid-architecture.md`. These are enforced by a
+**blocking gate** (`scripts/quality/check_architecture.py`, wired into the
+commit/push hooks via `scripts/quality/check.sh`). Read that doc before coding
+or reviewing.
+
+- Dependency direction points inward: `domain/` must never import
+  `integrations`, `core.db`, or concrete `repository` implementations.
+- Delivery adapters (`fastapi`, `UploadFile`, `HTTPException`, `status`) stay at
+  the API edge — never in `service/` or `domain/`.
+- Repositories, clients, and gateways live in their own layers, not in
+  `service/` or `controller/`.
+- No generic bucket modules (`Utils`, `Helpers`); names must explain ownership.
+- The gate checks only the files you changed (pre-existing offenders do not
+  block unless you touch them). HARD findings fail the commit/push; size and
+  complexity are WARN-only. See `docs/coding-standards.md` for the full rule
+  table and how to run the check locally.
+- The quality runner also computes a 0-100 score from architecture findings.
+  `quality-staged` and `quality-push` fail below `QUALITY_SCORE_MIN`, which
+  defaults to `80`. Use `make quality-score` to evaluate the full tracked tree.
+
 ### Spec-driven implementation workflow
 
 Features and larger changes start with a detailed spec document in a topic
@@ -269,11 +293,17 @@ cross-service work, or tasks where shared context and review loops reduce risk.
    flow, and validation gaps before implementation begins.
 3. **Implementer:** Works one task brief at a time, follows TDD for behavior
    changes, preserves existing user changes, and writes the task report.
+   **Must run the architecture & code-quality gate** (`make quality-staged` or
+   `python3 scripts/quality/check_architecture.py --changed`) on the files it
+   changed, confirm the quality score meets `QUALITY_SCORE_MIN`, and resolve
+   every HARD finding before the task is considered done.
 4. **Tester:** Confirms regression coverage and maps changed files to required
-   Makefile/npm gates.
+   Makefile/npm gates, including the architecture gate.
 5. **Reviewer:** Checks each task for spec compliance and code quality.
-   Critical and important findings must be fixed and re-reviewed before moving
-   on.
+   **Also checks the architecture gate**: HARD findings on changed files are
+   blocking, a score below `QUALITY_SCORE_MIN` is blocking, and both must be
+   fixed and re-reviewed before moving on. Critical and important findings must
+   be fixed and re-reviewed before moving on.
 6. **Docs maintainer:** Updates durable docs when completed work changes
    architecture, service boundaries, API flow, auth flow, integration, data
    model, or agent behavior.
@@ -287,17 +317,74 @@ cross-service work, or tasks where shared context and review loops reduce risk.
 - Keep long handoffs in files, not pasted conversation text.
 - Update `.tmp/<topic>/progress.md` after each reviewed task completes.
 - If implementation reveals a spec gap, update the spec before continuing.
+- **Every task must leave the architecture & code-quality gate green for its
+  changed files and meet the quality score threshold.** The implementer runs it
+  locally; the reviewer confirms it in the task report. A task that introduces
+  a HARD architecture finding or drops below `QUALITY_SCORE_MIN` is not complete
+  until the issue is fixed.
 - Final responses must state which roles/skills were used, which validation
-  gates passed or failed, and whether the code is ready to push.
+  gates passed or failed (including the architecture gate), and whether the code
+  is ready to push.
+
+### Progress tracking rule
+
+Every spec-driven implementation task MUST update the spec's progress file
+immediately after completion. This is a hard gate — no task is considered
+done until its progress entry exists.
+
+**What to update:**
+
+- `.tmp/<topic>/progress.md` — the single source of truth for task completion
+  status across agent sessions.
+
+**When to update:**
+
+- After the implementer writes the task report AND the reviewer approves it
+  (or the main agent validates it when no separate reviewer is used).
+- Before starting the next task in the same service or topic.
+
+**Required format in `progress.md`:**
+
+Each completed task must appear in the `## Completed` section with:
+
+```markdown
+- Completed <TASK-ID> <short description> and wrote
+  `.tmp/<topic>/tasks/task-<TASK-ID>-report.md`.
+```
+
+The `## Not started` section must be updated to remove completed tasks.
+The `## Next implementation order` section must be updated if the
+completion changes the recommended next step.
+
+**Why this matters:**
+
+- Agents resume work across sessions. Without a progress file, the next
+  agent must re-read the entire conversation history to know what is done.
+- The progress file is the handoff contract between agent roles (implementer
+  → reviewer → tester → next implementer).
+- It prevents duplicate work and enables parallel task dispatch when write
+  sets are disjoint.
+
+** Enforcement:**
+
+- The docs-maintainer role (or main agent) checks `progress.md` completeness
+  before declaring a phase done.
+- If a task report exists but `progress.md` is not updated, the task is
+  NOT considered complete.
 
 ### 2. Coding
 
 - Follow the layered architecture: route → controller → service → repository.
+- **Read `docs/oop-solid-architecture.md`** (SOLID, OOP fundamentals, clean
+  architecture) before writing or reviewing code. Committed/pushed code must
+  obey these rules; they are enforced by the architecture gate (see §4).
 - Keep one file per domain entity in routes.
 - Define domain exceptions in `core/exceptions.py`, not scattered.
 - Use async for all DB operations. `asyncio_mode = "auto"` in pytest.
 - Web: all imports absolute with `@/` prefix. No relative imports.
 - Web: only custom components from `@/refresh-components/` or `@opal/`.
+- Web: never raw `<p>`/`<h1>`/`<input>`/`<button>`/`<img>`; use `<Text>` and
+  `@/refresh-components`. Never `lucide`/`react-icons`/`phosphor`; use `@/icons`.
 
 ### 3. Testing
 
@@ -320,7 +407,37 @@ npm --prefix apps/web test:ci
 
 ### 4. Validation — always run before commit/push
 
-Run the **narrowest** gate for changed files:
+**Mandatory architecture & code-quality gate.** Committed and pushed code must
+pass `scripts/quality/check_architecture.py`, which enforces the SOLID / clean
+architecture rules from `docs/oop-solid-architecture.md`. **Agents must resolve
+every HARD finding in the files they change before the code can be committed or
+pushed.** The gate runs automatically in the pre-commit and pre-push hooks, but
+you must run it locally yourself during development so you are not surprised:
+
+```sh
+# Local, on the files you have changed (mirrors the hook):
+make quality-staged
+# Or run the gate directly on specific files:
+QUALITY_FILES="apps/<service>/src/path/to/file.py" \
+  python3 scripts/quality/check_architecture.py --changed
+QUALITY_FILES="apps/<service>/src/path/to/file.py" \
+  python3 scripts/quality/score.py --changed --min-score 80
+# Full-tree report (non-blocking, for trend/baseline only):
+make architecture-check
+make quality-score
+```
+
+HARD findings (blocking) cover: HTTP-framework leakage in `service`/`domain`,
+repositories/clients/gateways in the wrong layer, `domain`→`core.db`/integration
+dependency inversion, generic `Utils`/`Helpers` bucket names, raw HTML/UI
+primitives and banned icon imports on the web side. See
+`docs/coding-standards.md` ("Architecture & code-quality gate") for the full
+rule table. The quality score starts at 100, subtracts 25 points per HARD
+finding and 5 points per WARN finding, and fails below `QUALITY_SCORE_MIN`
+(default `80`) in staged/push quality gates. **Do not bypass with
+`--no-verify`; fix the finding.**
+
+Run the **narrowest** service gate for changed files:
 
 | Changed files | Command |
 |---|---|
@@ -335,6 +452,10 @@ Run the **narrowest** gate for changed files:
 
 Each service's `make validate` runs: `lint` → `typecheck` → `test`.
 
+The hooks also run the **architecture & code-quality gate**
+(`scripts/quality/check_architecture.py`), which blocks commits/pushes that
+violate the SOLID / clean-architecture rules in `docs/oop-solid-architecture.md`.
+
 ### 5. Git quality gates
 
 ```sh
@@ -343,10 +464,17 @@ make hooks-install   # install pre-commit + pre-push hooks (one-time per clone)
 
 The hooks run `scripts/quality/check.sh`:
 
-- **pre-commit** (`make quality-staged`): whitespace check, shell syntax, changed-service `make validate`, `make docker-config` for Docker/compose changes.
+- **pre-commit** (`make quality-staged`): whitespace check, shell syntax, changed-service `make validate`, **architecture & code-quality gate**, `make docker-config` for Docker/compose changes.
 - **pre-push** (`make quality-push`): same checks against upstream diff range. Also `make docker-verify` for Docker/package-layout changes.
 
 Do not bypass hooks with `--no-verify` unless the user explicitly approves.
+
+**Mandatory before every push:** run `make quality-push` (or `make quality-staged`
+locally) and confirm the architecture gate is green for the files you changed.
+If the gate reports HARD findings on files in your change, you MUST fix them in
+the same commit/branch — the push is blocked until they pass. This is part of
+the development lifecycle: architecture quality is not optional and is checked
+on every commit and push.
 
 ### Branch and commit naming
 
@@ -374,10 +502,11 @@ Use concise imperative commit messages, for example
 
 1. `git status --short` → identify changed services
 2. Run each affected service's `make validate` (or web equivalents)
-3. If Docker/compose/imports changed: `make docker-verify` (compose config + image build)
-4. If root config/hooks changed: `make quality-push`
-5. If cross-service impact: `make validate` (quality-all + docker-verify)
-6. Only say "ready to push" when all applicable gates are green
+3. **Run `make quality-staged` → confirm the architecture & code-quality gate is green and the quality score meets `QUALITY_SCORE_MIN` for the files you changed. Fix any HARD finding or score regression before proceeding.**
+4. If Docker/compose/imports changed: `make docker-verify` (compose config + image build)
+5. If root config/hooks changed: `make quality-push`
+6. If cross-service impact: `make validate` (quality-all + docker-verify)
+7. Only say "ready to push" when all applicable gates are green, **including the architecture gate and quality score threshold**
 
 ```sh
 # Fast path: validate one service

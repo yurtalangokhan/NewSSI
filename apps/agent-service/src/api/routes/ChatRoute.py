@@ -591,7 +591,7 @@ async def send_chat_message(
             assistant_id = PERSONA_ID_TO_AGENT.get(persona_id, DEFAULT_AGENT)
 
     if persona_id is not None and not isinstance(persona_id, str):
-        from service.PersonaRepository import PersonaDB
+        from repository.persona_repository import PersonaDB
 
         try:
             custom_persona = await PersonaDB.get(persona_id)
@@ -660,7 +660,7 @@ async def send_chat_message(
 
         from service.FileService import IMAGE_MIMES, normalize_image_for_llm
         from service.FileService import store_file as _store_file
-        from service.Utils import _extract_file_blocks
+        from service.message_conversion import _extract_file_blocks
 
         for fd in file_descriptors:
             fd_id: str = fd.get("id") or str(uuid.uuid4())

@@ -100,7 +100,12 @@ class BaseToolCategory(ABC):
         return json.dumps({"success": True, **data}, indent=2)
 
     @staticmethod
-    def error_response(key: str, default: str | None = None, **kwargs: Any) -> str:
+    def error_response(
+        key: str,
+        default: str | None = None,
+        error_category: str | None = None,
+        **kwargs: Any,
+    ) -> str:
         """
         Create a standardized, translated error response.
 
@@ -109,12 +114,18 @@ class BaseToolCategory(ABC):
                 the current request locale, or a raw message understood as the
                 English default when no matching key exists.
             default: Explicit fallback text if the key is not defined for any locale.
+            error_category: Optional machine-readable error category (e.g.
+                "validation", "connection") for clients that branch on it.
             **kwargs: Values to interpolate into the translation template.
 
         Returns:
-            JSON string with success=False and the translated error.
+            JSON string with success=False and the translated error. When
+            ``error_category`` is provided it is included as ``error_category``.
         """
-        return json.dumps({"success": False, "error": t(key, default=default, **kwargs)})
+        payload: dict[str, Any] = {"success": False, "error": t(key, default=default, **kwargs)}
+        if error_category is not None:
+            payload["error_category"] = error_category
+        return json.dumps(payload)
 
     @staticmethod
     def parse_json_param(param: str | None) -> dict[str, Any]:

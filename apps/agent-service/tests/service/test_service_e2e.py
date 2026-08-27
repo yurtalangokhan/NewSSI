@@ -1,7 +1,7 @@
 from langchain_core.messages import AIMessage, ToolCall, ToolMessage
 
-from agents.utils import CustomData
-from service.utils import langchain_to_chat_message
+from agents.custom_data import CustomData
+from service.message_conversion import langchain_to_chat_message
 
 START_MESSAGE = CustomData(type="start", data={"key1": "value1", "key2": 123})
 

@@ -1,7 +1,7 @@
-"""
-Persona Database Manager.
+"""Persona repository facade.
 
-Facade that delegates to PersonaRepository.
+Canonical location for the ``PersonaDB`` facade that delegates to
+:class:`~core.db.repositories.PersonaRepository`.
 Table creation is managed by Alembic migrations.
 """
 

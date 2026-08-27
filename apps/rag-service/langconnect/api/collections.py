@@ -5,12 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from i18n import t
 
 from langconnect.auth import AuthenticatedUser, require_permission
-from langconnect.database.collections import CollectionsManager
 from langconnect.models import CollectionCreate, CollectionResponse, CollectionUpdate
 from langconnect.services.build_lock import (
     ensure_collection_mutable,
     ensure_not_connector_managed_collection,
 )
+from langconnect.services.collections import CollectionsManager
 
 router = APIRouter(prefix="/collections", tags=["collections"])
 

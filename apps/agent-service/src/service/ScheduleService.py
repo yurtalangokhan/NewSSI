@@ -21,8 +21,8 @@ from models.schedules import (
     SyncScheduleResponse,
     SyncScheduleUpdate,
 )
+from repository.airbyte_mapping_repository import AirbyteMappingDB
 from service.AirbyteApiClientService import get_airbyte_client
-from service.AirbyteMappingRepository import AirbyteMappingDB
 from service.SyncQueueService import get_sync_queue
 
 logger = logging.getLogger(__name__)

@@ -11,8 +11,8 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends
 
 from langconnect.auth import AuthenticatedUser, require_permission
-from langconnect.database.collections import CollectionsManager
 from langconnect.database.neo4j import GraphStore
+from langconnect.services.collections import CollectionsManager
 
 logger = logging.getLogger(__name__)
 

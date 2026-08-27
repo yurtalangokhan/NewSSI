@@ -4,7 +4,7 @@ from typing import Any
 
 from controller.base import BaseController
 from core.db import AirbyteMappingRepository, DatasourceRepository
-from service.AirbyteMappingRepository import AirbyteMappingDB
+from repository.airbyte_mapping_repository import AirbyteMappingDB
 from service.SyncQueueService import SyncJob, get_sync_queue
 
 
@@ -88,7 +88,7 @@ class DataController(BaseController):
                         next_run = None
                         if cron_expr:
                             try:
-                                from service.ScheduleRepository import _compute_next_run
+                                from repository.schedule_repository import _compute_next_run
 
                                 next_run = _compute_next_run(cron_expr, tz)
                             except Exception:
@@ -266,8 +266,8 @@ class DataController(BaseController):
 
         meta = row.get("cmetadata", {})
 
+        from repository.airbyte_mapping_repository import AirbyteMappingDB
         from service.AirbyteApiClientService import get_airbyte_client
-        from service.AirbyteMappingRepository import AirbyteMappingDB
 
         mapping = await AirbyteMappingDB.get(datasource_id)
         if not mapping:
@@ -369,8 +369,8 @@ class DataController(BaseController):
         if not row:
             self._raise_not_found("datasource.not_found", datasource_id=datasource_id)
 
+        from repository.airbyte_mapping_repository import AirbyteMappingDB
         from service.AirbyteApiClientService import get_airbyte_client
-        from service.AirbyteMappingRepository import AirbyteMappingDB
 
         mapping = await AirbyteMappingDB.get(datasource_id)
         if mapping:

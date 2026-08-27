@@ -32,8 +32,8 @@ async def test_handle_input_keeps_runtime_long_term_memory_for_builtin_persona()
             "service.UserServiceClient.get_user_settings",
             return_value={"long_term_memory_enabled": False, "extract_memory": True},
         ),
-        patch("service.PersonaRepository.PersonaDB.get", return_value={"is_builtin": True}),
-        patch("service.PersonaRepository.PersonaDB.get_by_builtin_key", return_value=None),
+        patch("repository.persona_repository.PersonaDB.get", return_value={"is_builtin": True}),
+        patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
     ):
         kwargs, _ = await _handle_input(user_input, DummyAgent(), api_key_user_id="user-1")
 
@@ -60,8 +60,8 @@ async def test_handle_input_raises_recursion_limit_above_langgraph_default():
             "service.UserServiceClient.get_user_settings",
             return_value={"long_term_memory_enabled": False, "extract_memory": True},
         ),
-        patch("service.PersonaRepository.PersonaDB.get", return_value={"is_builtin": True}),
-        patch("service.PersonaRepository.PersonaDB.get_by_builtin_key", return_value=None),
+        patch("repository.persona_repository.PersonaDB.get", return_value={"is_builtin": True}),
+        patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
     ):
         kwargs, _ = await _handle_input(user_input, DummyAgent(), api_key_user_id="user-1")
 
@@ -91,8 +91,8 @@ async def test_handle_input_forwards_mail_attachments_to_runtime_config():
             "service.UserServiceClient.get_user_settings",
             return_value={"long_term_memory_enabled": False, "extract_memory": True},
         ),
-        patch("service.PersonaRepository.PersonaDB.get", return_value={"is_builtin": True}),
-        patch("service.PersonaRepository.PersonaDB.get_by_builtin_key", return_value=None),
+        patch("repository.persona_repository.PersonaDB.get", return_value={"is_builtin": True}),
+        patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
     ):
         kwargs, _ = await _handle_input(user_input, DummyAgent(), api_key_user_id="user-1")
 
@@ -128,8 +128,8 @@ async def test_handle_input_stamps_persona_id_and_model_on_the_human_message():
             "service.UserServiceClient.get_user_settings",
             return_value={"long_term_memory_enabled": False, "extract_memory": True},
         ),
-        patch("service.PersonaRepository.PersonaDB.get", return_value={"is_builtin": True}),
-        patch("service.PersonaRepository.PersonaDB.get_by_builtin_key", return_value=None),
+        patch("repository.persona_repository.PersonaDB.get", return_value={"is_builtin": True}),
+        patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
     ):
         kwargs, _ = await _handle_input(user_input, DummyAgent(), api_key_user_id="user-1")
 
@@ -156,8 +156,8 @@ async def test_handle_input_defaults_persona_id_to_zero_for_default_agent():
             "service.UserServiceClient.get_user_settings",
             return_value={"long_term_memory_enabled": False, "extract_memory": True},
         ),
-        patch("service.PersonaRepository.PersonaDB.get", return_value=None),
-        patch("service.PersonaRepository.PersonaDB.get_by_builtin_key", return_value=None),
+        patch("repository.persona_repository.PersonaDB.get", return_value=None),
+        patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
     ):
         kwargs, _ = await _handle_input(user_input, DummyAgent(), api_key_user_id="user-1")
 
@@ -185,8 +185,8 @@ async def test_handle_input_stamps_is_regenerate_on_the_human_message():
             "service.UserServiceClient.get_user_settings",
             return_value={"long_term_memory_enabled": False, "extract_memory": True},
         ),
-        patch("service.PersonaRepository.PersonaDB.get", return_value={"is_builtin": True}),
-        patch("service.PersonaRepository.PersonaDB.get_by_builtin_key", return_value=None),
+        patch("repository.persona_repository.PersonaDB.get", return_value={"is_builtin": True}),
+        patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
     ):
         kwargs, _ = await _handle_input(user_input, DummyAgent(), api_key_user_id="user-1")
 
@@ -209,8 +209,8 @@ async def test_handle_input_omits_is_regenerate_for_a_normal_send():
             "service.UserServiceClient.get_user_settings",
             return_value={"long_term_memory_enabled": False, "extract_memory": True},
         ),
-        patch("service.PersonaRepository.PersonaDB.get", return_value={"is_builtin": True}),
-        patch("service.PersonaRepository.PersonaDB.get_by_builtin_key", return_value=None),
+        patch("repository.persona_repository.PersonaDB.get", return_value={"is_builtin": True}),
+        patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
     ):
         kwargs, _ = await _handle_input(user_input, DummyAgent(), api_key_user_id="user-1")
 
@@ -271,8 +271,8 @@ async def test_handle_input_forks_the_checkpoint_for_a_resolvable_retry():
             "service.UserServiceClient.get_user_settings",
             return_value={"long_term_memory_enabled": False, "extract_memory": True},
         ),
-        patch("service.PersonaRepository.PersonaDB.get", return_value={"is_builtin": True}),
-        patch("service.PersonaRepository.PersonaDB.get_by_builtin_key", return_value=None),
+        patch("repository.persona_repository.PersonaDB.get", return_value={"is_builtin": True}),
+        patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
     ):
         kwargs, _ = await _handle_input(
             user_input, DummyAgentWithHistory(snapshots), api_key_user_id="user-1"
@@ -302,8 +302,8 @@ async def test_handle_input_falls_back_to_duplicate_message_when_fork_point_unre
             "service.UserServiceClient.get_user_settings",
             return_value={"long_term_memory_enabled": False, "extract_memory": True},
         ),
-        patch("service.PersonaRepository.PersonaDB.get", return_value={"is_builtin": True}),
-        patch("service.PersonaRepository.PersonaDB.get_by_builtin_key", return_value=None),
+        patch("repository.persona_repository.PersonaDB.get", return_value={"is_builtin": True}),
+        patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
     ):
         kwargs, _ = await _handle_input(
             user_input, DummyAgentWithHistory([]), api_key_user_id="user-1"
@@ -346,8 +346,8 @@ async def test_handle_input_forks_and_replaces_the_message_for_a_resolvable_edit
             "service.UserServiceClient.get_user_settings",
             return_value={"long_term_memory_enabled": False, "extract_memory": True},
         ),
-        patch("service.PersonaRepository.PersonaDB.get", return_value={"is_builtin": True}),
-        patch("service.PersonaRepository.PersonaDB.get_by_builtin_key", return_value=None),
+        patch("repository.persona_repository.PersonaDB.get", return_value={"is_builtin": True}),
+        patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
     ):
         kwargs, _ = await _handle_input(user_input, agent, api_key_user_id="user-1")
 
@@ -388,8 +388,8 @@ async def test_handle_input_falls_back_to_append_when_edit_fork_point_unresolvab
             "service.UserServiceClient.get_user_settings",
             return_value={"long_term_memory_enabled": False, "extract_memory": True},
         ),
-        patch("service.PersonaRepository.PersonaDB.get", return_value={"is_builtin": True}),
-        patch("service.PersonaRepository.PersonaDB.get_by_builtin_key", return_value=None),
+        patch("repository.persona_repository.PersonaDB.get", return_value={"is_builtin": True}),
+        patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
     ):
         kwargs, _ = await _handle_input(user_input, agent, api_key_user_id="user-1")
 
@@ -426,7 +426,7 @@ async def test_get_graph_and_config_preserves_dynamic_persona_owner_id(monkeypat
             assert persona_id == 23
             return FakeDefinition()
 
-    monkeypatch.setattr("service.PersonaRepository.PersonaDB.get", fake_get)
+    monkeypatch.setattr("repository.persona_repository.PersonaDB.get", fake_get)
     monkeypatch.setattr(
         "agents.storage.repository.AgentDefinitionRepository",
         FakeDefinitionRepository,
@@ -457,8 +457,8 @@ async def test_handle_input_enables_long_term_memory_without_user_toggle():
             "service.UserServiceClient.get_user_settings",
             return_value={"long_term_memory_enabled": False, "extract_memory": True},
         ),
-        patch("service.PersonaRepository.PersonaDB.get", return_value={"is_builtin": True}),
-        patch("service.PersonaRepository.PersonaDB.get_by_builtin_key", return_value=None),
+        patch("repository.persona_repository.PersonaDB.get", return_value={"is_builtin": True}),
+        patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
     ):
         kwargs, _ = await _handle_input(user_input, DummyAgent(), api_key_user_id="user-1")
 

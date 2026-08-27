@@ -6,7 +6,6 @@ Provides SMTP-backed email sending for configured agents.
 from __future__ import annotations
 
 import base64
-import json
 import smtplib
 import ssl
 from email.message import EmailMessage
@@ -16,6 +15,7 @@ from typing import Any
 from i18n import t
 
 from ..core.base import BaseToolCategory
+from .response import error_response, success_response
 
 
 def _as_list(value: list[str] | str | None) -> list[str]:
@@ -24,16 +24,6 @@ def _as_list(value: list[str] | str | None) -> list[str]:
     if isinstance(value, str):
         return [item.strip() for item in value.split(",") if item.strip()]
     return [str(item).strip() for item in value if str(item).strip()]
-
-
-def _error_response(key: str, category: str = "smtp") -> str:
-    return json.dumps(
-        {
-            "success": False,
-            "error_category": category,
-            "error": t(key),
-        }
-    )
 
 
 def _attach_files(message: EmailMessage, attachments: list[dict[str, Any]] | None) -> None:
@@ -74,11 +64,11 @@ def send_email_message(
     all_recipients = [*to_list, *cc_list, *bcc_list]
 
     if not all_recipients or not subject.strip() or not body.strip():
-        return _error_response("mail.recipient_subject_body_required", "validation")
+        return error_response("mail.recipient_subject_body_required", error_category="validation")
 
     required_config = ("host", "port", "username", "password", "from_email")
     if any(not smtp_config.get(key) for key in required_config):
-        return _error_response("mail.config_incomplete", "configuration")
+        return error_response("mail.config_incomplete", error_category="configuration")
 
     message = EmailMessage()
     from_email = str(smtp_config["from_email"])
@@ -101,7 +91,7 @@ def send_email_message(
     try:
         _attach_files(message, attachments)
     except (ValueError, TypeError):
-        return _error_response("mail.payload_invalid", "validation")
+        return error_response("mail.payload_invalid", error_category="validation")
 
     host = str(smtp_config["host"])
     port = int(smtp_config["port"])
@@ -123,17 +113,16 @@ def send_email_message(
                 smtp.login(username, password)
                 smtp.send_message(message)
     except smtplib.SMTPAuthenticationError:
-        return _error_response("mail.auth_failed", "authentication")
+        return error_response("mail.auth_failed", error_category="authentication")
     except (TimeoutError, OSError, smtplib.SMTPConnectError):
-        return _error_response("mail.connection_failed", "connection")
+        return error_response("mail.connection_failed", error_category="connection")
     except smtplib.SMTPRecipientsRefused:
-        return _error_response("mail.recipient_rejected", "recipient")
+        return error_response("mail.recipient_rejected", error_category="recipient")
     except smtplib.SMTPException:
-        return _error_response("mail.message_rejected", "smtp")
+        return error_response("mail.message_rejected", error_category="smtp")
 
-    return json.dumps(
+    return success_response(
         {
-            "success": True,
             "message_id": message["Message-ID"],
             "recipient_count": len(all_recipients),
         }

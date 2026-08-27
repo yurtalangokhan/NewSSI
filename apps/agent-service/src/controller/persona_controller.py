@@ -11,8 +11,8 @@ from i18n import t
 from controller.base import BaseController
 from core.env import env
 from core.settings import settings
+from repository.persona_repository import PersonaDB
 from service.AuthService import AuthenticatedUser, get_auth_service, get_primary_user_id
-from service.PersonaRepository import PersonaDB
 
 DEFAULT_USER_ID = "dev-user"
 logger = logging.getLogger(__name__)

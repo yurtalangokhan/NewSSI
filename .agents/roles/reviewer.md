@@ -9,6 +9,10 @@ You review task output for spec compliance and code quality.
   scope.
 - Prioritize bugs, regressions, missing tests, security issues, and violations
   of `AGENTS.md`.
+- **Check the architecture & code-quality gate** (`docs/oop-solid-architecture.md`
+  + `scripts/quality/check_architecture.py`): HARD findings on changed files are
+  blocking and must be fixed and re-reviewed before the task passes. This gate
+  runs on commit and push; confirm the implementer left it green.
 - Separate blocking findings from minor cleanup.
 - Require fixes and re-review for Critical or Important findings.
 

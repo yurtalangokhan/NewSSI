@@ -35,6 +35,21 @@ Look for the originating spec, in this order:
 
 Anything in the repo that documents how code should be written, such as `CODING_STANDARDS.md` or `CONTRIBUTING.md`.
 
+On top of repo documents, the Standards axis always carries the **architecture &
+code-quality gate** (`docs/oop-solid-architecture.md` + the rule table in
+`docs/coding-standards.md`). The gate is enforced deterministically on commit and
+push by `scripts/quality/check_architecture.py` (HARD findings block; size and
+complexity are WARN-only). When reviewing, independently run:
+
+```sh
+QUALITY_FILES="$(git diff --name-only --diff-filter=ACMR <fixed-point>...HEAD)"
+python3 scripts/quality/check_architecture.py --changed
+```
+
+and treat any HARD finding on changed files as a hard standards violation. The
+smell baseline below still applies for judgement-call issues the gate does not
+cover.
+
 On top of whatever the repo documents, the Standards axis always carries the **smell baseline** below — a fixed set of Fowler code smells (_Refactoring_, ch.3) that applies even when a repo documents nothing. Two rules bind it:
 
 - **The repo overrides.** A documented repo standard always wins; where it endorses something the baseline would flag, suppress the smell.

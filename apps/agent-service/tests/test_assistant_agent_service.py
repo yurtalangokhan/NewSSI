@@ -21,7 +21,7 @@ async def test_get_graph_and_config_accepts_numeric_agent_id(
     async def fake_get_assistant(_assistant_id: str):
         return None
 
-    monkeypatch.setattr("service.PersonaRepository.PersonaDB.get", fake_get)
+    monkeypatch.setattr("repository.persona_repository.PersonaDB.get", fake_get)
     monkeypatch.setattr(service, "get_assistant", fake_get_assistant)
 
     graph_id, config = await service.get_graph_and_config(19)
@@ -61,7 +61,7 @@ async def test_get_graph_and_config_preserves_dynamic_persona_owner_id(
             assert persona_id == 23
             return FakeDefinition()
 
-    monkeypatch.setattr("service.PersonaRepository.PersonaDB.get", fake_get)
+    monkeypatch.setattr("repository.persona_repository.PersonaDB.get", fake_get)
     monkeypatch.setattr(
         "agents.storage.repository.AgentDefinitionRepository",
         FakeDefinitionRepository,

@@ -6,6 +6,7 @@
  */
 import useSWR from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
+import { parseApiErrorPayload } from "@/lib/api/errors";
 
 // ============================================================================
 // Types
@@ -163,7 +164,14 @@ export interface SyncStatusResponse {
 
 export interface SyncAttempt {
   id: string;
-  status: "succeeded" | "failed" | "cancelled" | "running" | "pending" | "incomplete" | "unknown";
+  status:
+    | "succeeded"
+    | "failed"
+    | "cancelled"
+    | "running"
+    | "pending"
+    | "incomplete"
+    | "unknown";
   created_at?: number;
   updated_at?: number;
   duration_seconds?: number;
@@ -276,10 +284,18 @@ export async function fetchConnectorSpec(
   connectorName: string
 ): Promise<ConnectorSpec> {
   const res = await fetch(
-    `/api/agent/datasources/connectors/${encodeURIComponent(connectorName)}/spec`
+    `/api/agent/datasources/connectors/${encodeURIComponent(
+      connectorName
+    )}/spec`
   );
   if (!res.ok) {
-    throw new Error(`Failed to fetch spec for ${connectorName}`);
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
+    );
+    throw new Error(
+      parsed.userMessage || `Failed to fetch spec for ${connectorName}`
+    );
   }
   return res.json();
 }
@@ -289,7 +305,9 @@ export async function validateConnectorConfig(
   config: Record<string, unknown>
 ): Promise<{ valid: boolean; message: string }> {
   const res = await fetch(
-    `/api/agent/datasources/connectors/${encodeURIComponent(connectorName)}/validate`,
+    `/api/agent/datasources/connectors/${encodeURIComponent(
+      connectorName
+    )}/validate`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -304,7 +322,9 @@ export async function fetchConnectorStreams(
   config: Record<string, unknown>
 ): Promise<StreamInfo[]> {
   const res = await fetch(
-    `/api/agent/datasources/connectors/${encodeURIComponent(connectorName)}/streams`,
+    `/api/agent/datasources/connectors/${encodeURIComponent(
+      connectorName
+    )}/streams`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -312,8 +332,11 @@ export async function fetchConnectorStreams(
     }
   );
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.detail || "Failed to discover streams");
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
+    );
+    throw new Error(parsed.userMessage || "Failed to discover streams");
   }
   return res.json();
 }
@@ -334,13 +357,16 @@ export async function createDatasource(
     body: JSON.stringify(input),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
+    );
     if (res.status === 409) {
       throw new DatasourceConflictError(
-        err?.detail || "A data source with this name already exists."
+        parsed.userMessage || "A data source with this name already exists."
       );
     }
-    throw new Error(err?.detail || "Failed to create data source");
+    throw new Error(parsed.userMessage || "Failed to create data source");
   }
   return res.json();
 }
@@ -355,8 +381,11 @@ export async function updateDatasource(
     body: JSON.stringify(input),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.detail || "Failed to update data source");
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
+    );
+    throw new Error(parsed.userMessage || "Failed to update data source");
   }
   return res.json();
 }
@@ -370,8 +399,13 @@ export async function getDatasourceDetails(
     `/api/agent/datasources/${id}/details?page=${page}&page_size=${pageSize}`
   );
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.detail || "Failed to fetch data source details");
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
+    );
+    throw new Error(
+      parsed.userMessage || "Failed to fetch data source details"
+    );
   }
   return res.json();
 }
@@ -381,8 +415,11 @@ export async function deleteDatasource(id: string): Promise<void> {
     method: "DELETE",
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.detail || "Failed to delete data source");
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
+    );
+    throw new Error(parsed.userMessage || "Failed to delete data source");
   }
 }
 
@@ -391,8 +428,11 @@ export async function syncDatasource(id: string): Promise<void> {
     method: "POST",
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.detail || "Failed to trigger sync");
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
+    );
+    throw new Error(parsed.userMessage || "Failed to trigger sync");
   }
 }
 
@@ -400,17 +440,17 @@ export async function createSchedule(
   datasourceId: string,
   input: SyncScheduleInput
 ): Promise<ScheduleInfo> {
-  const res = await fetch(
-    `/api/agent/datasources/${datasourceId}/schedule`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    }
-  );
+  const res = await fetch(`/api/agent/datasources/${datasourceId}/schedule`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.detail || "Failed to create schedule");
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
+    );
+    throw new Error(parsed.userMessage || "Failed to create schedule");
   }
   return res.json();
 }
@@ -419,30 +459,30 @@ export async function updateSchedule(
   datasourceId: string,
   input: Partial<SyncScheduleInput>
 ): Promise<ScheduleInfo> {
-  const res = await fetch(
-    `/api/agent/datasources/${datasourceId}/schedule`,
-    {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    }
-  );
+  const res = await fetch(`/api/agent/datasources/${datasourceId}/schedule`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.detail || "Failed to update schedule");
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
+    );
+    throw new Error(parsed.userMessage || "Failed to update schedule");
   }
   return res.json();
 }
 
 export async function deleteSchedule(datasourceId: string): Promise<void> {
-  const res = await fetch(
-    `/api/agent/datasources/${datasourceId}/schedule`,
-    { method: "DELETE" }
-  );
+  const res = await fetch(`/api/agent/datasources/${datasourceId}/schedule`, {
+    method: "DELETE",
+  });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.detail || "Failed to delete schedule");
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
+    );
+    throw new Error(parsed.userMessage || "Failed to delete schedule");
   }
 }
-
-

@@ -1,8 +1,9 @@
-.PHONY: env-check env-init env-test third-party-up ollama-models prod-up stack-up docker-config docker-build-services docker-build-apps docker-verify hooks-install validate-services validate quality-staged quality-push quality-all
+.PHONY: env-check env-init env-test third-party-up ollama-models prod-up stack-up docker-config docker-build-services docker-build-apps docker-verify hooks-install validate-services validate quality-staged quality-push quality-all architecture-check quality-score
 
 PYTHON_SERVICES ?= agent-service user-service rag-service tools-service
 APP_SERVICES ?= $(PYTHON_SERVICES) web
 APP_IMAGE_TAG ?= latest
+QUALITY_SCORE_MIN ?= 80
 
 third-party-up:
 	docker compose --env-file configs/.env -f configs/docker-compose-services.yml up -d
@@ -59,3 +60,9 @@ quality-push:
 
 quality-all:
 	bash scripts/quality/check.sh all
+
+architecture-check:
+	python3 scripts/quality/check_architecture.py --all
+
+quality-score:
+	python3 scripts/quality/score.py --all --min-score $(QUALITY_SCORE_MIN)

@@ -15,7 +15,6 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, s
 from i18n import t
 
 from langconnect.auth import AuthenticatedUser, require_permission
-from langconnect.database.collections import Collection
 from langconnect.database.neo4j import GraphStore
 from langconnect.models.graph import (
     BuildProgress,
@@ -32,10 +31,10 @@ from langconnect.models.graph import (
 from langconnect.services.graph_rag_service import (
     GraphRAGService,
     get_build_progress,
-    initialize_build_progress,
     request_pause_build,
     request_resume_build,
     request_stop_build,
+    start_build,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,30 +63,22 @@ async def build_graph(
         user_id=user.identity,
     )
 
-    # Reject the request when the collection has no documents
-    collection = Collection(
+    # Service owns the build-start decision: empty-collection rejection,
+    # active-build detection, and pending-record registration.
+    progress = await start_build(
         collection_id=request.collection_id,
         user_id=user.identity,
+        entity_types=request.entity_types,
+        relationship_types=request.relationship_types,
     )
-    doc_count = await collection.count()
-    if doc_count == 0:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=t("graph.build_no_documents"),
-        )
 
-    # Check if a build is already in progress
-    existing = get_build_progress(request.collection_id)
-    if existing and existing.status in ("pending", "extracting", "building"):
+    # If a build is already active, return its current status.
+    if progress.status in ("pending", "extracting", "building"):
         return GraphBuildResponse(
             collection_id=request.collection_id,
-            status=existing.status,
+            status=progress.status,
             message=t("graph.build_already_in_progress"),
         )
-
-    # Pre-register a pending record so status polls return "pending"
-    # immediately — before the background task has a chance to run.
-    initialize_build_progress(request.collection_id)
 
     # Launch background build
     background_tasks.add_task(

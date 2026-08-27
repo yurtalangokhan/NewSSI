@@ -1,8 +1,25 @@
 """Models for document upload progress tracking."""
 
+from __future__ import annotations
+
+from dataclasses import dataclass
 from enum import StrEnum
 
 from pydantic import BaseModel
+
+
+@dataclass(frozen=True, slots=True)
+class FileUploadDTO:
+    """Framework-agnostic representation of an uploaded file.
+
+    The API layer reads bytes from FastAPI ``UploadFile`` and builds one of
+    these so that downstream services never depend on FastAPI types.
+    """
+
+    filename: str
+    content_type: str | None
+    size: int
+    content: bytes
 
 
 class UploadStatus(StrEnum):

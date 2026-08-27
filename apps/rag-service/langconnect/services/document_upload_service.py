@@ -11,11 +11,9 @@ import hashlib
 import logging
 from typing import Any
 
-from fastapi import UploadFile
-
-from langconnect.database.collections import Collection
-from langconnect.models.documents import UploadProgress, UploadStatus
+from langconnect.models.documents import FileUploadDTO, UploadProgress, UploadStatus
 from langconnect.services import process_document
+from langconnect.services.collections import Collection
 
 logger = logging.getLogger(__name__)
 
@@ -54,10 +52,20 @@ def _batched(items: list[Any], size: int) -> list[list[Any]]:
 async def run_upload_job(
     collection_id: str,
     user_id: str,
-    files: list[UploadFile],
+    files: list[FileUploadDTO],
     metadatas: list[dict | None],
 ) -> None:
-    """Process and embed uploaded files, updating progress as it goes."""
+    """Process and embed uploaded files, updating progress as it goes.
+
+    Args:
+        collection_id: Target collection identifier.
+        user_id: Identity of the uploading user.
+        files: Framework-agnostic upload DTOs.  The API layer reads bytes
+            from FastAPI ``UploadFile`` and builds these so that this
+            module has no framework dependency.
+        metadatas: Per-file metadata dicts (or ``None``) aligned 1-to-1
+            with *files*.
+    """
     progress = _upload_progress[collection_id]
     progress.status = UploadStatus.PROCESSING
 
@@ -70,8 +78,7 @@ async def run_upload_job(
             filename = file.filename
             progress.current_file = filename
 
-            contents = await file.read()
-            await file.seek(0)
+            contents = file.content
             content_hash = hashlib.sha256(contents).hexdigest()
 
             if filename in seen_filenames or content_hash in seen_content_hashes:

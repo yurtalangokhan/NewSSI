@@ -1,6 +1,6 @@
 import pytest
 
-from langconnect.database.collections import Collection
+from langconnect.services.collections import Collection
 
 
 class FakeMilvusIterator:

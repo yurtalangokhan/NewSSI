@@ -1,18 +1,41 @@
 """Thread domain service - handles conversation threads."""
 
-import logging
-from typing import Any
+from __future__ import annotations
 
-from core.db.repositories import ThreadRepository
+import logging
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
+
+
+class ThreadRepositoryPort(Protocol):
+    """Persistence port for threads.
+
+    Implemented by the concrete repository in ``core.db.repositories``. The
+    domain depends on this abstraction, never on the infrastructure class, so
+    the dependency direction points inward (clean architecture).
+    """
+
+    async def add_thread(self, data: dict[str, Any]) -> dict[str, Any]: ...
+
+    async def get_thread(self, thread_id: str) -> dict[str, Any] | None: ...
+
+    async def update_thread(
+        self, thread_id: str, metadata: dict[str, Any]
+    ) -> dict[str, Any] | None: ...
+
+    async def list_threads(
+        self, limit: int = 100, offset: int = 0, user_id: str | None = None
+    ) -> list[dict[str, Any]]: ...
+
+    async def delete_thread(self, thread_id: str) -> bool: ...
 
 
 class ThreadService:
     """Service for managing conversation threads."""
 
-    def __init__(self):
-        self._repo = ThreadRepository()
+    def __init__(self, repo: ThreadRepositoryPort) -> None:
+        self._repo = repo
 
     async def create_thread(
         self, thread_id: str | None = None, metadata: dict | None = None

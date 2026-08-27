@@ -16,6 +16,7 @@ import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { errorHandlingFetcher } from "@/lib/fetcher";
+import { parseApiErrorPayload } from "@/lib/api/errors";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/useToast";
 import {
@@ -183,12 +184,12 @@ async function putPermissions(
     body: JSON.stringify(arg),
   });
   if (!res.ok) {
-    const err = await res
-      .json()
-      .catch(() => ({ detail: i18n.t("admin.rolesPage.saveFailedGeneric") }));
-    throw new Error(
-      err.detail || i18n.t("admin.rolesPage.savePermissionsFailed")
+    const fallback = i18n.t("admin.rolesPage.savePermissionsFailed");
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
     );
+    throw new Error(parsed.userMessage || fallback);
   }
   return res.json();
 }
@@ -203,12 +204,12 @@ async function putRoleIds(
     body: JSON.stringify(arg),
   });
   if (!res.ok) {
-    const err = await res
-      .json()
-      .catch(() => ({ detail: i18n.t("admin.rolesPage.saveFailedGeneric") }));
-    throw new Error(
-      err.detail || i18n.t("admin.rolesPage.saveRoleAssignmentFailed")
+    const fallback = i18n.t("admin.rolesPage.saveRoleAssignmentFailed");
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
     );
+    throw new Error(parsed.userMessage || fallback);
   }
   return res.json();
 }
@@ -218,12 +219,12 @@ async function postSync(_url: string) {
     method: "POST",
   });
   if (!res.ok) {
-    const err = await res
-      .json()
-      .catch(() => ({ detail: i18n.t("admin.rolesPage.syncFailedGeneric") }));
-    throw new Error(
-      err.detail || i18n.t("admin.rolesPage.syncToKeycloakFailed")
+    const fallback = i18n.t("admin.rolesPage.syncToKeycloakFailed");
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
     );
+    throw new Error(parsed.userMessage || fallback);
   }
   return res.json();
 }
@@ -238,12 +239,12 @@ async function postCreateCompositeRole(
     method: "POST",
   });
   if (!res.ok) {
-    const err = await res
-      .json()
-      .catch(() => ({ detail: i18n.t("admin.rolesPage.createFailedGeneric") }));
-    throw new Error(
-      err.detail || i18n.t("admin.rolesPage.createCompositeRoleFailed")
+    const fallback = i18n.t("admin.rolesPage.createCompositeRoleFailed");
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
     );
+    throw new Error(parsed.userMessage || fallback);
   }
   return res.json();
 }
@@ -257,10 +258,12 @@ async function patchRole(
     method: "PATCH",
   });
   if (!res.ok) {
-    const err = await res
-      .json()
-      .catch(() => ({ detail: i18n.t("admin.rolesPage.updateFailedGeneric") }));
-    throw new Error(err.detail || i18n.t("admin.rolesPage.updateRoleFailed"));
+    const fallback = i18n.t("admin.rolesPage.updateRoleFailed");
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
+    );
+    throw new Error(parsed.userMessage || fallback);
   }
   return res.json();
 }
@@ -268,10 +271,12 @@ async function patchRole(
 async function deleteRole(url: string) {
   const res = await fetch(url, { method: "DELETE" });
   if (!res.ok) {
-    const err = await res
-      .json()
-      .catch(() => ({ detail: i18n.t("admin.rolesPage.deleteFailedGeneric") }));
-    throw new Error(err.detail || i18n.t("admin.rolesPage.deleteRoleFailed"));
+    const fallback = i18n.t("admin.rolesPage.deleteRoleFailed");
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
+    );
+    throw new Error(parsed.userMessage || fallback);
   }
   return res.json();
 }

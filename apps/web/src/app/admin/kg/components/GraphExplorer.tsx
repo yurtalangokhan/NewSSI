@@ -38,6 +38,20 @@ import {
   type ForceGraphLink,
   type ForceGraphData,
 } from "@/lib/langconnect";
+import {
+  CLUSTER_COLOR,
+  CLUSTER_BORDER_COLOR,
+  SELECTED_COLOR,
+  POINTER_DISABLE_THRESHOLD,
+  FAST_COOLDOWN_THRESHOLD,
+  HIDE_LABELS_THRESHOLD,
+  LABEL_ZOOM_THRESHOLD,
+  getLabelColor,
+  getNodeColorExpanded,
+  clusterNodeMatchesRelTypes,
+  type BreadcrumbItem,
+  type GraphExplorerProps,
+} from "./graphUtils";
 
 // Lazy-load 3D renderer — Three.js uses WebGL constants at import time which
 // crashes in Node/SSR. next/dynamic with ssr:false ensures browser-only eval.
@@ -49,111 +63,6 @@ const ForceGraph3DLazy = dynamic(() => import("./ForceGraph3DWrapper"), {
     </div>
   ),
 });
-
-// ── Color palette ──────────────────────────────────────────────────────────
-const LABEL_COLORS: Record<string, string> = {
-  Person: "#4f46e5",
-  Organization: "#0891b2",
-  Location: "#059669",
-  Event: "#d97706",
-  Product: "#dc2626",
-  Technology: "#7c3aed",
-  Concept: "#2563eb",
-  Document: "#64748b",
-  Entity: "#6b7280",
-};
-
-function hashString(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    h = (h << 5) - h + s.charCodeAt(i);
-    h |= 0;
-  }
-  return Math.abs(h);
-}
-
-function getLabelColor(label: string): string {
-  return LABEL_COLORS[label] || `hsl(${hashString(label) % 360}, 60%, 50%)`;
-}
-
-function getNodeColorExpanded(name: string, label: string): string {
-  const baseHue = hashString(label) % 360;
-  const offset = hashString(name) % 60;
-  const hue = (baseHue + offset) % 360;
-  const lightness = 40 + (hashString(name + "L") % 20);
-  return `hsl(${hue}, 55%, ${lightness}%)`;
-}
-
-const CLUSTER_COLOR = "#d97706";
-const CLUSTER_BORDER_COLOR = "#f59e0b";
-const SELECTED_COLOR = "#f59e0b";
-
-// ── Performance thresholds ─────────────────────────────────────────────────
-const POINTER_DISABLE_THRESHOLD = 2000;
-const FAST_COOLDOWN_THRESHOLD = 1000;
-const HIDE_LABELS_THRESHOLD = 3000;
-const LABEL_ZOOM_THRESHOLD = 0.7;
-
-interface BreadcrumbItem {
-  label: string;
-  displayName: string;
-  mode: "overview" | "expand" | "neighborhood" | "full";
-  nodeId?: string;
-}
-
-interface GraphExplorerProps {
-  scalableData?: ClusteredGraphData | null;
-  graphData?: GraphData | null;
-  loading?: boolean;
-  collectionId?: string | null;
-  onNodeClick?: (node: GraphNode) => void;
-  onClusterExpand?: (clusterLabel: string) => void;
-  onNeighborhoodRequest?: (nodeId: string) => void;
-  onBackToOverview?: () => void;
-  selectedLabels?: Set<string>;
-  selectedRelTypes?: Set<string>;
-  /** True when this tab is the active/visible one — triggers canvas re-measurement */
-  isActive?: boolean;
-  /**
-   * Reports the entity-label counts among nodes that survive the *relationship-type*
-   * filter alone (ignoring the label filter itself, so the label facet stays
-   * browsable/combinable rather than collapsing to just the already-selected labels).
-   */
-  onLabelFacetCountsChange?: (items: { name: string; count: number }[]) => void;
-  /**
-   * Reports the relationship-type counts among edges that survive the *label*
-   * filter alone (ignoring the relationship-type filter itself, so the facet
-   * stays browsable/combinable). Derived from the currently loaded graph view
-   * (real edges when present, or each cluster node's `_rel_type_counts`
-   * aggregate in overview/sub-cluster views where edges are never returned),
-   * never from a separately-scoped backend query — so it can't list types
-   * that belong to no edge actually visible in the current view.
-   */
-  onRelTypeFacetCountsChange?: (
-    items: { name: string; count: number }[]
-  ) => void;
-  /** Reports the exact node/edge counts actually rendered (after all active filters). */
-  onVisibleCountsChange?: (counts: {
-    nodeCount: number;
-    edgeCount: number;
-  }) => void;
-}
-
-// Cluster/sub-cluster views never carry real edges (the backend summarizes
-// relationship info into each cluster node's `_rel_type_counts` instead of
-// returning edge records), so edge-derived filtering can't see them. Fall
-// back to that per-node aggregate for cluster nodes.
-function clusterNodeMatchesRelTypes(
-  n: ScalableNode,
-  relSet: Set<string>
-): boolean {
-  if (!isClusterNode(n)) return false;
-  const counts = n.properties?._rel_type_counts as
-    | Record<string, number>
-    | undefined;
-  if (!counts) return false;
-  return Object.keys(counts).some((rt) => relSet.has(rt));
-}
 
 export default function GraphExplorer({
   scalableData,

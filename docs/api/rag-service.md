@@ -166,10 +166,19 @@ The graph RAG subsystem builds knowledge graphs from vector collections using LL
 ## Layer architecture
 
 ```
-API (routers)       → Services              → Database
-────────────────────────────────────────────────────────
-collections.py      → CollectionsManager    → CollectionRepository (PG) + Milvus
-documents.py        → process_document()    → Milvus + DocumentRepository (PG)
-datasources.py      → CollectionsManager    → PG + Neo4j
-graph.py            → GraphRAGService       → Neo4j repositories (Entity, Search, Stats, Visualization)
+API (routers)       → Services                   → Database
+─────────────────────────────────────────────────────────────────────
+collections.py      → CollectionsManager (→)   → CollectionRepository (PG) + Milvus
+documents.py        → process_document()       → Milvus + DocumentRepository (PG)
+datasources.py      → CollectionsManager         → PG + Neo4j
+graph.py            → GraphRAGService            → Neo4j repositories (Entity, Search, Stats, Visualization)
+retrieval.py        → RetrievalService           → vector/graph ports (Collection + GraphRAGService)
 ```
+
+(→) CollectionsManager lives in `langconnect/services/collections.py`. The old
+`database/collections.py` is now a backward-compat re-export shim.
+
+`POST /api/v1/retrieval` is the additive agent-facing retrieval contract
+(vector / graph / hybrid). Existing document and graph search routes are
+unchanged. Collection access is authorized from trusted user identity, not
+from model-visible arguments.

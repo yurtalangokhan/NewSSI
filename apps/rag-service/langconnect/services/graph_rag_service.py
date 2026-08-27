@@ -9,12 +9,12 @@ Coordinates the pipeline:
 
 import asyncio
 import logging
+from http import HTTPStatus
 from typing import Any
 
 from error_contract import ApplicationError
-from fastapi import status
+from i18n import t
 
-from langconnect.database.collections import Collection
 from langconnect.database.neo4j import GraphStore
 from langconnect.models.graph import (
     BuildProgress,
@@ -25,6 +25,7 @@ from langconnect.models.graph import (
     GraphNode,
     GraphSearchResult,
 )
+from langconnect.services.collections import Collection
 from langconnect.services.entity_extractor import EntityExtractor
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,40 @@ def initialize_build_progress(collection_id: str) -> BuildProgress:
     )
     _build_progress[collection_id] = progress
     return progress
+
+
+async def start_build(
+    collection_id: str,
+    user_id: str,
+    entity_types: list[str] | None = None,
+    relationship_types: list[str] | None = None,
+) -> BuildProgress:
+    """Decide whether a graph build can start and register it.
+
+    Encapsulates the build-start decision that used to live in the API route:
+    - Rejects the request when the collection has no documents.
+    - Returns the existing progress when a build is already in progress.
+    - Pre-registers a pending record and returns it otherwise.
+
+    Returns a ``BuildProgress`` with one of:
+      - ``status="pending"`` and ``message`` set to the "already in progress"
+        text when a build is already active.
+      - ``status="pending"`` with no message when a fresh build was registered.
+    """
+    collection = Collection(collection_id=collection_id, user_id=user_id)
+    doc_count = await collection.count()
+    if doc_count == 0:
+        raise ApplicationError(
+            status_code=422,
+            message=t("graph.build_no_documents"),
+        )
+
+    existing = get_build_progress(collection_id)
+    if existing and existing.status in _ACTIVE_BUILD_STATUSES:
+        return existing
+
+    initialize_build_progress(collection_id)
+    return get_build_progress(collection_id)
 
 
 def _get_active_build(collection_id: str) -> tuple[BuildProgress, _BuildControl] | None:
@@ -485,7 +520,7 @@ class GraphRAGService:
                 for r in results
             ]
         except ApplicationError as exc:
-            if exc.status_code == status.HTTP_404_NOT_FOUND:
+            if exc.status_code == HTTPStatus.NOT_FOUND.value:
                 # Expected for datasource-only collections that have a
                 # graph but no vector embeddings. BM25 will still work.
                 logger.debug(

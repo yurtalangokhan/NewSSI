@@ -80,6 +80,13 @@
     "invalid_permissions": "Geçersiz izinler: {permissions}",
     "invalid_role_ids": "Geçersiz roller: {roles}"
   },
+  "organization": {
+    "not_found": "Kuruluş bulunamadı",
+    "primary_not_found": "Birincil kuruluş bulunamadı"
+  },
+  "user_organization": {
+    "not_found": "Kullanıcı kuruluşu bulunamadı"
+  },
   "permission": {
     "not_found": "'{name}' izni bulunamadı",
     "invalid_permissions": "Geçersiz izinler: {permissions}"

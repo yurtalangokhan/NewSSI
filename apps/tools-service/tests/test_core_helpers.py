@@ -1,9 +1,10 @@
 import json
 
+import httpx
 from i18n.core import set_locale
 
 from src.core.auth import _get_valid_api_keys
-from src.core.authorization import get_user_service_permissions
+from src.core.authorization import authorize_binding_reference, get_user_service_permissions
 from src.core.base import BaseToolCategory
 from src.core.settings import Settings
 
@@ -130,3 +131,76 @@ async def test_get_user_service_permissions_uses_api_v1_internal_path(
         == "http://kong:8000/internal/user-service/api/v1/internal/users/user-1/permissions"
     )
     assert _AsyncClient.captured_headers["X-Internal-Service-Token"] == "internal-token"
+
+
+class _BindingDeniedResponse:
+    status_code = 500
+
+
+class _BindingErrorClient:
+    def __init__(self, *args, **kwargs) -> None:
+        pass
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args) -> None:
+        return None
+
+    async def get(self, url: str, **kwargs):
+        return _BindingDeniedResponse()
+
+
+class _BindingNetworkErrorClient(_BindingErrorClient):
+    async def get(self, url: str, **kwargs):
+        raise httpx.ConnectError("user-service down")
+
+
+async def test_authorize_binding_reference_fails_closed_on_unexpected_status(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "src.core.authorization._user_service_base_url",
+        lambda: "http://user-service",
+    )
+    monkeypatch.setattr(
+        "src.core.authorization.get_settings",
+        lambda: type("Settings", (), {"internal_service_token": "internal-token"})(),
+    )
+    monkeypatch.setattr("src.core.authorization.httpx.AsyncClient", _BindingErrorClient)
+
+    result = await authorize_binding_reference(
+        binding_type="mail",
+        binding_id="ref-1",
+        user_id="user-1",
+        tenant_id=None,
+        internal_token="internal-token",
+    )
+
+    assert result.authorized is False
+    assert result.reason == "Authorization check returned unexpected status."
+
+
+async def test_authorize_binding_reference_fails_closed_when_user_service_unavailable(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "src.core.authorization._user_service_base_url",
+        lambda: "http://user-service",
+    )
+    monkeypatch.setattr(
+        "src.core.authorization.get_settings",
+        lambda: type("Settings", (), {"internal_service_token": "internal-token"})(),
+    )
+    monkeypatch.setattr("src.core.authorization.httpx.AsyncClient", _BindingNetworkErrorClient)
+
+    result = await authorize_binding_reference(
+        binding_type="mail",
+        binding_id="ref-1",
+        user_id="user-1",
+        tenant_id=None,
+        internal_token="internal-token",
+    )
+
+    assert result.authorized is False
+    assert result.reason == "Authorization check unavailable."

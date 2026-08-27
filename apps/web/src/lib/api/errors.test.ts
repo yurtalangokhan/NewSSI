@@ -2,6 +2,7 @@ import {
   errorMessageFromUnknown,
   parseApiErrorPayload,
   parseApiErrorResponse,
+  throwParsedApiError,
 } from "@/lib/api/errors";
 
 describe("api error parser", () => {
@@ -129,5 +130,43 @@ describe("api error parser", () => {
       code: "idempotency_key_reused",
       userMessage: "Idempotency key was reused for a different request.",
     });
+  });
+
+  it("throwParsedApiError throws with envelope message", async () => {
+    const response = new Response(
+      JSON.stringify({
+        error: {
+          code: "request.conflict",
+          message: "Name already exists.",
+        },
+      }),
+      {
+        status: 409,
+        headers: { "content-type": "application/json" },
+      }
+    );
+
+    await expect(throwParsedApiError(response, "Fallback")).rejects.toThrow(
+      "Name already exists."
+    );
+  });
+
+  it("throwParsedApiError throws legacy FastAPI detail string", async () => {
+    const response = new Response(JSON.stringify({ detail: "Not found" }), {
+      status: 404,
+      headers: { "content-type": "application/json" },
+    });
+
+    await expect(throwParsedApiError(response, "Fallback")).rejects.toThrow(
+      "Not found"
+    );
+  });
+
+  it("throwParsedApiError falls back when body is empty", async () => {
+    const response = new Response(null, { status: 500 });
+
+    await expect(
+      throwParsedApiError(response, "Something went wrong")
+    ).rejects.toThrow("Something went wrong");
   });
 });

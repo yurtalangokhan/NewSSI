@@ -118,20 +118,29 @@ class GraphBuilder:
 
         logger.info("Building graph with schema: %s", schema_type)
 
-        if schema_type == GraphSchemaType.ZERO_SHOT:
-            return self._build_zero_shot(config)
-        elif schema_type == GraphSchemaType.REACT:
-            return self._build_react(config)
-        elif schema_type == GraphSchemaType.SUPERVISOR:
-            return self._build_supervisor(config)
-        elif schema_type == GraphSchemaType.PIPELINE:
-            return self._build_pipeline(config)
-        elif schema_type == GraphSchemaType.PLAN_EXECUTE:
-            return self._build_plan_execute(config)
-        elif schema_type == GraphSchemaType.SELF_REFLECT:
-            return self._build_self_reflect(config)
-        else:
+        # Use strategy registry instead of central if/elif dispatch
+        from agents.graphs.strategies.registry import get_strategy
+
+        strategy = get_strategy(
+            schema_type,
+            model=self.model,
+            system_prompt=self.system_prompt,
+            tools=self.tools,
+            mcp_tools_map=self.mcp_tools_map,
+            memory_enabled=self.memory_enabled,
+            checkpointer=self.checkpointer,
+            repository=self.repository,
+        )
+
+        if strategy is None:
             raise GraphBuilderError(f"Unsupported schema type: {schema_type}")
+
+        # Validate before building
+        errors = strategy.validate(config)
+        if errors:
+            raise GraphBuilderError(f"Validation failed for {schema_type}: {', '.join(errors)}")
+
+        return strategy.build(config)
 
     async def build_async(
         self, schema_type: str | GraphSchemaType, config: dict[str, Any] | None = None
@@ -162,26 +171,34 @@ class GraphBuilder:
 
         logger.info("Building graph (async) with schema: %s", schema_type)
 
-        # NEW: Load sub-agents from DB if sub_agent_ids provided
+        # Use strategy registry instead of central if/elif dispatch
+        from agents.graphs.strategies.registry import get_strategy
+
+        strategy = get_strategy(
+            schema_type,
+            model=self.model,
+            system_prompt=self.system_prompt,
+            tools=self.tools,
+            mcp_tools_map=self.mcp_tools_map,
+            memory_enabled=self.memory_enabled,
+            checkpointer=self.checkpointer,
+            repository=self.repository,
+        )
+
+        if strategy is None:
+            raise GraphBuilderError(f"Unsupported schema type: {schema_type}")
+
+        # Load sub-agents from DB if sub_agent_ids provided (for supervisor/pipeline)
         if schema_type in (GraphSchemaType.SUPERVISOR, GraphSchemaType.PIPELINE):
             target_field = "stages" if schema_type == GraphSchemaType.PIPELINE else "sub_agents"
             await self._load_sub_agents_from_db(config, target_field=target_field)
 
-        # Delegate to existing schema-specific builders
-        if schema_type == GraphSchemaType.ZERO_SHOT:
-            return self._build_zero_shot(config)
-        elif schema_type == GraphSchemaType.REACT:
-            return self._build_react(config)
-        elif schema_type == GraphSchemaType.SUPERVISOR:
-            return self._build_supervisor(config)
-        elif schema_type == GraphSchemaType.PIPELINE:
-            return self._build_pipeline(config)
-        elif schema_type == GraphSchemaType.PLAN_EXECUTE:
-            return self._build_plan_execute(config)
-        elif schema_type == GraphSchemaType.SELF_REFLECT:
-            return self._build_self_reflect(config)
-        else:
-            raise GraphBuilderError(f"Unsupported schema type: {schema_type}")
+        # Validate before building
+        errors = strategy.validate(config)
+        if errors:
+            raise GraphBuilderError(f"Validation failed for {schema_type}: {', '.join(errors)}")
+
+        return await strategy.build(config)
 
     async def _load_sub_agents_from_db(
         self,

@@ -14,15 +14,16 @@ from langconnect.api import (
     datasources_router,
     documents_router,
     graph_router,
+    retrieval_router,
 )
 from langconnect.api_versioning import API_PREFIX
 from langconnect.config import ALLOWED_ORIGINS
-from langconnect.database.collections import CollectionsManager
 from langconnect.database.postgres.schema_bootstrap import ensure_schema
 from langconnect.idempotency import (
     build_idempotency_config,
     build_idempotency_exclude_paths,
 )
+from langconnect.services.collections import CollectionsManager
 
 # Configure logging
 logging.basicConfig(
@@ -116,6 +117,7 @@ APP.include_router(collections_router, prefix=API_PREFIX)
 APP.include_router(datasources_router, prefix=API_PREFIX)
 APP.include_router(documents_router, prefix=API_PREFIX)
 APP.include_router(graph_router, prefix=API_PREFIX)
+APP.include_router(retrieval_router, prefix=API_PREFIX)
 
 
 @APP.get(f"{API_PREFIX}/health")

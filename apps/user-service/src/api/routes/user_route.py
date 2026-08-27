@@ -110,9 +110,7 @@ async def create_user(
 async def get_invited_users(
     user_id: Annotated[str, Depends(require_permission("user:list"))],  # noqa: ARG001
 ):
-    from src.service import get_user_service
-
-    return await get_user_service().get_invited_users()
+    return await get_user_controller().get_invited_users()
 
 
 @router.get("/download/csv")

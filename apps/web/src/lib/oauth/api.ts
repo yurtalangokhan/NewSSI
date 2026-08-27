@@ -4,6 +4,7 @@ import {
   OAuthConfigUpdate,
   OAuthTokenStatus,
 } from "@/lib/tools/interfaces";
+import { parseApiErrorPayload } from "@/lib/api/errors";
 
 // Admin OAuth Config Management
 
@@ -17,9 +18,12 @@ export async function createOAuthConfig(
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    const parsed = parseApiErrorPayload(
+      await response.json().catch(() => null),
+      response.status
+    );
     throw new Error(
-      errorData.detail ||
+      parsed.userMessage ||
         `Failed to create OAuth config: ${response.statusText}`
     );
   }
@@ -31,7 +35,14 @@ export async function getOAuthConfigs(): Promise<OAuthConfig[]> {
   const response = await fetch("/api/admin/oauth-config");
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch OAuth configs: ${response.statusText}`);
+    const parsed = parseApiErrorPayload(
+      await response.json().catch(() => null),
+      response.status
+    );
+    throw new Error(
+      parsed.userMessage ||
+        `Failed to fetch OAuth configs: ${response.statusText}`
+    );
   }
 
   return await response.json();
@@ -41,9 +52,13 @@ export async function getOAuthConfig(id: number): Promise<OAuthConfig> {
   const response = await fetch(`/api/admin/oauth-config/${id}`);
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    const parsed = parseApiErrorPayload(
+      await response.json().catch(() => null),
+      response.status
+    );
     throw new Error(
-      errorData.detail || `Failed to fetch OAuth config: ${response.statusText}`
+      parsed.userMessage ||
+        `Failed to fetch OAuth config: ${response.statusText}`
     );
   }
 
@@ -61,9 +76,12 @@ export async function updateOAuthConfig(
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    const parsed = parseApiErrorPayload(
+      await response.json().catch(() => null),
+      response.status
+    );
     throw new Error(
-      errorData.detail ||
+      parsed.userMessage ||
         `Failed to update OAuth config: ${response.statusText}`
     );
   }
@@ -77,9 +95,12 @@ export async function deleteOAuthConfig(id: number): Promise<void> {
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    const parsed = parseApiErrorPayload(
+      await response.json().catch(() => null),
+      response.status
+    );
     throw new Error(
-      errorData.detail ||
+      parsed.userMessage ||
         `Failed to delete OAuth config: ${response.statusText}`
     );
   }
@@ -101,9 +122,12 @@ export async function initiateOAuthFlow(
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    const parsed = parseApiErrorPayload(
+      await response.json().catch(() => null),
+      response.status
+    );
     throw new Error(
-      errorData.detail ||
+      parsed.userMessage ||
         `Failed to initiate OAuth flow: ${response.statusText}`
     );
   }
@@ -129,9 +153,12 @@ export async function handleOAuthCallback(
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    const parsed = parseApiErrorPayload(
+      await response.json().catch(() => null),
+      response.status
+    );
     throw new Error(
-      errorData.detail || `OAuth callback failed: ${response.statusText}`
+      parsed.userMessage || `OAuth callback failed: ${response.statusText}`
     );
   }
 
@@ -148,9 +175,15 @@ export async function getUserOAuthTokenStatus(): Promise<OAuthTokenStatus[]> {
   }
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => "");
+    const parsed = parseApiErrorPayload(
+      await response.json().catch(() => null),
+      response.status
+    );
     throw new Error(
-      `Failed to fetch OAuth token status: ${response.statusText || errorText || response.status}`
+      parsed.userMessage ||
+        `Failed to fetch OAuth token status: ${
+          response.statusText || response.status
+        }`
     );
   }
 
@@ -163,9 +196,13 @@ export async function revokeOAuthToken(oauthConfigId: number): Promise<void> {
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    const parsed = parseApiErrorPayload(
+      await response.json().catch(() => null),
+      response.status
+    );
     throw new Error(
-      errorData.detail || `Failed to revoke OAuth token: ${response.statusText}`
+      parsed.userMessage ||
+        `Failed to revoke OAuth token: ${response.statusText}`
     );
   }
 }

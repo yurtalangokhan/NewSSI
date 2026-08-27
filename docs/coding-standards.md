@@ -29,6 +29,60 @@ api/routes/*.py  →  controller/*.py  →  service/*.py  →  repository/*.py
 | **Service** | Pure domain logic. Raise `ValueError`, `NotFoundError`, etc. | HTTP exceptions |
 | **Repository** | SQLAlchemy async session, auto-commit | Business logic |
 
+### Architecture & code-quality gate
+
+A deterministic, **blocking** gate enforces the architecture principles on every
+commit and push. It is implemented by `scripts/quality/check_architecture.py`
+and wired into `scripts/quality/check.sh` (which the pre-commit and pre-push git
+hooks call). Committed and pushed code must obey these objective rules.
+
+The philosophical basis is `docs/oop-solid-architecture.md` (SOLID, OOP
+fundamentals, clean architecture). Read that before coding or reviewing.
+
+**Modes**
+
+- `--changed` (used by the hooks): checks only the files in the current diff.
+  Pre-existing hotspots do **not** block unless you modify them. **HARD
+  findings fail the gate** (non-zero exit).
+- `--all` (used by `make architecture-check`): scans the whole tree, report-only
+  (never fails). Use for trend/baseline reports.
+
+**HARD rules (blocking in `--changed`)**
+
+| # | Rule | Applies to |
+|---|------|-----------|
+| 1 | No HTTP-framework imports (`fastapi`, `starlette`, `UploadFile`, `HTTPException`, `status`, `Request`, `Response`) in `service/` or `domain/` | Python services |
+| 2 | No `Repository`/`Client`/`Gateway` class defined outside its layer (`service/`, `controller/`, `api/`, `core/` are not repository/integration layers) | Python services |
+| 3 | No `domain/` → `integrations`/`core.db`/`repository` dependency (inversion); no `langconnect/database/` → `services` import | Python services |
+| 4 | No generic bucket module names (`Utils`, `Helpers`) unless a documented shim | Python services |
+| 5 | No raw HTML/UI primitives (`<p>`, `<h1>`–`<h6>`, `<input>`, `<textarea>`, `<button>`, `<img>`) outside `@/refresh-components`/`@opal` | Web (excludes tests/snapshots) |
+| 6 | No banned icon imports (`lucide-react`, `react-icons`, `@phosphor-icons/react`); use `@/icons` | Web (excludes tests/snapshots) |
+
+**WARN heuristics (never blocking)**: module LOC (backend > 500, web > 1000),
+function length > 50 lines, approximate cyclomatic complexity > 10.
+
+**Quality score**
+
+The hook runner also converts HARD and WARN findings into a 0-100 quality
+score. The score starts at 100, subtracts 25 points for each HARD finding, and
+subtracts 5 points for each WARN finding. `quality-staged` and `quality-push`
+fail when the score is below `QUALITY_SCORE_MIN`, which defaults to `80`.
+
+Use `make quality-score` to score the full tracked tree with the same default
+threshold. Set `QUALITY_SCORE_MIN=<score>` when a branch needs a stricter
+release gate or a temporary lower migration threshold.
+
+**Run it locally**
+
+```sh
+make architecture-check          # full-tree report
+make quality-score               # full-tree score, fails below QUALITY_SCORE_MIN
+QUALITY_FILES="apps/agent-service/src/service/Foo.py" \
+  python3 scripts/quality/check_architecture.py --changed   # one file
+QUALITY_FILES="apps/agent-service/src/service/Foo.py" \
+  python3 scripts/quality/score.py --changed --min-score 80 # one-file score
+```
+
 ### Domain exceptions
 
 Define all domain exceptions in `core/exceptions.py`:

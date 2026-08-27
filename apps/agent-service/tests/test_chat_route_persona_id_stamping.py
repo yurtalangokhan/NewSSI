@@ -44,7 +44,7 @@ def _install_common_mocks(monkeypatch, captured: dict) -> None:
 
     monkeypatch.setattr("api.routes.ChatRoute._get_thread_controller", _ThreadController)
     monkeypatch.setattr("api.routes.ChatRoute.message_generator", fake_message_generator)
-    monkeypatch.setattr("service.PersonaRepository.PersonaDB.get", fake_persona_get)
+    monkeypatch.setattr("repository.persona_repository.PersonaDB.get", fake_persona_get)
     monkeypatch.setattr(core_settings, "VALID_API_KEYS", "")
     monkeypatch.setattr(AuthService.settings, "VALID_API_KEYS", "")
     monkeypatch.setattr(core_settings, "KEYCLOAK_ENABLED", False)

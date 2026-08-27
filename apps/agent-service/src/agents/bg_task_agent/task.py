@@ -4,7 +4,7 @@ from uuid import uuid4
 from langchain_core.messages import BaseMessage
 from langgraph.types import StreamWriter
 
-from agents.utils import CustomData
+from agents.custom_data import CustomData
 from models.task_data import TaskData
 
 

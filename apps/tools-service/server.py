@@ -40,6 +40,7 @@ from src.core.database import close_db_pool
 from src.core.idempotency import build_idempotency_config, build_idempotency_exclude_paths
 from src.core.registry import ToolRegistry
 from src.core.settings import get_settings
+from src.core.trusted_middleware import TrustedContextMiddleware
 
 locales_dir = Path(__file__).parent / "locales"
 init_service_i18n(locales_dir)
@@ -80,6 +81,7 @@ def build_idempotency_middleware() -> list[Middleware]:
             config=build_idempotency_config(settings),
             exclude_paths=build_idempotency_exclude_paths(),
         ),
+        Middleware(TrustedContextMiddleware),
     ]
 
 

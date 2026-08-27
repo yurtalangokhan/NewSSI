@@ -53,6 +53,7 @@ import CustomAgentAvatar, {
 import InputAvatar from "@/refresh-components/inputs/InputAvatar";
 import SquareButton from "@/refresh-components/buttons/SquareButton";
 import { useAgents } from "@/hooks/useAgents";
+import { useCompositionCatalog } from "@/hooks/useCompositionCatalog";
 import {
   createPersona,
   uploadFile,
@@ -341,32 +342,54 @@ export default function AgentEditorPage({
   const canUpdateFeaturedStatus = isAdmin || isCurator;
   const vectorDbEnabled = settings?.settings.vector_db_enabled !== false;
 
-  const GRAPH_SCHEMA_OPTIONS = useMemo(
-    () => [
-      { value: "zero_shot", label: t("agentEditor.strategyZeroShot") },
-      { value: "react", label: t("agentEditor.strategyReAct") },
-      { value: "supervisor", label: t("agentEditor.strategySupervisor") },
-      { value: "pipeline", label: t("agentEditor.strategyPipeline") },
-      { value: "plan_execute", label: t("agentEditor.strategyPlanExecute") },
-      { value: "self_reflect", label: t("agentEditor.strategySelfReflect") },
-    ],
-    [t]
-  );
+  const {
+    graphStrategies,
+    brains,
+    isLoading: catalogLoading,
+  } = useCompositionCatalog();
 
-  const BRAIN_TYPE_OPTIONS = useMemo(
-    () => [
-      { value: "llm", label: t("agentEditor.typeLLM") },
-      { value: "guard", label: t("agentEditor.typeGuard") },
-      { value: "multi_model", label: t("agentEditor.typeMultiModel") },
-    ],
-    [t]
-  );
+  const GRAPH_SCHEMA_OPTIONS = useMemo(() => {
+    const labelMap: Record<string, string> = {
+      zero_shot: t("agentEditor.strategyZeroShot"),
+      react: t("agentEditor.strategyReAct"),
+      supervisor: t("agentEditor.strategySupervisor"),
+      pipeline: t("agentEditor.strategyPipeline"),
+      plan_and_execute: t("agentEditor.strategyPlanExecute"),
+      self_reflect: t("agentEditor.strategySelfReflect"),
+    };
+    return graphStrategies.map((s) => ({
+      value: s.key,
+      label: labelMap[s.key] ?? s.key,
+      available: s.available,
+    }));
+  }, [graphStrategies, t]);
+
+  const BRAIN_TYPE_OPTIONS = useMemo(() => {
+    const labelMap: Record<string, string> = {
+      standard_model: t("agentEditor.typeLLM"),
+      guard: t("agentEditor.typeGuard"),
+      multi_model: t("agentEditor.typeMultiModel"),
+    };
+    return brains.map((b) => ({
+      value: b.key,
+      label: labelMap[b.key] ?? b.key,
+      available: b.available,
+    }));
+  }, [brains, t]);
 
   const MEMORY_TYPE_OPTIONS = useMemo(
     () => [
-      { value: "none", label: t("agentEditor.memoryNone") },
-      { value: "long_term", label: t("agentEditor.memoryLongTerm") },
-      { value: "buffer", label: t("agentEditor.memoryBuffer") },
+      { value: "none", label: t("agentEditor.memoryNone"), available: true },
+      {
+        value: "long_term",
+        label: t("agentEditor.memoryLongTerm"),
+        available: true,
+      },
+      {
+        value: "buffer",
+        label: t("agentEditor.memoryBuffer"),
+        available: false,
+      },
     ],
     [t]
   );
@@ -521,8 +544,14 @@ export default function AgentEditorPage({
 
     // Base Agent Selection (only for custom agents - not built-in)
     base_agent: existingAgent?.base_agent ?? "chatbot",
-    graph_schema: existingAgent?.graph_schema ?? "zero_shot",
-    brain_type: (existingAgent as any)?.brain_type ?? "llm",
+    graph_schema:
+      existingAgent?.graph_schema === "plan_execute"
+        ? "plan_and_execute"
+        : existingAgent?.graph_schema ?? "zero_shot",
+    brain_type:
+      ((existingAgent as any)?.brain_type === "llm"
+        ? "standard_model"
+        : (existingAgent as any)?.brain_type) ?? "standard_model",
     memory_type: (existingAgent as any)?.memory_type ?? "none",
     long_term_memory: existingAgent?.long_term_memory ?? false,
     sub_agent_ids: (existingAgent as any)?.sub_agent_ids ?? [], // NEW: Sub-agent references
@@ -642,15 +671,22 @@ export default function AgentEditorPage({
       "configurable-mcp-agent",
       "dynamic-agent",
     ]),
-    graph_schema: Yup.string().oneOf(
-      GRAPH_SCHEMA_OPTIONS.map((option) => option.value)
-    ),
-    brain_type: Yup.string().oneOf(
-      BRAIN_TYPE_OPTIONS.map((option) => option.value)
-    ),
-    memory_type: Yup.string().oneOf(
-      MEMORY_TYPE_OPTIONS.map((option) => option.value)
-    ),
+    graph_schema: Yup.string().oneOf([
+      "zero_shot",
+      "react",
+      "supervisor",
+      "pipeline",
+      "plan_execute",
+      "plan_and_execute",
+      "self_reflect",
+    ]),
+    brain_type: Yup.string().oneOf([
+      "llm",
+      "standard_model",
+      "guard",
+      "multi_model",
+    ]),
+    memory_type: Yup.string().oneOf(["none", "long_term", "buffer"]),
     long_term_memory: Yup.boolean(),
     sub_agent_ids: Yup.array().of(Yup.string()).optional(), // NEW: Sub-agent references
     sub_agents: Yup.array()
@@ -872,11 +908,13 @@ export default function AgentEditorPage({
           : values.base_agent || "chatbot";
 
       // Build submission data
-      const dynamicGraphSchema =
+      const rawGraphSchema =
         values.graph_schema === "zero_shot" &&
         (dedupedMcpToolNames.length > 0 || hasKnowledge)
           ? "react"
           : values.graph_schema;
+      const dynamicGraphSchema =
+        rawGraphSchema === "plan_and_execute" ? "plan_execute" : rawGraphSchema;
       const dynamicSubAgents =
         values.base_agent === "dynamic-agent" &&
         dynamicGraphSchema === "supervisor"
@@ -923,7 +961,8 @@ export default function AgentEditorPage({
         // Base agent and MCP tools for custom agents
         base_agent: effectiveBaseAgent,
         graph_schema: dynamicGraphSchema,
-        brain_type: values.brain_type,
+        brain_type:
+          values.brain_type === "standard_model" ? "llm" : values.brain_type,
         memory_type: values.memory_type,
         sub_agent_ids: values.sub_agent_ids, // NEW: Sub-agent references
         sub_agents: dynamicSubAgents,

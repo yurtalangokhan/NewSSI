@@ -10,6 +10,7 @@ from langconnect.models.document import (
     SearchQuery,
     SearchResult,
 )
+from langconnect.models.documents import FileUploadDTO
 from langconnect.models.graph import (
     BuildProgress,
     BuildStatus,
@@ -46,6 +47,7 @@ __all__ = [
     "ExtractedEntity",
     "ExtractedRelation",
     "ExtractionResult",
+    "FileUploadDTO",
     "GraphBuildRequest",
     "GraphBuildResponse",
     "GraphData",

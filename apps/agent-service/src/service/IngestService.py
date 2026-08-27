@@ -17,8 +17,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from agents.tools import load_vector_store
 from core.db import DatasourceRepository
 from models.ingest import BatchRequest, BatchResponse, SourcePreviewRequest
+from repository.airbyte_mapping_repository import AirbyteMappingDB
 from service.AirbyteApiClientService import get_airbyte_client
-from service.AirbyteMappingRepository import AirbyteMappingDB
 
 logger = logging.getLogger(__name__)
 

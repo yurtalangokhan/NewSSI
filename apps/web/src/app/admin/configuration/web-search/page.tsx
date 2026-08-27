@@ -8,6 +8,7 @@ import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { Content } from "@opal/layouts";
 import useSWR from "swr";
 import { errorHandlingFetcher, FetchError } from "@/lib/fetcher";
+import { parseApiErrorPayload } from "@/lib/api/errors";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { Callout } from "@/components/ui/callout";
 import Button from "@/refresh-components/buttons/Button";
@@ -171,12 +172,12 @@ export default function Page() {
       );
       const data = await response.json();
       if (!response.ok) {
+        const parsed = parseApiErrorPayload(data, response.status);
         setOnyxTestError(
-          typeof data?.detail === "string"
-            ? data.detail
-            : t("admin.webSearch.crawlFailed", {
-                defaultValue: "Crawl failed.",
-              })
+          parsed.userMessage ||
+            t("admin.webSearch.crawlFailed", {
+              defaultValue: "Crawl failed.",
+            })
         );
       } else {
         setOnyxTestResult(data);
@@ -486,20 +487,21 @@ export default function Page() {
     getCurrentContentProviderType(contentProviders);
 
   if (searchProvidersError || contentProvidersError) {
+    const searchDetail =
+      searchProvidersError instanceof FetchError
+        ? searchProvidersError.userMessage
+        : undefined;
+    const contentDetail =
+      contentProvidersError instanceof FetchError
+        ? contentProvidersError.userMessage
+        : undefined;
+
     const message =
+      searchDetail ||
       searchProvidersError?.message ||
+      contentDetail ||
       contentProvidersError?.message ||
       t("admin.webSearch.loadingError");
-
-    const detail =
-      (searchProvidersError instanceof FetchError &&
-      typeof searchProvidersError.info?.detail === "string"
-        ? searchProvidersError.info.detail
-        : undefined) ||
-      (contentProvidersError instanceof FetchError &&
-      typeof contentProvidersError.info?.detail === "string"
-        ? contentProvidersError.info.detail
-        : undefined);
 
     return (
       <SettingsLayouts.Root>
@@ -515,11 +517,6 @@ export default function Page() {
         <SettingsLayouts.Body>
           <Callout type="danger" title={t("admin.webSearch.failedToLoad")}>
             {message}
-            {detail && (
-              <Text as="p" className="mt-2 text-text-03" mainContentBody text03>
-                {detail}
-              </Text>
-            )}
           </Callout>
         </SettingsLayouts.Body>
       </SettingsLayouts.Root>
@@ -632,11 +629,12 @@ export default function Page() {
       );
 
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
+        const parsed = parseApiErrorPayload(
+          await response.json().catch(() => null),
+          response.status
+        );
         throw new Error(
-          typeof errorBody?.detail === "string"
-            ? errorBody.detail
-            : t("admin.webSearch.toastDefaultSet")
+          parsed.userMessage || t("admin.webSearch.toastDefaultSet")
         );
       }
 
@@ -663,12 +661,11 @@ export default function Page() {
       );
 
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        throw new Error(
-          typeof errorBody?.detail === "string"
-            ? errorBody.detail
-            : "Failed to deactivate provider."
+        const parsed = parseApiErrorPayload(
+          await response.json().catch(() => null),
+          response.status
         );
+        throw new Error(parsed.userMessage || "Failed to deactivate provider.");
       }
 
       await mutateSearchProviders();
@@ -700,11 +697,12 @@ export default function Page() {
         );
 
         if (!response.ok) {
-          const errorBody = await response.json().catch(() => ({}));
+          const parsed = parseApiErrorPayload(
+            await response.json().catch(() => null),
+            response.status
+          );
           throw new Error(
-            typeof errorBody?.detail === "string"
-              ? errorBody.detail
-              : "Failed to set crawler as default."
+            parsed.userMessage || "Failed to set crawler as default."
           );
         }
       } else if (provider.id > 0) {
@@ -719,11 +717,12 @@ export default function Page() {
         );
 
         if (!response.ok) {
-          const errorBody = await response.json().catch(() => ({}));
+          const parsed = parseApiErrorPayload(
+            await response.json().catch(() => null),
+            response.status
+          );
           throw new Error(
-            typeof errorBody?.detail === "string"
-              ? errorBody.detail
-              : "Failed to set crawler as default."
+            parsed.userMessage || "Failed to set crawler as default."
           );
         }
       } else {
@@ -752,11 +751,12 @@ export default function Page() {
         );
 
         if (!response.ok) {
-          const errorBody = await response.json().catch(() => ({}));
+          const parsed = parseApiErrorPayload(
+            await response.json().catch(() => null),
+            response.status
+          );
           throw new Error(
-            typeof errorBody?.detail === "string"
-              ? errorBody.detail
-              : "Failed to set crawler as default."
+            parsed.userMessage || "Failed to set crawler as default."
           );
         }
       }
@@ -793,12 +793,11 @@ export default function Page() {
       });
 
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        throw new Error(
-          typeof errorBody?.detail === "string"
-            ? errorBody.detail
-            : "Failed to deactivate provider."
+        const parsed = parseApiErrorPayload(
+          await response.json().catch(() => null),
+          response.status
         );
+        throw new Error(parsed.userMessage || "Failed to deactivate provider.");
       }
 
       await mutateContentProviders();

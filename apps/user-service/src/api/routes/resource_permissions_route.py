@@ -3,24 +3,20 @@
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
 from src.api.dependencies import (
     require_auth,
     require_auth_or_internal_service_token,
     require_permission,
 )
-from src.core.exceptions import ForbiddenError, NotFoundError
+from src.controller import get_resource_permission_controller
 from src.schema.organizations import (
     BulkPermissionGrantRequest,
     PermissionCheckRequest,
     ResourcePermissionGrantRequest,
     ScopedResourcePermissionsResponse,
     ScopedResourcePermissionSyncRequest,
-)
-from src.service import (
-    get_permission_audit_service,
-    get_resource_permission_service,
 )
 
 router = APIRouter(prefix="/permissions", tags=["resource-permissions"])
@@ -38,22 +34,13 @@ async def get_scoped_direct_permissions(
     user_id: Annotated[str, Depends(require_auth)],
 ):
     """Return direct permissions for one organization-scoped target."""
-    service = get_resource_permission_service()
-    try:
-        permissions = await service.get_scoped_direct_permissions(
-            actor_id=uuid.UUID(user_id),
-            organization_id=uuid.UUID(org_id),
-            target_type=target_type,
-            target_id=uuid.UUID(target_id),
-            resource_type=resource_type,
-        )
-        return {"permissions": permissions, "count": len(permissions)}
-    except ForbiddenError as error:
-        raise HTTPException(status_code=403, detail=str(error)) from error
-    except NotFoundError as error:
-        raise HTTPException(status_code=404, detail=str(error)) from error
-    except ValueError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
+    return await get_resource_permission_controller().get_scoped_direct_permissions(
+        actor_id=uuid.UUID(user_id),
+        organization_id=uuid.UUID(org_id),
+        target_type=target_type,
+        target_id=uuid.UUID(target_id),
+        resource_type=resource_type,
+    )
 
 
 @router.put(
@@ -69,23 +56,14 @@ async def sync_scoped_direct_permissions(
     user_id: Annotated[str, Depends(require_auth)],
 ):
     """Synchronize direct permissions for one organization-scoped target."""
-    service = get_resource_permission_service()
-    try:
-        permissions = await service.sync_scoped_direct_permissions(
-            actor_id=uuid.UUID(user_id),
-            organization_id=uuid.UUID(org_id),
-            target_type=target_type,
-            target_id=uuid.UUID(target_id),
-            resource_type=resource_type,
-            desired_permissions=[permission.model_dump() for permission in payload.permissions],
-        )
-        return {"permissions": permissions, "count": len(permissions)}
-    except ForbiddenError as error:
-        raise HTTPException(status_code=403, detail=str(error)) from error
-    except NotFoundError as error:
-        raise HTTPException(status_code=404, detail=str(error)) from error
-    except ValueError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
+    return await get_resource_permission_controller().sync_scoped_direct_permissions(
+        actor_id=uuid.UUID(user_id),
+        organization_id=uuid.UUID(org_id),
+        target_type=target_type,
+        target_id=uuid.UUID(target_id),
+        resource_type=resource_type,
+        desired_permissions=[permission.model_dump() for permission in payload.permissions],
+    )
 
 
 # Permission checking (used by other services)
@@ -99,8 +77,7 @@ async def check_permission(
 
     Used by agent-service, rag-service, tools-service.
     """
-    service = get_resource_permission_service()
-    return await service.check_resource_access(
+    return await get_resource_permission_controller().check_permission(
         user_id=uuid.UUID(payload.user_id),
         resource_type=payload.resource_type,
         resource_id=payload.resource_id,
@@ -116,18 +93,14 @@ async def grant_organization_permission(
     user_id: Annotated[str, Depends(require_permission("org:manage-resources"))],
 ):
     """Grant resource permission to organization."""
-    service = get_resource_permission_service()
-    try:
-        return await service.grant_permission(
-            resource_type=payload.resource_type,
-            resource_id=payload.resource_id,
-            resource_name=payload.resource_name,
-            organization_id=uuid.UUID(org_id),
-            permission_level=payload.permission_level,
-            granted_by=uuid.UUID(user_id),
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+    return await get_resource_permission_controller().grant_organization_permission(
+        org_id=uuid.UUID(org_id),
+        resource_type=payload.resource_type,
+        resource_id=payload.resource_id,
+        resource_name=payload.resource_name,
+        permission_level=payload.permission_level,
+        granted_by=uuid.UUID(user_id),
+    )
 
 
 @router.get("/organizations/{org_id}/resources")
@@ -139,9 +112,9 @@ async def get_organization_permissions(
     ),
 ):
     """Get all permissions for an organization."""
-    service = get_resource_permission_service()
-    perms = await service.perm_repo.get_organization_permissions(uuid.UUID(org_id), resource_type)
-    return {"permissions": perms, "count": len(perms)}
+    return await get_resource_permission_controller().get_organization_permissions(
+        uuid.UUID(org_id), resource_type
+    )
 
 
 # Grant/Revoke permissions - User level
@@ -152,18 +125,14 @@ async def grant_user_permission(
     user_id: Annotated[str, Depends(require_permission("permission:grant"))],
 ):
     """Grant resource permission to individual user."""
-    service = get_resource_permission_service()
-    try:
-        return await service.grant_permission(
-            resource_type=payload.resource_type,
-            resource_id=payload.resource_id,
-            resource_name=payload.resource_name,
-            user_id=uuid.UUID(target_user_id),
-            permission_level=payload.permission_level,
-            granted_by=uuid.UUID(user_id),
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+    return await get_resource_permission_controller().grant_user_permission(
+        target_user_id=uuid.UUID(target_user_id),
+        resource_type=payload.resource_type,
+        resource_id=payload.resource_id,
+        resource_name=payload.resource_name,
+        permission_level=payload.permission_level,
+        granted_by=uuid.UUID(user_id),
+    )
 
 
 @router.get("/users/{target_user_id}/resources")
@@ -175,9 +144,9 @@ async def get_user_permissions(
     ),
 ):
     """Get direct permissions for a user."""
-    service = get_resource_permission_service()
-    perms = await service.perm_repo.get_user_permissions(uuid.UUID(target_user_id), resource_type)
-    return {"permissions": perms, "count": len(perms)}
+    return await get_resource_permission_controller().get_user_permissions_listing(
+        uuid.UUID(target_user_id), resource_type
+    )
 
 
 # User's accessible resources (combines org + user perms)
@@ -194,11 +163,9 @@ async def get_user_accessible_resources(
 
     Combines direct user permissions and direct organization permissions.
     """
-    service = get_resource_permission_service()
-    resources = await service.get_user_accessible_resources(
+    return await get_resource_permission_controller().get_user_accessible_resources(
         uuid.UUID(target_user_id), resource_type
     )
-    return {"resources": resources, "count": len(resources)}
 
 
 @router.get("/users/me/resources")
@@ -209,9 +176,9 @@ async def get_my_accessible_resources(
     ),
 ):
     """Get resources current user can access."""
-    service = get_resource_permission_service()
-    resources = await service.get_user_accessible_resources(uuid.UUID(user_id), resource_type)
-    return {"resources": resources, "count": len(resources)}
+    return await get_resource_permission_controller().get_user_accessible_resources(
+        uuid.UUID(user_id), resource_type
+    )
 
 
 # Resource perspective
@@ -222,9 +189,9 @@ async def get_resource_permissions(
     _user_id: Annotated[str, Depends(require_permission("permission:read"))],
 ):
     """Get all permissions for a resource (organizations + users)."""
-    service = get_resource_permission_service()
-    perms = await service.get_resource_permissions(resource_type, resource_id)
-    return {"permissions": perms, "count": len(perms)}
+    return await get_resource_permission_controller().get_resource_permissions(
+        resource_type, resource_id
+    )
 
 
 # Update/Delete individual permission
@@ -235,13 +202,9 @@ async def update_permission(
     permission_level: str = Query(..., pattern="^(owner|admin|write|read|execute)$"),
 ):
     """Update permission level."""
-    service = get_resource_permission_service()
-    try:
-        return await service.update_permission(
-            uuid.UUID(permission_id), permission_level, uuid.UUID(user_id)
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+    return await get_resource_permission_controller().update_permission(
+        uuid.UUID(permission_id), permission_level, uuid.UUID(user_id)
+    )
 
 
 @router.delete("/permissions/{permission_id}")
@@ -250,14 +213,9 @@ async def revoke_permission(
     user_id: Annotated[str, Depends(require_permission("permission:manage"))],
 ):
     """Revoke permission."""
-    service = get_resource_permission_service()
-    try:
-        deleted = await service.revoke_permission(uuid.UUID(permission_id), uuid.UUID(user_id))
-        if not deleted:
-            raise HTTPException(status_code=404, detail="Permission not found")
-        return {"success": True}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+    return await get_resource_permission_controller().revoke_permission(
+        uuid.UUID(permission_id), uuid.UUID(user_id)
+    )
 
 
 # Bulk operations
@@ -269,15 +227,13 @@ async def bulk_grant_permissions(
     user_id: Annotated[str, Depends(require_permission("permission:manage"))],
 ):
     """Bulk grant permissions to multiple organizations/users."""
-    service = get_resource_permission_service()
-    result = await service.bulk_grant_permissions(
+    return await get_resource_permission_controller().bulk_grant_permissions(
         resource_type=resource_type,
         resource_id=resource_id,
         resource_name=payload.resource_name,
         grants=payload.grants,
         granted_by=uuid.UUID(user_id),
     )
-    return result
 
 
 # Audit logs
@@ -290,9 +246,9 @@ async def get_resource_audit_logs(
     limit: int = Query(50, ge=1, le=200),
 ):
     """Get audit logs for a resource."""
-    service = get_permission_audit_service()
-    logs, total = await service.get_resource_audit_logs(resource_type, resource_id, skip, limit)
-    return {"logs": logs, "total": total, "skip": skip, "limit": limit}
+    return await get_resource_permission_controller().get_resource_audit_logs(
+        resource_type, resource_id, skip, limit
+    )
 
 
 @router.get("/audit/organizations/{org_id}")
@@ -303,11 +259,9 @@ async def get_organization_audit_logs(
     limit: int = Query(50, ge=1, le=200),
 ):
     """Get audit logs for an organization."""
-    service = get_permission_audit_service()
-    logs, total = await service.get_target_audit_logs(
-        "organization", uuid.UUID(org_id), skip, limit
+    return await get_resource_permission_controller().get_organization_audit_logs(
+        uuid.UUID(org_id), skip, limit
     )
-    return {"logs": logs, "total": total, "skip": skip, "limit": limit}
 
 
 @router.get("/audit/users/{target_user_id}")
@@ -318,11 +272,9 @@ async def get_user_audit_logs(
     limit: int = Query(50, ge=1, le=200),
 ):
     """Get audit logs for a user."""
-    service = get_permission_audit_service()
-    logs, total = await service.get_target_audit_logs(
-        "user", uuid.UUID(target_user_id), skip, limit
+    return await get_resource_permission_controller().get_user_audit_logs(
+        uuid.UUID(target_user_id), skip, limit
     )
-    return {"logs": logs, "total": total, "skip": skip, "limit": limit}
 
 
 @router.get("/audit/recent")
@@ -331,6 +283,4 @@ async def get_recent_audit_logs(
     limit: int = Query(100, ge=1, le=500),
 ):
     """Get recent audit logs across all permissions."""
-    service = get_permission_audit_service()
-    logs = await service.get_recent_audit_logs(limit)
-    return {"logs": logs, "count": len(logs)}
+    return await get_resource_permission_controller().get_recent_audit_logs(limit)

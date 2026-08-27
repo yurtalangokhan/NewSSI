@@ -335,7 +335,7 @@ async def create_datasource(
         raise HTTPException(status_code=500, detail=t("datasource.create_collection_failed"))
 
     # Store Airbyte mapping
-    from service.AirbyteMappingRepository import AirbyteMappingDB
+    from repository.airbyte_mapping_repository import AirbyteMappingDB
 
     await AirbyteMappingDB.create(
         datasource_id=str(collection_uuid),
@@ -493,7 +493,7 @@ async def get_datasource_details(
     masked_config: dict[str, Any] = {}
     airbyte_source_id: str | None = None
     try:
-        from service.AirbyteMappingRepository import AirbyteMappingDB as _MappingDB
+        from repository.airbyte_mapping_repository import AirbyteMappingDB as _MappingDB
 
         _mapping = await _MappingDB.get(id)
         if _mapping:
@@ -516,7 +516,7 @@ async def get_datasource_details(
     sync_mode_val = None
     dest_sync_mode_val = None
     try:
-        from service.AirbyteMappingRepository import AirbyteMappingDB
+        from repository.airbyte_mapping_repository import AirbyteMappingDB
 
         mapping = await AirbyteMappingDB.get(id)
         if mapping:
@@ -631,8 +631,8 @@ async def update_datasource(
     meta = row.get("cmetadata", {})
 
     # 2. Get Airbyte mapping
+    from repository.airbyte_mapping_repository import AirbyteMappingDB
     from service.AirbyteApiClientService import get_airbyte_client
-    from service.AirbyteMappingRepository import AirbyteMappingDB
 
     mapping = await AirbyteMappingDB.get(id)
     if not mapping:
@@ -782,7 +782,7 @@ async def sync_datasource(
     # Check if there's an Airbyte mapping with graph_rag setting
     update_graph = False
     try:
-        from service.AirbyteMappingRepository import AirbyteMappingDB
+        from repository.airbyte_mapping_repository import AirbyteMappingDB
 
         mapping = await AirbyteMappingDB.get(id)
         if mapping and mapping.get("update_graph_rag"):
@@ -826,7 +826,7 @@ async def get_sync_status(
     # Schedule info from Airbyte
     schedule_info = None
     try:
-        from service.AirbyteMappingRepository import AirbyteMappingDB
+        from repository.airbyte_mapping_repository import AirbyteMappingDB
 
         mapping = await AirbyteMappingDB.get(id)
         if mapping:
@@ -877,8 +877,8 @@ async def get_sync_history(
     _user: AuthenticatedUser = Depends(require_permission("datasource:read")),
 ):
     """Return recent sync job history for a data source from Airbyte."""
+    from repository.airbyte_mapping_repository import AirbyteMappingDB
     from service.AirbyteApiClientService import get_airbyte_client
-    from service.AirbyteMappingRepository import AirbyteMappingDB
 
     mapping = await AirbyteMappingDB.get(id)
     if not mapping:
@@ -946,8 +946,8 @@ async def delete_datasource(
 
     # Clean up Airbyte objects
     try:
+        from repository.airbyte_mapping_repository import AirbyteMappingDB
         from service.AirbyteApiClientService import get_airbyte_client
-        from service.AirbyteMappingRepository import AirbyteMappingDB
 
         mapping = await AirbyteMappingDB.get(id)
         if mapping:

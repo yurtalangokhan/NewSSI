@@ -1,7 +1,5 @@
 """Tests for threads domain service."""
 
-from unittest.mock import AsyncMock, patch
-
 import pytest
 
 
@@ -29,15 +27,31 @@ class TestThreadService:
         """Test creating a thread."""
         from domain.threads.service import ThreadService
 
-        with patch("domain.threads.service.ThreadRepository") as MockRepo:
-            mock_instance = AsyncMock()
-            mock_instance.add_thread = AsyncMock(return_value={"thread_id": "test-123"})
-            MockRepo.return_value = mock_instance
+        class _FakeRepo:
+            def __init__(self):
+                self.calls: list[dict] = []
 
-            service = ThreadService()
-            await service.create_thread(thread_id="test-123")
+            async def add_thread(self, data: dict) -> dict:
+                self.calls.append(data)
+                return {"thread_id": "test-123"}
 
-            mock_instance.add_thread.assert_called_once()
+            async def get_thread(self, thread_id: str) -> dict | None:
+                return None
+
+            async def update_thread(self, thread_id: str, metadata: dict) -> dict | None:
+                return None
+
+            async def list_threads(self, limit=100, offset=0, user_id=None) -> list[dict]:
+                return []
+
+            async def delete_thread(self, thread_id: str) -> bool:
+                return True
+
+        repo = _FakeRepo()
+        service = ThreadService(repo)
+        await service.create_thread(thread_id="test-123")
+
+        assert len(repo.calls) == 1
 
 
 class TestThreadRepository:

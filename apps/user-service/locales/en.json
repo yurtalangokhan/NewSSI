@@ -80,6 +80,13 @@
     "invalid_permissions": "Invalid permissions: {permissions}",
     "invalid_role_ids": "Invalid roles: {roles}"
   },
+  "organization": {
+    "not_found": "Organization not found",
+    "primary_not_found": "Primary organization not found"
+  },
+  "user_organization": {
+    "not_found": "User organization not found"
+  },
   "permission": {
     "not_found": "Permission '{name}' not found",
     "invalid_permissions": "Invalid permissions: {permissions}"

@@ -4,13 +4,14 @@ import re
 import uuid
 
 from error_contract import ApplicationError
-from fastapi import UploadFile
 from i18n import t
 from langchain_community.document_loaders.parsers import BS4HTMLParser, PDFMinerParser
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
 from langchain_community.document_loaders.parsers.txt import TextParser
 from langchain_core.documents.base import Blob, Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from langconnect.models.documents import FileUploadDTO
 
 LOGGER = logging.getLogger(__name__)
 
@@ -489,13 +490,21 @@ TEXT_SPLITTER = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20
 
 
 async def process_document(
-    file: UploadFile, metadata: dict | None = None
+    file: FileUploadDTO, metadata: dict | None = None
 ) -> list[Document]:
-    """Process an uploaded file into LangChain documents."""
+    """Process an uploaded file into LangChain documents.
+
+    Args:
+        file: Framework-agnostic upload DTO carrying filename, content type,
+            size, and raw bytes.  Built by the API layer from a FastAPI
+            ``UploadFile`` so that this module has no framework dependency.
+        metadata: Optional per-file metadata merged into every resulting
+            document.
+    """
     # Generate a unique ID for this file processing instance
     file_id = uuid.uuid4()
 
-    contents = await file.read()
+    contents = file.content
 
     # ── Enforce 200 MB file-size limit ────────────────────────────────
     if len(contents) > MAX_FILE_SIZE_BYTES:

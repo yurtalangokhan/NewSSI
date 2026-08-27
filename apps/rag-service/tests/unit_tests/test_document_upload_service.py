@@ -2,28 +2,26 @@ import hashlib
 
 import pytest
 
-from langconnect.models.documents import UploadStatus
+from langconnect.models.documents import FileUploadDTO, UploadStatus
 from langconnect.services import document_upload_service as svc
 
 
-class FakeFile:
-    """Minimal UploadFile double exposing `.filename` and async read/seek."""
+def _make_dto(
+    filename: str,
+    content: bytes | None = None,
+) -> FileUploadDTO:
+    """Build a minimal ``FileUploadDTO`` for tests.
 
-    def __init__(self, filename: str, content: bytes | None = None) -> None:
-        """Store the filename and readable content.
-
-        Defaults content to something derived from the filename so distinct
-        fake files never accidentally collide on content hash.
-        """
-        self.filename = filename
-        self._content = content if content is not None else f"stub:{filename}".encode()
-
-    async def read(self) -> bytes:
-        """Return the seeded content."""
-        return self._content
-
-    async def seek(self, offset: int) -> None:
-        """No-op seek — content is served from memory regardless of offset."""
+    Defaults *content* to something derived from the filename so distinct
+    fake files never accidentally collide on content hash.
+    """
+    data = content if content is not None else f"stub:{filename}".encode()
+    return FileUploadDTO(
+        filename=filename,
+        content_type="text/plain",
+        size=len(data),
+        content=data,
+    )
 
 
 class FakeDoc:
@@ -87,7 +85,7 @@ async def test_run_upload_job_completes_and_embeds_documents(monkeypatch):
 
     monkeypatch.setattr(svc, "process_document", fake_process_document)
 
-    files = [FakeFile("a.txt")]
+    files = [_make_dto("a.txt")]
     svc.initialize_upload_progress("col-1", total_files=1)
 
     await svc.run_upload_job("col-1", "user-1", files, [None])
@@ -118,7 +116,7 @@ async def test_run_upload_job_stamps_filename_into_metadata_even_without_caller_
 
     monkeypatch.setattr(svc, "process_document", fake_process_document)
 
-    files = [FakeFile("a.txt")]
+    files = [_make_dto("a.txt")]
     svc.initialize_upload_progress("col-1", total_files=1)
 
     await svc.run_upload_job("col-1", "user-1", files, [None])
@@ -140,7 +138,7 @@ async def test_run_upload_job_stamps_content_hash_into_metadata(monkeypatch):
 
     monkeypatch.setattr(svc, "process_document", fake_process_document)
 
-    files = [FakeFile("a.txt", content=b"hello world")]
+    files = [_make_dto("a.txt", content=b"hello world")]
     svc.initialize_upload_progress("col-1", total_files=1)
 
     await svc.run_upload_job("col-1", "user-1", files, [None])
@@ -166,7 +164,7 @@ async def test_run_upload_job_skips_file_with_content_hash_already_in_collection
 
     monkeypatch.setattr(svc, "process_document", fake_process_document)
 
-    files = [FakeFile("renamed.txt", content=b"identical bytes")]
+    files = [_make_dto("renamed.txt", content=b"identical bytes")]
     svc.initialize_upload_progress("col-1", total_files=1)
 
     await svc.run_upload_job("col-1", "user-1", files, [None])
@@ -191,8 +189,8 @@ async def test_run_upload_job_skips_content_duplicate_within_same_batch(monkeypa
     monkeypatch.setattr(svc, "process_document", fake_process_document)
 
     files = [
-        FakeFile("first.txt", content=b"same bytes"),
-        FakeFile("second.txt", content=b"same bytes"),
+        _make_dto("first.txt", content=b"same bytes"),
+        _make_dto("second.txt", content=b"same bytes"),
     ]
     svc.initialize_upload_progress("col-1", total_files=2)
 
@@ -214,7 +212,7 @@ async def test_run_upload_job_skips_filename_already_in_collection(monkeypatch):
 
     monkeypatch.setattr(svc, "process_document", fake_process_document)
 
-    files = [FakeFile("dup.txt")]
+    files = [_make_dto("dup.txt")]
     svc.initialize_upload_progress("col-1", total_files=1)
 
     await svc.run_upload_job("col-1", "user-1", files, [None])
@@ -239,7 +237,7 @@ async def test_run_upload_job_skips_duplicate_within_same_batch(monkeypatch):
 
     monkeypatch.setattr(svc, "process_document", fake_process_document)
 
-    files = [FakeFile("same.txt"), FakeFile("same.txt")]
+    files = [_make_dto("same.txt"), _make_dto("same.txt")]
     svc.initialize_upload_progress("col-1", total_files=2)
 
     await svc.run_upload_job("col-1", "user-1", files, [None, None])
@@ -263,7 +261,7 @@ async def test_run_upload_job_continues_after_file_processing_error(monkeypatch)
 
     monkeypatch.setattr(svc, "process_document", fake_process_document)
 
-    files = [FakeFile("bad.txt"), FakeFile("good.txt")]
+    files = [_make_dto("bad.txt"), _make_dto("good.txt")]
     svc.initialize_upload_progress("col-1", total_files=2)
 
     await svc.run_upload_job("col-1", "user-1", files, [None, None])
@@ -287,7 +285,7 @@ async def test_run_upload_job_embeds_in_batches_for_progress(monkeypatch):
 
     monkeypatch.setattr(svc, "process_document", fake_process_document)
 
-    files = [FakeFile("big.txt")]
+    files = [_make_dto("big.txt")]
     svc.initialize_upload_progress("col-1", total_files=1)
 
     await svc.run_upload_job("col-1", "user-1", files, [None])

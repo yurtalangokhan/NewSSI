@@ -8,8 +8,8 @@ from i18n import t
 
 from controller.base import BaseController
 from core.env import env
+from repository.persona_repository import PersonaDB
 from service.CheckpointerService import get_checkpointer
-from service.PersonaRepository import PersonaDB
 from service.StoreService import (
     add_thread,
     delete_thread_from_store,

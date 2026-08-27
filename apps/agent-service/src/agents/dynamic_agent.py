@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+from contextvars import ContextVar
 from typing import Any
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.pregel import Pregel
 
+from agent_composition.adapters.langchain_tool_adapter import (
+    tool_bindings_to_langchain_tools,
+)
+from agent_composition.domain.ports import ToolGateway
+from agent_composition.domain.trusted_context import TrustedToolContext
 from agents.graphs.builder import GraphBuilder
 from agents.graphs.schemas import GraphSchemaType, get_schema
 from agents.lazy_agent import LazyLoadingAgent
@@ -22,6 +28,13 @@ logger = get_logger(__name__)
 # Per-definition-ID cache so we don't reload MCP tools on every request.
 # Key = definition_id (str UUID), Value = loaded DynamicAgent instance.
 _agent_cache: dict[str, DynamicAgent] = {}
+
+# Context variable for trusted context at invocation time.
+# Set by DynamicAgent before calling graph.ainvoke; read by
+# LangChainToolAdapter context providers inside tool nodes.
+_trusted_context_var: ContextVar[TrustedToolContext | None] = ContextVar(
+    "_trusted_context_var", default=None
+)
 
 
 def get_cached_agent(definition_id: str) -> DynamicAgent | None:
@@ -47,11 +60,22 @@ class DynamicAgent(LazyLoadingAgent):
     The DynamicAgent wraps LazyLoadingAgent and delegates graph construction to
     GraphBuilder.  The resulting compiled graph is cached in the instance after
     the first `load()` call, so repeated requests share the same graph.
+
+    Supports optional `ToolsServiceToolGateway` injection for the trusted-context
+    tool path. When a gateway is provided, selected tools are resolved through it
+    and wrapped as LangChain tools using TrustedContextProvider (which reads
+    user/tenant identity from the LangGraph config at invocation time).
     """
 
-    def __init__(self, agent_config: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        agent_config: dict[str, Any] | None = None,
+        gateway: ToolGateway | None = None,
+    ):
         super().__init__()
         self._config = agent_config or {}
+        self._gateway = gateway
+        self._gateway_tools: list[Any] = []  # Pre-resolved LangChain tools from gateway
         self._default_graph: CompiledStateGraph | Pregel | None = None
         self._mcp_tools_map: dict[str, Any] = {}
         self._load_failed = False
@@ -96,8 +120,72 @@ class DynamicAgent(LazyLoadingAgent):
             self._loaded = True
             self._load_failed = True
 
+    def _build_trusted_context(self, config: RunnableConfig | None) -> TrustedToolContext | None:
+        """Build TrustedToolContext from LangGraph config for gateway tool invocation."""
+        configurable = (config or {}).get("configurable", {})
+        user_id = configurable.get("user_id")
+        tenant_id = configurable.get("tenant_id")
+        binding_references: dict[str, str] = configurable.get("binding_references") or {}
+        attachment_handles: tuple[str, ...] = tuple(
+            a.get("handle") or a.get("filename") or ""
+            for a in (configurable.get("mail_attachments") or [])
+            if a
+        )
+        project_id = configurable.get("project_id")
+        request_id = configurable.get("request_id")
+
+        if not any([user_id, tenant_id, binding_references, attachment_handles, project_id]):
+            return None
+
+        from agent_composition.domain.trusted_context import build_trusted_context
+
+        return build_trusted_context(
+            user_id=user_id,
+            tenant_id=tenant_id,
+            binding_references=binding_references,
+            attachment_handles=attachment_handles,
+            project_id=project_id,
+            request_id=request_id,
+        )
+
     async def _load_mcp_tools(self) -> None:
-        """Load all available MCP tools into the internal map."""
+        """Load all available MCP tools into the internal map.
+
+        When a ToolsServiceToolGateway is injected, tools are resolved through
+        the gateway and stored as pre-wrapped LangChain tools in _gateway_tools.
+        The legacy MultiServerMCPClient path is still used to populate
+        _mcp_tools_map for tools that need per-config wrapping (e.g. send_email).
+        """
+        # If a gateway is injected, use it to resolve tools.
+        if self._gateway is not None:
+            try:
+                await self._gateway.load()
+                all_descriptors = await self._gateway.describe()
+                all_keys = tuple(d.key for d in all_descriptors)
+                bindings = await self._gateway.resolve(all_keys)
+
+                def _context_provider() -> TrustedToolContext | None:
+                    return _trusted_context_var.get()
+
+                self._gateway_tools = tool_bindings_to_langchain_tools(
+                    bindings, context_provider=_context_provider
+                )
+                logger.info(
+                    "DynamicAgent '%s' resolved %d tools via gateway",
+                    self.name,
+                    len(self._gateway_tools),
+                )
+            except Exception as e:
+                logger.warning(
+                    "DynamicAgent '%s' gateway tool resolution failed: %s. "
+                    "Falling back to legacy MCP path.",
+                    self.name,
+                    e,
+                )
+                self._gateway_tools = []
+
+        # Always also populate _mcp_tools_map via legacy path for tools
+        # that still need per-config wrapping (e.g. send_email).
         try:
             from langchain_mcp_adapters.client import MultiServerMCPClient
 
@@ -126,13 +214,17 @@ class DynamicAgent(LazyLoadingAgent):
                 self._mcp_tools_map[tool.name] = tool
 
             logger.info(
-                "Loaded %d MCP tools for DynamicAgent '%s' from %s",
+                "Loaded %d MCP tools for DynamicAgent '%s' from %s (legacy path)",
                 len(tools),
                 self.name,
                 mcp_url,
             )
         except Exception as e:
-            logger.warning("Could not load MCP tools for DynamicAgent '%s': %s", self.name, e)
+            logger.warning(
+                "Could not load MCP tools for DynamicAgent '%s' via legacy path: %s",
+                self.name,
+                e,
+            )
 
     def _create_graph_from_config(
         self,
@@ -185,6 +277,7 @@ class DynamicAgent(LazyLoadingAgent):
             mcp_tools_map=self._mcp_tools_map,
             memory_enabled=effective_config.get("memory_type") == "long_term",
             checkpointer=self._checkpointer if hasattr(self, "_checkpointer") else None,
+            gateway_tools=self._gateway_tools,
         )
 
         build_config: dict[str, Any] = {
@@ -255,6 +348,7 @@ class DynamicAgent(LazyLoadingAgent):
             system_prompt="You are a helpful assistant.",
             mcp_tools_map={},
             checkpointer=self._checkpointer if hasattr(self, "_checkpointer") else None,
+            gateway_tools=self._gateway_tools,
         ).build("zero_shot")
 
     def _get_runtime_graph(self, config: RunnableConfig | None) -> CompiledStateGraph | Pregel:
@@ -295,8 +389,14 @@ class DynamicAgent(LazyLoadingAgent):
 
         input, memories, user_id = await self._inject_memory_into_input(input, config)
 
-        graph = self._get_runtime_graph(config)
-        result = await graph.ainvoke(input, config=config, **kwargs)
+        # Build trusted context from config for gateway-injected tools.
+        token = _trusted_context_var.set(self._build_trusted_context(config))
+
+        try:
+            graph = self._get_runtime_graph(config)
+            result = await graph.ainvoke(input, config=config, **kwargs)
+        finally:
+            _trusted_context_var.reset(token)
 
         if memories is not None and user_id:
             configurable = (config or {}).get("configurable", {})
@@ -322,9 +422,15 @@ class DynamicAgent(LazyLoadingAgent):
 
         input, memories, user_id = await self._inject_memory_into_input(input, config)
 
-        graph = self._get_runtime_graph(config)
-        async for event in graph.astream(input, config=config, **kwargs):
-            yield event
+        # Build trusted context from config for gateway-injected tools.
+        token = _trusted_context_var.set(self._build_trusted_context(config))
+
+        try:
+            graph = self._get_runtime_graph(config)
+            async for event in graph.astream(input, config=config, **kwargs):
+                yield event
+        finally:
+            _trusted_context_var.reset(token)
 
         if memories is not None and user_id:
             # Best-effort memory save; we don't have final output here but

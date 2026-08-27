@@ -114,6 +114,63 @@ def test_send_email_message_error_is_translated_for_turkish_locale():
     assert result["error"] == "E-posta göndermeden önce alıcı, konu ve gövde gereklidir."
 
 
+def test_mail_error_response_helper_shape_is_stable():
+    """Snapshot: the consolidated error helper keeps the MCP-visible shape."""
+    from src.tools.response import error_response
+
+    output = json.loads(error_response("mail.auth_failed", error_category="authentication"))
+    assert output == {
+        "success": False,
+        "error_category": "authentication",
+        "error": "SMTP authentication failed.",
+    }
+
+    output_no_category = json.loads(error_response("mail.auth_failed"))
+    assert output_no_category == {
+        "success": False,
+        "error": "SMTP authentication failed.",
+    }
+
+
+def test_send_email_message_validation_error_shape_is_stable():
+    """Snapshot: validation/config errors keep error_category in the output."""
+    result = json.loads(
+        send_email_message(
+            smtp_config={},
+            to=[],
+            cc=[],
+            bcc=[],
+            subject="",
+            body="",
+            is_html=False,
+            reply_to=None,
+        )
+    )
+    assert result == {
+        "success": False,
+        "error_category": "validation",
+        "error": "Recipient, subject, and body are required before sending email.",
+    }
+
+    config_result = json.loads(
+        send_email_message(
+            smtp_config={"host": "x"},
+            to=["a@example.com"],
+            cc=[],
+            bcc=[],
+            subject="s",
+            body="b",
+            is_html=False,
+            reply_to=None,
+        )
+    )
+    assert config_result == {
+        "success": False,
+        "error_category": "configuration",
+        "error": "SMTP configuration is incomplete.",
+    }
+
+
 def test_send_email_message_attaches_base64_files(monkeypatch):
     FakeSMTP.instances = []
     monkeypatch.setattr("src.tools.mail_tools.smtplib.SMTP", FakeSMTP)

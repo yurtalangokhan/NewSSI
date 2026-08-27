@@ -1,18 +1,39 @@
 """Assistant domain service - manages assistant configurations."""
 
-import logging
-from typing import Any
+from __future__ import annotations
 
-from core.db.repositories import AssistantRepository
+import logging
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
+
+
+class AssistantRepositoryPort(Protocol):
+    """Persistence port for assistants.
+
+    Implemented by the concrete repository in ``core.db.repositories``. The
+    domain depends on this abstraction, never on the infrastructure class, so
+    the dependency direction points inward (clean architecture).
+    """
+
+    async def save_assistant(self, data: dict[str, Any]) -> dict[str, Any]: ...
+
+    async def get_assistant(self, assistant_id: str) -> dict[str, Any] | None: ...
+
+    async def update_assistant(
+        self, assistant_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any] | None: ...
+
+    async def list_assistants(self) -> list[dict[str, Any]]: ...
+
+    async def delete_assistant(self, assistant_id: str) -> bool: ...
 
 
 class AssistantService:
     """Service for managing assistants."""
 
-    def __init__(self):
-        self._repo = AssistantRepository()
+    def __init__(self, repo: AssistantRepositoryPort) -> None:
+        self._repo = repo
 
     async def create_assistant(
         self,

@@ -1,13 +1,10 @@
-"""
-Sync Schedule Database Manager.
+"""Schedule repository facade.
+
+Canonical location for the ``ScheduleDBManager`` facade that delegates to
+:class:`~core.db.repositories.ScheduleRepository`.
 
 Manages the ``sync_schedules`` table – creation, CRUD operations,
 and next-run-time computation via *croniter*.
-
-All database access is now delegated to
-:class:`~core.db.repositories.ScheduleRepository`.  This module keeps
-the ``ScheduleDBManager`` façade (same static-method signatures) so
-that existing callers continue to work unchanged.
 """
 
 from __future__ import annotations
@@ -25,6 +22,25 @@ logger = get_logger(__name__)
 
 def _repo() -> ScheduleRepository:
     return ScheduleRepository()
+
+
+def _compute_next_run(cron_expr: str, tz_name: str = "UTC") -> str | None:
+    """Return the next fire-time for a Quartz cron expression as an ISO string.
+
+    Module-level helper kept here so delivery code (e.g. datasource schedule
+    summaries) can compute the next run without instantiating the service.
+    Returns ``None`` when the expression cannot be parsed.
+    """
+    try:
+        from zoneinfo import ZoneInfo
+
+        tz = ZoneInfo(tz_name)
+        base = datetime.now(tz)
+        unix_cron = ScheduleDBManager._quartz_to_unix(cron_expr)
+        cron = croniter(unix_cron, base)
+        return cron.get_next(datetime).astimezone(UTC).isoformat()
+    except Exception:
+        return None
 
 
 class ScheduleDBManager:

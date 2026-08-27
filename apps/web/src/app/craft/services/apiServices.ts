@@ -13,6 +13,7 @@ import {
   DirectoryListing,
   SharingScope,
 } from "@/app/craft/types/streamingTypes";
+import { parseApiErrorPayload } from "@/lib/api/errors";
 
 // =============================================================================
 // API Configuration
@@ -20,6 +21,18 @@ import {
 
 const API_BASE = "/api/build";
 export const USAGE_LIMITS_ENDPOINT = `${API_BASE}/limit`;
+
+/** Parse a non-ok Response using the shared error contract and throw. */
+async function throwApiError(
+  response: Response,
+  fallback: string
+): Promise<never> {
+  const parsed = parseApiErrorPayload(
+    await response.json().catch(() => null),
+    response.status
+  );
+  throw new Error(parsed.userMessage || fallback);
+}
 
 // =============================================================================
 // SSE Stream Processing
@@ -245,10 +258,7 @@ export async function restoreSession(
   });
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(
-      errorData.detail || `Failed to restore session: ${res.status}`
-    );
+    await throwApiError(res, `Failed to restore session: ${res.status}`);
   }
 
   return res.json();
@@ -589,8 +599,7 @@ export async function uploadFile(
   });
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Failed to upload file: ${res.status}`);
+    await throwApiError(res, `Failed to upload file: ${res.status}`);
   }
 
   return res.json();
@@ -617,8 +626,7 @@ export async function deleteFile(
   );
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Failed to delete file: ${res.status}`);
+    await throwApiError(res, `Failed to delete file: ${res.status}`);
   }
 }
 
@@ -640,10 +648,7 @@ export async function exportDocx(
   );
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(
-      errorData.detail || `Failed to export as DOCX: ${res.status}`
-    );
+    await throwApiError(res, `Failed to export as DOCX: ${res.status}`);
   }
 
   return res.blob();
@@ -677,10 +682,7 @@ export async function fetchPptxPreview(
   );
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(
-      errorData.detail || `Failed to generate PPTX preview: ${res.status}`
-    );
+    await throwApiError(res, `Failed to generate PPTX preview: ${res.status}`);
   }
 
   return res.json();
@@ -704,10 +706,7 @@ export async function deleteConnector(
   });
 
   if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(
-      errorData.detail || `Failed to delete connector: ${res.status}`
-    );
+    await throwApiError(res, `Failed to delete connector: ${res.status}`);
   }
 }
 
@@ -755,10 +754,7 @@ export async function uploadLibraryFiles(
   });
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(
-      errorData.detail || `Failed to upload files: ${res.status}`
-    );
+    await throwApiError(res, `Failed to upload files: ${res.status}`);
   }
 
   return res.json();
@@ -781,8 +777,7 @@ export async function uploadLibraryZip(
   });
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Failed to upload zip: ${res.status}`);
+    await throwApiError(res, `Failed to delete file: ${res.status}`);
   }
 
   return res.json();
@@ -801,10 +796,7 @@ export async function createLibraryDirectory(
   });
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(
-      errorData.detail || `Failed to create directory: ${res.status}`
-    );
+    await throwApiError(res, `Failed to create directory: ${res.status}`);
   }
 
   return res.json();
@@ -827,8 +819,7 @@ export async function toggleLibraryFileSync(
   );
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Failed to toggle sync: ${res.status}`);
+    await throwApiError(res, `Failed to toggle sync: ${res.status}`);
   }
 }
 
@@ -844,7 +835,6 @@ export async function deleteLibraryFile(documentId: string): Promise<void> {
   );
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Failed to delete file: ${res.status}`);
+    await throwApiError(res, `Failed to delete file: ${res.status}`);
   }
 }

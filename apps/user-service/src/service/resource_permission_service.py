@@ -360,6 +360,18 @@ class ResourcePermissionService:
         ):
             raise ValueError("User target must be an active member of the selected organization")
 
+    async def get_organization_permissions(
+        self, organization_id: uuid.UUID, resource_type: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Get all permissions for an organization, optionally filtered by resource type."""
+        return await self.perm_repo.get_organization_permissions(organization_id, resource_type)
+
+    async def get_user_permissions_listing(
+        self, user_id: uuid.UUID, resource_type: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Get direct permissions for a user, optionally filtered by resource type."""
+        return await self.perm_repo.get_user_permissions(user_id, resource_type)
+
     async def get_user_accessible_resources(
         self, user_id: uuid.UUID, resource_type: str | None = None
     ) -> list[dict[str, Any]]:

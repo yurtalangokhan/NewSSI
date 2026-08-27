@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from src.api.dependencies import require_auth
 from src.api.routes import organizations_route, user_organizations_route
+from src.controller.user_organization_controller import UserOrganizationController
 from src.core.database.models import OrganizationModel
 from src.core.exceptions import ConflictError, ForbiddenError
 from src.repository.user_organization_repository import UserOrganizationRepository
@@ -335,7 +336,9 @@ def test_membership_route_forwards_actor_and_translates_scope_denial(monkeypatch
     organization_id = uuid.uuid4()
     service = MagicMock()
     service.assign_user_to_organization = AsyncMock(side_effect=ForbiddenError("out of scope"))
-    monkeypatch.setattr(user_organizations_route, "get_user_organization_service", lambda: service)
+    ctrl = UserOrganizationController()
+    ctrl.service = service
+    monkeypatch.setattr(user_organizations_route, "get_user_organization_controller", lambda: ctrl)
 
     app = FastAPI()
     app.include_router(user_organizations_route.router)
@@ -365,7 +368,9 @@ def test_membership_route_accepts_bounded_catalog_role_name(monkeypatch) -> None
     service.assign_user_to_organization = AsyncMock(
         return_value={"role_in_org": "enterprise-admin"}
     )
-    monkeypatch.setattr(user_organizations_route, "get_user_organization_service", lambda: service)
+    ctrl = UserOrganizationController()
+    ctrl.service = service
+    monkeypatch.setattr(user_organizations_route, "get_user_organization_controller", lambda: ctrl)
 
     app = FastAPI()
     app.include_router(user_organizations_route.router)

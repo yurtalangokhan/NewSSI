@@ -85,8 +85,8 @@ class AirbyteSyncListener:
 
     async def _poll_once(self) -> None:
         """Single poll cycle: check all mapped datasources for new completed jobs."""
+        from repository.airbyte_mapping_repository import AirbyteMappingDB
         from service.AirbyteApiClientService import get_airbyte_client
-        from service.AirbyteMappingRepository import AirbyteMappingDB
 
         mappings = await AirbyteMappingDB.list_all()
         if not mappings:

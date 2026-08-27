@@ -19,7 +19,7 @@ def ensure_collection_mutable(collection_id: str) -> None:
 
 async def ensure_not_connector_managed_collection(collection_id: str) -> None:
     """Block write operations for connector-managed (e.g. Airbyte) collections."""
-    from langconnect.database.collections import CollectionsManager
+    from langconnect.services.collections import CollectionsManager
 
     collection = await CollectionsManager("internal-service").get(collection_id)
     if not collection:

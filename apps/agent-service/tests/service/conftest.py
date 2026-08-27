@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
 
-from service import app
+from testing.minimal_backend_app import app
 
 
 @pytest.fixture

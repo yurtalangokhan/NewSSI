@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from src.api.dependencies import require_auth
 from src.api.routes import resource_permissions_route
 from src.api.routes.resource_permissions_route import router
+from src.controller.resource_permission_controller import ResourcePermissionController
 from src.core.exceptions import ForbiddenError, NotFoundError
 from src.schema.organizations import (
     ResourcePermissionSyncItem,
@@ -296,8 +297,10 @@ def test_scoped_route_translates_domain_errors(
     actor_id = uuid.uuid4()
     service = MagicMock()
     service.get_scoped_direct_permissions = AsyncMock(side_effect=error)
+    ctrl = ResourcePermissionController()
+    ctrl.service = service
     monkeypatch.setattr(
-        resource_permissions_route, "get_resource_permission_service", lambda: service
+        resource_permissions_route, "get_resource_permission_controller", lambda: ctrl
     )
     app = FastAPI()
     app.include_router(router)
@@ -323,8 +326,10 @@ def test_scoped_sync_route_forwards_actor_and_organization_target(monkeypatch) -
     actor_id = uuid.uuid4()
     service = MagicMock()
     service.sync_scoped_direct_permissions = AsyncMock(return_value=[])
+    ctrl = ResourcePermissionController()
+    ctrl.service = service
     monkeypatch.setattr(
-        resource_permissions_route, "get_resource_permission_service", lambda: service
+        resource_permissions_route, "get_resource_permission_controller", lambda: ctrl
     )
     app = FastAPI()
     app.include_router(router)

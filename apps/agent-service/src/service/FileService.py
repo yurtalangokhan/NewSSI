@@ -116,6 +116,36 @@ def store_file(file_id: str, data: bytes, mime_type: str, filename: str) -> File
     return record
 
 
+async def persist_document_record(
+    *,
+    file_id: str,
+    user_id: str,
+    filename: str,
+    mime_type: str,
+    chat_file_type: str,
+    size_bytes: int,
+    minio_object_key: str,
+    thread_id: str | None = None,
+) -> None:
+    """Best-effort persistence of a generated file into the document table.
+
+    Lives in the service layer so the ``agents`` layer never imports the
+    infrastructure repository directly (dependency direction points inward).
+    """
+    from core.db.repositories.document_repo import DocumentRepository
+
+    await DocumentRepository().create(
+        file_id=file_id,
+        user_id=user_id,
+        filename=filename,
+        mime_type=mime_type,
+        chat_file_type=chat_file_type,
+        size_bytes=size_bytes,
+        minio_object_key=minio_object_key,
+        thread_id=thread_id,
+    )
+
+
 def get_file(file_id: str) -> FileRecord | None:
     """Retrieve a file record, enforcing TTL. Returns None if expired or missing."""
     record = _STORE.get(file_id)
@@ -231,8 +261,10 @@ def _extract_text_from_record(record: FileRecord) -> str | None:
 
     try:
         if m == "application/pdf":
-            # Reuse the battle-tested pypdf extractor already in Utils.py
-            from service.Utils import extract_text_from_pdf  # avoid circular at module level
+            # Reuse the battle-tested pypdf extractor already in message_conversion
+            from service.message_conversion import (
+                extract_text_from_pdf,  # avoid circular at module level
+            )
 
             b64 = base64.b64encode(record.data).decode()
             return extract_text_from_pdf(b64)

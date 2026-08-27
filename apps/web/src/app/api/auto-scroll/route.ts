@@ -1,11 +1,3 @@
-import { proxyToBackend } from "@/lib/api/proxy";
-import { USER_SERVICE_URL } from "@/lib/constants";
-import { NextRequest } from "next/server";
+import { createSettingsPatchRoute } from "@/lib/api/userSettingsRoute";
 
-export async function PATCH(request: NextRequest) {
-  return proxyToBackend(request, "/api/users/me/settings/", {
-    backendUrl: USER_SERVICE_URL,
-    method: "PATCH",
-    withCredentials: true,
-  });
-}
+export const PATCH = createSettingsPatchRoute();

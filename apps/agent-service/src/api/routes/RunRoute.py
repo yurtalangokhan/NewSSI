@@ -24,9 +24,9 @@ from controller import RunController, get_run_controller
 from core.logger import get_logger
 from models.threads import ThreadHistoryRequest, ThreadState
 from service.AuthService import extract_user_id_from_token
+from service.message_conversion import convert_input_messages
 from service.StoreService import get_assistant_from_store
 from service.UserServiceClient import get_user_settings
-from service.Utils import convert_input_messages
 
 if TYPE_CHECKING:
     pass

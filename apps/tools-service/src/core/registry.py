@@ -5,12 +5,15 @@ Automatically discovers and registers tool categories.
 
 import importlib
 import importlib.util
+import logging
 from pathlib import Path
 from typing import Any
 
 from i18n import t
 
 from .base import BaseToolCategory
+
+logger = logging.getLogger(__name__)
 
 
 def _safe_t(key: str, default: str | None = None) -> str | None:
@@ -128,7 +131,7 @@ class ToolRegistry:
 
         # Register tools with the wrapped MCP (adds category metadata)
         category.register_tools(wrapped_mcp)
-        print(f"  ✓ Registered category: {name} ({category.label}) - {category.description}")
+        logger.info("Registered category: %s (%s) - %s", name, category.label, category.description)
 
     def discover_plugins(self, plugins_dir: str) -> int:
         """
@@ -145,11 +148,11 @@ class ToolRegistry:
         """
         plugins_path = Path(plugins_dir)
         if not plugins_path.exists():
-            print(f"Warning: Plugins directory does not exist: {plugins_dir}")
+            logger.warning("Plugins directory does not exist: %s", plugins_dir)
             return 0
 
         registered = 0
-        print(f"Discovering plugins in: {plugins_dir}")
+        logger.info("Discovering plugins in: %s", plugins_dir)
 
         for file_path in plugins_path.glob("*_tools.py"):
             try:
@@ -158,9 +161,14 @@ class ToolRegistry:
                     self.register_category(category)
                     registered += 1
             except Exception as e:
-                print(f"  ✗ Failed to load {file_path.name}: {e}")
+                logger.error(
+                    "Failed to load category from %s: %s",
+                    file_path.name,
+                    e,
+                    exc_info=True,
+                )
 
-        print(f"Registered {registered} tool categories")
+        logger.info("Registered %d tool categories", registered)
         return registered
 
     def _load_category_from_file(self, file_path: Path) -> BaseToolCategory | None:
@@ -271,7 +279,7 @@ class ToolRegistry:
                 try:
                     await category.initialize()
                 except Exception as e:
-                    print(f"Failed to initialize category '{name}': {e}")
+                    logger.error("Failed to initialize category '%s': %s", name, e, exc_info=True)
 
     async def cleanup_all(self) -> None:
         """Cleanup all registered categories."""
@@ -279,7 +287,7 @@ class ToolRegistry:
             try:
                 await category.cleanup()
             except Exception as e:
-                print(f"Failed to cleanup category '{name}': {e}")
+                logger.error("Failed to cleanup category '%s': %s", name, e, exc_info=True)
 
 
 class _CategoryTaggedMCP:

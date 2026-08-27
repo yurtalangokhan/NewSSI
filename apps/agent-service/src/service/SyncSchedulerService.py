@@ -27,7 +27,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from core.logger import get_logger
-from service.ScheduleRepository import ScheduleDBManager
+from repository.schedule_repository import ScheduleDBManager
 from service.SyncQueueService import SyncJob, get_sync_queue
 
 logger = get_logger(__name__)

@@ -266,7 +266,9 @@ async def resolve_user(
         raise HTTPException(status_code=401, detail=t("auth.invalid_api_key"))
 
     # Machine-only service calls may still use the internal service token.
-    internal_token = request.headers.get("X-Internal-Service-Token")
+    internal_token = request.headers.get(
+        "X-Internal-Service-Token"
+    ) or request.headers.get("x-internal-token")
     if INTERNAL_SERVICE_TOKEN and internal_token == INTERNAL_SERVICE_TOKEN:
         return AuthenticatedUser("internal-service", "Internal Service")
 
