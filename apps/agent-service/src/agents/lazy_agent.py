@@ -1,4 +1,14 @@
-"""Agent types with async initialization and dynamic graph creation."""
+"""Agent types with async initialization and dynamic graph creation.
+
+This module provides the LazyLoadingAgent base class for backward compatibility.
+New code should use agent_composition.runtime.ComposedAgent instead.
+
+LazyLoadingAgent is kept as a backward-compatibility facade. Its concrete
+subclasses (DynamicAgent, ConfigurableMCPAgent, CommandAgent, etc.) still
+use it directly. The runtime components (lifecycle, checkpoint, memory policy,
+safety policy, retry policy) are available in agent_composition.runtime for
+new composed-agent construction.
+"""
 
 import logging
 from abc import ABC, abstractmethod
@@ -21,7 +31,21 @@ logger = logging.getLogger(__name__)
 
 
 class LazyLoadingAgent(ABC):
-    """Base class for agents that require async loading."""
+    """Base class for agents that require async loading.
+
+    This class is kept for backward compatibility with existing subclasses.
+    New code should use agent_composition.runtime.ComposedAgent.
+
+    The class owns the following split responsibilities (now delegatable):
+    - lifecycle: _loaded flag, ensure_loaded(), load()/close() contract
+    - checkpoint: aget_state, aupdate_state, aget_state_history delegation
+    - memory: _inject_memory_into_input, _save_memory_from_output, event builders
+    - execution context: user/tenant identity from RunnableConfig
+
+    Subclasses must:
+    - Implement load() to set self._graph
+    - Call super().__init__() before using any inherited method
+    """
 
     def __init__(self) -> None:
         """Initialize the agent."""
@@ -37,7 +61,7 @@ class LazyLoadingAgent(ABC):
         - Setting up external connections (MCP clients, databases, etc.)
         - Loading tools or resources
         - Any other async setup required
-        - Creating the agent's graph
+        - Creating the agent's graph and assigning it to self._graph
         """
         raise NotImplementedError  # pragma: no cover
 

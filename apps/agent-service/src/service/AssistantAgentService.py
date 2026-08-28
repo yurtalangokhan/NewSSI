@@ -377,8 +377,8 @@ class AssistantAgentService:
         Uses a per-definition cache so MCP tools are only loaded once.
         Cache is invalidated on definition update/delete via AgentDefinitionService.
         """
+        from agent_composition.application.compose_agent import AgentFactory
         from agents.dynamic_agent import (
-            DynamicAgent,
             cache_agent,
             get_cached_agent,
         )
@@ -395,7 +395,7 @@ class AssistantAgentService:
             except Exception:
                 cached_checkpointer = None
 
-            cached_load_failed = bool(getattr(cached, "_load_failed", False))
+            cached_load_failed = bool(getattr(cached, "load_failed", False))
 
             if cached_load_failed:
                 logger.warning(
@@ -413,12 +413,10 @@ class AssistantAgentService:
                 return cached
 
         config = definition.to_config()
-        agent = DynamicAgent(agent_config=config)
-
-        if checkpointer:
-            agent._checkpointer = checkpointer
-
-        await agent.load()
+        # Resolve through the canonical AgentFactory facade (ASC-5). The factory
+        # validates the definition, assembles the runtime via AgentComposer, and
+        # returns a loaded DynamicAgent behind the existing cache contract.
+        agent = await AgentFactory.create(definition_config=config, checkpointer=checkpointer)
         cache_agent(definition_id, agent)
         logger.info("DynamicAgent '%s' created and cached (id=%s)", definition.name, definition_id)
         return agent

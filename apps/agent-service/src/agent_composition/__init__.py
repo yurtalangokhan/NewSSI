@@ -1,4 +1,6 @@
+from .application.compose_agent import AgentComposer, AgentFactory
 from .application.in_memory_gateway import InMemoryToolBinding, InMemoryToolGateway
+from .application.runtime_cache import AgentRuntimeCache, fingerprint_definition
 from .application.validate_definition import ValidateAgentDefinition
 from .domain.component_catalog import (
     COMPONENT_CATALOG,
@@ -47,6 +49,8 @@ from .domain.ports import (
     RuntimePolicyDecision,
     RuntimePolicyRequest,
     RuntimePolicyResult,
+    StateRequest,
+    StateUpdateRequest,
     ToolBinding,
     ToolDescriptor,
     ToolGateway,
@@ -67,9 +71,27 @@ from .domain.trusted_context import (
     redact_payload,
     validate_invocation,
 )
+from .runtime import (
+    AgentExecutionContext,
+    AgentLifecycle,
+    CheckpointAdapter,
+    ComposedAgent,
+    IdempotentLifecycle,
+    MemoryPolicy,
+    MemoryPolicyConfig,
+    RetryPolicy,
+    RetryPolicyConfig,
+    SafetyPolicy,
+    SafetyPolicyConfig,
+    TrustedExecutionContext,
+)
 
 __all__ = [
+    "AgentComposer",
+    "AgentFactory",
     "ValidateAgentDefinition",
+    "AgentRuntimeCache",
+    "fingerprint_definition",
     "InMemoryToolBinding",
     "InMemoryToolGateway",
     "COMPONENT_CATALOG",
@@ -123,10 +145,25 @@ __all__ = [
     "RuntimePolicyDecision",
     "RuntimePolicyRequest",
     "RuntimePolicyResult",
+    "StateRequest",
+    "StateUpdateRequest",
     "ToolBinding",
     "ToolDescriptor",
     "ToolGateway",
     "ToolInvocation",
     "ToolResult",
     "TrustedToolContext",
+    # Runtime components (ASC-4)
+    "ComposedAgent",
+    "AgentLifecycle",
+    "IdempotentLifecycle",
+    "CheckpointAdapter",
+    "AgentExecutionContext",
+    "TrustedExecutionContext",
+    "MemoryPolicy",
+    "MemoryPolicyConfig",
+    "SafetyPolicy",
+    "SafetyPolicyConfig",
+    "RetryPolicy",
+    "RetryPolicyConfig",
 ]
