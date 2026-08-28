@@ -100,7 +100,7 @@ The repository is structured as follows:
 
 To customize the agent for your own use case:
 
-1. Add your new agent to the `src/agents` directory. You can copy `research_assistant.py` or `chatbot.py` and modify it to change the agent's behavior and tools.
+1. Agents are composed from explicit components via `agent_composition` (see `docs/agent-composition.md`). Built-in agents are defined as recipes in `src/agent_composition/application/recipes.py`; Studio graphs are exposed from `src/agents/studio_graphs.py`. To add behavior, extend a graph-schema strategy in `src/agents/graphs/strategies/` or a recipe, rather than copying a monolithic agent module.
 1. Import and add your new agent to the `agents` dictionary in `src/agents/agents.py`. Your agent can be called by `/<your_agent_name>/invoke` or `/<your_agent_name>/stream`.
 1. Adjust the Streamlit interface in `src/streamlit_app.py` to match your agent's capabilities.
 

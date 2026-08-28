@@ -1,15 +1,13 @@
 """Agents module - AI agent implementations and management.
 
-Core Components:
-- base: Abstract base classes (BaseAgent, Brain, Perceptron, AgentManager)
-- registry: Agent registration system (@agent decorator)
-- configs: JSON configuration files
-- storage: Database models and repositories
-- managers: Supervisor and Pipeline implementations
-- perceptrons: Tool and MCP integrations
+Canonical agent construction now flows through ``agent_composition``
+(``AgentFactory`` -> ``AgentComposer`` -> ``ComposedAgent``). This package keeps
+the backward-compatible static registry facade (``agents.agents``) plus the
+retained ``base``/``perceptron``/``storage`` contracts. The legacy reflection
+factory, registry, configs, managers, and runtime island were removed in ASC-7.
 
 Backward Compatibility:
-- Provides same exports as original agents.agents module
+- Provides the same public facade exports as the original agents.agents module.
 """
 
 # Re-export original module for backward compatibility
@@ -52,28 +50,8 @@ from agents.base.perceptron import (
     VectorPerceptron,
 )
 
-# Configs
-from agents.configs import (
-    delete_agent_config,
-    list_config_names,
-    load_agent_config,
-    load_agent_configs,
-    save_agent_config,
-)
-
-# Managers
-from agents.managers import (
-    DynamicFlatSupervisor,
-    DynamicPipelineSupervisor,
-    get_pipeline,
-    get_supervisor,
-)
-
 # From perceptrons
 from agents.perceptrons import CompositePerceptron, MCPPerceptron
-
-# Registry
-from agents.registry import AgentRegistry, agent, agent_factory
 
 # Storage
 from agents.storage import (
@@ -115,21 +93,6 @@ __all__ = [
     "HierarchicalManager",
     "TaskResult",
     "DelegateRequest",
-    # Registry
-    "AgentRegistry",
-    "agent",
-    "agent_factory",
-    # Configs
-    "load_agent_config",
-    "load_agent_configs",
-    "save_agent_config",
-    "delete_agent_config",
-    "list_config_names",
-    # Managers
-    "DynamicFlatSupervisor",
-    "get_supervisor",
-    "DynamicPipelineSupervisor",
-    "get_pipeline",
     # Storage
     "AgentDefinitionModel",
     "AgentDefinitionRepository",

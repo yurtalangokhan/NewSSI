@@ -180,6 +180,17 @@ flowchart LR
   User --> PG
   Agent --> PG
   RAG --> PG
-  RAG --> Neo4j
-  RAG --> Milvus
+   RAG --> Neo4j
+   RAG --> Milvus
+
+## Agent service composition
+
+Agents in the agent-service are composed from explicit components (brain,
+perceptrons, tool gateway, graph schema, runtime policies) through the
+`agent_composition` package — `AgentFactory` → `AgentComposer` → `ComposedAgent`
+— rather than monolithic agent modules. Built-in agents are recipes; LangGraph
+Studio graphs are exposed from `src/agents/studio_graphs.py`. See
+[docs/agent-composition.md](agent-composition.md) for the full runtime
+reference and the list of legacy modules removed in ASC-7.
+
 ```

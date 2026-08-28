@@ -23,7 +23,7 @@ To create a RAG assistant:
 1. Open [`tools.py` file](../src/agents/tools.py) and make sure the persist_directory is pointing to the database you created previously.
 2. Modify the amount of documents returned, currently set to 5.
 3. Update the `database_search_func` function description to accurately describe what the purpose and contents of your database is.
-4. Open [`rag_assistant.py` file](../src/agents/rag_assistant.py) and update the agent's instuctions to describe what the assistant's speciality is and what knowledge it has access to, for example:
+4. The RAG assistant is now composed as a recipe in `src/agent_composition/application/recipes.py` (key `rag-assistant`) and exposed to Studio from `src/agents/studio_graphs.py`. Update the recipe's `system_prompt` to describe the assistant's speciality and knowledge, for example:
 
 ```python
 instructions = f"""
