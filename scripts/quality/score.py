@@ -9,6 +9,7 @@ local reports and hook thresholds.
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import sys
 from dataclasses import dataclass
@@ -31,7 +32,14 @@ class Finding:
 @dataclass(frozen=True)
 class ScorePolicy:
     hard_penalty: int = 25
-    warn_penalty: int = 5
+    warn_penalty: float = 1.0
+    warn_penalty_cap: int = 18
+    test_warn_multiplier: float = 0.5
+    complexity_penalty: float = 0.5
+    function_length_penalty: float = 1.0
+    module_loc_penalty: float = 2.0
+    raw_ui_penalty: float = 3.0
+    layer_leakage_penalty: float = 5.0
 
 
 @dataclass(frozen=True)
@@ -56,10 +64,41 @@ def grade_for_score(score: int) -> str:
     return "F"
 
 
+def is_test_location(location: str) -> bool:
+    normalized = location.replace("\\", "/")
+    return "/tests/" in normalized or normalized.startswith("tests/")
+
+
+def warn_penalty_for(finding: Finding, policy: ScorePolicy) -> float:
+    message = finding.message.lower()
+    if "layer leakage" in message or "dependency direction" in message:
+        penalty = policy.layer_leakage_penalty
+    elif "raw html" in message or "banned icon" in message:
+        penalty = policy.raw_ui_penalty
+    elif "module is" in message:
+        penalty = policy.module_loc_penalty
+    elif "function" in message:
+        penalty = policy.function_length_penalty
+    elif "cyclomatic" in message or "complexity" in message:
+        penalty = policy.complexity_penalty
+    else:
+        penalty = policy.warn_penalty
+
+    if is_test_location(finding.location):
+        penalty *= policy.test_warn_multiplier
+    return penalty
+
+
 def calculate_score(findings: list[Finding], policy: ScorePolicy) -> ScoreResult:
     hard_count = sum(1 for finding in findings if finding.severity == "HARD")
     warn_count = sum(1 for finding in findings if finding.severity == "WARN")
-    penalty = hard_count * policy.hard_penalty + warn_count * policy.warn_penalty
+    warn_penalty = sum(
+        warn_penalty_for(finding, policy)
+        for finding in findings
+        if finding.severity == "WARN"
+    )
+    capped_warn_penalty = min(policy.warn_penalty_cap, math.ceil(warn_penalty))
+    penalty = hard_count * policy.hard_penalty + capped_warn_penalty
     score = max(0, 100 - penalty)
     return ScoreResult(
         score=score,
@@ -72,6 +111,8 @@ def calculate_score(findings: list[Finding], policy: ScorePolicy) -> ScoreResult
 def quality_status(result: ScoreResult, minimum_score: int | None) -> str:
     if minimum_score is None:
         return "pass"
+    if result.hard_count > 0:
+        return "fail"
     return "pass" if result.score >= minimum_score else "fail"
 
 

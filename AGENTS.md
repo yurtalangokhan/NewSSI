@@ -207,7 +207,10 @@ or reviewing.
   table and how to run the check locally.
 - The quality runner also computes a 0-100 score from architecture findings.
   `quality-staged` and `quality-push` fail below `QUALITY_SCORE_MIN`, which
-  defaults to `80`. Use `make quality-score` to evaluate the full tracked tree.
+  defaults to `80`. HARD findings always fail threshold mode. WARN findings are
+  weighted and capped so legacy debt remains visible without blocking unrelated
+  pushes by volume alone. Use `make quality-score` for a full-tree, report-only
+  trend metric and use the listed findings as the quality-improvement backlog.
 
 ### Spec-driven implementation workflow
 
@@ -295,8 +298,9 @@ cross-service work, or tasks where shared context and review loops reduce risk.
    changes, preserves existing user changes, and writes the task report.
    **Must run the architecture & code-quality gate** (`make quality-staged` or
    `python3 scripts/quality/check_architecture.py --changed`) on the files it
-   changed, confirm the quality score meets `QUALITY_SCORE_MIN`, and resolve
-   every HARD finding before the task is considered done.
+   changed, confirm the quality score meets `QUALITY_SCORE_MIN`, resolve every
+   HARD finding, and improve WARN findings when they are local to the task and
+   can be fixed without broad unrelated refactoring.
 4. **Tester:** Confirms regression coverage and maps changed files to required
    Makefile/npm gates, including the architecture gate.
 5. **Reviewer:** Checks each task for spec compliance and code quality.
@@ -321,7 +325,9 @@ cross-service work, or tasks where shared context and review loops reduce risk.
   changed files and meet the quality score threshold.** The implementer runs it
   locally; the reviewer confirms it in the task report. A task that introduces
   a HARD architecture finding or drops below `QUALITY_SCORE_MIN` is not complete
-  until the issue is fixed.
+  until the issue is fixed. WARN findings that remain after a passing score must
+  be named in the task report or deferred-work list so future agents can raise
+  the score deliberately.
 - Final responses must state which roles/skills were used, which validation
   gates passed or failed (including the architecture gate), and whether the code
   is ready to push.
@@ -433,9 +439,11 @@ dependency inversion, generic `Utils`/`Helpers` bucket names, raw HTML/UI
 primitives and banned icon imports on the web side. See
 `docs/coding-standards.md` ("Architecture & code-quality gate") for the full
 rule table. The quality score starts at 100, subtracts 25 points per HARD
-finding and 5 points per WARN finding, and fails below `QUALITY_SCORE_MIN`
-(default `80`) in staged/push quality gates. **Do not bypass with
-`--no-verify`; fix the finding.**
+finding, applies weighted and capped WARN penalties, and fails below
+`QUALITY_SCORE_MIN` (default `80`) in staged/push quality gates. Full-tree
+`make quality-score` is report-only and feeds the quality-improvement backlog.
+**Do not bypass with `--no-verify`; fix HARD findings and improve WARN findings
+that are local to your change.**
 
 Run the **narrowest** service gate for changed files:
 
@@ -502,7 +510,7 @@ Use concise imperative commit messages, for example
 
 1. `git status --short` → identify changed services
 2. Run each affected service's `make validate` (or web equivalents)
-3. **Run `make quality-staged` → confirm the architecture & code-quality gate is green and the quality score meets `QUALITY_SCORE_MIN` for the files you changed. Fix any HARD finding or score regression before proceeding.**
+3. **Run `make quality-staged` → confirm the architecture & code-quality gate is green and the quality score meets `QUALITY_SCORE_MIN` for the files you changed. Fix any HARD finding, score regression, or local WARN finding that can be safely improved before proceeding.**
 4. If Docker/compose/imports changed: `make docker-verify` (compose config + image build)
 5. If root config/hooks changed: `make quality-push`
 6. If cross-service impact: `make validate` (quality-all + docker-verify)

@@ -64,19 +64,31 @@ function length > 50 lines, approximate cyclomatic complexity > 10.
 **Quality score**
 
 The hook runner also converts HARD and WARN findings into a 0-100 quality
-score. The score starts at 100, subtracts 25 points for each HARD finding, and
-subtracts 5 points for each WARN finding. `quality-staged` and `quality-push`
-fail when the score is below `QUALITY_SCORE_MIN`, which defaults to `80`.
+score. HARD findings always fail threshold mode. WARN findings are weighted by
+category and capped so existing codebase debt cannot collapse the score to zero
+by volume alone.
 
-Use `make quality-score` to score the full tracked tree with the same default
-threshold. Set `QUALITY_SCORE_MIN=<score>` when a branch needs a stricter
-release gate or a temporary lower migration threshold.
+`quality-staged` and `quality-push` fail when the changed-file score is below
+`QUALITY_SCORE_MIN`, which defaults to `80`. Use `make quality-score` to score
+the full tracked tree in report-only mode. Agents use the full-tree report to
+find the next improvement backlog, but existing full-tree WARN findings do not
+block unrelated pushes.
+
+WARN scoring uses these principles:
+
+- Architecture-adjacent WARN findings carry more weight than size or complexity
+  heuristics.
+- Test-file WARN findings carry less weight than production-file findings.
+- Total WARN penalty is capped at 18 points, so a branch with many WARN
+  findings can still pass at grade B while clearly showing improvement work.
+- Fixing WARN findings raises the score above the minimum and is the preferred
+  way to move a branch from passable to high quality.
 
 **Run it locally**
 
 ```sh
 make architecture-check          # full-tree report
-make quality-score               # full-tree score, fails below QUALITY_SCORE_MIN
+make quality-score               # full-tree score, report-only trend metric
 QUALITY_FILES="apps/agent-service/src/service/Foo.py" \
   python3 scripts/quality/check_architecture.py --changed   # one file
 QUALITY_FILES="apps/agent-service/src/service/Foo.py" \
