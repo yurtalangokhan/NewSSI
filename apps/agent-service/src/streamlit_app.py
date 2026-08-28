@@ -208,8 +208,6 @@ async def main() -> None:
         match agent_client.agent:
             case "chatbot":
                 WELCOME = "Hello! I'm a simple chatbot. Ask me anything!"
-            case "interrupt-agent":
-                WELCOME = "Hello! I'm an interrupt agent. Tell me your birthday and I will predict your personality!"
             case "research-assistant":
                 WELCOME = "Hello! I'm an AI-powered research assistant with web search and a calculator. Ask me anything!"
             case "rag-assistant":
@@ -429,10 +427,6 @@ async def draw_messages(
                             status.update(state="complete")
 
             case "custom":
-                # CustomData example used by the bg-task-agent
-                # See:
-                # - src/agents/utils.py CustomData
-                # - src/agents/bg_task_agent/task.py
                 try:
                     task_data: TaskData = TaskData.model_validate(msg.custom_data)
                 except ValidationError:

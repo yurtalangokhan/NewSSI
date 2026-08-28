@@ -300,9 +300,16 @@ refresh, logout, and OIDC routes.
 
 ### Adding a new agent (agent-service)
 
-1. Create agent file in `src/agents/`
-2. Register in `src/agents/agents.py`
-3. Verify with `make -C apps/agent-service info`
+The canonical runtime is documented in `docs/agent-composition.md`.
+
+1. Add or reuse component keys in `src/agent_composition/domain/component_catalog.py`.
+2. Define built-in defaults in `src/agent_composition/application/recipes.py`, or persist
+   a dynamic agent definition through the agent definition APIs.
+3. Add graph topology behavior under `src/agents/graphs/strategies/` only when an
+   existing strategy cannot model the flow.
+4. Keep `src/agents/agents.py` as the small backward-compatible registry facade;
+   do not add new one-off legacy agent modules under `src/agents/`.
+5. Verify with `make -C apps/agent-service info` and the affected tests.
 
 ### Adding a new tool (tools-service)
 

@@ -95,6 +95,7 @@ run_python_service_fixes() {
 
   while IFS= read -r file; do
     [[ -z "$file" ]] && continue
+    [[ -f "$file" ]] || continue
     ruff_args+=("${file#apps/$service/}")
   done < <(grep -E "^apps/$service/(src|tests|alembic|migrations)/.*\.py$" <<<"$FILES" || true)
 
@@ -123,11 +124,13 @@ run_web_fixes() {
 
   while IFS= read -r file; do
     [[ -z "$file" ]] && continue
+    [[ -f "$file" ]] || continue
     prettier_args+=("${file#apps/web/}")
   done < <(grep -E '^apps/web/(src|tests)/.*\.(ts|tsx|js|jsx|json|css|md)$' <<<"$FILES" || true)
 
   while IFS= read -r file; do
     [[ -z "$file" ]] && continue
+    [[ -f "$file" ]] || continue
     eslint_args+=("${file#apps/web/}")
   done < <(grep -E '^apps/web/(src|tests)/.*\.(ts|tsx|js|jsx)$' <<<"$FILES" || true)
 

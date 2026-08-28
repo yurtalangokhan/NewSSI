@@ -86,6 +86,13 @@ deleted in ASC-7:
 - `src/agents/configs/` — JSON configs for the reflection factory
 - `src/agents/managers/` — duplicate supervisor/pipeline managers
 - `src/agents/runtime/` — orphaned `instance_manager` that selected managers by name
+- `src/agents/base/` — disconnected abstract agent/brain/perceptron/manager contracts
+- `src/agents/impl/` — legacy chatbot implementation no longer used by the static registry
+- `src/agents/perceptrons/` — disconnected MCP/composite perceptron implementations
+- `src/agents/command_agent.py`, `interrupt_agent.py`, `knowledge_base_agent.py`
+- `src/agents/langgraph_supervisor_agent.py`, `langgraph_supervisor_hierarchy_agent.py`
+- `src/agents/bg_task_agent/` — demo background-task graph outside the FastAPI
+  registry and Studio entrypoints
 
 ## Retained local tool modules (not yet moved to tools-service)
 
@@ -95,7 +102,7 @@ deletion rule: do not delete a module with live importers):
 
 - `src/agents/document_tools.py` — used by `graphs/strategies/*`, `graphs/builder.py`, `chatbot.py`, `configurable_mcp_agent.py`, and their tests.
 - `src/agents/mail_tooling.py` — used by `graphs/strategies/*`, `graphs/builder.py`, `configurable_mcp_agent.py`.
-- `src/agents/tools.py` — Milvus/vector-store and embedding helpers used by `IngestService`, `data_controller`, `DatasourcesRoute`, `base/perceptron.py`, `knowledge/tool_selector.py`, and `core/db/repositories/datasource_repo.py`.
+- `src/agents/tools.py` — Milvus/vector-store and embedding helpers used by `IngestService`, `data_controller`, `DatasourcesRoute`, `knowledge/tool_selector.py`, and `core/db/repositories/datasource_repo.py`.
 
 Moving these behind tools-service / RAG-service contracts remains future work.
 ASC-2 laid the trusted-context foundation; the local implementations are still
@@ -105,5 +112,5 @@ the runtime path today.
 
 `src/agents/__init__.py` re-exports only the backward-compatible facade
 (`get_agent`, `load_agent`, `get_all_agent_info`, `DEFAULT_AGENT`,
-`AgentGraph`, `AgentGraphLike`) plus the retained `base` / `perceptron` /
-`storage` contracts. The deleted island packages are no longer re-exported.
+`AgentGraph`, `AgentGraphLike`) plus the retained `storage` contracts. The
+deleted island packages are no longer re-exported.

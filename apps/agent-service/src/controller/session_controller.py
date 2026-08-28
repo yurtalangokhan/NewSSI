@@ -23,17 +23,7 @@ logger = logging.getLogger(__name__)
 
 AGENT_TO_PERSONA_ID: dict[str, int] = {
     "chatbot": 0,
-    "research-assistant": 1,
-    "rag-assistant": 2,
-    "graph-rag-assistant": 3,
-    "command-agent": 4,
-    "bg-task-agent": 5,
-    "configurable-mcp-agent": 6,
-    "langgraph-supervisor-agent": 7,
-    "langgraph-supervisor-hierarchy-agent": 8,
-    "interrupt-agent": 9,
-    "knowledge-base-agent": 10,
-    "github-mcp-agent": 11,
+    "configurable-mcp-agent": 1,
 }
 
 PERSONA_ID_TO_AGENT: dict[int, str] = {v: k for k, v in AGENT_TO_PERSONA_ID.items()}

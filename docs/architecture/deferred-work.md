@@ -29,23 +29,36 @@ in the full-tree (`--all`) report and should be scheduled as follow-up work.
 - **Plan:** Write characterization tests around `AuthService`, then introduce a
   domain exception type and translate it at the controller boundary.
 
-### ASC-1W — frontend agent catalog adoption
-- **Finding:** Web still imports agent catalog data from a legacy module path
-  rather than the consolidated catalog.
-- **Why deferred:** Folded into the ASC workstream; depends on the catalog
-  consolidation landing first. Low priority for the gate (no HARD finding).
+### AS-CLIENT-SHIMS — service-layer external client compatibility shims
+- **Finding:** `service/AirbyteApiClientService.py` and
+  `service/AuthorizationClient.py` remain as compatibility re-export shims for
+  the canonical `integrations/airbyte_api_client.py` and
+  `integrations/authorization_client.py` modules. Several production call sites
+  and test monkeypatch paths still import the old service-layer names.
+- **Why deferred:** Low-to-medium risk because it is mostly import migration, but
+  it touches datasource, schedule, auth, and persona paths plus tests.
+- **Plan:** Migrate all callers to `integrations.*`, update monkeypatch targets,
+  delete the two shims, and run the full agent-service gate.
 
-### ASC-2D — delivery cutover
-- **Finding:** Some routes still wire agents through a deprecated delivery path.
-- **Why deferred:** Part of the ASC workstream; needs the new delivery path to
-  stabilize.
+### AS-USER-SERVICE-CLIENT — user-service client boundary
+- **Finding:** `service/UserServiceClient.py` is a real external client still
+  housed in the service layer. It is imported by services, controllers, an
+  integration module, and the user-memory domain path.
+- **Why deferred:** Higher risk than a shim deletion. The move needs a boundary
+  design so domain code depends on a port instead of a concrete client.
+- **Plan:** Add a domain/application port, move the concrete HTTP client to
+  `integrations/`, inject it at the application boundary, and characterize auth,
+  persona, and memory behavior first.
 
-### ASC-3 through ASC-7 — agent-composition package simplification
-- **Finding:** `agent_composition/` has package-structure and import-path debt
-  (tracked in `../agent-service-composition/plan.md`).
-- **Why deferred:** Separate, higher-risk workstream; not in scope of the
-  codebase-simplification gate beyond the `RuntimePolicyConfig` re-export fix
-  applied during AS-4.
+### AS-GITHUB-MCP-AGENT — standalone GitHub MCP agent disposition
+- **Finding:** `agents/github_mcp_agent/github_mcp_agent.py` is not registered in
+  the FastAPI static registry or `langgraph.json`, but it has dedicated unit
+  tests and may represent a product capability decision rather than dead code.
+- **Why deferred:** Deleting it would remove a tested capability without a clear
+  replacement or product decision.
+- **Plan:** Decide whether GitHub MCP is a built-in recipe, a dynamic-agent
+  template, or unsupported. If unsupported, delete the module and its tests in
+  the same TDD cleanup task.
 
 ---
 

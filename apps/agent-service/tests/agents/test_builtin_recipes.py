@@ -11,6 +11,8 @@ These lock the ASC-6 behavior:
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from agent_composition.application.compose_agent import AgentFactory
@@ -18,6 +20,8 @@ from agent_composition.application.recipes import (
     get_builtin_recipe,
     list_builtin_recipe_keys,
 )
+
+AGENTS_SRC = Path(__file__).parents[2] / "src" / "agents"
 
 
 class FakeGateway:
@@ -126,33 +130,8 @@ async def test_resolver_unknown_key_raises_key_error(fake_graph_builder):
         await load_agent("does-not-exist")
 
 
-@pytest.mark.asyncio
-async def test_legacy_chatbot_agent_does_not_pin_a_default_model(monkeypatch):
-    """The retained legacy agent path must also defer to the runtime default."""
-    from agents.impl import chatbot as chatbot_module
-
-    captured: dict[str, object] = {}
-
-    class FakeBrain:
-        def __init__(self, *, config, system_prompt):
-            captured["brain_config"] = config
-            captured["system_prompt"] = system_prompt
-
-        async def load(self):
-            return None
-
-    class FakePerceptron:
-        def __init__(self, *, config):
-            captured["perceptron_config"] = config
-
-        async def load(self):
-            return None
-
-    monkeypatch.setattr(chatbot_module, "LLMBrain", FakeBrain)
-    monkeypatch.setattr(chatbot_module, "MemoryPerceptron", FakePerceptron)
-    monkeypatch.setattr(chatbot_module.ChatbotAgent, "_build_graph", lambda self: object())
-
-    agent = chatbot_module.ChatbotAgent()
-    await agent.load()
-
-    assert captured["brain_config"] == {"temperature": 0.7}
+def test_legacy_agent_abstraction_island_is_removed():
+    """Old base/impl/perceptron modules must not return as compatibility clutter."""
+    assert not (AGENTS_SRC / "base").exists()
+    assert not (AGENTS_SRC / "impl").exists()
+    assert not (AGENTS_SRC / "perceptrons").exists()
