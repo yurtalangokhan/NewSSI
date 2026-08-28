@@ -56,12 +56,14 @@ class ChatbotAgent(BaseAgent):
             return
 
         # Initialize brain
-        model_name = self.get_config("model", "gpt-4o-mini")
+        model_name = self.get_config("model")
+        brain_config: dict[str, Any] = {
+            "temperature": self.get_config("temperature", 0.7),
+        }
+        if model_name:
+            brain_config["model"] = model_name
         self._brain = LLMBrain(
-            config={
-                "model": model_name,
-                "temperature": self.get_config("temperature", 0.7),
-            },
+            config=brain_config,
             system_prompt=self.get_config("system_prompt", "You are a helpful assistant."),
         )
         await self._brain.load()

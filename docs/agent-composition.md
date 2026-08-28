@@ -63,14 +63,17 @@ agents:
 
 - `src/agent_composition/application/recipes.py` — `BUILTIN_RECIPES` maps
   `chatbot`, `configurable-mcp-agent`, `pipeline`, `supervisor` to flat
-  definition configs. `get_builtin_recipe(agent_id)` resolves one.
+  definition configs. Recipes don't pin a model; runtime provider/default-model
+  resolution chooses the model unless a caller supplies an explicit override.
+  `get_builtin_recipe(agent_id)` resolves one.
 - `src/agents/agents.py` — the backward-compatible static registry facade.
   `chatbot` and `configurable-mcp-agent` are served from the static registry;
   `pipeline` and `supervisor` (recipe-only) are composed via `AgentFactory`.
 - `src/agents/studio_graphs.py` — LangGraph Studio entrypoints. Each is a
-  callable that builds a compiled graph from a recipe via `GraphBuilder`.
-  `langgraph.json` points Studio at `studio_graphs.py` (graphs: `chatbot`,
-  `research-assistant`, `rag-assistant`, `graph-rag-assistant`).
+  callable that builds a compiled graph from a model-agnostic recipe via
+  `GraphBuilder`. `langgraph.json` points Studio at `studio_graphs.py` (graphs:
+  `chatbot`, `research-assistant`, `rag-assistant`,
+  `graph-rag-assistant`).
 
 ## Removed legacy modules (ASC-7)
 

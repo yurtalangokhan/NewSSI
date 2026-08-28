@@ -67,6 +67,18 @@ def test_recipe_registry_contains_builtins():
         assert "graph_schema" in recipe
 
 
+def test_builtin_recipes_do_not_pin_a_model():
+    """Built-in recipes must let runtime provider defaults choose the model."""
+    for key in list_builtin_recipe_keys():
+        recipe = get_builtin_recipe(key)
+        assert recipe is not None
+        assert "model" not in recipe, f"{key} must not hardcode a model"
+
+        nested_configs = recipe.get("sub_agents", []) + recipe.get("stages", [])
+        for nested in nested_configs:
+            assert "model" not in nested, f"{key} nested config must not hardcode a model"
+
+
 @pytest.mark.asyncio
 async def test_builtin_recipes_resolve_through_factory(fake_graph_builder):
     """Each built-in recipe composes via AgentFactory without raising."""
@@ -112,3 +124,35 @@ async def test_resolver_unknown_key_raises_key_error(fake_graph_builder):
 
     with pytest.raises(KeyError):
         await load_agent("does-not-exist")
+
+
+@pytest.mark.asyncio
+async def test_legacy_chatbot_agent_does_not_pin_a_default_model(monkeypatch):
+    """The retained legacy agent path must also defer to the runtime default."""
+    from agents.impl import chatbot as chatbot_module
+
+    captured: dict[str, object] = {}
+
+    class FakeBrain:
+        def __init__(self, *, config, system_prompt):
+            captured["brain_config"] = config
+            captured["system_prompt"] = system_prompt
+
+        async def load(self):
+            return None
+
+    class FakePerceptron:
+        def __init__(self, *, config):
+            captured["perceptron_config"] = config
+
+        async def load(self):
+            return None
+
+    monkeypatch.setattr(chatbot_module, "LLMBrain", FakeBrain)
+    monkeypatch.setattr(chatbot_module, "MemoryPerceptron", FakePerceptron)
+    monkeypatch.setattr(chatbot_module.ChatbotAgent, "_build_graph", lambda self: object())
+
+    agent = chatbot_module.ChatbotAgent()
+    await agent.load()
+
+    assert captured["brain_config"] == {"temperature": 0.7}

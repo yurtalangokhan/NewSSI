@@ -31,7 +31,6 @@ def chatbot() -> Any:
             "name": "chatbot",
             "graph_schema": "zero_shot",
             "system_prompt": "You are a helpful AI assistant.",
-            "model": "gpt-4o-mini",
         }
     )
 
@@ -46,7 +45,6 @@ def research_assistant() -> Any:
                 "You are a helpful research assistant with the ability to search "
                 "the web and use other tools."
             ),
-            "model": "gpt-4o-mini",
             "mcp_tools": [],
         }
     )
@@ -59,7 +57,6 @@ def rag_assistant() -> Any:
             "name": "rag-assistant",
             "graph_schema": "react",
             "system_prompt": "You are a helpful RAG assistant.",
-            "model": "gpt-4o-mini",
             "mcp_tools": [],
         }
     )
@@ -72,7 +69,6 @@ def graph_rag_assistant() -> Any:
             "name": "graph-rag-assistant",
             "graph_schema": "react",
             "system_prompt": "You are a helpful graph RAG assistant.",
-            "model": "gpt-4o-mini",
             "mcp_tools": [],
         }
     )

@@ -33,20 +33,17 @@ BUILTIN_RECIPES: dict[str, dict[str, Any]] = {
         "name": "chatbot",
         "graph_schema": "zero_shot",
         "system_prompt": "You are a helpful AI assistant.",
-        "model": "gpt-4o-mini",
     },
     "configurable-mcp-agent": {
         "name": "configurable-mcp-agent",
         "graph_schema": "react",
         "system_prompt": "You are a helpful assistant with configurable tools.",
-        "model": "gpt-4o-mini",
         "mcp_tools": [],
     },
     "pipeline": {
         "name": "pipeline",
         "graph_schema": "pipeline",
         "system_prompt": "You are a pipeline supervisor.",
-        "model": "gpt-4o-mini",
         "stages": [
             {
                 "name": "enricher",
@@ -61,7 +58,6 @@ BUILTIN_RECIPES: dict[str, dict[str, Any]] = {
         "name": "supervisor",
         "graph_schema": "supervisor",
         "system_prompt": "You are a team supervisor.",
-        "model": "gpt-4o-mini",
         "sub_agents": [
             {
                 "name": "assistant",

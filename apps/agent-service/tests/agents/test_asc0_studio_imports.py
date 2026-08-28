@@ -58,3 +58,34 @@ def test_langgraph_entrypoint_imports_and_exports_graph(
 
     assert hasattr(module, attribute), f"{graph_name} must export {attribute}"
     assert getattr(module, attribute) is not None
+
+
+@pytest.mark.parametrize(
+    ("graph_name", "module_name", "attribute"),
+    _entrypoint_cases(),
+    ids=lambda case: case if isinstance(case, str) else str(case),
+)
+def test_langgraph_studio_recipes_do_not_pin_a_model(
+    graph_name: str, module_name: str, attribute: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Studio recipes must let runtime provider defaults choose the model."""
+    module = importlib.import_module(module_name)
+    captured: dict[str, object] = {}
+
+    class FakeGraphBuilder:
+        def __init__(self, **kwargs):
+            captured["builder_kwargs"] = kwargs
+
+        def build(self, schema, recipe):
+            captured["schema"] = schema
+            captured["recipe"] = recipe
+            return object()
+
+    monkeypatch.setattr(module, "GraphBuilder", FakeGraphBuilder)
+
+    graph = getattr(module, attribute)()
+
+    assert graph is not None
+    recipe = captured["recipe"]
+    assert isinstance(recipe, dict)
+    assert "model" not in recipe, f"{graph_name} Studio recipe must not hardcode a model"
