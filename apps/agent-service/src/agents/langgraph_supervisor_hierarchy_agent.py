@@ -4,8 +4,11 @@ Creates a sequential pipeline of stages where each stage's output feeds into the
 Supports dynamic stage configuration with MCP tools per stage.
 """
 
+from __future__ import annotations
+
 import hashlib
 import json as json_module
+from contextvars import ContextVar
 from typing import Any
 
 from langchain_core.messages import SystemMessage
@@ -15,6 +18,11 @@ from langgraph.prebuilt import create_react_agent
 from langgraph.pregel import Pregel
 from langgraph_supervisor import create_supervisor
 
+from agent_composition.adapters.langchain_tool_adapter import (
+    tool_bindings_to_langchain_tools,
+)
+from agent_composition.domain.ports import ToolGateway
+from agent_composition.domain.trusted_context import TrustedToolContext
 from agents.lazy_agent import LazyLoadingAgent
 from core import get_model, settings
 from core.env import env
@@ -22,6 +30,11 @@ from core.logger import get_logger
 from memory.long_term import build_event_emitters
 
 logger = get_logger(__name__)
+
+# Context variable for trusted context at invocation time.
+_pipe_trusted_context_var: ContextVar[TrustedToolContext | None] = ContextVar(
+    "_pipe_trusted_context_var", default=None
+)
 
 # Default stage prompts for common use cases
 DEFAULT_STAGE_PROMPTS = {
@@ -48,10 +61,14 @@ class DynamicPipelineSupervisor(LazyLoadingAgent):
             - mcp_tools: List of MCP tool names to enable for this stage
         - retry_count: Number of retries on stage failure (default: 2)
         - on_error: Error handling strategy ('abort' or 'skip', default: 'abort')
+
+    Supports optional ToolsServiceToolGateway injection for trusted-context tool path.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, gateway: ToolGateway | None = None) -> None:
         super().__init__()
+        self._gateway = gateway
+        self._gateway_tools_map: dict[str, Any] = {}  # name -> BaseTool
         self._default_graph: CompiledStateGraph | Pregel | None = None
         self._mcp_tools: dict[str, Any] = {}
         self._mcp_cleanup = None
@@ -92,8 +109,61 @@ class DynamicPipelineSupervisor(LazyLoadingAgent):
             self._loaded = True
             logger.warning("Using fallback graph without MCP tools")
 
+    def _build_trusted_context(self, config: RunnableConfig | None) -> TrustedToolContext | None:
+        """Build TrustedToolContext from LangGraph config for gateway tool invocation."""
+        configurable = (config or {}).get("configurable", {})
+        user_id = configurable.get("user_id")
+        tenant_id = configurable.get("tenant_id")
+        binding_references: dict = configurable.get("binding_references") or {}
+        project_id = configurable.get("project_id")
+        request_id = configurable.get("request_id")
+
+        if not any([user_id, tenant_id, binding_references, project_id]):
+            return None
+
+        from agent_composition.domain.trusted_context import build_trusted_context
+
+        return build_trusted_context(
+            user_id=user_id,
+            tenant_id=tenant_id,
+            binding_references=binding_references,
+            project_id=project_id,
+            request_id=request_id,
+        )
+
     async def _load_mcp_tools(self) -> None:
-        """Load tools from MCP server."""
+        """Load tools from MCP server.
+
+        When a ToolsServiceToolGateway is injected, tools are resolved through
+        the gateway and stored as a name->tool map in _gateway_tools_map.
+        """
+        # If a gateway is injected, resolve tools through it.
+        if self._gateway is not None:
+            try:
+                await self._gateway.load()
+                all_descriptors = await self._gateway.describe()
+                all_keys = tuple(d.key for d in all_descriptors)
+                bindings = await self._gateway.resolve(all_keys)
+
+                def _context_provider() -> TrustedToolContext | None:
+                    return _pipe_trusted_context_var.get()
+
+                gateway_tools = tool_bindings_to_langchain_tools(
+                    bindings, context_provider=_context_provider
+                )
+                self._gateway_tools_map = {t.name: t for t in gateway_tools}
+                logger.info(
+                    "DynamicPipelineSupervisor resolved %d tools via gateway",
+                    len(self._gateway_tools_map),
+                )
+            except Exception as e:
+                logger.warning(
+                    "DynamicPipelineSupervisor gateway tool resolution failed: %s. "
+                    "Falling back to legacy MCP path.",
+                    e,
+                )
+                self._gateway_tools_map = {}
+
         try:
             from langchain_mcp_adapters.client import MultiServerMCPClient
 
@@ -247,10 +317,12 @@ class DynamicPipelineSupervisor(LazyLoadingAgent):
                     supervisor_model_name,
                 )
 
-            # Get requested MCP tools
+            # Get requested MCP tools (gateway tools take precedence over legacy MCP tools).
             stage_tools = []
             for tool_name in mcp_tool_names:
-                if tool_name in self._mcp_tools:
+                if tool_name in self._gateway_tools_map:
+                    stage_tools.append(self._gateway_tools_map[tool_name])
+                elif tool_name in self._mcp_tools:
                     stage_tools.append(self._mcp_tools[tool_name])
                 else:
                     logger.warning("MCP tool '%s' not found for stage '%s'", tool_name, stage_name)
@@ -420,15 +492,19 @@ IMPORTANT:
         pipeline_stages = configurable.get("pipeline_stages", [])
         model_name = configurable.get("model")
 
-        if pipeline_stages:
-            graph = self._create_pipeline_graph(
-                stages=pipeline_stages,
-                model_name=model_name,
-                checkpointer=checkpointer,
-            )
-            result = await graph.ainvoke(input, config=config, **kwargs)
-        else:
-            result = await self._graph.ainvoke(input, config=config, **kwargs)
+        token = _pipe_trusted_context_var.set(self._build_trusted_context(config))
+        try:
+            if pipeline_stages:
+                graph = self._create_pipeline_graph(
+                    stages=pipeline_stages,
+                    model_name=model_name,
+                    checkpointer=checkpointer,
+                )
+                result = await graph.ainvoke(input, config=config, **kwargs)
+            else:
+                result = await self._graph.ainvoke(input, config=config, **kwargs)
+        finally:
+            _pipe_trusted_context_var.reset(token)
 
         # Save memories from output
         configurable = (config or {}).get("configurable", {})
@@ -467,27 +543,31 @@ IMPORTANT:
         model_name = configurable.get("model")
 
         collected_output = None
-        if pipeline_stages:
-            for i, stage in enumerate(pipeline_stages):
-                logger.info(
-                    "[PIPELINE] Stage %s: name=%s, tools=%s",
-                    i,
-                    stage.get("name"),
-                    stage.get("mcp_tools", []),
-                )
+        token = _pipe_trusted_context_var.set(self._build_trusted_context(config))
+        try:
+            if pipeline_stages:
+                for i, stage in enumerate(pipeline_stages):
+                    logger.info(
+                        "[PIPELINE] Stage %s: name=%s, tools=%s",
+                        i,
+                        stage.get("name"),
+                        stage.get("mcp_tools", []),
+                    )
 
-            graph = self._create_pipeline_graph(
-                stages=pipeline_stages,
-                model_name=model_name,
-                checkpointer=checkpointer,
-            )
-            async for chunk in graph.astream(input, config=config, **kwargs):
-                collected_output = chunk
-                yield chunk
-        else:
-            async for chunk in self._graph.astream(input, config=config, **kwargs):
-                collected_output = chunk
-                yield chunk
+                graph = self._create_pipeline_graph(
+                    stages=pipeline_stages,
+                    model_name=model_name,
+                    checkpointer=checkpointer,
+                )
+                async for chunk in graph.astream(input, config=config, **kwargs):
+                    collected_output = chunk
+                    yield chunk
+            else:
+                async for chunk in self._graph.astream(input, config=config, **kwargs):
+                    collected_output = chunk
+                    yield chunk
+        finally:
+            _pipe_trusted_context_var.reset(token)
 
         # Save memories from the last output chunk
         if collected_output is not None:
@@ -530,21 +610,25 @@ IMPORTANT:
         pipeline_stages = configurable.get("pipeline_stages", [])
         model_name = configurable.get("model")
 
-        if pipeline_stages:
-            graph = self._create_pipeline_graph(
-                stages=pipeline_stages,
-                model_name=model_name,
-                checkpointer=checkpointer,
-            )
-            async for event in graph.astream_events(
-                input, config=config, version=version, **kwargs
-            ):
-                yield event
-        else:
-            async for event in self._graph.astream_events(
-                input, config=config, version=version, **kwargs
-            ):
-                yield event
+        token = _pipe_trusted_context_var.set(self._build_trusted_context(config))
+        try:
+            if pipeline_stages:
+                graph = self._create_pipeline_graph(
+                    stages=pipeline_stages,
+                    model_name=model_name,
+                    checkpointer=checkpointer,
+                )
+                async for event in graph.astream_events(
+                    input, config=config, version=version, **kwargs
+                ):
+                    yield event
+            else:
+                async for event in self._graph.astream_events(
+                    input, config=config, version=version, **kwargs
+                ):
+                    yield event
+        finally:
+            _pipe_trusted_context_var.reset(token)
 
         # Save memories after streaming completes
         if configurable.get("long_term_memory", False) and user_id:

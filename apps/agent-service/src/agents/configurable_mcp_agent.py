@@ -3,8 +3,11 @@ Configurable MCP Agent.
 A simple agent that allows users to configure system prompt and select MCP tools.
 """
 
+from __future__ import annotations
+
 import logging
 import re
+from contextvars import ContextVar
 from typing import Any
 from urllib.parse import urlparse
 
@@ -14,6 +17,11 @@ from langchain_core.tools import BaseTool
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 
+from agent_composition.adapters.langchain_tool_adapter import (
+    tool_bindings_to_langchain_tools,
+)
+from agent_composition.domain.ports import ToolGateway
+from agent_composition.domain.trusted_context import TrustedToolContext
 from agents.document_tools import DOCUMENT_TOOL_PROMPT, get_document_tools
 from agents.knowledge import KnowledgeSystemPromptBuilder, KnowledgeToolSelector
 from agents.lazy_agent import LazyLoadingAgent
@@ -22,6 +30,11 @@ from core import get_model, settings
 from memory.long_term import build_event_emitters, recall_memories
 
 logger = logging.getLogger(__name__)
+
+# Context variable for trusted context at invocation time (per-agent instance).
+_cfg_trusted_context_var: ContextVar[TrustedToolContext | None] = ContextVar(
+    "_cfg_trusted_context_var", default=None
+)
 
 # Default system prompt
 DEFAULT_SYSTEM_PROMPT = """You are a helpful AI assistant.
@@ -41,10 +54,16 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
     Configuration (via agent_config):
         - system_prompt: Custom system prompt for the agent
         - mcp_tools: List of MCP tool names this agent can use
+
+    Supports optional ToolsServiceToolGateway injection. When a gateway is
+    provided, selected tools are resolved through it with TrustedContextProvider
+    reading user/tenant identity from the LangGraph config at invocation time.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, gateway: ToolGateway | None = None) -> None:
         super().__init__()
+        self._gateway = gateway
+        self._gateway_tools: list[BaseTool] = []
         self._default_graph: CompiledStateGraph | None = None
         self._mcp_tools: dict[str, BaseTool] = {}
 
@@ -87,7 +106,41 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
             logger.warning("Using fallback graph without MCP tools")
 
     async def _load_mcp_tools(self, mcp_url: str | None = None) -> None:
-        """Load tools from MCP server."""
+        """Load tools from MCP server.
+
+        When a ToolsServiceToolGateway is injected, tools are first resolved
+        through the gateway and stored as pre-wrapped LangChain tools. The legacy
+        MultiServerMCPClient path is still used to populate _mcp_tools for tools
+        that need per-config wrapping (e.g. send_email).
+        """
+        # If a gateway is injected, use it to resolve tools first.
+        if self._gateway is not None:
+            try:
+                await self._gateway.load()
+                all_descriptors = await self._gateway.describe()
+                all_keys = tuple(d.key for d in all_descriptors)
+                bindings = await self._gateway.resolve(all_keys)
+
+                def _context_provider() -> TrustedToolContext | None:
+                    return _cfg_trusted_context_var.get()
+
+                self._gateway_tools = tool_bindings_to_langchain_tools(
+                    bindings, context_provider=_context_provider
+                )
+                logger.info(
+                    "ConfigurableMCPAgent resolved %d tools via gateway",
+                    len(self._gateway_tools),
+                )
+            except Exception as e:
+                logger.warning(
+                    "ConfigurableMCPAgent gateway tool resolution failed: %s. "
+                    "Falling back to legacy MCP path.",
+                    e,
+                )
+                self._gateway_tools = []
+
+        # Always also populate _mcp_tools via legacy path for tools that need
+        # per-config wrapping (e.g. send_email).
         from langchain_mcp_adapters.client import MultiServerMCPClient
 
         url = mcp_url or getattr(settings, "TOOLS_SERVICE_URL", None) or settings.MCP_SERVER_URL
@@ -162,6 +215,34 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         text = text.replace("<", "(").replace(">", ")")
         return text
 
+    def _build_trusted_context(self, config: RunnableConfig | None) -> TrustedToolContext | None:
+        """Build TrustedToolContext from LangGraph config for gateway tool invocation."""
+        configurable = (config or {}).get("configurable", {})
+        user_id = configurable.get("user_id")
+        tenant_id = configurable.get("tenant_id")
+        binding_references: dict[str, str] = configurable.get("binding_references") or {}
+        attachment_handles: tuple[str, ...] = tuple(
+            a.get("handle") or a.get("filename") or ""
+            for a in (configurable.get("mail_attachments") or [])
+            if a
+        )
+        project_id = configurable.get("project_id")
+        request_id = configurable.get("request_id")
+
+        if not any([user_id, tenant_id, binding_references, attachment_handles, project_id]):
+            return None
+
+        from agent_composition.domain.trusted_context import build_trusted_context
+
+        return build_trusted_context(
+            user_id=user_id,
+            tenant_id=tenant_id,
+            binding_references=binding_references,
+            attachment_handles=attachment_handles,
+            project_id=project_id,
+            request_id=request_id,
+        )
+
     def _build_compact_memory_context(self, memories: dict[str, Any]) -> str:
         """Create a short, instruction-safe memory block for system prompt merge."""
         facts = memories.get("user_facts", [])
@@ -219,6 +300,7 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         user_id: str | None = None,
         mail_config_user_id: str | None = None,
         mail_attachments: list[dict[str, Any]] | None = None,
+        gateway_tools: list[BaseTool] | None = None,
     ) -> CompiledStateGraph:
         """Create an agent graph with the specified configuration.
 
@@ -228,10 +310,15 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
             model_name: Optional model override
             checkpointer: Optional checkpointer for persistence
             extra_tools: Additional pre-resolved tools (e.g. RAG tools)
+            mcp_tool_configs: Per-tool configuration dict
+            user_id: User ID for mail tool
+            mail_config_user_id: Mail config user ID
+            mail_attachments: Available mail attachments
+            gateway_tools: Tools resolved via ToolsServiceToolGateway (prepended to agent tools)
         """
         model = get_model(model_name or settings.DEFAULT_MODEL)
 
-        # Collect MCP tools by name
+        # Collect MCP tools by name from the legacy MCP cache.
         agent_tools: list[BaseTool] = []
         tool_configs = mcp_tool_configs or {}
         effective_mail_config_user_id = mail_config_user_id or user_id
@@ -249,6 +336,10 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
                 agent_tools.append(tool)
             else:
                 logger.warning(f"Tool '{tool_name}' not found in MCP cache")
+
+        # Prepend gateway tools so they take precedence (same name = gateway version wins).
+        if gateway_tools:
+            agent_tools = list(gateway_tools) + agent_tools
 
         if agent_tools:
             system_prompt = f"{system_prompt}\n{TOOL_USAGE_GUARDRAIL}"
@@ -347,10 +438,22 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
                     or user_id
                 ),
                 mail_attachments=configurable.get("mail_attachments"),
+                gateway_tools=self._gateway_tools if self._gateway else None,
             )
-            result = await graph.ainvoke(input, config=config, **kwargs)
+
+            # Set trusted context for gateway-injected tools.
+            token = _cfg_trusted_context_var.set(self._build_trusted_context(config))
+            try:
+                result = await graph.ainvoke(input, config=config, **kwargs)
+            finally:
+                _cfg_trusted_context_var.reset(token)
         else:
-            result = await self._graph.ainvoke(input, config=config, **kwargs)
+            # Set trusted context for gateway-injected tools even on the default graph.
+            token = _cfg_trusted_context_var.set(self._build_trusted_context(config))
+            try:
+                result = await self._graph.ainvoke(input, config=config, **kwargs)
+            finally:
+                _cfg_trusted_context_var.reset(token)
 
         result = self._tag_output_with_recalled_memories(result, memories)
 
@@ -424,32 +527,37 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
 
         # Create a custom graph whenever anything deviates from defaults
         collected_output = None
-        if system_prompt != DEFAULT_SYSTEM_PROMPT or mcp_tool_names or rag_tools:
-            graph = self._create_agent_graph(
-                system_prompt=system_prompt,
-                mcp_tool_names=mcp_tool_names,
-                model_name=model_name,
-                checkpointer=effective_checkpointer,
-                extra_tools=rag_tools,
-                mcp_tool_configs=mcp_tool_configs,
-                user_id=user_id,
-                mail_config_user_id=(
-                    configurable.get("owner_user_id")
-                    or configurable.get("mail_config_user_id")
-                    or user_id
-                ),
-                mail_attachments=configurable.get("mail_attachments"),
-            )
-            async for chunk in graph.astream(input, config=config, **kwargs):
-                chunk = self._tag_output_with_recalled_memories(chunk, memories)
-                collected_output = chunk
-                yield chunk
-        else:
-            # Use default graph
-            async for chunk in self._graph.astream(input, config=config, **kwargs):
-                chunk = self._tag_output_with_recalled_memories(chunk, memories)
-                collected_output = chunk
-                yield chunk
+        token = _cfg_trusted_context_var.set(self._build_trusted_context(config))
+        try:
+            if system_prompt != DEFAULT_SYSTEM_PROMPT or mcp_tool_names or rag_tools:
+                graph = self._create_agent_graph(
+                    system_prompt=system_prompt,
+                    mcp_tool_names=mcp_tool_names,
+                    model_name=model_name,
+                    checkpointer=effective_checkpointer,
+                    extra_tools=rag_tools,
+                    mcp_tool_configs=mcp_tool_configs,
+                    user_id=user_id,
+                    mail_config_user_id=(
+                        configurable.get("owner_user_id")
+                        or configurable.get("mail_config_user_id")
+                        or user_id
+                    ),
+                    mail_attachments=configurable.get("mail_attachments"),
+                    gateway_tools=self._gateway_tools if self._gateway else None,
+                )
+                async for chunk in graph.astream(input, config=config, **kwargs):
+                    chunk = self._tag_output_with_recalled_memories(chunk, memories)
+                    collected_output = chunk
+                    yield chunk
+            else:
+                # Use default graph
+                async for chunk in self._graph.astream(input, config=config, **kwargs):
+                    chunk = self._tag_output_with_recalled_memories(chunk, memories)
+                    collected_output = chunk
+                    yield chunk
+        finally:
+            _cfg_trusted_context_var.reset(token)
 
         # Save memories from the last output chunk
         if collected_output is not None:
@@ -516,32 +624,37 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         )
 
         # Create a custom graph whenever anything deviates from defaults
-        if system_prompt != DEFAULT_SYSTEM_PROMPT or mcp_tool_names or rag_tools:
-            graph = self._create_agent_graph(
-                system_prompt=system_prompt,
-                mcp_tool_names=mcp_tool_names,
-                model_name=model_name,
-                checkpointer=effective_checkpointer,
-                extra_tools=rag_tools,
-                mcp_tool_configs=mcp_tool_configs,
-                user_id=user_id,
-                mail_config_user_id=(
-                    configurable.get("owner_user_id")
-                    or configurable.get("mail_config_user_id")
-                    or user_id
-                ),
-                mail_attachments=configurable.get("mail_attachments"),
-            )
-            async for event in graph.astream_events(
-                input, config=config, version=version, **kwargs
-            ):
-                yield event
-        else:
-            # Use default graph
-            async for event in self._graph.astream_events(
-                input, config=config, version=version, **kwargs
-            ):
-                yield event
+        token = _cfg_trusted_context_var.set(self._build_trusted_context(config))
+        try:
+            if system_prompt != DEFAULT_SYSTEM_PROMPT or mcp_tool_names or rag_tools:
+                graph = self._create_agent_graph(
+                    system_prompt=system_prompt,
+                    mcp_tool_names=mcp_tool_names,
+                    model_name=model_name,
+                    checkpointer=effective_checkpointer,
+                    extra_tools=rag_tools,
+                    mcp_tool_configs=mcp_tool_configs,
+                    user_id=user_id,
+                    mail_config_user_id=(
+                        configurable.get("owner_user_id")
+                        or configurable.get("mail_config_user_id")
+                        or user_id
+                    ),
+                    mail_attachments=configurable.get("mail_attachments"),
+                    gateway_tools=self._gateway_tools if self._gateway else None,
+                )
+                async for event in graph.astream_events(
+                    input, config=config, version=version, **kwargs
+                ):
+                    yield event
+            else:
+                # Use default graph
+                async for event in self._graph.astream_events(
+                    input, config=config, version=version, **kwargs
+                ):
+                    yield event
+        finally:
+            _cfg_trusted_context_var.reset(token)
 
         # Save memories after streaming completes
         if configurable.get("long_term_memory", False) and user_id:

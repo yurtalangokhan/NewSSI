@@ -4,10 +4,10 @@
         "./src"
     ],
     "graphs": {
-        "chatbot": "./src/agents/chatbot.py:chatbot",
-        "research-assistant": "./src/agents/research_assistant.py:research_assistant",
-        "rag-assistant": "./src/agents/rag_assistant.py:rag_assistant",
-        "graph-rag-assistant": "./src/agents/graph_rag_assistant.py:graph_rag_assistant"
+        "chatbot": "./src/agents/studio_graphs.py:chatbot",
+        "research-assistant": "./src/agents/studio_graphs.py:research_assistant",
+        "rag-assistant": "./src/agents/studio_graphs.py:rag_assistant",
+        "graph-rag-assistant": "./src/agents/studio_graphs.py:graph_rag_assistant"
     },
     "env": "./.env"
 }

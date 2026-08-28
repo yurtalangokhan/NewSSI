@@ -12,8 +12,12 @@ from langgraph.pregel import Pregel
 from agent_composition.adapters.langchain_tool_adapter import (
     tool_bindings_to_langchain_tools,
 )
+from agent_composition.adapters.tools_service_gateway import ToolsServiceToolGateway
+from agent_composition.application.compose_agent import AgentComposer
+from agent_composition.domain.definitions import RuntimePolicyConfig
 from agent_composition.domain.ports import ToolGateway
 from agent_composition.domain.trusted_context import TrustedToolContext
+from agent_composition.runtime import ComposedAgent
 from agents.graphs.builder import GraphBuilder
 from agents.graphs.schemas import GraphSchemaType, get_schema
 from agents.lazy_agent import LazyLoadingAgent
@@ -52,6 +56,24 @@ def invalidate_agent_cache(definition_id: str) -> None:
     _agent_cache.pop(definition_id, None)
 
 
+def _build_default_gateway() -> ToolGateway:
+    """Construct the default ``ToolsServiceToolGateway`` for tool resolution.
+
+    Used when a ``DynamicAgent`` is created without an explicit gateway. The
+    gateway is the canonical, trusted-context-aware tool loader (wired in
+    ASC-2D); the legacy ``MultiServerMCPClient`` path was removed in ASC-5.
+    """
+    mcp_url = (
+        getattr(settings, "TOOLS_SERVICE_URL", None)
+        or getattr(settings, "MCP_SERVER_URL", None)
+        or env.TOOLS_SERVICE_URL
+        or env.MCP_SERVER_URL
+        or "http://localhost:8003/mcp"
+    )
+    token = (env.INTERNAL_SERVICE_TOKEN or "").strip()
+    return ToolsServiceToolGateway(service_url=mcp_url, internal_token=token)
+
+
 class DynamicAgent(LazyLoadingAgent):
     """
     A dynamic agent whose graph schema, tools, and prompts are driven by an
@@ -74,11 +96,16 @@ class DynamicAgent(LazyLoadingAgent):
     ):
         super().__init__()
         self._config = agent_config or {}
-        self._gateway = gateway
+        # The gateway is the canonical tool loader; build a default one when the
+        # caller does not inject a specific gateway (ASC-5 cutover).
+        self._gateway = gateway or _build_default_gateway()
         self._gateway_tools: list[Any] = []  # Pre-resolved LangChain tools from gateway
         self._default_graph: CompiledStateGraph | Pregel | None = None
         self._mcp_tools_map: dict[str, Any] = {}
         self._load_failed = False
+        # Composed runtime (ASC-4) that owns the lifecycle/resources behind the
+        # existing resolution and cache contracts.
+        self._composed: ComposedAgent | None = None
 
     @property
     def name(self) -> str:
@@ -98,6 +125,27 @@ class DynamicAgent(LazyLoadingAgent):
     def graph_schema(self) -> str:
         return self._config.get("graph_schema", "zero_shot")
 
+    @property
+    def load_failed(self) -> bool:
+        """Whether the last ``load()`` fell back to a minimal graph."""
+        return self._load_failed
+
+    @property
+    def has_checkpointer(self) -> bool:
+        """Whether a checkpointer is attached to this agent."""
+        return getattr(self, "_checkpointer", None) is not None
+
+    @property
+    def composed_agent(self) -> ComposedAgent | None:
+        """The composed runtime (ASC-4) that owns this agent's resources."""
+        return self._composed
+
+    async def close(self) -> None:
+        """Release runtime resources owned by the composed agent."""
+        if self._composed is not None:
+            await self._composed.close()
+        self._loaded = False
+
     async def load(self) -> None:
         if self._loaded:
             return
@@ -106,6 +154,16 @@ class DynamicAgent(LazyLoadingAgent):
             await self._load_mcp_tools()
             self._default_graph = await self._create_graph_from_config_async()
             self._graph = self._default_graph
+            # Assemble the composed runtime (ASC-4) around the built graph so the
+            # ComposedAgent owns the lifecycle/resources behind the existing
+            # resolution and cache contracts. The legacy (input, config) execution
+            # interface is preserved via ``self._graph``.
+            self._composed = AgentComposer.assemble(
+                graph=self._default_graph,
+                runtime_policy_config=RuntimePolicyConfig(),
+                checkpointer=self._checkpointer if hasattr(self, "_checkpointer") else None,
+            )
+            await self._composed.load()
             self._loaded = True
             self._load_failed = False
             logger.info(
@@ -151,10 +209,11 @@ class DynamicAgent(LazyLoadingAgent):
     async def _load_mcp_tools(self) -> None:
         """Load all available MCP tools into the internal map.
 
-        When a ToolsServiceToolGateway is injected, tools are resolved through
-        the gateway and stored as pre-wrapped LangChain tools in _gateway_tools.
-        The legacy MultiServerMCPClient path is still used to populate
-        _mcp_tools_map for tools that need per-config wrapping (e.g. send_email).
+        Tools are resolved exclusively through the injected
+        ToolsServiceToolGateway (wired in ASC-2D) and stored as pre-wrapped
+        LangChain tools in ``_gateway_tools``. The legacy ``MultiServerMCPClient``
+        path was removed in ASC-5; the gateway is the canonical, trusted-context
+        aware tool loader.
         """
         # If a gateway is injected, use it to resolve tools.
         if self._gateway is not None:
@@ -178,53 +237,18 @@ class DynamicAgent(LazyLoadingAgent):
             except Exception as e:
                 logger.warning(
                     "DynamicAgent '%s' gateway tool resolution failed: %s. "
-                    "Falling back to legacy MCP path.",
+                    "Falling back to no tools.",
                     self.name,
                     e,
                 )
                 self._gateway_tools = []
 
-        # Always also populate _mcp_tools_map via legacy path for tools
-        # that still need per-config wrapping (e.g. send_email).
-        try:
-            from langchain_mcp_adapters.client import MultiServerMCPClient
-
-            mcp_url = (
-                getattr(settings, "TOOLS_SERVICE_URL", None)
-                or getattr(settings, "MCP_SERVER_URL", None)
-                or env.TOOLS_SERVICE_URL
-                or env.MCP_SERVER_URL
-                or "http://localhost:8003/mcp"
-            )
-            token = (env.INTERNAL_SERVICE_TOKEN or "").strip()
-            headers = {"Authorization": f"Bearer {token}"} if token else None
-
-            client = MultiServerMCPClient(
-                connections={
-                    "mcp-tools": {
-                        "transport": "streamable_http",
-                        "url": mcp_url,
-                        **({"headers": headers} if headers else {}),
-                    }
-                }
-            )
-
-            tools = await client.get_tools()
-            for tool in tools:
-                self._mcp_tools_map[tool.name] = tool
-
-            logger.info(
-                "Loaded %d MCP tools for DynamicAgent '%s' from %s (legacy path)",
-                len(tools),
-                self.name,
-                mcp_url,
-            )
-        except Exception as e:
-            logger.warning(
-                "Could not load MCP tools for DynamicAgent '%s' via legacy path: %s",
-                self.name,
-                e,
-            )
+        # Tool loading is performed exclusively through the injected
+        # ToolsServiceToolGateway (wired in ASC-2D). The legacy
+        # MultiServerMCPClient path was removed in ASC-5; the gateway is the
+        # canonical, trusted-context-aware tool loader. ``_mcp_tools_map`` is
+        # kept empty so GraphBuilder only consults the gateway-resolved tools.
+        self._mcp_tools_map = {}
 
     def _create_graph_from_config(
         self,

@@ -45,6 +45,7 @@ class GraphBuilder:
         memory_enabled: bool = False,
         checkpointer: Any | None = None,
         repository: Any | None = None,
+        gateway_tools: list[Any] | None = None,
     ):
         self.model = model
         self.system_prompt = system_prompt
@@ -53,6 +54,10 @@ class GraphBuilder:
         self.memory_enabled = memory_enabled
         self.checkpointer = checkpointer
         self.repository = repository  # NEW: For loading sub-agents from DB
+        # Gateway-injected tools (from ToolsServiceToolGateway, pre-resolved as BaseTool).
+        # These are prepended to the tools list so they take precedence over
+        # mcp_tools_map lookups for the same tool name.
+        self.gateway_tools = gateway_tools or []
 
     def _get_tools_for_names(
         self,
@@ -353,6 +358,11 @@ class GraphBuilder:
         extra_tools = config.get("extra_tools", []) or []
         tools.extend(extra_tools)
 
+        # Prepend gateway tools so they take precedence over mcp_tools_map entries
+        # with the same name (mcp_tools_map is consulted last).
+        if self.gateway_tools:
+            tools = list(self.gateway_tools) + tools
+
         document_tools = get_document_tools()
         if document_tools:
             tools.extend(document_tools)
@@ -503,6 +513,7 @@ class GraphBuilder:
                 memory_enabled=self.memory_enabled,
                 checkpointer=self.checkpointer,
                 repository=self.repository,
+                gateway_tools=self.gateway_tools,
             )
             return nested_builder.build(schema_type, agent_config)
 
@@ -520,6 +531,10 @@ class GraphBuilder:
             user_id=agent_config.get("user_id"),
             mail_attachments=agent_config.get("mail_attachments"),
         )
+
+        # Prepend gateway tools so they take precedence.
+        if self.gateway_tools:
+            agent_tools = list(self.gateway_tools) + agent_tools
 
         document_tools = get_document_tools()
         if document_tools:
@@ -554,6 +569,10 @@ class GraphBuilder:
         )
         extra_tools = config.get("extra_tools", []) or []
         tools.extend(extra_tools)
+
+        # Prepend gateway tools so they take precedence.
+        if self.gateway_tools:
+            tools = list(self.gateway_tools) + tools
 
         document_tools = get_document_tools()
         if document_tools:
