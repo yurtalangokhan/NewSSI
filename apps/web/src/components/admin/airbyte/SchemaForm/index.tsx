@@ -6,6 +6,7 @@ import PrimitiveField from "./PrimitiveField";
 import ObjectField from "./ObjectField";
 import ArrayField from "./ArrayField";
 import OneOfField from "./OneOfField";
+import Text from "@/refresh-components/texts/Text";
 
 interface SchemaFormProps {
   schema: JSONSchemaProperty;
@@ -124,7 +125,7 @@ export default function SchemaForm({
       </div>
 
       {schema.description && (
-        <p className="text-xs text-text-03">{schema.description}</p>
+        <Text as="p" className="text-xs text-text-03">{schema.description}</Text>
       )}
 
       {renderField()}

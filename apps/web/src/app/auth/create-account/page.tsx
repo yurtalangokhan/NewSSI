@@ -6,6 +6,7 @@ import Button from "@/refresh-components/buttons/Button";
 import Link from "next/link";
 import { SvgImport } from "@opal/icons";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 export default function Page() {
   const { t } = useTranslation();
@@ -13,12 +14,12 @@ export default function Page() {
   return (
     <AuthFlowContainer>
       <div className="flex flex-col space-y-6">
-        <h2 className="text-2xl font-bold text-text-900 text-center">
+        <Text as="h2" className="text-2xl font-bold text-text-900 text-center">
           {t("authPages.createAccount.notFoundTitle")}
-        </h2>
-        <p className="text-text-700 max-w-md text-center">
+        </Text>
+        <Text as="p" className="text-text-700 max-w-md text-center">
           {t("authPages.createAccount.description")}
-        </p>
+        </Text>
         <ul className="list-disc text-left text-text-600 w-full pl-6 mx-auto">
           <li>{t("authPages.createAccount.inviteOption")}</li>
           <li>{t("authPages.createAccount.createTeamOption")}</li>
@@ -32,7 +33,7 @@ export default function Page() {
             {t("authPages.createAccount.createOrgButton")}
           </Button>
         </div>
-        <p className="text-sm text-text-500 text-center">
+        <Text as="p" className="text-sm text-text-500 text-center">
           {t("authPages.createAccount.differentEmailText")}{" "}
           <Link
             href="/auth/login"
@@ -40,7 +41,7 @@ export default function Page() {
           >
             {t("authPages.createAccount.signInLink")}
           </Link>
-        </p>
+        </Text>
       </div>
     </AuthFlowContainer>
   );

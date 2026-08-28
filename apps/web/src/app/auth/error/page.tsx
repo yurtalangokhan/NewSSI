@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation";
 import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
 import { APP_SUPPORT_EMAIL } from "@/lib/appInfo";
 import { formatErrorMessage } from "@/components/ErrorCallout";
+import Text from "@/refresh-components/texts/Text";
 
 const Page = () => {
   const { t } = useTranslation();
@@ -20,17 +21,17 @@ const Page = () => {
   return (
     <AuthFlowContainer>
       <div className="flex flex-col space-y-6 max-w-md mx-auto">
-        <h2 className="text-2xl font-bold text-text-900 text-center">
+        <Text as="h2" className="text-2xl font-bold text-text-900 text-center">
           {t("authPages.authError.title")}
-        </h2>
-        <p className="text-text-700 text-center">
+        </Text>
+        <Text as="p" className="text-text-700 text-center">
           {errorMessage || t("authPages.authError.description")}
-        </p>
+        </Text>
         {!errorMessage && (
           <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 shadow-sm">
-            <h3 className="text-red-800 dark:text-red-400 font-semibold mb-2">
+            <Text as="h3" className="text-red-800 dark:text-red-400 font-semibold mb-2">
               {t("authPages.authError.possibleIssuesTitle")}
-            </h3>
+            </Text>
             <ul className="space-y-2">
               <li className="flex items-center text-red-700 dark:text-red-400">
                 <div className="w-2 h-2 bg-red-500 dark:bg-red-400 rounded-full mr-2"></div>
@@ -49,16 +50,16 @@ const Page = () => {
         )}
         {errorMessage && (
           <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 shadow-sm">
-            <p className="text-red-700 dark:text-red-400 text-sm font-mono break-words">
+            <Text as="p" className="text-red-700 dark:text-red-400 text-sm font-mono break-words">
               {errorMessage}
-            </p>
+            </Text>
           </div>
         )}
 
         <Button href="/auth/login" className="w-full">
           {t("authPages.authError.returnButton")}
         </Button>
-        <p className="text-sm text-text-500 text-center">
+        <Text as="p" className="text-sm text-text-500 text-center">
           {t("authPages.authError.tryAgainNote")}
           {NEXT_PUBLIC_CLOUD_ENABLED && (
             <span className="block mt-1 text-blue-600">
@@ -68,7 +69,7 @@ const Page = () => {
               </a>
             </span>
           )}
-        </p>
+        </Text>
       </div>
     </AuthFlowContainer>
   );

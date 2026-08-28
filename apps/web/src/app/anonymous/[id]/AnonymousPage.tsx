@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 export default function AnonymousPage({
   anonymousPath,
@@ -43,15 +44,15 @@ export default function AnonymousPage({
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background-100">
       <div className="bg-white p-8 rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold mb-4 text-center">
+        <Text as="h1" className="text-2xl font-bold mb-4 text-center">
           {t("redirecting")}
-        </h1>
+        </Text>
         <div className="flex justify-center">
           <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-background-800"></div>
         </div>
-        <p className="mt-4 text-text-600 text-center">
+        <Text as="p" className="mt-4 text-text-600 text-center">
           {t("settingUpSession")}
-        </p>
+        </Text>
       </div>
     </div>
   );

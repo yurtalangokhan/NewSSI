@@ -5,6 +5,7 @@ import { getTimeRangeValues } from "@/app/config/timeRange";
 import { TimeRangeSelector } from "@/components/filters/TimeRangeSelector";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 export function SearchDateRangeSelector({
   value,
@@ -49,7 +50,7 @@ export function SearchDateRangeSelector({
             hover:bg-accent-background-hovered`}
         >
           <FiCalendar className="flex-none my-auto mr-2" />{" "}
-          <p className="line-clamp-1">
+          <Text as="p" className="line-clamp-1">
             {isHorizontal ? (
               t("admin.documentExplorer.date")
             ) : value?.selectValue ? (
@@ -57,7 +58,7 @@ export function SearchDateRangeSelector({
             ) : (
               t("admin.documentExplorer.anyTime")
             )}
-          </p>
+          </Text>
           {value?.selectValue ? (
             <div
               className="my-auto ml-auto p-0.5 rounded-full w-fit"

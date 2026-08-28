@@ -11,6 +11,7 @@ import {
 import { MessageRenderer, RenderType } from "../interfaces";
 import { InMessageImage } from "../../../components/files/images/InMessageImage";
 import GeneratingImageDisplay from "../../../components/tools/GeneratingImageDisplay";
+import Text from "@/refresh-components/texts/Text";
 
 // Helper function to construct current image state
 function constructCurrentImageState(packets: ImageGenerationToolPacket[]) {
@@ -115,7 +116,7 @@ export const ImageToolRenderer: MessageRenderer<
               ) : (
                 <div className="py-4 text-center text-gray-500 dark:text-gray-400 ml-7">
                   <SvgImage className="w-6 h-6 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">{t("timeline.noImagesGenerated")}</p>
+                  <Text as="p" className="text-sm">{t("timeline.noImagesGenerated")}</Text>
                 </div>
               )}
             </div>

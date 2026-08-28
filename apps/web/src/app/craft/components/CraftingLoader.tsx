@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 const messages = [
   "Punching wood...",
@@ -130,9 +131,9 @@ export default function CraftingLoader() {
         </div>
       </div>
 
-      <p className="mt-6 text-neutral-500 text-sm font-mono">
+      <Text as="p" className="mt-6 text-neutral-500 text-sm font-mono">
         {t("loadingMessage")}
-      </p>
+      </Text>
     </div>
   );
 }

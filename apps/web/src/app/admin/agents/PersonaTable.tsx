@@ -265,16 +265,14 @@ export function PersonasTable({
                     }
                   />
                 )}
-                <p className="text font-medium whitespace-normal break-none">
+                <Text as="p" className="text font-medium whitespace-normal break-none">
                   {persona.name}
-                </p>
+                </Text>
               </div>,
-              <p
-                key="description"
-                className="whitespace-normal break-all max-w-2xl"
-              >
+              <Text as="p" key="description"
+                className="whitespace-normal break-all max-w-2xl">
                 {persona.description}
-              </p>,
+              </Text>,
               <PersonaTypeDisplay key={persona.id} persona={persona} />,
               <div
                 key="featured"

@@ -11,6 +11,7 @@ import CreateButton from "@/refresh-components/buttons/CreateButton";
 import { DOCS_ADMINS_PATH } from "@/lib/constants";
 import { useTranslation } from "react-i18next";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
+import Text from "@/refresh-components/texts/Text";
 
 function Main() {
   const { t } = useTranslation();
@@ -40,9 +41,9 @@ function Main() {
 
   return (
     <div className="mb-8">
-      <p className="mb-2 text-sm text-muted-foreground">
+      <Text as="p" className="mb-2 text-sm text-muted-foreground">
         {t("admin.bots.description")}
-      </p>
+      </Text>
 
       <div className="mb-2">
         <ul className="list-disc mt-2 ml-4 text-sm text-muted-foreground">
@@ -52,7 +53,7 @@ function Main() {
         </ul>
       </div>
 
-      <p className="mb-6 text-sm text-muted-foreground">
+      <Text as="p" className="mb-6 text-sm text-muted-foreground">
         {t("admin.bots.guidePrefix")}{" "}
         <a
           className="text-blue-500 hover:underline"
@@ -63,7 +64,7 @@ function Main() {
           {t("admin.bots.guideLink")}{" "}
         </a>
         {t("admin.bots.guideSuffix")}
-      </p>
+      </Text>
 
       <CreateButton href="/admin/bots/new">
         {t("admin.bots.newSlackBotButton")}

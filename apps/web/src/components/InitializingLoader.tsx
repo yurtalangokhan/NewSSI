@@ -5,6 +5,7 @@ import Logo from "@/refresh-components/Logo";
 import { SettingsContext } from "@/providers/SettingsProvider";
 import { useTranslation } from "react-i18next";
 import { getAppName } from "@/lib/appInfo";
+import Text from "@/refresh-components/texts/Text";
 
 export default function InitializingLoader() {
   const { t } = useTranslation("common", { keyPrefix: "admin" });
@@ -13,13 +14,13 @@ export default function InitializingLoader() {
   return (
     <div className="mx-auto my-auto animate-pulse">
       <Logo folded size={96} className="mx-auto mb-3" />
-      <p className="text-lg text-text font-semibold">
+      <Text as="p" className="text-lg text-text font-semibold">
         {t("initializingLoader", {
           applicationName: getAppName(
             settings?.enterpriseSettings?.application_name
           ),
         })}
-      </p>
+      </Text>
     </div>
   );
 }

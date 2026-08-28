@@ -17,6 +17,7 @@ import {
   SvgOrganization,
   SvgPlus,
 } from "@opal/icons";
+import Text from "@/refresh-components/texts/Text";
 export interface TenantByDomainResponse {
   tenant_id: string;
   number_of_users: number;
@@ -154,11 +155,11 @@ export default function NewTeamModal() {
           {isLoading ? (
             <div className="py-8 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-border-05 mx-auto mb-4"></div>
-              <p>{t("newTeam.loadingTeamInfo")}</p>
+              <Text as="p">{t("newTeam.loadingTeamInfo")}</Text>
             </div>
           ) : error ? (
             <div className="space-y-4">
-              <p className="text-status-text-error-05">{error}</p>
+              <Text as="p" className="text-status-text-error-05">{error}</Text>
               <div className="flex w-full pt-2">
                 <Button
                   onClick={handleContinueToNewOrg}
@@ -171,9 +172,9 @@ export default function NewTeamModal() {
             </div>
           ) : hasRequestedInvite ? (
             <div className="space-y-4">
-              <p className="text-text-04">
+              <Text as="p" className="text-text-04">
                 {t("newTeam.joinRequestSentBody", { domain: appDomain })}
-              </p>
+              </Text>
               <div className="flex w-full pt-2">
                 <Button
                   onClick={handleContinueToNewOrg}
@@ -186,9 +187,9 @@ export default function NewTeamModal() {
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-text-03 text-sm mb-2">
+              <Text as="p" className="text-text-03 text-sm mb-2">
                 {t("newTeam.joinRequestInfo", { domain: appDomain })}
-              </p>
+              </Text>
               <div className="flex flex-col items-center justify-center gap-4 mt-4">
                 <Button
                   onClick={handleRequestInvite}

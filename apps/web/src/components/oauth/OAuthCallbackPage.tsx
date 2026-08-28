@@ -7,6 +7,7 @@ import { CheckmarkIcon, TriangleAlertIcon } from "@/components/icons/icons";
 import CardSection from "@/components/admin/CardSection";
 import Button from "@/refresh-components/buttons/Button";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 interface OAuthCallbackConfig {
   // UI customization
@@ -237,21 +238,21 @@ export default function OAuthCallbackPage({ config }: OAuthCallbackPageProps) {
           <div className="text-center">
             {getStatusIcon()}
 
-            <h1 className={`text-2xl font-bold mb-4 ${getStatusColor()}`}>
+            <Text as="h1" className={`text-2xl font-bold mb-4 ${getStatusColor()}`}>
               {statusMessage}
-            </h1>
+            </Text>
 
-            <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+            <Text as="p" className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
               {statusDetails}
-            </p>
+            </Text>
 
             {isSuccess && secondsLeft !== null && (
               <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
-                <p className="text-green-800 dark:text-green-200 text-sm">
+                <Text as="p" className="text-green-800 dark:text-green-200 text-sm">
                   {t("auth.oauthCallback.redirectingInSeconds", {
                     count: secondsLeft,
                   })}
-                </p>
+                </Text>
               </div>
             )}
 
@@ -273,9 +274,9 @@ export default function OAuthCallbackPage({ config }: OAuthCallbackPageProps) {
               )}
 
               {isLoading && (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <Text as="p" className="text-sm text-gray-500 dark:text-gray-400">
                   {t("auth.oauthCallback.takeMoments")}
-                </p>
+                </Text>
               )}
             </div>
           </div>

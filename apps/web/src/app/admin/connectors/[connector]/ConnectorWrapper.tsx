@@ -10,6 +10,7 @@ import { isValidSource, getSourceMetadata } from "@/lib/sources";
 import { FederatedConnectorForm } from "@/components/admin/federated/FederatedConnectorForm";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "next/navigation";
+import Text from "@/refresh-components/texts/Text";
 
 export default function ConnectorWrapper({
   connector,
@@ -31,7 +32,7 @@ export default function ConnectorWrapper({
           <div className="mt-12 w-full max-w-3xl mx-auto">
             <div className="mx-auto flex flex-col gap-y-2">
               <HeaderTitle>
-                <p>{t("invalidConnectorType", { connector })}</p>
+                <Text as="p">{t("invalidConnectorType", { connector })}</Text>
               </HeaderTitle>
               <Button
                 onClick={() => window.open("/admin/indexing/status", "_self")}

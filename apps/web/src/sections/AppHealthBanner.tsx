@@ -19,6 +19,7 @@ import { Content } from "@opal/layouts";
 import { useUser } from "@/providers/UserProvider";
 
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 export default function AppHealthBanner() {
   const router = useRouter();
@@ -201,7 +202,7 @@ export default function AppHealthBanner() {
         <Modal.Content width="sm" height="sm">
           <Modal.Header icon={SvgLogOut} title={t("loggedOutTitle")} />
           <Modal.Body>
-            <p className="text-sm">{t("sessionExpiredMessage")}</p>
+            <Text as="p" className="text-sm">{t("sessionExpiredMessage")}</Text>
           </Modal.Body>
           <Modal.Footer>
             <Button onClick={handleLogin}>{t("logInButton")}</Button>

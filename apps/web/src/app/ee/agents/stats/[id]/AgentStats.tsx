@@ -12,6 +12,7 @@ import { useAgents } from "@/hooks/useAgents";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { AreaChartDisplay } from "@/components/ui/areaChart";
+import Text from "@/refresh-components/texts/Text";
 
 type AgentDailyUsageEntry = {
   date: string;
@@ -118,13 +119,13 @@ export function AgentStats({ agentId }: { agentId: number }) {
   } else if (error) {
     content = (
       <div className="h-80 text-red-600 font-bold flex flex-col">
-        <p className="m-auto">{error}</p>
+        <Text as="p" className="m-auto">{error}</Text>
       </div>
     );
   } else if (!agentStats?.daily_stats?.length) {
     content = (
       <div className="h-80 text-text-500 flex flex-col">
-        <p className="m-auto">{t("noDataFound")}</p>
+        <Text as="p" className="m-auto">{t("noDataFound")}</Text>
       </div>
     );
   } else if (chartData) {
@@ -143,7 +144,7 @@ export function AgentStats({ agentId }: { agentId: number }) {
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <p className="text-base font-normal text-2xl">{t("title")}</p>
+        <Text as="p" className="text-base font-normal text-2xl">{t("title")}</Text>
         <AdminDateRangeSelector
           value={dateRange}
           onValueChange={setDateRange}
@@ -156,8 +157,8 @@ export function AgentStats({ agentId }: { agentId: number }) {
               <div className="flex items-center space-x-4">
                 {agent && <AgentAvatar agent={agent} />}
                 <div>
-                  <h3 className="text-lg font-normal">{agent?.name}</h3>
-                  <p className="text-sm text-text-500">{agent?.description}</p>
+                  <Text as="h3" className="text-lg font-normal">{agent?.name}</Text>
+                  <Text as="p" className="text-sm text-text-500">{agent?.description}</Text>
                 </div>
               </div>
             </CardContent>
@@ -166,16 +167,16 @@ export function AgentStats({ agentId }: { agentId: number }) {
             <CardContent className="pt-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-text-500">
+                  <Text as="p" className="text-sm font-medium text-text-500">
                     {t("totalMessagesLabel")}
-                  </p>
-                  <p className="text-2xl font-normal">{totalMessages}</p>
+                  </Text>
+                  <Text as="p" className="text-2xl font-normal">{totalMessages}</Text>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-text-500">
+                  <Text as="p" className="text-sm font-medium text-text-500">
                     {t("totalUniqueUsersLabel")}
-                  </p>
-                  <p className="text-2xl font-normal">{totalUniqueUsers}</p>
+                  </Text>
+                  <Text as="p" className="text-2xl font-normal">{totalUniqueUsers}</Text>
                 </div>
               </div>
             </CardContent>

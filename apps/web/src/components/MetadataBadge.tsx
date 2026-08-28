@@ -1,4 +1,5 @@
 import { JSX } from "react";
+import Text from "@/refresh-components/texts/Text";
 
 export function MetadataBadge({
   icon,
@@ -29,9 +30,9 @@ export function MetadataBadge({
           size: 12,
           className: flexNone ? "flex-none" : "mr-0.5 my-auto",
         })}
-      <p className="max-w-[6rem] text-ellipsis overflow-hidden truncate whitespace-nowrap">
+      <Text as="p" className="max-w-[6rem] text-ellipsis overflow-hidden truncate whitespace-nowrap">
         {value}
-      </p>
+      </Text>
     </div>
   );
 }

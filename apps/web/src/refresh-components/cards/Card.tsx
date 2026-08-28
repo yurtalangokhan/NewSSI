@@ -24,8 +24,8 @@
  *
  * // Basic usage (primary variant)
  * <Card>
- *   <h2>Card Title</h2>
- *   <p>Card content goes here</p>
+ *   <Text as="h2">Card Title</Text>
+ *   <Text as="p">Card content goes here</Text>
  * </Card>
  *
  * // Secondary variant for nested content
@@ -42,6 +42,7 @@
 
 import { Section, SectionProps } from "@/layouts/general-layouts";
 import { cn } from "@/lib/utils";
+import Text from "@/refresh-components/texts/Text";
 
 type CardVariant =
   // The main card variant.

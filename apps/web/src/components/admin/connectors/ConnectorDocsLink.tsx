@@ -1,6 +1,7 @@
 import { ValidSources } from "@/lib/types";
 import { getSourceDocLink } from "@/lib/sources";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 export default function ConnectorDocsLink({
   sourceType,
@@ -19,7 +20,7 @@ export default function ConnectorDocsLink({
   const paragraphClass = ["text-sm", className].filter(Boolean).join(" ");
 
   return (
-    <p className={paragraphClass}>
+    <Text as="p" className={paragraphClass}>
       {t("connectorDocsLink.checkOut")}
       <a
         className="text-blue-600 hover:underline"
@@ -31,6 +32,6 @@ export default function ConnectorDocsLink({
         {t("connectorDocsLink.ourDocs")}{" "}
       </a>
       {t("connectorDocsLink.forMoreInfo")}
-    </p>
+    </Text>
   );
 }

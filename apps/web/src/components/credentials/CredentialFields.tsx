@@ -1,4 +1,5 @@
 import { JSX } from "react";
+import Text from "@/refresh-components/texts/Text";
 
 export default function CredentialSubText({
   children,
@@ -6,8 +7,8 @@ export default function CredentialSubText({
   children: JSX.Element | string;
 }) {
   return (
-    <p className="text-sm mb-2 whitespace-break-spaces text-text-500">
+    <Text as="p" className="text-sm mb-2 whitespace-break-spaces text-text-500">
       {children}
-    </p>
+    </Text>
   );
 }

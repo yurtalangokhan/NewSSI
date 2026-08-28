@@ -20,6 +20,7 @@ import { HorizontalFilters } from "@/components/filters/SourceSelector";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 const DocumentDisplay = ({
   document,
@@ -47,14 +48,14 @@ const DocumentDisplay = ({
           rel="noopener noreferrer"
         >
           <SourceIcon sourceType={document.source_type} iconSize={22} />
-          <p className="truncate break-all ml-2 my-auto text-base">
+          <Text as="p" className="truncate break-all ml-2 my-auto text-base">
             {document.semantic_identifier || document.document_id}
-          </p>
+          </Text>
         </a>
       </div>
       <div className="flex flex-wrap gap-x-2 mt-1 text-xs">
         <div className="px-1 py-0.5 bg-accent-background-hovered rounded flex">
-          <p className="mr-1 my-auto">{t("boostLabel")}</p>
+          <Text as="p" className="mr-1 my-auto">{t("boostLabel")}</Text>
           <ScoreSection
             documentId={document.document_id}
             initialScore={document.boost}
@@ -95,9 +96,9 @@ const DocumentDisplay = ({
           <DocumentUpdatedAtBadge updatedAt={document.updated_at} />
         </div>
       )}
-      <p className="pl-1 pt-2 pb-3 break-words">
+      <Text as="p" className="pl-1 pt-2 pb-3 break-words">
         {buildDocumentSummaryDisplay(document.match_highlights, document.blurb)}
-      </p>
+      </Text>
     </div>
   );
 };

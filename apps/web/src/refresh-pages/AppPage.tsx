@@ -88,6 +88,7 @@ import { useTranslation } from "react-i18next";
 import { getLoginPath } from "@/lib/auth/loginRoute";
 import { consumeAppDraftCommand } from "@/app/app/services/draftCommand";
 import type { AppDraftCommand } from "@/app/app/services/draftCommand";
+import Text from "@/refresh-components/texts/Text";
 
 interface FadeProps {
   show: boolean;
@@ -179,12 +180,12 @@ function DragOverlay({ isDragging }: DragOverlayProps) {
             transition={{ duration: 0.3, delay: 0.1 }}
             className="text-center"
           >
-            <h3 className="text-base font-semibold text-text-darker dark:text-white">
+            <Text as="h3" className="text-base font-semibold text-text-darker dark:text-white">
               {t("chat.dragDropFiles")}
-            </h3>
-            <p className="text-xs text-text-light dark:text-text-light mt-1">
+            </Text>
+            <Text as="p" className="text-xs text-text-light dark:text-text-light mt-1">
               {t("chat.releaseToUpload")}
-            </p>
+            </Text>
           </motion.div>
 
           {/* Floating animation for extra visual interest */}

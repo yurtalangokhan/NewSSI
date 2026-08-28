@@ -22,6 +22,7 @@ import Button from "@/refresh-components/buttons/Button";
 import CreateButton from "@/refresh-components/buttons/CreateButton";
 import { Button as OpalButton } from "@opal/components";
 import { SvgSettings, SvgTrash } from "@opal/icons";
+import Text from "@/refresh-components/texts/Text";
 const numToDisplay = 50;
 
 export interface SlackChannelConfigsTableProps {
@@ -61,7 +62,7 @@ export default function SlackChannelConfigsTable({
       </div>
 
       <div>
-        <h2 className="text-2xl font- mb-4">{t("slackChannelConfigs.channelSpecificConfigs")}</h2>
+        <Text as="h2" className="text-2xl font- mb-4">{t("slackChannelConfigs.channelSpecificConfigs")}</Text>
         <Card>
           <Table>
             <TableHeader>

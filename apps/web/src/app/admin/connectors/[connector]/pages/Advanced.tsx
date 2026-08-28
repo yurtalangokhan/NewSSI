@@ -4,13 +4,14 @@ import NumberInput from "./ConnectorInput/NumberInput";
 import { TextFormField } from "@/components/Field";
 import Button from "@/refresh-components/buttons/Button";
 import { SvgTrash } from "@opal/icons";
+import Text from "@/refresh-components/texts/Text";
 export default function AdvancedFormPage() {
   const { t } = useTranslation("common", {
     keyPrefix: "admin.advancedConnectorForm",
   });
   return (
     <div className="py-4 flex flex-col gap-y-6 rounded-lg max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4 text-text-800">{t("title")}</h2>
+      <Text as="h2" className="text-2xl font-bold mb-4 text-text-800">{t("title")}</Text>
 
       <NumberInput
         description={t("pruneFrequencyDescription")}

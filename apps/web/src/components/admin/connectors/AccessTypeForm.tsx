@@ -12,6 +12,7 @@ import { useEffect, useMemo } from "react";
 import { Credential } from "@/lib/connectors/credentials";
 import { credentialTemplates } from "@/lib/connectors/credentials";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 function isValidAutoSyncSource(
   value: ConfigurableSources
@@ -103,9 +104,9 @@ export function AccessTypeForm({
             <label className="text-text-950 font-medium">
               {t("admin.connectorForm.documentAccess.label")}
             </label>
-            <p className="text-sm text-text-500">
+            <Text as="p" className="text-sm text-text-500">
               {t("admin.connectorForm.documentAccess.description")}
-            </p>
+            </Text>
           </div>
           <DefaultDropdown
             options={options}

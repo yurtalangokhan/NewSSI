@@ -9,6 +9,7 @@ import { ValidSources } from "@/lib/types";
 import CardSection from "@/components/admin/CardSection";
 import { handleOAuthAuthorizationResponse } from "@/lib/oauth_utils";
 import { SvgKey } from "@opal/icons";
+import Text from "@/refresh-components/texts/Text";
 export default function OAuthCallbackPage() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -119,17 +120,17 @@ export default function OAuthCallbackPage() {
 
       <div className="flex-1 flex flex-col items-center justify-center">
         <CardSection className="max-w-md w-[500px] h-[250px] p-8">
-          <h1 className="text-2xl font-bold mb-4">{statusMessage}</h1>
-          <p className="text-text-500">{statusDetails}</p>
+          <Text as="h1" className="text-2xl font-bold mb-4">{statusMessage}</Text>
+          <Text as="p" className="text-text-500">{statusDetails}</Text>
           {redirectUrl && !isError && (
             <div className="mt-4">
-              <p className="text-sm">
+              <Text as="p" className="text-sm">
                 {t("admin.connectorOAuth.clickPrefix")}{" "}
                 <a href={redirectUrl} className="text-blue-500 underline">
                   {t("admin.connectorOAuth.hereLink")}
                 </a>{" "}
                 {t("admin.connectorOAuth.toContinueSuffix")}
-              </p>
+              </Text>
             </div>
           )}
         </CardSection>

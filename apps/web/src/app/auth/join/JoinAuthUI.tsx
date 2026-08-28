@@ -1,13 +1,14 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 export function JoinHeading() {
   const { t } = useTranslation();
   return (
-    <h2 className="text-center text-xl text-strong font-bold">
+    <Text as="h2" className="text-center text-xl text-strong font-bold">
       {t("auth.reauthenticateHeading")}
-    </h2>
+    </Text>
   );
 }
 

@@ -772,7 +772,7 @@ export default function ToolsPlaygroundPage() {
             tooltip={t("common.back")}
             aria-label={t("common.back")}
           />
-          <h1 className="mt-3 text-2xl font-bold text-text-05">{pageTitle}</h1>
+          <Text as="h1" className="mt-3 text-2xl font-bold text-text-05">{pageTitle}</Text>
           <Text as="p" text03 mainContentBody className="mt-1 text-sm">
             {t("toolPlayground.pageDescription")}
           </Text>

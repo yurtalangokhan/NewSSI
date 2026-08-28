@@ -323,9 +323,9 @@ export default function EmbeddingForm() {
                 weight="fill"
               />
               <div className="absolute z-10 invisible group-hover:visible bg-background-800 text-text-200 text-sm rounded-md shadow-md p-2 right-0 mt-1 w-64">
-                <p className="font-semibold mb-2">
+                <Text as="p" className="font-semibold mb-2">
                   {t("admin.embeddings.needsReindexingDueTo")}
-                </p>
+                </Text>
                 <ul className="list-disc pl-5">
                   {currentEmbeddingModel != selectedProvider && (
                     <li>{t("admin.embeddings.changedEmbeddingProvider")}</li>
@@ -363,9 +363,9 @@ export default function EmbeddingForm() {
                   weight="fill"
                 />
                 <div className="absolute z-10 invisible group-hover:visible bg-background-800 text-text-200 text-sm rounded-md shadow-md p-2 right-0 mt-1 w-64">
-                  <p className="font-semibold mb-2">
+                  <Text as="p" className="font-semibold mb-2">
                     {t("admin.embeddings.validationErrors")}
-                  </p>
+                  </Text>
                   <ul className="list-disc pl-5">
                     {Object.entries(combinedFormErrors).map(
                       ([field, error]) => (
@@ -399,9 +399,9 @@ export default function EmbeddingForm() {
                   weight="fill"
                 />
                 <div className="absolute z-10 invisible group-hover:visible bg-background-800 text-text-200 text-sm rounded-md shadow-md p-2 right-0 mt-1 w-64">
-                  <p className="font-semibold mb-2 text-red-400">
+                  <Text as="p" className="font-semibold mb-2 text-red-400">
                     {t("admin.embeddings.validationErrors")}
-                  </p>
+                  </Text>
                   <ul className="list-disc pl-5">
                     {Object.entries(combinedFormErrors).map(
                       ([field, error]) => (
@@ -492,9 +492,9 @@ export default function EmbeddingForm() {
       <div className="mx-auto max-w-4xl">
         {formStep == 0 && (
           <>
-            <h2 className="text-2xl font-bold mb-4 text-text-800">
+            <Text as="h2" className="text-2xl font-bold mb-4 text-text-800">
               {t("admin.embeddings.selectEmbeddingModelTitle")}
-            </h2>
+            </Text>
             <Text as="p" className="mb-4">
               {t("admin.embeddings.selectEmbeddingModelDescription")}
               re-indexing of all documents across every connected source. This
@@ -598,9 +598,9 @@ export default function EmbeddingForm() {
 
         {formStep == 1 && (
           <>
-            <h2 className="text-2xl font-bold mb-4 text-text-800">
+            <Text as="h2" className="text-2xl font-bold mb-4 text-text-800">
               {t("admin.embeddings.selectRerankingModelTitle")}
-            </h2>
+            </Text>
             <Text as="p" className="mb-4">
               {t("admin.embeddings.selectRerankingModelDescription")}
               documents. The reranker helps improve search quality by reordering
@@ -651,9 +651,9 @@ export default function EmbeddingForm() {
         )}
         {formStep == 2 && (
           <>
-            <h2 className="text-2xl font-bold mb-4 text-text-800">
+            <Text as="h2" className="text-2xl font-bold mb-4 text-text-800">
               {t("admin.embeddings.advancedSearchConfigurationTitle")}
-            </h2>
+            </Text>
             <Text as="p" className="mb-4">
               {t("admin.embeddings.advancedSearchConfigurationDescription")}
               require re-indexing documents.

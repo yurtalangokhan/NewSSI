@@ -41,6 +41,7 @@ import { IconFunctionComponent } from "@opal/types";
 import { HtmlHTMLAttributes, useEffect, useRef, useState } from "react";
 import { Content } from "@opal/layouts";
 import Spacer from "@/refresh-components/Spacer";
+import Text from "@/refresh-components/texts/Text";
 
 const widthClasses = {
   sm: "w-[min(var(--container-sm),100%)]",
@@ -306,12 +307,12 @@ function SettingsHeader({
  * ```tsx
  * <SettingsLayouts.Body>
  *   <Card>
- *     <h3>Section 1</h3>
- *     <p>Content here</p>
+ *     <Text as="h3">Section 1</Text>
+ *     <Text as="p">Content here</Text>
  *   </Card>
  *   <Card>
- *     <h3>Section 2</h3>
- *     <p>More content</p>
+ *     <Text as="h3">Section 2</Text>
+ *     <Text as="p">More content</Text>
  *   </Card>
  * </SettingsLayouts.Body>
  * ```

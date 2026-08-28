@@ -7,6 +7,7 @@ import Button from "@/refresh-components/buttons/Button";
 import CopyIconButton from "@/refresh-components/buttons/CopyIconButton";
 import { useTranslation } from "react-i18next";
 import { getErrorIcon, getErrorTitle } from "./errorHelpers";
+import Text from "@/refresh-components/texts/Text";
 
 interface ResubmitProps {
   resubmit: () => void;
@@ -16,9 +17,9 @@ export const Resubmit: React.FC<ResubmitProps> = ({ resubmit }) => {
   const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center gap-y-2 mt-4">
-      <p className="text-sm text-neutral-700 dark:text-neutral-300">
+      <Text as="p" className="text-sm text-neutral-700 dark:text-neutral-300">
         {t("resubmit.errorMessage")}
-      </p>
+      </Text>
       <Button onClick={resubmit}>{t("resubmit.regenerateButton")}</Button>
     </div>
   );

@@ -1,6 +1,7 @@
 import { JSX } from "react";
 import { FiCheck, FiChevronDown, FiXCircle } from "react-icons/fi";
 import { CustomDropdown } from "../../Dropdown";
+import Text from "@/refresh-components/texts/Text";
 
 interface Option {
   key: string;
@@ -115,7 +116,7 @@ export function FilterDropdown({
           {selected.length === 0 || resetValues ? (
             defaultDisplay
           ) : (
-            <p className="line-clamp-1">{selected.join(", ")}</p>
+            <Text as="p" className="line-clamp-1">{selected.join(", ")}</Text>
           )}
           {resetValues && selected.length !== 0 ? (
             <div

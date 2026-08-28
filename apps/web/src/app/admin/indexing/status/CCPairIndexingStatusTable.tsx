@@ -36,6 +36,7 @@ import { ConnectorStaggeredSkeleton } from "./ConnectorRowSkeleton";
 import { Button } from "@opal/components";
 import { SvgSettings } from "@opal/icons";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 // Helper to handle navigation with cmd/ctrl+click support
 // NOTE: using this rather than Next/Link (or similar) since shadcn
@@ -108,9 +109,9 @@ function SummaryRow({
         <div className="text-sm text-neutral-500 dark:text-neutral-300">
           {t("admin.indexingStatus.table.activeConnectors")}
         </div>
-        <p className="flex text-xl mx-auto font-semibold items-center text-lg mt-1">
+        <Text as="p" className="flex text-xl mx-auto font-semibold items-center text-lg mt-1">
           {summary.active_connectors}/{summary.total_connectors}
-        </p>
+        </Text>
       </TableCell>
 
       {isPaidEnterpriseFeaturesEnabled && (
@@ -118,9 +119,9 @@ function SummaryRow({
           <div className="text-sm text-neutral-500 dark:text-neutral-300">
             {t("admin.indexingStatus.table.publicConnectors")}
           </div>
-          <p className="flex text-xl mx-auto font-semibold items-center text-lg mt-1">
+          <Text as="p" className="flex text-xl mx-auto font-semibold items-center text-lg mt-1">
             {summary.public_connectors}/{summary.total_connectors}
-          </p>
+          </Text>
         </TableCell>
       )}
 
@@ -169,9 +170,9 @@ function ConnectorRow({
       onClick={handleRowClick}
     >
       <TableCell className="">
-        <p className="max-w-[200px] xl:max-w-[400px] inline-block ellipsis truncate">
+        <Text as="p" className="max-w-[200px] xl:max-w-[400px] inline-block ellipsis truncate">
           {ccPairsIndexingStatus.name}
-        </p>
+        </Text>
       </TableCell>
       <TableCell>
         {timeAgo(ccPairsIndexingStatus?.last_success) || "-"}
@@ -251,9 +252,9 @@ function FederatedConnectorRow({
       onClick={handleRowClick}
     >
       <TableCell className="">
-        <p className="max-w-[200px] xl:max-w-[400px] inline-block ellipsis truncate">
+        <Text as="p" className="max-w-[200px] xl:max-w-[400px] inline-block ellipsis truncate">
           {federatedConnector.name}
-        </p>
+        </Text>
       </TableCell>
       <TableCell>N/A</TableCell>
       <TableCell>

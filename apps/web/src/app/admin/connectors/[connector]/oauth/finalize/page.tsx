@@ -16,6 +16,7 @@ import { SelectorFormField } from "@/components/Field";
 import { ErrorMessage, Field, Form, Formik, useFormikContext } from "formik";
 import * as Yup from "yup";
 import { SvgKey } from "@opal/icons";
+import Text from "@/refresh-components/texts/Text";
 // Helper component to keep the effect logic clean:
 function UpdateCloudURLOnCloudIdChange({
   accessibleResources,
@@ -149,8 +150,8 @@ export default function OAuthFinalizePage() {
 
       <div className="flex-1 flex flex-col items-center justify-center">
         <CardSection className="max-w-md w-[500px] h-[250px] p-8">
-          <h1 className="text-2xl font-bold mb-4">{statusMessage}</h1>
-          <p className="text-text-500">{statusDetails}</p>
+          <Text as="h1" className="text-2xl font-bold mb-4">{statusMessage}</Text>
+          <Text as="p" className="text-text-500">{statusDetails}</Text>
 
           <Formik
             initialValues={{
@@ -275,13 +276,13 @@ export default function OAuthFinalizePage() {
 
           {redirectUrl && !isError && (
             <div className="mt-4">
-              <p className="text-sm">
+              <Text as="p" className="text-sm">
                 {t("admin.connectorOAuth.finalizedClickPrefix")}{" "}
                 <a href={redirectUrl} className="text-blue-500 underline">
                   {t("admin.connectorOAuth.hereLink")}
                 </a>{" "}
                 {t("admin.connectorOAuth.toContinueSuffix")}
-              </p>
+              </Text>
             </div>
           )}
         </CardSection>

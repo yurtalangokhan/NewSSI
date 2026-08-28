@@ -321,12 +321,12 @@ export function FederatedConnectorForm({
         <div className="flex flex-col items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-4" />
           <div className="text-center">
-            <p className="text-lg font-medium text-gray-700 mb-2">
+            <Text as="p" className="text-lg font-medium text-gray-700 mb-2">
               {t("federatedForm.loadingCredentialSchema")}
-            </p>
-            <p className="text-sm text-gray-500">
+            </Text>
+            <Text as="p" className="text-sm text-gray-500">
               {t("federatedForm.retrievingRequiredFields")}
-            </p>
+            </Text>
           </div>
         </div>
       </div>

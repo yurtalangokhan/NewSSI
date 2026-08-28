@@ -16,6 +16,7 @@ import hljs from "highlight.js/lib/core";
 import python from "highlight.js/lib/languages/python";
 import { SvgTerminal } from "@opal/icons";
 import FadingEdgeContainer from "@/refresh-components/FadingEdgeContainer";
+import Text from "@/refresh-components/texts/Text";
 
 // Register Python language for highlighting
 hljs.registerLanguage("python", python);
@@ -171,7 +172,7 @@ export const PythonToolRenderer: MessageRenderer<PythonToolPacket, {}> = ({
       {isComplete && !stdout && !stderr && (
         <div className="py-2 text-center text-text-04">
           <SvgTerminal className="w-4 h-4 mx-auto mb-1 opacity-50" />
-          <p className="text-xs">{t("timeline.noOutput")}</p>
+          <Text as="p" className="text-xs">{t("timeline.noOutput")}</Text>
         </div>
       )}
     </div>

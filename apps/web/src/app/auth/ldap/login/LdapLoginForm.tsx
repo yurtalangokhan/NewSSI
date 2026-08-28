@@ -15,6 +15,7 @@ import { validateInternalRedirect } from "@/lib/auth/redirectValidation";
 import { APIFormFieldState } from "@/refresh-components/form/types";
 import { SvgArrowRightCircle } from "@opal/icons";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 export default function LdapLoginForm() {
   const { t } = useTranslation();
@@ -50,10 +51,10 @@ export default function LdapLoginForm() {
       {isWorking && <Spinner />}
 
       <div className="flex flex-col items-center w-full mb-6">
-        <h1 className="text-xl font-semibold text-white">
+        <Text as="h1" className="text-xl font-semibold text-white">
           {t("ldapLogin.title")}
-        </h1>
-        <p className="text-sm text-white/60 mt-1">{t("ldapLogin.subtitle")}</p>
+        </Text>
+        <Text as="p" className="text-sm text-white/60 mt-1">{t("ldapLogin.subtitle")}</Text>
       </div>
 
       <Formik

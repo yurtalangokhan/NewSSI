@@ -20,6 +20,7 @@ import {
 } from "@/lib/chat/chatSessionActivity";
 import { SvgTrash, SvgX, SvgEditBig, SvgChevronLeft } from "@opal/icons";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 function dedupeChatHistorySessions(sessions: ChatSession[]): ChatSession[] {
   return mergeChatSessionsByFreshness(sessions);
@@ -194,9 +195,9 @@ export default function ChatHistoryModal({
                 </>
               ) : (
                 <>
-                  <h2 className="text-lg font-semibold">
+                  <Text as="h2" className="text-lg font-semibold">
                     {t("app.chatHistory.title")}
-                  </h2>
+                  </Text>
                   <span className="text-sm text-gray-500">
                     {t("app.chatHistory.chatCountSuffix", {
                       count: allSessions.length,
@@ -247,10 +248,10 @@ export default function ChatHistoryModal({
               <div className="flex h-full items-center justify-center">
                 <div className="text-center text-gray-500">
                   <SvgEditBig className="mx-auto mb-2 h-12 w-12 text-gray-300" />
-                  <p>{t("app.chatHistory.noSessionsYet")}</p>
-                  <p className="text-sm">
+                  <Text as="p">{t("app.chatHistory.noSessionsYet")}</Text>
+                  <Text as="p" className="text-sm">
                     {t("app.chatHistory.startNewConversationHint")}
-                  </p>
+                  </Text>
                 </div>
               </div>
             ) : (
@@ -345,11 +346,11 @@ export default function ChatHistoryModal({
             </Button>
           }
         >
-          <p>
+          <Text as="p">
             {t("app.chatHistory.deleteAllChatsConfirmation", {
               count: allSessions.length,
             })}
-          </p>
+          </Text>
         </ConfirmationModalLayout>
       )}
     </>

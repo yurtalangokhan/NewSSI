@@ -30,6 +30,7 @@ import { MailConfig, useMailConfigs } from "@/lib/mailConfigs";
 import { toast } from "@/hooks/useToast";
 import _ from "lodash";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 interface ToolPlaygroundProps {
   tool: ToolWithCategory;
@@ -142,7 +143,7 @@ function SchemaForm({
               </div>
 
               {description && (
-                <p className="text-xs text-gray-500">{description}</p>
+                <Text as="p" className="text-xs text-gray-500">{description}</Text>
               )}
 
               {renderField(
@@ -276,10 +277,10 @@ function ResponseViewer({
       <div className="flex items-start gap-2 p-4 bg-red-50 border border-red-200 rounded-lg">
         <AlertCircle className="size-5 text-red-600 shrink-0 mt-0.5" />
         <div>
-          <p className="font-medium text-red-800">
+          <Text as="p" className="font-medium text-red-800">
             {t("toolPlayground.error")}
-          </p>
-          <p className="text-sm text-red-700 mt-1">{error}</p>
+          </Text>
+          <Text as="p" className="text-sm text-red-700 mt-1">{error}</Text>
         </div>
       </div>
     );
@@ -377,14 +378,14 @@ export default function ToolPlayground({
         </DialogHeader>
 
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <Text as="p" className="text-sm text-gray-600">
             {tool.description || t("toolPlayground.noDescription")}
-          </p>
+          </Text>
 
           <div className="border-t pt-4">
-            <h3 className="font-medium mb-4">
+            <Text as="h3" className="font-medium mb-4">
               {t("toolPlayground.inputHeader")}
-            </h3>
+            </Text>
             <SchemaForm
               schema={inputSchema}
               values={inputValues}
@@ -393,9 +394,9 @@ export default function ToolPlayground({
             {tool.name === "send_email" &&
               !isMailConfigsLoading &&
               mailConfigs.length === 0 && (
-                <p className="mt-3 text-xs text-gray-500">
+                <Text as="p" className="mt-3 text-xs text-gray-500">
                   {t("toolPlayground.addMailConfigFirst")}
-                </p>
+                </Text>
               )}
           </div>
 
@@ -418,9 +419,9 @@ export default function ToolPlayground({
           </Button>
 
           <div className="border-t pt-4">
-            <h3 className="font-medium mb-4">
+            <Text as="h3" className="font-medium mb-4">
               {t("toolPlayground.responseHeader")}
-            </h3>
+            </Text>
             <ResponseViewer
               response={response}
               isLoading={isLoading}

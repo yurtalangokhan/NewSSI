@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { useFederatedConnector } from "./useFederatedConnector";
 import { FederatedConnectorForm } from "@/components/admin/federated/FederatedConnectorForm";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 export default function EditFederatedConnectorPage(props: {
   params: Promise<{ id: string }>;
@@ -27,12 +28,12 @@ export default function EditFederatedConnectorPage(props: {
           <div className="flex flex-col items-center justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-4" />
             <div className="text-center">
-              <p className="text-lg font-medium text-gray-700 mb-2">
+              <Text as="p" className="text-lg font-medium text-gray-700 mb-2">
                 {t("federated.loadingConnectorConfiguration")}
-              </p>
-              <p className="text-sm text-gray-500">
+              </Text>
+              <Text as="p" className="text-sm text-gray-500">
                 {t("federated.retrievingConnectorDetails")}
-              </p>
+              </Text>
             </div>
           </div>
         </div>
@@ -45,10 +46,10 @@ export default function EditFederatedConnectorPage(props: {
       <div className="flex justify-center w-full h-full">
         <div className="mt-12 w-full max-w-4xl mx-auto">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">
+            <Text as="h1" className="text-2xl font-bold text-red-600 mb-4">
               {t("federated.error")}
-            </h1>
-            <p className="text-gray-600">{error}</p>
+            </Text>
+            <Text as="p" className="text-gray-600">{error}</Text>
           </div>
         </div>
       </div>
