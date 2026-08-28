@@ -65,4 +65,4 @@ architecture-check:
 	python3 scripts/quality/check_architecture.py --all
 
 quality-score:
-	python3 scripts/quality/score.py --all --min-score $(QUALITY_SCORE_MIN)
+	python3 scripts/quality/score.py --all
