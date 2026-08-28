@@ -183,6 +183,32 @@ class BaseRepository:
 - **No speculative generality**: Don't add parameters, hooks, or abstractions for needs the current feature doesn't have. YAGNI.
 - **Type annotations**: All function signatures must have type annotations. `mypy` enforces this.
 
+### Complexity budgets — agents must actively reduce complexity
+
+The WARN heuristics in the architecture gate (module LOC > 500 backend / > 1000 web,
+function length > 50 lines, cyclomatic complexity > 10) are not optional polish — they
+are the codebase's complexity budget. Agents (and engineers) must treat them as a
+standing backlog and reduce them whenever they touch a file:
+
+- **Keep functions small.** If a function exceeds ~50 lines or cyclomatic complexity
+  ~10, extract helpers or split by responsibility *before* adding new behavior.
+- **Keep modules cohesive and bounded.** If a module exceeds ~500 LOC (backend) or
+  ~1000 LOC (web), split it by domain capability (e.g. `graphs/builder.py` →
+  `graphs/strategies/*`). Do not let one file become a catch-all.
+- **One job per function/module.** Follow the code-clarity rules above; a function
+  named `create_user()` must not also send emails or build graphs.
+- **Use the quality score as a to-do list.** Run `make quality-score` and pick the
+  highest-impact WARN findings in the files you are already changing. Fixing WARN
+  findings raises the branch score and is the preferred path from passable (Grade B)
+  to high quality.
+- **Large legacy hotspots are tracked, not ignored.** `docs/architecture/deferred-work.md`
+  lists the known high-risk/complexity hotspots (e.g. `service/AuthService.py`, the
+  Keycloak split, web stores). New work must not add to them; reduce them when scoped.
+
+The full-tree `make quality-score` is report-only and does not block unrelated pushes,
+but every changed file must stay at or above `QUALITY_SCORE_MIN` (80). Reducing
+complexity in the files you edit is part of "done".
+
 ---
 
 ## TypeScript/React standards (web)

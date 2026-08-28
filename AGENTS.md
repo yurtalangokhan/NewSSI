@@ -211,6 +211,11 @@ or reviewing.
   weighted and capped so legacy debt remains visible without blocking unrelated
   pushes by volume alone. Use `make quality-score` for a full-tree, report-only
   trend metric and use the listed findings as the quality-improvement backlog.
+- **Agents must actively reduce complexity, not just avoid HARD findings.** Keep
+  functions under ~50 lines and modules under ~500 LOC (backend) / ~1000 LOC (web);
+  split large files by domain capability; and treat `make quality-score` WARN
+  findings as a standing backlog to fix in the files you touch. Full guidance in
+  `docs/coding-standards.md` (Complexity budgets).
 
 ### Spec-driven implementation workflow
 
