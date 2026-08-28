@@ -16,11 +16,11 @@ from i18n import t
 
 from agents import DEFAULT_AGENT
 from api.dependencies import AuthenticatedUser, require_permission
-from api.routes.AgentsRoute import message_generator
 from controller import ChatController, ThreadController, get_thread_controller, get_user_controller
 from domain.providers.repository import ProviderRepository
 from domain.providers.service import ProviderService
 from models.chat import StreamInput
+from service.agent_message_stream import message_generator
 from service.AuthService import get_auth_service, get_primary_user_id
 from service.ChatContextService import (
     build_effective_llm_override,

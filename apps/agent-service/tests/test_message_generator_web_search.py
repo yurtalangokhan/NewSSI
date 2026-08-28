@@ -198,18 +198,18 @@ async def _fake_handle_input(_user_input, _agent, _user_id=None):
 
 @pytest.mark.asyncio
 async def test_web_search_call_and_result_emit_search_tool_packets(monkeypatch):
-    from api.routes import AgentsRoute
+    from service import agent_message_stream
 
     monkeypatch.setattr(
-        AgentsRoute.AssistantAgentService,
+        agent_message_stream.AssistantAgentService,
         "get_instance",
         lambda: _FakeAssistantService(_WebSearchAgent()),
     )
-    monkeypatch.setattr(AgentsRoute, "_handle_input", _fake_handle_input)
+    monkeypatch.setattr(agent_message_stream, "_handle_input", _fake_handle_input)
 
     chunks = [
         chunk
-        async for chunk in AgentsRoute.message_generator(
+        async for chunk in agent_message_stream.message_generator(
             StreamInput(message="Onyx nedir"),
             agent_id="chatbot",
             user_id="user-1",
@@ -238,18 +238,18 @@ async def test_streamed_tool_call_chunks_do_not_leak_a_generic_tool_step(monkeyp
     still end up with search_tool_* packets only — no custom_tool_start
     should leak from the partial-args chunk, and the later `updates` event
     must not be skipped as an already-emitted duplicate."""
-    from api.routes import AgentsRoute
+    from service import agent_message_stream
 
     monkeypatch.setattr(
-        AgentsRoute.AssistantAgentService,
+        agent_message_stream.AssistantAgentService,
         "get_instance",
         lambda: _FakeAssistantService(_StreamingWebSearchAgent()),
     )
-    monkeypatch.setattr(AgentsRoute, "_handle_input", _fake_handle_input)
+    monkeypatch.setattr(agent_message_stream, "_handle_input", _fake_handle_input)
 
     chunks = [
         chunk
-        async for chunk in AgentsRoute.message_generator(
+        async for chunk in agent_message_stream.message_generator(
             StreamInput(message="Onyx nedir"),
             agent_id="chatbot",
             user_id="user-1",
@@ -270,18 +270,18 @@ async def test_streamed_tool_call_chunks_do_not_leak_a_generic_tool_step(monkeyp
 
 @pytest.mark.asyncio
 async def test_fetch_webpage_call_and_result_emit_open_url_packets(monkeypatch):
-    from api.routes import AgentsRoute
+    from service import agent_message_stream
 
     monkeypatch.setattr(
-        AgentsRoute.AssistantAgentService,
+        agent_message_stream.AssistantAgentService,
         "get_instance",
         lambda: _FakeAssistantService(_FetchWebpageAgent()),
     )
-    monkeypatch.setattr(AgentsRoute, "_handle_input", _fake_handle_input)
+    monkeypatch.setattr(agent_message_stream, "_handle_input", _fake_handle_input)
 
     chunks = [
         chunk
-        async for chunk in AgentsRoute.message_generator(
+        async for chunk in agent_message_stream.message_generator(
             StreamInput(message="onyx.app'i oku"),
             agent_id="chatbot",
             user_id="user-1",
@@ -346,18 +346,18 @@ class _FetchWebpageErrorAgent:
 
 @pytest.mark.asyncio
 async def test_fetch_webpage_error_streams_open_url_documents_with_error_cleanly(monkeypatch):
-    from api.routes import AgentsRoute
+    from service import agent_message_stream
 
     monkeypatch.setattr(
-        AgentsRoute.AssistantAgentService,
+        agent_message_stream.AssistantAgentService,
         "get_instance",
         lambda: _FakeAssistantService(_FetchWebpageErrorAgent()),
     )
-    monkeypatch.setattr(AgentsRoute, "_handle_input", _fake_handle_input)
+    monkeypatch.setattr(agent_message_stream, "_handle_input", _fake_handle_input)
 
     chunks = [
         chunk
-        async for chunk in AgentsRoute.message_generator(
+        async for chunk in agent_message_stream.message_generator(
             StreamInput(message="hatalı linki oku"),
             agent_id="chatbot",
             user_id="user-1",

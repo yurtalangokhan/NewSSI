@@ -210,18 +210,18 @@ async def _fake_handle_input(_user_input, _agent, _user_id=None):
 
 @pytest.mark.asyncio
 async def test_emits_generated_file_packet_for_document_tool_result(monkeypatch):
-    from api.routes import AgentsRoute
+    from service import agent_message_stream
 
     monkeypatch.setattr(
-        AgentsRoute.AssistantAgentService,
+        agent_message_stream.AssistantAgentService,
         "get_instance",
         lambda: _FakeAssistantService(_DocumentToolAgent()),
     )
-    monkeypatch.setattr(AgentsRoute, "_handle_input", _fake_handle_input)
+    monkeypatch.setattr(agent_message_stream, "_handle_input", _fake_handle_input)
 
     chunks = [
         chunk
-        async for chunk in AgentsRoute.message_generator(
+        async for chunk in agent_message_stream.message_generator(
             StreamInput(message="rapor hazırla"),
             agent_id="chatbot",
             user_id="user-1",
@@ -248,18 +248,18 @@ async def test_emits_generated_file_packet_for_document_tool_result(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_does_not_emit_generated_file_packet_for_plain_tool_result(monkeypatch):
-    from api.routes import AgentsRoute
+    from service import agent_message_stream
 
     monkeypatch.setattr(
-        AgentsRoute.AssistantAgentService,
+        agent_message_stream.AssistantAgentService,
         "get_instance",
         lambda: _FakeAssistantService(_PlainToolAgent()),
     )
-    monkeypatch.setattr(AgentsRoute, "_handle_input", _fake_handle_input)
+    monkeypatch.setattr(agent_message_stream, "_handle_input", _fake_handle_input)
 
     chunks = [
         chunk
-        async for chunk in AgentsRoute.message_generator(
+        async for chunk in agent_message_stream.message_generator(
             StreamInput(message="2+2 kaç eder"),
             agent_id="chatbot",
             user_id="user-1",
@@ -271,19 +271,19 @@ async def test_does_not_emit_generated_file_packet_for_plain_tool_result(monkeyp
 
 
 async def _run(monkeypatch, agent, message: str = "rapor hazırla") -> list[dict]:
-    from api.routes import AgentsRoute
+    from service import agent_message_stream
 
     monkeypatch.setattr(
-        AgentsRoute.AssistantAgentService,
+        agent_message_stream.AssistantAgentService,
         "get_instance",
         lambda: _FakeAssistantService(agent),
     )
-    monkeypatch.setattr(AgentsRoute, "_handle_input", _fake_handle_input)
+    monkeypatch.setattr(agent_message_stream, "_handle_input", _fake_handle_input)
 
     return _packets(
         [
             chunk
-            async for chunk in AgentsRoute.message_generator(
+            async for chunk in agent_message_stream.message_generator(
                 StreamInput(message=message),
                 agent_id="chatbot",
                 user_id="user-1",

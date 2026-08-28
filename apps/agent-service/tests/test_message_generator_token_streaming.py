@@ -165,17 +165,17 @@ async def _fake_handle_input(_user_input, _agent, _user_id=None):
 
 
 async def _run(monkeypatch, agent) -> list[dict]:
-    from api.routes import AgentsRoute
+    from service import agent_message_stream
 
     monkeypatch.setattr(
-        AgentsRoute.AssistantAgentService,
+        agent_message_stream.AssistantAgentService,
         "get_instance",
         lambda: _FakeAssistantService(agent),
     )
-    monkeypatch.setattr(AgentsRoute, "_handle_input", _fake_handle_input)
+    monkeypatch.setattr(agent_message_stream, "_handle_input", _fake_handle_input)
 
     packets = []
-    async for chunk in AgentsRoute.message_generator(
+    async for chunk in agent_message_stream.message_generator(
         StreamInput(message="rapor hazırla"),
         agent_id="chatbot",
         user_id="user-1",
@@ -362,18 +362,18 @@ async def test_long_silent_generation_still_emits_keep_alive(monkeypatch):
     down connections that go quiet, which reaches the browser as
     ERR_INCOMPLETE_CHUNKED_ENCODING mid-answer.
     """
-    from api.routes import AgentsRoute
+    from service import agent_message_stream
 
-    monkeypatch.setattr(AgentsRoute.settings, "STREAM_HEARTBEAT_SECONDS", 0.05)
+    monkeypatch.setattr(agent_message_stream.settings, "STREAM_HEARTBEAT_SECONDS", 0.05)
     monkeypatch.setattr(
-        AgentsRoute.AssistantAgentService,
+        agent_message_stream.AssistantAgentService,
         "get_instance",
         lambda: _FakeAssistantService(_SlowDocumentToolAgent(quiet_seconds=0.3)),
     )
-    monkeypatch.setattr(AgentsRoute, "_handle_input", _fake_handle_input)
+    monkeypatch.setattr(agent_message_stream, "_handle_input", _fake_handle_input)
 
     chunks = []
-    async for chunk in AgentsRoute.message_generator(
+    async for chunk in agent_message_stream.message_generator(
         StreamInput(message="rapor hazırla"),
         agent_id="chatbot",
         user_id="user-1",
@@ -429,17 +429,17 @@ class _InterruptedSentenceAgent:
 
 
 async def _tokens_across_tool_call(monkeypatch, *, tail: str, resume: str) -> str:
-    from api.routes import AgentsRoute
+    from service import agent_message_stream
 
     monkeypatch.setattr(
-        AgentsRoute.AssistantAgentService,
+        agent_message_stream.AssistantAgentService,
         "get_instance",
         lambda: _FakeAssistantService(_InterruptedSentenceAgent(tail=tail, resume=resume)),
     )
-    monkeypatch.setattr(AgentsRoute, "_handle_input", _fake_handle_input)
+    monkeypatch.setattr(agent_message_stream, "_handle_input", _fake_handle_input)
 
     packets = []
-    async for chunk in AgentsRoute.message_generator(
+    async for chunk in agent_message_stream.message_generator(
         StreamInput(message="arastir"), agent_id="chatbot", user_id="user-1"
     ):
         body = chunk.removeprefix("data: ").strip()
@@ -558,22 +558,22 @@ async def test_buffered_word_is_released_while_the_stream_is_quiet(monkeypatch):
     Held in the buffer it renders nowhere, leaving a frozen cursor for as
     long as the document takes and appearing only once it is finished.
     """
-    from api.routes import AgentsRoute
+    from service import agent_message_stream
 
-    monkeypatch.setattr(AgentsRoute.settings, "STREAM_HEARTBEAT_SECONDS", 0.05)
+    monkeypatch.setattr(agent_message_stream.settings, "STREAM_HEARTBEAT_SECONDS", 0.05)
     monkeypatch.setattr(
-        AgentsRoute.AssistantAgentService,
+        agent_message_stream.AssistantAgentService,
         "get_instance",
         lambda: _FakeAssistantService(_QuietWhileWritingDocumentAgent(quiet_seconds=0.3)),
     )
-    monkeypatch.setattr(AgentsRoute, "_handle_input", _fake_handle_input)
+    monkeypatch.setattr(agent_message_stream, "_handle_input", _fake_handle_input)
 
     seen_word_at = None
     seen_document_at = None
     for index, chunk in enumerate(
         [
             c
-            async for c in AgentsRoute.message_generator(
+            async for c in agent_message_stream.message_generator(
                 StreamInput(message="arastir"), agent_id="chatbot", user_id="user-1"
             )
         ]

@@ -49,21 +49,21 @@ class _FakeAssistantService:
 
 @pytest.mark.asyncio
 async def test_message_generator_reports_provider_connection_failure(monkeypatch):
-    from api.routes import AgentsRoute
+    from service import agent_message_stream
 
     async def fake_handle_input(_user_input, _agent, _user_id=None):
         return {"input": {"messages": []}, "config": {}}, uuid4()
 
     monkeypatch.setattr(
-        AgentsRoute.AssistantAgentService,
+        agent_message_stream.AssistantAgentService,
         "get_instance",
         lambda: _FakeAssistantService(),
     )
-    monkeypatch.setattr(AgentsRoute, "_handle_input", fake_handle_input)
+    monkeypatch.setattr(agent_message_stream, "_handle_input", fake_handle_input)
 
     chunks = [
         chunk
-        async for chunk in AgentsRoute.message_generator(
+        async for chunk in agent_message_stream.message_generator(
             StreamInput(message="hello"),
             agent_id="chatbot",
             user_id="user-1",
@@ -83,21 +83,21 @@ async def test_message_generator_reports_recursion_limit_exceeded(monkeypatch):
     """A deep-research turn doing many sequential search/fetch rounds can hit
     LangGraph's step budget — the client must get a clear error frame, not a
     silently dropped connection."""
-    from api.routes import AgentsRoute
+    from service import agent_message_stream
 
     async def fake_handle_input(_user_input, _agent, _user_id=None):
         return {"input": {"messages": []}, "config": {}}, uuid4()
 
     monkeypatch.setattr(
-        AgentsRoute.AssistantAgentService,
+        agent_message_stream.AssistantAgentService,
         "get_instance",
         lambda: _FakeAssistantService(_RecursionLimitAgent()),
     )
-    monkeypatch.setattr(AgentsRoute, "_handle_input", fake_handle_input)
+    monkeypatch.setattr(agent_message_stream, "_handle_input", fake_handle_input)
 
     chunks = [
         chunk
-        async for chunk in AgentsRoute.message_generator(
+        async for chunk in agent_message_stream.message_generator(
             StreamInput(message="hello"),
             agent_id="chatbot",
             user_id="user-1",

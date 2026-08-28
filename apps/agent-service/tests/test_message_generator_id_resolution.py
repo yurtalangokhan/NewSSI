@@ -78,21 +78,21 @@ async def _run(
     message: str = "hello",
     controller: type = _FakeChatControllerForIds,
 ) -> list[dict]:
-    from api.routes import AgentsRoute
+    from service import agent_message_stream
 
     monkeypatch.setattr(
-        AgentsRoute.AssistantAgentService,
+        agent_message_stream.AssistantAgentService,
         "get_instance",
         lambda: _FakeAssistantService(_SimpleAgent()),
     )
-    monkeypatch.setattr(AgentsRoute, "_handle_input", _fake_handle_input)
+    monkeypatch.setattr(agent_message_stream, "_handle_input", _fake_handle_input)
     monkeypatch.setattr("controller.ChatController", controller)
     monkeypatch.setattr("controller.get_thread_controller", lambda: None)
 
     return _packets(
         [
             chunk
-            async for chunk in AgentsRoute.message_generator(
+            async for chunk in agent_message_stream.message_generator(
                 StreamInput(message=message, thread_id=thread_id),
                 agent_id="chatbot",
                 user_id="user-1",
@@ -121,7 +121,7 @@ async def test_skips_id_resolution_without_a_thread_id(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_id_resolution_failure_does_not_break_the_stream(monkeypatch):
-    from api.routes import AgentsRoute
+    from service import agent_message_stream
 
     class _BoomChatController:
         def __init__(self, **kwargs):
@@ -131,17 +131,17 @@ async def test_id_resolution_failure_does_not_break_the_stream(monkeypatch):
             raise RuntimeError("boom")
 
     monkeypatch.setattr(
-        AgentsRoute.AssistantAgentService,
+        agent_message_stream.AssistantAgentService,
         "get_instance",
         lambda: _FakeAssistantService(_SimpleAgent()),
     )
-    monkeypatch.setattr(AgentsRoute, "_handle_input", _fake_handle_input)
+    monkeypatch.setattr(agent_message_stream, "_handle_input", _fake_handle_input)
     monkeypatch.setattr("controller.ChatController", _BoomChatController)
     monkeypatch.setattr("controller.get_thread_controller", lambda: None)
 
     chunks = [
         chunk
-        async for chunk in AgentsRoute.message_generator(
+        async for chunk in agent_message_stream.message_generator(
             StreamInput(message="hello", thread_id="thread-1"),
             agent_id="chatbot",
             user_id="user-1",
