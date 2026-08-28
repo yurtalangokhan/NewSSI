@@ -62,7 +62,9 @@ export default function SlackChannelConfigsTable({
       </div>
 
       <div>
-        <Text as="h2" className="text-2xl font- mb-4">{t("slackChannelConfigs.channelSpecificConfigs")}</Text>
+        <Text as="h2" className="text-2xl font- mb-4">
+          {t("slackChannelConfigs.channelSpecificConfigs")}
+        </Text>
         <Card>
           <Table>
             <TableHeader>
@@ -132,12 +134,16 @@ export default function SlackChannelConfigsTable({
                             );
                             if (response.ok) {
                               toast.success(
-                                t("slackChannelConfigs.deleteSuccess", { id: slackChannelConfig.id })
+                                t("slackChannelConfigs.deleteSuccess", {
+                                  id: slackChannelConfig.id,
+                                })
                               );
                             } else {
                               const errorMsg = await response.text();
                               toast.error(
-                                t("slackChannelConfigs.deleteError", { error: errorMsg })
+                                t("slackChannelConfigs.deleteError", {
+                                  error: errorMsg,
+                                })
                               );
                             }
                             refresh();

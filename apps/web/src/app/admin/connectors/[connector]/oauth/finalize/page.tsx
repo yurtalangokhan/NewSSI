@@ -150,8 +150,12 @@ export default function OAuthFinalizePage() {
 
       <div className="flex-1 flex flex-col items-center justify-center">
         <CardSection className="max-w-md w-[500px] h-[250px] p-8">
-          <Text as="h1" className="text-2xl font-bold mb-4">{statusMessage}</Text>
-          <Text as="p" className="text-text-500">{statusDetails}</Text>
+          <Text as="h1" className="text-2xl font-bold mb-4">
+            {statusMessage}
+          </Text>
+          <Text as="p" className="text-text-500">
+            {statusDetails}
+          </Text>
 
           <Formik
             initialValues={{

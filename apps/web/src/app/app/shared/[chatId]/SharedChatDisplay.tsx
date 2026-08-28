@@ -152,7 +152,10 @@ export default function SharedChatDisplay({
                   return (
                     <div key={message.messageId} className="py-5 ml-4 lg:px-5">
                       <div className="mx-auto w-[90%] max-w-message-max">
-                        <Text as="p" className="text-status-text-error-05 text-sm my-auto">
+                        <Text
+                          as="p"
+                          className="text-status-text-error-05 text-sm my-auto"
+                        >
                           {message.message}
                         </Text>
                       </div>

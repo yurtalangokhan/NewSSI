@@ -119,13 +119,17 @@ export function AgentStats({ agentId }: { agentId: number }) {
   } else if (error) {
     content = (
       <div className="h-80 text-red-600 font-bold flex flex-col">
-        <Text as="p" className="m-auto">{error}</Text>
+        <Text as="p" className="m-auto">
+          {error}
+        </Text>
       </div>
     );
   } else if (!agentStats?.daily_stats?.length) {
     content = (
       <div className="h-80 text-text-500 flex flex-col">
-        <Text as="p" className="m-auto">{t("noDataFound")}</Text>
+        <Text as="p" className="m-auto">
+          {t("noDataFound")}
+        </Text>
       </div>
     );
   } else if (chartData) {
@@ -144,7 +148,9 @@ export function AgentStats({ agentId }: { agentId: number }) {
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <Text as="p" className="text-base font-normal text-2xl">{t("title")}</Text>
+        <Text as="p" className="text-base font-normal text-2xl">
+          {t("title")}
+        </Text>
         <AdminDateRangeSelector
           value={dateRange}
           onValueChange={setDateRange}
@@ -157,8 +163,12 @@ export function AgentStats({ agentId }: { agentId: number }) {
               <div className="flex items-center space-x-4">
                 {agent && <AgentAvatar agent={agent} />}
                 <div>
-                  <Text as="h3" className="text-lg font-normal">{agent?.name}</Text>
-                  <Text as="p" className="text-sm text-text-500">{agent?.description}</Text>
+                  <Text as="h3" className="text-lg font-normal">
+                    {agent?.name}
+                  </Text>
+                  <Text as="p" className="text-sm text-text-500">
+                    {agent?.description}
+                  </Text>
                 </div>
               </div>
             </CardContent>
@@ -170,13 +180,17 @@ export function AgentStats({ agentId }: { agentId: number }) {
                   <Text as="p" className="text-sm font-medium text-text-500">
                     {t("totalMessagesLabel")}
                   </Text>
-                  <Text as="p" className="text-2xl font-normal">{totalMessages}</Text>
+                  <Text as="p" className="text-2xl font-normal">
+                    {totalMessages}
+                  </Text>
                 </div>
                 <div>
                   <Text as="p" className="text-sm font-medium text-text-500">
                     {t("totalUniqueUsersLabel")}
                   </Text>
-                  <Text as="p" className="text-2xl font-normal">{totalUniqueUsers}</Text>
+                  <Text as="p" className="text-2xl font-normal">
+                    {totalUniqueUsers}
+                  </Text>
                 </div>
               </div>
             </CardContent>

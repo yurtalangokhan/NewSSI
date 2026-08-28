@@ -57,7 +57,16 @@ const colors = {
   },
 };
 
-type TextElement = "p" | "span" | "li" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+type TextElement =
+  | "p"
+  | "span"
+  | "li"
+  | "h1"
+  | "h2"
+  | "h3"
+  | "h4"
+  | "h5"
+  | "h6";
 
 export interface TextBaseProps {
   nowrap?: boolean;

@@ -202,7 +202,9 @@ export default function AppHealthBanner() {
         <Modal.Content width="sm" height="sm">
           <Modal.Header icon={SvgLogOut} title={t("loggedOutTitle")} />
           <Modal.Body>
-            <Text as="p" className="text-sm">{t("sessionExpiredMessage")}</Text>
+            <Text as="p" className="text-sm">
+              {t("sessionExpiredMessage")}
+            </Text>
           </Modal.Body>
           <Modal.Footer>
             <Button onClick={handleLogin}>{t("logInButton")}</Button>

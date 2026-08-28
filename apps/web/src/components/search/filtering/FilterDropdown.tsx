@@ -116,7 +116,9 @@ export function FilterDropdown({
           {selected.length === 0 || resetValues ? (
             defaultDisplay
           ) : (
-            <Text as="p" className="line-clamp-1">{selected.join(", ")}</Text>
+            <Text as="p" className="line-clamp-1">
+              {selected.join(", ")}
+            </Text>
           )}
           {resetValues && selected.length !== 0 ? (
             <div

@@ -143,7 +143,9 @@ function SchemaForm({
               </div>
 
               {description && (
-                <Text as="p" className="text-xs text-gray-500">{description}</Text>
+                <Text as="p" className="text-xs text-gray-500">
+                  {description}
+                </Text>
               )}
 
               {renderField(
@@ -280,7 +282,9 @@ function ResponseViewer({
           <Text as="p" className="font-medium text-red-800">
             {t("toolPlayground.error")}
           </Text>
-          <Text as="p" className="text-sm text-red-700 mt-1">{error}</Text>
+          <Text as="p" className="text-sm text-red-700 mt-1">
+            {error}
+          </Text>
         </div>
       </div>
     );

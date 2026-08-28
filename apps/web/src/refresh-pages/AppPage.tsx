@@ -180,10 +180,16 @@ function DragOverlay({ isDragging }: DragOverlayProps) {
             transition={{ duration: 0.3, delay: 0.1 }}
             className="text-center"
           >
-            <Text as="h3" className="text-base font-semibold text-text-darker dark:text-white">
+            <Text
+              as="h3"
+              className="text-base font-semibold text-text-darker dark:text-white"
+            >
               {t("chat.dragDropFiles")}
             </Text>
-            <Text as="p" className="text-xs text-text-light dark:text-text-light mt-1">
+            <Text
+              as="p"
+              className="text-xs text-text-light dark:text-text-light mt-1"
+            >
               {t("chat.releaseToUpload")}
             </Text>
           </motion.div>

@@ -109,7 +109,10 @@ function SummaryRow({
         <div className="text-sm text-neutral-500 dark:text-neutral-300">
           {t("admin.indexingStatus.table.activeConnectors")}
         </div>
-        <Text as="p" className="flex text-xl mx-auto font-semibold items-center text-lg mt-1">
+        <Text
+          as="p"
+          className="flex text-xl mx-auto font-semibold items-center text-lg mt-1"
+        >
           {summary.active_connectors}/{summary.total_connectors}
         </Text>
       </TableCell>
@@ -119,7 +122,10 @@ function SummaryRow({
           <div className="text-sm text-neutral-500 dark:text-neutral-300">
             {t("admin.indexingStatus.table.publicConnectors")}
           </div>
-          <Text as="p" className="flex text-xl mx-auto font-semibold items-center text-lg mt-1">
+          <Text
+            as="p"
+            className="flex text-xl mx-auto font-semibold items-center text-lg mt-1"
+          >
             {summary.public_connectors}/{summary.total_connectors}
           </Text>
         </TableCell>
@@ -170,7 +176,10 @@ function ConnectorRow({
       onClick={handleRowClick}
     >
       <TableCell className="">
-        <Text as="p" className="max-w-[200px] xl:max-w-[400px] inline-block ellipsis truncate">
+        <Text
+          as="p"
+          className="max-w-[200px] xl:max-w-[400px] inline-block ellipsis truncate"
+        >
           {ccPairsIndexingStatus.name}
         </Text>
       </TableCell>
@@ -201,7 +210,7 @@ function ConnectorRow({
               variant={isEditable ? "auto-sync" : "default"}
               icon={FiRefreshCw}
             >
-              {t("admin.indexingStatus.table.inheritedFrom")} 
+              {t("admin.indexingStatus.table.inheritedFrom")}
               {getSourceDisplayName(ccPairsIndexingStatus.source)}
             </Badge>
           ) : (
@@ -214,7 +223,9 @@ function ConnectorRow({
       <TableCell>{ccPairsIndexingStatus.docs_indexed}</TableCell>
       <TableCell>
         {isEditable && (
-          <SimpleTooltip tooltip={t("admin.indexingStatus.table.manageConnector")}>
+          <SimpleTooltip
+            tooltip={t("admin.indexingStatus.table.manageConnector")}
+          >
             <Button icon={SvgSettings} prominence="tertiary" />
           </SimpleTooltip>
         )}
@@ -252,13 +263,18 @@ function FederatedConnectorRow({
       onClick={handleRowClick}
     >
       <TableCell className="">
-        <Text as="p" className="max-w-[200px] xl:max-w-[400px] inline-block ellipsis truncate">
+        <Text
+          as="p"
+          className="max-w-[200px] xl:max-w-[400px] inline-block ellipsis truncate"
+        >
           {federatedConnector.name}
         </Text>
       </TableCell>
       <TableCell>N/A</TableCell>
       <TableCell>
-        <Badge variant="success">{t("admin.indexingStatus.table.indexed")}</Badge>
+        <Badge variant="success">
+          {t("admin.indexingStatus.table.indexed")}
+        </Badge>
       </TableCell>
       {isPaidEnterpriseFeaturesEnabled && (
         <TableCell>
@@ -349,13 +365,23 @@ export function CCPairIndexingStatusTable({
                 {!sourceLoadingStates[ccPairStatus.source] && (
                   <>
                     <TableRow className="border border-border dark:border-neutral-700">
-                      <TableHead>{t("admin.indexingStatus.columns.name")}</TableHead>
-                      <TableHead>{t("admin.indexingStatus.columns.lastSynced")}</TableHead>
-                      <TableHead>{t("admin.indexingStatus.columns.status")}</TableHead>
+                      <TableHead>
+                        {t("admin.indexingStatus.columns.name")}
+                      </TableHead>
+                      <TableHead>
+                        {t("admin.indexingStatus.columns.lastSynced")}
+                      </TableHead>
+                      <TableHead>
+                        {t("admin.indexingStatus.columns.status")}
+                      </TableHead>
                       {isPaidEnterpriseFeaturesEnabled && (
-                        <TableHead>{t("admin.indexingStatus.columns.permissionsAccess")}</TableHead>
+                        <TableHead>
+                          {t("admin.indexingStatus.columns.permissionsAccess")}
+                        </TableHead>
                       )}
-                      <TableHead>{t("admin.indexingStatus.columns.totalDocs")}</TableHead>
+                      <TableHead>
+                        {t("admin.indexingStatus.columns.totalDocs")}
+                      </TableHead>
                       <TableHead></TableHead>
                     </TableRow>
                     {ccPairStatus.indexing_statuses.map((indexingStatus) => {

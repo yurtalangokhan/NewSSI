@@ -295,7 +295,9 @@ export default function EmbeddingForm() {
                     setSwitchoverType(SwitchoverType.ACTIVE_ONLY);
                   }}
                 >
-                  <SimpleTooltip tooltip={t("admin.embeddings.activeOnlyTooltip")}>
+                  <SimpleTooltip
+                    tooltip={t("admin.embeddings.activeOnlyTooltip")}
+                  >
                     <span className="w-full text-left">
                       {t("admin.embeddings.activeConnectorsOnly")}
                     </span>
@@ -306,7 +308,9 @@ export default function EmbeddingForm() {
                     setSwitchoverType(SwitchoverType.INSTANT);
                   }}
                 >
-                  <SimpleTooltip tooltip={t("admin.embeddings.instantSwitchTooltip")}>
+                  <SimpleTooltip
+                    tooltip={t("admin.embeddings.instantSwitchTooltip")}
+                  >
                     <span className="w-full text-left">
                       {t("admin.embeddings.instantSwitchButton")}
                     </span>
@@ -332,15 +336,21 @@ export default function EmbeddingForm() {
                   )}
                   {searchSettings?.multipass_indexing !=
                     advancedEmbeddingDetails.multipass_indexing && (
-                    <li>{t("admin.embeddings.multipassIndexingModification")}</li>
+                    <li>
+                      {t("admin.embeddings.multipassIndexingModification")}
+                    </li>
                   )}
                   {searchSettings?.embedding_precision !=
                     advancedEmbeddingDetails.embedding_precision && (
-                    <li>{t("admin.embeddings.embeddingPrecisionModification")}</li>
+                    <li>
+                      {t("admin.embeddings.embeddingPrecisionModification")}
+                    </li>
                   )}
                   {searchSettings?.reduced_dimension !=
                     advancedEmbeddingDetails.reduced_dimension && (
-                    <li>{t("admin.embeddings.reducedDimensionModification")}</li>
+                    <li>
+                      {t("admin.embeddings.reducedDimensionModification")}
+                    </li>
                   )}
                   {(searchSettings?.enable_contextual_rag !=
                     advancedEmbeddingDetails.enable_contextual_rag ||
@@ -424,7 +434,9 @@ export default function EmbeddingForm() {
   }
   if (currentEmbeddingModelError || !currentEmbeddingModel) {
     return (
-      <ErrorCallout errorTitle={t("admin.embeddings.failedToFetchEmbeddingModelStatus")} />
+      <ErrorCallout
+        errorTitle={t("admin.embeddings.failedToFetchEmbeddingModelStatus")}
+      />
     );
   }
 
@@ -556,10 +568,14 @@ export default function EmbeddingForm() {
                   </Text>
                   <ul className="list-disc list-inside mt-2 ml-4">
                     <li>
-                      <Text as="p">{t("admin.embeddings.poorModelAltHosted")}</Text>
+                      <Text as="p">
+                        {t("admin.embeddings.poorModelAltHosted")}
+                      </Text>
                     </li>
                     <li>
-                      <Text as="p">{t("admin.embeddings.poorModelAltCloud")}</Text>
+                      <Text as="p">
+                        {t("admin.embeddings.poorModelAltCloud")}
+                      </Text>
                     </li>
                   </ul>
                 </div>

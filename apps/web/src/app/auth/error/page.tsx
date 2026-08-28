@@ -29,7 +29,10 @@ const Page = () => {
         </Text>
         {!errorMessage && (
           <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 shadow-sm">
-            <Text as="h3" className="text-red-800 dark:text-red-400 font-semibold mb-2">
+            <Text
+              as="h3"
+              className="text-red-800 dark:text-red-400 font-semibold mb-2"
+            >
               {t("authPages.authError.possibleIssuesTitle")}
             </Text>
             <ul className="space-y-2">
@@ -50,7 +53,10 @@ const Page = () => {
         )}
         {errorMessage && (
           <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 shadow-sm">
-            <Text as="p" className="text-red-700 dark:text-red-400 text-sm font-mono break-words">
+            <Text
+              as="p"
+              className="text-red-700 dark:text-red-400 text-sm font-mono break-words"
+            >
               {errorMessage}
             </Text>
           </div>

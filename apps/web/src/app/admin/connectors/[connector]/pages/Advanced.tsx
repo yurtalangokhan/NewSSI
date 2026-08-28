@@ -11,7 +11,9 @@ export default function AdvancedFormPage() {
   });
   return (
     <div className="py-4 flex flex-col gap-y-6 rounded-lg max-w-2xl mx-auto">
-      <Text as="h2" className="text-2xl font-bold mb-4 text-text-800">{t("title")}</Text>
+      <Text as="h2" className="text-2xl font-bold mb-4 text-text-800">
+        {t("title")}
+      </Text>
 
       <NumberInput
         description={t("pruneFrequencyDescription")}

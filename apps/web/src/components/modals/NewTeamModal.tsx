@@ -159,7 +159,9 @@ export default function NewTeamModal() {
             </div>
           ) : error ? (
             <div className="space-y-4">
-              <Text as="p" className="text-status-text-error-05">{error}</Text>
+              <Text as="p" className="text-status-text-error-05">
+                {error}
+              </Text>
               <div className="flex w-full pt-2">
                 <Button
                   onClick={handleContinueToNewOrg}

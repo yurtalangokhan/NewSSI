@@ -49,7 +49,9 @@ export default function EditFederatedConnectorPage(props: {
             <Text as="h1" className="text-2xl font-bold text-red-600 mb-4">
               {t("federated.error")}
             </Text>
-            <Text as="p" className="text-gray-600">{error}</Text>
+            <Text as="p" className="text-gray-600">
+              {error}
+            </Text>
           </div>
         </div>
       </div>

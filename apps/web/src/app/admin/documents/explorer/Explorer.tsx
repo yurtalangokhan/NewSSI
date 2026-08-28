@@ -55,7 +55,9 @@ const DocumentDisplay = ({
       </div>
       <div className="flex flex-wrap gap-x-2 mt-1 text-xs">
         <div className="px-1 py-0.5 bg-accent-background-hovered rounded flex">
-          <Text as="p" className="mr-1 my-auto">{t("boostLabel")}</Text>
+          <Text as="p" className="mr-1 my-auto">
+            {t("boostLabel")}
+          </Text>
           <ScoreSection
             documentId={document.document_id}
             initialScore={document.boost}

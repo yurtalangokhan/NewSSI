@@ -125,7 +125,9 @@ export default function SchemaForm({
       </div>
 
       {schema.description && (
-        <Text as="p" className="text-xs text-text-03">{schema.description}</Text>
+        <Text as="p" className="text-xs text-text-03">
+          {schema.description}
+        </Text>
       )}
 
       {renderField()}

@@ -116,7 +116,9 @@ export const ImageToolRenderer: MessageRenderer<
               ) : (
                 <div className="py-4 text-center text-gray-500 dark:text-gray-400 ml-7">
                   <SvgImage className="w-6 h-6 mx-auto mb-2 opacity-50" />
-                  <Text as="p" className="text-sm">{t("timeline.noImagesGenerated")}</Text>
+                  <Text as="p" className="text-sm">
+                    {t("timeline.noImagesGenerated")}
+                  </Text>
                 </div>
               )}
             </div>
