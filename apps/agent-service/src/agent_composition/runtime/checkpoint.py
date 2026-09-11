@@ -7,15 +7,16 @@ directly. This keeps the runtime layer framework-agnostic.
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
+
+from core.logger import get_logger
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
     from langgraph.graph.state import CompiledStateGraph
     from langgraph.pregel import Pregel
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class CheckpointAdapter:

@@ -34,16 +34,17 @@ export default function ModelSelectionConfirmationModal({
             <strong>{selectedModel.model_name}</strong>.{" "}
             {t("admin.embeddings.updateModelConfirm")}
           </Text>
-          <Text as="p">
-            {t("admin.embeddings.updateModelBody")}
-          </Text>
+          <Text as="p">{t("admin.embeddings.updateModelBody")}</Text>
           <Text as="p">
             <i>{t("admin.embeddings.noteLabel")}</i>{" "}
             {t("admin.embeddings.updateModelNote")}
           </Text>
 
           {isCustom && (
-            <Callout type="warning" title={t("admin.embeddings.importantTitle")}>
+            <Callout
+              type="warning"
+              title={t("admin.embeddings.importantTitle")}
+            >
               {t("admin.embeddings.customModelWarning1")}{" "}
               <strong>{t("admin.embeddings.afterLabel")}</strong>{" "}
               {t("admin.embeddings.customModelWarning2")}
@@ -51,7 +52,9 @@ export default function ModelSelectionConfirmationModal({
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button onClick={onConfirm}>{t("admin.embeddings.confirmButton")}</Button>
+          <Button onClick={onConfirm}>
+            {t("admin.embeddings.confirmButton")}
+          </Button>
           <Button secondary onClick={onCancel}>
             {t("admin.embeddings.cancelButton")}
           </Button>

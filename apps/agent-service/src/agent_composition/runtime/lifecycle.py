@@ -9,15 +9,16 @@ has no additional effect beyond the first call.
 from __future__ import annotations
 
 import asyncio
-import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
+
+from core.logger import get_logger
 
 if TYPE_CHECKING:
     from langgraph.graph.state import CompiledStateGraph
     from langgraph.pregel import Pregel
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class AgentLifecycle(ABC):

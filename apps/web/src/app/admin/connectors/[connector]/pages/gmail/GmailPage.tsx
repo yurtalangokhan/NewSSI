@@ -3,7 +3,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorCallout } from "@/components/ErrorCallout";
-import { LoadingAnimation } from "@/components/Loading";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import { CCPairBasicInfo, ValidSources } from "@/lib/types";
 import {
   Credential,
@@ -109,8 +109,8 @@ export const GmailMain = ({
     (!gmailConnectors && isGmailConnectorsLoading)
   ) {
     return (
-      <div className="mx-auto">
-        <LoadingAnimation text="" />
+      <div className="mx-auto w-full max-w-4xl p-6">
+        <FormSkeleton fieldCount={4} />
       </div>
     );
   }

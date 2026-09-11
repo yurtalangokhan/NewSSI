@@ -10,13 +10,14 @@ import {
 import Title from "@/components/ui/title";
 import { DeleteButton } from "@/components/DeleteButton";
 import { deleteTokenRateLimit, updateTokenRateLimit } from "./lib";
-import { ThreeDotsLoader } from "@/components/Loading";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import { TokenRateLimitDisplay } from "./types";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import useSWR, { mutate } from "swr";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import { TableHeader } from "@/components/ui/table";
-import Text from "@/components/ui/text";
+import Text from "@/refresh-components/texts/Text";
+import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 
 type TokenRateLimitTableArgs = {
@@ -70,9 +71,11 @@ export const TokenRateLimitTable = ({
       <div className="w-full">
         {!hideHeading && title && <Title>{title}</Title>}
         {!hideHeading && description && (
-          <Text className="my-2">{description}</Text>
+          <Text as="p" className="text-sm my-2">
+            {description}
+          </Text>
         )}
-        <Text className={`${!hideHeading && "my-8"}`}>
+        <Text as="p" className={cn("text-sm", `${!hideHeading && "my-8"}`)}>
           {t("admin.tokenRateLimits.noLimitsSet")}
         </Text>
       </div>
@@ -83,7 +86,9 @@ export const TokenRateLimitTable = ({
     <div className="w-full">
       {!hideHeading && title && <Title>{title}</Title>}
       {!hideHeading && description && (
-        <Text className="my-2">{description}</Text>
+        <Text as="p" className="text-sm my-2">
+          {description}
+        </Text>
       )}
       <Table
         className={`overflow-visible ${
@@ -133,11 +138,11 @@ export const TokenRateLimitTable = ({
                               : undefined
                           }
                         />
-                        <p className="ml-2">
+                        <Text as="p" className="ml-2">
                           {tokenRateLimit.enabled
                             ? t("admin.tokenRateLimits.enabledStatus")
                             : t("admin.tokenRateLimits.disabledStatus")}
-                        </p>
+                        </Text>
                       </div>
                     </div>
                   </div>
@@ -197,11 +202,26 @@ export const GenericTokenRateLimitTable = ({
   );
 
   if (isLoading) {
-    return <ThreeDotsLoader />;
+    return (
+      <TableSkeleton
+        rowCount={4}
+        columns={[
+          { type: "checkbox", width: "w-8", headerWidth: "w-16" },
+          { type: "text", width: "w-32", headerWidth: "w-24" },
+          { type: "text", width: "w-24", headerWidth: "w-20" },
+          { type: "badge", width: "w-20", headerWidth: "w-20" },
+          { type: "actions", width: "w-12", headerWidth: "w-12" },
+        ]}
+      />
+    );
   }
 
   if (!isLoading && error) {
-    return <Text>{t("admin.tokenRateLimits.failedToLoad")}</Text>;
+    return (
+      <Text as="p" className="text-sm">
+        {t("admin.tokenRateLimits.failedToLoad")}
+      </Text>
+    );
   }
 
   let processedData = data;

@@ -26,9 +26,7 @@ function isGatewayUrl(url: URL, service: BackendService): boolean {
 
 function serviceScopedBase(baseUrl: string, service: BackendService): URL {
   const url = new URL(baseUrl);
-  const baseSegments = trimSlashes(url.pathname)
-    .split("/")
-    .filter(Boolean);
+  const baseSegments = trimSlashes(url.pathname).split("/").filter(Boolean);
   const prefix = SERVICE_PREFIX[service];
 
   if (isGatewayUrl(url, service) && baseSegments[0] !== prefix) {
@@ -78,8 +76,7 @@ export function buildServiceUrl(
   const url = serviceScopedBase(baseUrl, service);
   const basePath = trimSlashes(url.pathname);
   const canonicalPath = canonicalServicePath(service, path);
-  const hasTrailingSlash =
-    canonicalPath.endsWith("/") && canonicalPath !== "/";
+  const hasTrailingSlash = canonicalPath.endsWith("/") && canonicalPath !== "/";
   const apiPath = trimSlashes(canonicalPath);
   url.pathname = `/${[basePath, apiPath].filter(Boolean).join("/")}`;
   if (hasTrailingSlash && !url.pathname.endsWith("/")) {

@@ -7,7 +7,6 @@ import { Form, Formik } from "formik";
 import * as Yup from "yup";
 import { requestEmailVerification } from "../lib";
 import { useMemo, useState } from "react";
-import { Spinner } from "@/components/Spinner";
 import Link from "next/link";
 import { useUser } from "@/providers/UserProvider";
 import { FormikField } from "@/refresh-components/form/FormikField";
@@ -83,8 +82,6 @@ export default function EmailPasswordForm({
 
   return (
     <>
-      {isWorking && <Spinner />}
-
       <Formik
         initialValues={{
           username: "",

@@ -5,7 +5,7 @@ import {
   UserSpecificAgentPreference,
   UserSpecificAgentPreferences,
 } from "@/lib/types";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { authenticatedFetch, errorHandlingFetcher } from "@/lib/fetcher";
 import { useCallback } from "react";
 
 // TODO: rename to agent — https://linear.app/onyx-app/issue/ENG-3766
@@ -44,13 +44,16 @@ export default function useAgentPreferences() {
       );
 
       try {
-        const response = await fetch(buildUpdateAgentPreferenceUrl(agentId), {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(newAgentPreference),
-        });
+        const response = await authenticatedFetch(
+          buildUpdateAgentPreferenceUrl(agentId),
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(newAgentPreference),
+          }
+        );
 
         if (!response.ok) {
           console.error(

@@ -169,3 +169,36 @@ async def test_find_fork_point_locates_an_earlier_turn_in_a_multi_turn_thread():
     )
 
     assert config == {"configurable": {"thread_id": "t1", "checkpoint_id": "1"}}
+
+
+@pytest.mark.asyncio
+async def test_find_fork_point_on_a_flow_shaped_history_with_multi_message_supersteps():
+    """A FlowAgent turn advances several messages per super-step and writes
+    many checkpoints. The fork point is still the first checkpoint that ends
+    exactly on the retried human message, before any assistant output."""
+    h1 = HumanMessage(content="rapor", id="h1")
+    tool_call = AIMessage(
+        content="", id="a1", tool_calls=[{"name": "web_search", "args": {}, "id": "c1"}]
+    )
+    from langchain_core.messages import ToolMessage
+
+    tool_res = ToolMessage(content="bulgu", tool_call_id="c1", name="web_search")
+    final = AIMessage(content="rapor hazır", id="a-final")
+
+    snapshots = [
+        _FakeSnapshot([h1, tool_call, tool_res, final], checkpoint_id="cp-final"),
+        _FakeSnapshot([h1, tool_call, tool_res], checkpoint_id="cp-3"),
+        _FakeSnapshot([h1, tool_call], checkpoint_id="cp-2"),
+        _FakeSnapshot([h1], checkpoint_id="cp-human"),
+        _FakeSnapshot([], checkpoint_id="cp-root"),
+    ]
+    agent = _FakeAgentWithHistory(snapshots)
+
+    config = await find_fork_point(
+        agent,
+        thread_id="t1",
+        target_message_id=1,
+        thread_metadata={"user_id": "user-1", "persona_id": 0},
+    )
+
+    assert config == {"configurable": {"thread_id": "t1", "checkpoint_id": "cp-human"}}

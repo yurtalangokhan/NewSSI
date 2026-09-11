@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import { MinimalOnyxDocument } from "@/lib/search/interfaces";
 import Modal from "@/refresh-components/Modal";
 import Text from "@/refresh-components/texts/Text";
-import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import { cn } from "@/lib/utils";
 import { Section } from "@/layouts/general-layouts";
 import { getCodeLanguage, getDataLanguage } from "@/lib/languages";
@@ -246,9 +245,10 @@ export default function PreviewModal({
         <Modal.Body padding={0} gap={0}>
           <Section padding={0} gap={0}>
             {isLoading ? (
-              <Section>
-                <SimpleLoader className="h-8 w-8" />
-              </Section>
+              <div className="flex flex-col gap-3 p-6 w-full">
+                <div className="h-6 w-1/3 rounded bg-background-tint-02 animate-pulse" />
+                <div className="h-64 w-full rounded-12 bg-background-neutral-01 animate-pulse border border-border-01" />
+              </div>
             ) : loadError ? (
               <Section padding={1}>
                 <Text text03 mainUiBody>

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import logging
-
 from langconnect.database.neo4j.queries.stats import (
     EDGE_COUNT_SCOPED,
     LABEL_COUNTS,
@@ -24,8 +22,9 @@ from langconnect.database.neo4j.queries.stats import (
 )
 from langconnect.database.neo4j.repositories.base import Neo4jRepository
 from langconnect.models.graph import GraphStats, PaginatedCounts
+from langconnect.observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class StatsRepository(Neo4jRepository):

@@ -1,17 +1,18 @@
 "use client";
 
-import { ThreeDotsLoader } from "@/components/Loading";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import Modal from "@/refresh-components/Modal";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 import {
   ConnectorIndexingStatusLite,
   ConnectorIndexingStatusLiteResponse,
   FailedConnectorIndexingStatus,
   ValidStatuses,
 } from "@/lib/types";
-import Text from "@/components/ui/text";
+import OldText from "@/components/ui/text";
 import Title from "@/components/ui/title";
 import Button from "@/refresh-components/buttons/Button";
+import Text from "@/refresh-components/texts/Text";
 import { useMemo, useState } from "react";
 import useSWR, { mutate } from "swr";
 import { ReindexingProgressTable } from "../../../../components/embedding/ReindexingProgressTable";
@@ -61,9 +62,12 @@ export default function UpgradingPage({
   );
 
   const onCancel = async () => {
-    const response = await fetch("/api/search-settings/cancel-new-embedding", {
-      method: "POST",
-    });
+    const response = await authenticatedFetch(
+      "/api/search-settings/cancel-new-embedding",
+      {
+        method: "POST",
+      }
+    );
     if (response.ok) {
       mutate("/api/search-settings/get-secondary-search-settings");
     } else {
@@ -124,7 +128,11 @@ export default function UpgradingPage({
   const hasVisibleReindexingProgress = sortedReindexingProgress.length > 0;
 
   if (isLoadingConnectors || isLoadingOngoingReIndexingStatus) {
-    return <ThreeDotsLoader />;
+    return (
+      <div className="p-4">
+        <FormSkeleton fieldCount={2} />
+      </div>
+    );
   }
 
   return (
@@ -173,15 +181,15 @@ export default function UpgradingPage({
             {connectors && connectors.length > 0 ? (
               futureEmbeddingModel.switchover_type === "instant" ? (
                 <div className="mt-8">
-                  <h3 className="text-lg font-semibold mb-2">
+                  <Text as="h3" className="text-lg font-semibold mb-2">
                     {t("admin.searchUpgrading.switchingModelsTitle")}
-                  </h3>
-                  <p className="mb-4 text-text-800">
+                  </Text>
+                  <Text className="mb-4 text-text-800">
                     {t("admin.searchUpgrading.instantSwitchBody")}
-                  </p>
-                  <p className="text-text-600">
+                  </Text>
+                  <Text className="text-text-600">
                     {t("admin.searchUpgrading.newModelActiveSoon")}
-                  </p>
+                  </Text>
                 </div>
               ) : (
                 <>
@@ -232,15 +240,15 @@ export default function UpgradingPage({
               )
             ) : (
               <div className="mt-8 p-6 bg-background-100 border border-border-strong rounded-lg max-w-2xl">
-                <h3 className="text-lg font-semibold mb-2">
+                <Text as="h3" className="text-lg font-semibold mb-2">
                   {t("admin.searchUpgrading.switchingModelsTitle")}
-                </h3>
-                <p className="mb-4 text-text-800">
+                </Text>
+                <Text className="mb-4 text-text-800">
                   {t("admin.searchUpgrading.noConnectorsBody")}
-                </p>
-                <p className="text-text-600">
+                </Text>
+                <Text className="text-text-600">
                   {t("admin.searchUpgrading.newModelActiveSoon")}
-                </p>
+                </Text>
               </div>
             )}
           </div>

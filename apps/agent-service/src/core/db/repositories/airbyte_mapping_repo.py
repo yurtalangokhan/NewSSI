@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from datetime import UTC, datetime
 from typing import Any
 
@@ -11,8 +10,9 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from core.db.models.airbyte_mapping import AirbyteMappingModel
 from core.db.repositories.base import BaseRepository
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class AirbyteMappingRepository(BaseRepository):

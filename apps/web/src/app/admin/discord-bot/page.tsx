@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ThreeDotsLoader } from "@/components/Loading";
+import CardGridSkeleton from "@/refresh-components/skeletons/CardGridSkeleton";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { toast } from "@/hooks/useToast";
 import { Section } from "@/layouts/general-layouts";
@@ -54,7 +54,7 @@ function DiscordBotContent() {
   };
 
   if (isLoading) {
-    return <ThreeDotsLoader />;
+    return <CardGridSkeleton cardCount={2} columnsClassName="grid-cols-1" />;
   }
 
   if (error || !guilds) {
@@ -125,6 +125,12 @@ function DiscordBotContent() {
 export default function Page() {
   const { t } = useTranslation();
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DISCORD_BOTS]!;
+  const { data: guilds, isLoading: isGuildsLoading } = useDiscordGuilds();
+  const { data: botConfig, isManaged } = useDiscordBotConfig();
+  const isBotAvailable = isManaged || botConfig?.configured === true;
+  const totalServers = guilds?.length ?? 0;
+  const registeredServers =
+    guilds?.filter((g) => g.guild_id != null).length ?? 0;
 
   return (
     <SettingsLayouts.Root>
@@ -149,39 +155,27 @@ export default function Page() {
           })}
           metrics={[
             {
-              label: t("admin.discord.integrationLabel", {
-                defaultValue: "Integration",
+              label: t("admin.discord.totalServersLabel", {
+                defaultValue: "Total servers",
               }),
-              value: "Discord",
+              value: isGuildsLoading ? "..." : String(totalServers),
             },
             {
-              label: t("admin.discord.registrationLabel", {
-                defaultValue: "Registration",
+              label: t("admin.discord.registeredServersLabel", {
+                defaultValue: "Registered servers",
               }),
-              value: t("admin.discord.serverConfigurations"),
+              value: isGuildsLoading ? "..." : String(registeredServers),
             },
             {
-              label: t("admin.discord.agentLayerLabel", {
-                defaultValue: "Agent layer",
+              label: t("admin.discord.botStatusLabel", {
+                defaultValue: "Bot status",
               }),
-              value: t("admin.navigation.routes.agents.sidebar", {
-                defaultValue: "Agents",
-              }),
-            },
-          ]}
-          actions={[
-            {
-              label: t("admin.navigation.routes.slackBots.sidebar", {
-                defaultValue: "Slack Bots",
-              }),
-              href: ADMIN_PATHS.SLACK_BOTS,
-            },
-            {
-              label: t("admin.navigation.routes.agents.sidebar", {
-                defaultValue: "Agents",
-              }),
-              href: ADMIN_PATHS.AGENTS,
-              primary: true,
+              value: isBotAvailable
+                ? t("admin.discord.botAvailable", { defaultValue: "Available" })
+                : t("admin.discord.botUnavailable", {
+                    defaultValue: "Not configured",
+                  }),
+              tone: isBotAvailable ? "success" : "warning",
             },
           ]}
         />

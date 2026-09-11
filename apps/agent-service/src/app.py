@@ -7,7 +7,6 @@ the health-check endpoint, and includes every sub-router.
 This is the *only* module that needs to know about all route modules.
 """
 
-import logging
 import warnings
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -16,6 +15,7 @@ from pathlib import Path
 from error_contract import register_error_handlers
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from i18n import I18nMiddleware, init_service_i18n
 from idempotency import AsyncRedisPool, IdempotencyMiddleware
@@ -29,19 +29,31 @@ from core.api_versioning import API_PREFIX
 from core.db import close_db_engine, get_db_engine
 from core.db.startup import run_startup_migrations
 from core.idempotency import build_idempotency_config, build_idempotency_exclude_paths
-from core.logger import configure_logging
+from core.observability import (
+    DependencyPolicy,
+    configure_logging,
+    dependency_registry,
+    get_logger,
+    readiness_payload,
+    retry_async,
+)
 from memory import initialize_database, initialize_store
 from service.AirbyteSyncListenerService import get_sync_listener
 from service.CheckpointerService import set_global_checkpointer
 from service.LangGraphStoreService import set_global_langgraph_store
 from service.MCPProviderService import MCPProviderService
+from service.PlaygroundRetentionService import get_playground_retention_worker
 from service.SyncQueueService import get_sync_queue
 
 _idempotency_config = build_idempotency_config(settings)
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
-configure_logging()
-logger = logging.getLogger(__name__)
+configure_logging(
+    service_name="agent-service",
+    log_level=settings.LOG_LEVEL.value,
+    log_format=settings.LOG_FORMAT,
+)
+logger = get_logger(__name__)
 
 
 # =============================================================================
@@ -69,6 +81,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         if settings.DATABASE_TYPE.value == "postgres":
             run_startup_migrations()
             _sa_engine = get_db_engine()
+            dependency_registry.record_ok("postgres", policy=DependencyPolicy.REQUIRED)
             logger.info("SQLAlchemy async engine ready: %s", _sa_engine.url.database)
 
         from service.StoreService import set_global_store
@@ -99,8 +112,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
                 mcp_service = MCPProviderService.get_instance()
                 mcp_url = str(core_settings.TOOLS_SERVICE_URL)
-                await mcp_service.initialize_builtin(mcp_url)
-                logger.info(f"MCP Provider initialized: {mcp_url}")
+                try:
+                    await mcp_service.initialize_builtin(mcp_url)
+                    dependency_registry.record_ok("tools-service", policy=DependencyPolicy.DEGRADED)
+                    logger.info(f"MCP Provider initialized: {mcp_url}")
+                except Exception:
+                    dependency_registry.record_degraded(
+                        "tools-service",
+                        hint="Tool execution is unavailable until tools-service is reachable.",
+                    )
+                    logger.warning(
+                        "tools-service is unavailable; tool execution will be degraded.",
+                        extra={
+                            "event": "startup.dependency.degraded",
+                            "dependency": "tools-service",
+                            "operation": "initialize_builtin",
+                            "status": "degraded",
+                        },
+                    )
 
                 sync_queue = get_sync_queue()
                 sync_queue.start()
@@ -108,11 +137,29 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 sync_listener = get_sync_listener()
                 sync_listener.start()
 
-                await AsyncRedisPool.connect(_idempotency_config)
+                retention_worker = get_playground_retention_worker()
+                retention_worker.start()
+
+                await retry_async(
+                    lambda: AsyncRedisPool.connect(_idempotency_config),
+                    operation_name="connect",
+                    dependency="redis",
+                )
+                dependency_registry.record_ok("redis", policy=DependencyPolicy.REQUIRED)
+                logger.info(
+                    "Redis idempotency pool connected.",
+                    extra={
+                        "event": "startup.dependency.ok",
+                        "dependency": "redis",
+                        "operation": "connect",
+                        "status": "ok",
+                    },
+                )
 
                 yield
 
                 await AsyncRedisPool.close()
+                await retention_worker.stop()
                 await sync_listener.stop()
                 await sync_queue.stop()
 
@@ -185,6 +232,15 @@ async def api_health_check():
     return await _health_status()
 
 
+@app.get(f"{API_PREFIX}/health/ready")
+async def api_readiness_check():
+    """Readiness endpoint reporting dependency state."""
+    payload = readiness_payload(service_name="agent-service")
+    if payload["status"] != "ready":
+        return JSONResponse(status_code=503, content=payload)
+    return payload
+
+
 def _api_versioned_path(path: str, resource_prefix: str = "") -> str:
     if path.startswith("/api/"):
         return f"{API_PREFIX}{path[4:]}"
@@ -223,6 +279,8 @@ def _include_router_with_versioned_routes(router, *, resource_prefix: str = ""):
 # =============================================================================
 
 from api.routes import (  # noqa: E402,I001
+    admin_mcp_router,
+    admin_tool_router,
     agent_definitions_router,
     agent_groups_router,
     agent_tools_router,
@@ -231,11 +289,17 @@ from api.routes import (  # noqa: E402,I001
     assistants_router,
     auth_router,
     chat_router,
+    connector_tools_router,
     datasources_router,
     file_router,
+    flow_components_router,
+    flow_playground_router,
+    flow_versions_router,
     ingest_router,
     mail_configs_router,
+    mcp_oauth_callback_router,
     mcp_providers_router,
+    mcp_server_admin_router,
     mcp_tools_router,
     ollama_router,
     persona_router,
@@ -261,13 +325,21 @@ _include_router_with_versioned_routes(schedule_router)
 _include_router_with_versioned_routes(ingest_router, resource_prefix="/ingest")
 _include_router_with_versioned_routes(proxy_router)
 _include_router_with_versioned_routes(run_router)
+_include_router_with_versioned_routes(connector_tools_router)
 _include_router_with_versioned_routes(datasources_router)
 _include_router_with_versioned_routes(assistant_schemas_router)
 _include_router_with_versioned_routes(file_router)
+_include_router_with_versioned_routes(flow_components_router)
+_include_router_with_versioned_routes(flow_versions_router)
+_include_router_with_versioned_routes(flow_playground_router)
 _include_router_with_versioned_routes(web_search_router)
 _include_router_with_versioned_routes(provider_router)
 _include_router_with_versioned_routes(ollama_router)
 _include_router_with_versioned_routes(mail_configs_router)
 _include_router_with_versioned_routes(mcp_providers_router)
+_include_router_with_versioned_routes(mcp_server_admin_router)
+_include_router_with_versioned_routes(mcp_oauth_callback_router)
 _include_router_with_versioned_routes(mcp_tools_router)
 _include_router_with_versioned_routes(agent_tools_router)
+_include_router_with_versioned_routes(admin_mcp_router)
+_include_router_with_versioned_routes(admin_tool_router)

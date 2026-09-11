@@ -1,4 +1,5 @@
-import { ChatFileType, ChatSession } from "../interfaces";
+import { ChatFileType, ChatSession } from "@/app/app/interfaces";
+import { authenticatedFetch } from "@/lib/fetcher";
 
 // Generic error handler that avoids exposing server error details
 const handleRequestError = (action: string, response: Response) => {
@@ -71,7 +72,7 @@ export async function fetchProjects(): Promise<Project[]> {
 }
 
 export async function createProject(name: string): Promise<Project> {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `/api/user/projects/create?name=${encodeURIComponent(name)}`,
     { method: "POST" }
   );
@@ -98,7 +99,7 @@ export async function uploadFiles(
     );
   }
 
-  const response = await fetch("/api/user/projects/file/upload", {
+  const response = await authenticatedFetch("/api/user/projects/file/upload", {
     method: "POST",
     body: formData,
   });
@@ -143,7 +144,7 @@ export async function renameProject(
   projectId: number,
   name: string
 ): Promise<Project> {
-  const response = await fetch(`/api/user/projects/${projectId}`, {
+  const response = await authenticatedFetch(`/api/user/projects/${projectId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
@@ -155,7 +156,7 @@ export async function renameProject(
 }
 
 export async function deleteProject(projectId: number): Promise<void> {
-  const response = await fetch(`/api/user/projects/${projectId}`, {
+  const response = await authenticatedFetch(`/api/user/projects/${projectId}`, {
     method: "DELETE",
   });
   if (!response.ok) {
@@ -178,11 +179,14 @@ export async function upsertProjectInstructions(
   projectId: number,
   instructions: string
 ): Promise<string | null> {
-  const response = await fetch(`/api/user/projects/${projectId}/instructions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ instructions }),
-  });
+  const response = await authenticatedFetch(
+    `/api/user/projects/${projectId}/instructions`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ instructions }),
+    }
+  );
   if (!response.ok) {
     handleRequestError("Update project instructions", response);
   }
@@ -204,7 +208,7 @@ export async function unlinkFileFromProject(
   projectId: number,
   fileId: string
 ): Promise<Response> {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `/api/user/projects/${encodeURIComponent(
       projectId
     )}/files/${encodeURIComponent(fileId)}`,
@@ -220,7 +224,7 @@ export async function linkFileToProject(
   projectId: number,
   fileId: string
 ): Promise<Response> {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `/api/user/projects/${encodeURIComponent(
       projectId
     )}/files/${encodeURIComponent(fileId)}`,
@@ -235,7 +239,7 @@ export async function linkFileToProject(
 export async function deleteUserFile(
   fileId: string
 ): Promise<UserFileDeleteResult> {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `/api/user/projects/file/${encodeURIComponent(fileId)}`,
     {
       method: "DELETE",
@@ -260,11 +264,14 @@ export async function getUserFile(fileId: string): Promise<ProjectFile> {
 export async function getUserFileStatuses(
   fileIds: string[]
 ): Promise<ProjectFile[]> {
-  const response = await fetch(`/api/user/projects/file/statuses`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ file_ids: fileIds }),
-  });
+  const response = await authenticatedFetch(
+    `/api/user/projects/file/statuses`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file_ids: fileIds }),
+    }
+  );
   if (!response.ok) {
     handleRequestError("Fetch file statuses", response);
   }
@@ -326,7 +333,7 @@ export async function moveChatSession(
   projectId: number,
   chatSessionId: string
 ): Promise<boolean> {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `/api/user/projects/${projectId}/move_chat_session`,
     {
       method: "POST",
@@ -343,11 +350,14 @@ export async function moveChatSession(
 export async function removeChatSessionFromProject(
   chatSessionId: string
 ): Promise<boolean> {
-  const response = await fetch(`/api/user/projects/remove_chat_session`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_session_id: chatSessionId }),
-  });
+  const response = await authenticatedFetch(
+    `/api/user/projects/remove_chat_session`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_session_id: chatSessionId }),
+    }
+  );
   if (!response.ok) {
     handleRequestError("Remove chat session from project", response);
   }

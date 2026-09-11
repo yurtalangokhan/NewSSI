@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import { ValidSources } from "./types";
 import {
   Connector,
@@ -35,7 +36,7 @@ export async function fetchConnectors(
 export async function createConnector<T>(
   connector: ConnectorBase<T>
 ): Promise<[string | null, Connector<T> | null]> {
-  const response = await fetch(`/api/manage/admin/connector`, {
+  const response = await authenticatedFetch(`/api/manage/admin/connector`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -49,7 +50,7 @@ export async function updateConnectorCredentialPairName(
   ccPairId: number,
   newName: string
 ): Promise<Response> {
-  return fetch(
+  return authenticatedFetch(
     `/api/manage/admin/cc-pair/${ccPairId}/name?new_name=${encodeURIComponent(
       newName
     )}`,
@@ -67,7 +68,7 @@ export async function updateConnectorCredentialPairProperty(
   name: string,
   value: string
 ): Promise<Response> {
-  return fetch(`/api/manage/admin/cc-pair/${ccPairId}/property`, {
+  return authenticatedFetch(`/api/manage/admin/cc-pair/${ccPairId}/property`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -82,25 +83,31 @@ export async function updateConnectorCredentialPairProperty(
 export async function updateConnector<T>(
   connector: Connector<T>
 ): Promise<Connector<T>> {
-  const response = await fetch(`/api/manage/admin/connector/${connector.id}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(connector),
-  });
+  const response = await authenticatedFetch(
+    `/api/manage/admin/connector/${connector.id}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(connector),
+    }
+  );
   return await response.json();
 }
 
 export async function deleteConnector(
   connectorId: number
 ): Promise<string | null> {
-  const response = await fetch(`/api/manage/admin/connector/${connectorId}`, {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+  const response = await authenticatedFetch(
+    `/api/manage/admin/connector/${connectorId}`,
+    {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
   if (response.ok) {
     return null;
   }
@@ -112,15 +119,18 @@ export async function runConnector(
   credentialIds: number[],
   fromBeginning: boolean = false
 ): Promise<string | null> {
-  const response = await fetch("/api/manage/admin/connector/run-once", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      connector_id: connectorId,
-      credentialIds,
-      from_beginning: fromBeginning,
-    }),
-  });
+  const response = await authenticatedFetch(
+    "/api/manage/admin/connector/run-once",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        connector_id: connectorId,
+        credentialIds,
+        from_beginning: fromBeginning,
+      }),
+    }
+  );
   if (!response.ok) {
     return (await getErrorMsg(response)) ?? "Unknown error";
   }

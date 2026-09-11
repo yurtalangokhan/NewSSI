@@ -3,7 +3,7 @@
 import { UserGroupsTable } from "./UserGroupsTable";
 import UserGroupCreationForm from "./UserGroupCreationForm";
 import { useState } from "react";
-import { ThreeDotsLoader } from "@/components/Loading";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import { useConnectorStatus, useUserGroups } from "@/lib/hooks";
 import useUsers from "@/hooks/useUsers";
 import { useUser } from "@/providers/UserProvider";
@@ -35,19 +35,39 @@ function Main() {
   const { isAdmin } = useUser();
 
   if (isLoading || isCCPairsLoading || userIsLoading) {
-    return <ThreeDotsLoader />;
+    return (
+      <div className="p-6">
+        <TableSkeleton
+          rowCount={5}
+          columns={[
+            { type: "text", width: "w-44", headerWidth: "w-24" },
+            { type: "badge", width: "w-20", headerWidth: "w-16" },
+            { type: "badge", width: "w-20", headerWidth: "w-16" },
+            { type: "actions", width: "w-20", headerWidth: "w-16" },
+          ]}
+        />
+      </div>
+    );
   }
 
   if (error || !data) {
-    return <div className="text-red-600">{t("admin.groups.errorLoadingGroups")}</div>;
+    return (
+      <div className="text-red-600">{t("admin.groups.errorLoadingGroups")}</div>
+    );
   }
 
   if (ccPairsError || !ccPairs) {
-    return <div className="text-red-600">{t("admin.groups.errorLoadingConnectors")}</div>;
+    return (
+      <div className="text-red-600">
+        {t("admin.groups.errorLoadingConnectors")}
+      </div>
+    );
   }
 
   if (usersError || !users) {
-    return <div className="text-red-600">{t("admin.groups.errorLoadingUsers")}</div>;
+    return (
+      <div className="text-red-600">{t("admin.groups.errorLoadingUsers")}</div>
+    );
   }
 
   return (
@@ -77,9 +97,23 @@ function Main() {
 }
 
 export default function Page() {
+  const { t } = useTranslation();
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
+      <SettingsLayouts.Header
+        icon={route.icon}
+        title={
+          route.titleKey
+            ? t(route.titleKey, { defaultValue: route.title })
+            : route.title
+        }
+        description={
+          route.descriptionKey
+            ? t(route.descriptionKey, { defaultValue: route.description })
+            : route.description
+        }
+        separator
+      />
 
       <SettingsLayouts.Body>
         <Main />

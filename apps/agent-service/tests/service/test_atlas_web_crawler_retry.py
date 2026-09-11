@@ -211,11 +211,14 @@ class TestAtlasWebCrawlerRetry:
         assert mock_sleep.call_count == 0
 
     @patch("service.web_search.onyx_web_crawler.time.sleep")
+    @patch("service.web_search.onyx_web_crawler.looks_like_cloudflare_challenge")
     @patch("service.web_search.onyx_web_crawler.fetch_rendered_html")
     @patch("service.web_search.onyx_web_crawler.ssrf_safe_get")
-    def test_playwright_fallback_retry(self, mock_get, mock_pw, mock_sleep):
+    def test_playwright_fallback_retry(self, mock_get, mock_pw, mock_cf, mock_sleep):
         # 403 triggers Playwright fallback
         mock_get.return_value = _mock_response(status_code=403)
+        # Rendered HTML is not a Cloudflare challenge
+        mock_cf.return_value = False
         # Playwright fails first time (e.g. transient timeout), succeeds second time
         mock_pw.side_effect = [
             None,

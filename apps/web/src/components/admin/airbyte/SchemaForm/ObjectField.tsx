@@ -29,7 +29,7 @@ export default function ObjectField({
           <SchemaForm
             key={key}
             schema={propSchema}
-            value={(value?.[key] ?? propSchema.default) as Record<string, unknown>}
+            value={value?.[key] as Record<string, unknown>}
             onChange={(v) => onChange({ ...(value ?? {}), [key]: v })}
             rootSchema={rootSchema}
             fieldKey={key}

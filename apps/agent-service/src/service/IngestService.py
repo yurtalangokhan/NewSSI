@@ -6,7 +6,6 @@ Handles Airbyte batch ingestion, document conversion, vector storage, and source
 from __future__ import annotations
 
 import asyncio
-import logging
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -16,11 +15,12 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from agents.tools import load_vector_store
 from core.db import DatasourceRepository
+from core.logger import get_logger
 from models.ingest import BatchRequest, BatchResponse, SourcePreviewRequest
 from repository.airbyte_mapping_repository import AirbyteMappingDB
 from service.AirbyteApiClientService import get_airbyte_client
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class IngestService:

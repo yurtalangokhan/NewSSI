@@ -5,6 +5,7 @@ export {
   SvgFolderPlus,
   SvgLock,
   SvgMaximize2,
+  SvgMinimize2,
   SvgNetworkGraph,
   SvgOrganization,
   SvgShield,

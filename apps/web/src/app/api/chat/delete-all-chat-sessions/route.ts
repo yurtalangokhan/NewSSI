@@ -1,6 +1,7 @@
 import { getInternalUrl } from "@/lib/env.server";
 import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { getIncomingIdempotencyHeaders } from "@/lib/api/idempotency";
+import { forwardBackendResponse } from "@/lib/api/backendResponse";
 import { NextResponse } from "next/server";
 
 const INTERNAL_URL = getInternalUrl();
@@ -22,8 +23,7 @@ export async function DELETE(request: Request) {
         },
       }
     );
-    const data = await response.json();
-    return NextResponse.json(data);
+    return await forwardBackendResponse(response);
   } catch (error) {
     console.error("Failed to delete all chat sessions:", error);
     return NextResponse.json(

@@ -11,14 +11,15 @@ add one last safety net around the whole thing.
 from __future__ import annotations
 
 import json
-import logging
 import re
 from collections.abc import Callable
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
-logger = logging.getLogger(__name__)
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 _HEX3_RE = re.compile(r"^#?([0-9A-Fa-f]{3})$")
 _HEX6_RE = re.compile(r"^#?([0-9A-Fa-f]{6})$")

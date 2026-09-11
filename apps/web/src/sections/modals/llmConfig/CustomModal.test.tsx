@@ -105,12 +105,14 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     // Mock POST /api/admin/llm/test
     fetchSpy.mockResolvedValueOnce({
       ok: true,
+      status: 200,
       json: async () => ({}),
     } as Response);
 
     // Mock PUT /api/admin/llm/provider?is_creation=true
     fetchSpy.mockResolvedValueOnce({
       ok: true,
+      status: 200,
       json: async () => ({
         id: 1,
         name: "My Custom Provider",
@@ -137,10 +139,7 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledWith(
         "/api/admin/llm/test",
-        expect.objectContaining({
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        })
+        expect.objectContaining({ method: "POST" })
       );
     });
 
@@ -148,10 +147,7 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledWith(
         "/api/admin/llm/provider?is_creation=true",
-        expect.objectContaining({
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-        })
+        expect.objectContaining({ method: "PUT" })
       );
     });
 
@@ -243,12 +239,14 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     // Mock POST /api/admin/llm/test
     fetchSpy.mockResolvedValueOnce({
       ok: true,
+      status: 200,
       json: async () => ({}),
     } as Response);
 
     // Mock PUT /api/admin/llm/provider (update, no is_creation param)
     fetchSpy.mockResolvedValueOnce({
       ok: true,
+      status: 200,
       json: async () => ({ ...existingProvider, api_key: "new-key" }),
     } as Response);
 
@@ -323,12 +321,14 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     // Mock POST /api/admin/llm/test
     fetchSpy.mockResolvedValueOnce({
       ok: true,
+      status: 200,
       json: async () => ({}),
     } as Response);
 
     // Mock PUT /api/admin/llm/provider
     fetchSpy.mockResolvedValueOnce({
       ok: true,
+      status: 200,
       json: async () => ({
         ...existingProvider,
         model_configurations: [
@@ -399,12 +399,14 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     // Mock POST /api/admin/llm/test
     fetchSpy.mockResolvedValueOnce({
       ok: true,
+      status: 200,
       json: async () => ({}),
     } as Response);
 
     // Mock PUT /api/admin/llm/provider?is_creation=true
     fetchSpy.mockResolvedValueOnce({
       ok: true,
+      status: 200,
       json: async () => ({
         id: 5,
         name: "New Default Provider",
@@ -415,6 +417,7 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     // Mock POST /api/admin/llm/default
     fetchSpy.mockResolvedValueOnce({
       ok: true,
+      status: 200,
       json: async () => ({}),
     } as Response);
 
@@ -440,7 +443,9 @@ describe("Custom LLM Provider Configuration Workflow", () => {
 
       const [, options] = defaultCall!;
       expect(options.method).toBe("POST");
-      expect(options.headers).toEqual({ "Content-Type": "application/json" });
+      expect(new Headers(options.headers).get("content-type")).toBe(
+        "application/json"
+      );
 
       const body = JSON.parse(options.body);
       expect(body.provider_id).toBe(5);
@@ -454,6 +459,7 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     // Mock POST /api/admin/llm/test
     fetchSpy.mockResolvedValueOnce({
       ok: true,
+      status: 200,
       json: async () => ({}),
     } as Response);
 
@@ -491,12 +497,14 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     // Mock POST /api/admin/llm/test
     fetchSpy.mockResolvedValueOnce({
       ok: true,
+      status: 200,
       json: async () => ({}),
     } as Response);
 
     // Mock PUT /api/admin/llm/provider?is_creation=true
     fetchSpy.mockResolvedValueOnce({
       ok: true,
+      status: 200,
       json: async () => ({ id: 1, name: "Provider with Custom Config" }),
     } as Response);
 

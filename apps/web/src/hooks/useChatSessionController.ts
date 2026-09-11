@@ -32,6 +32,11 @@ import { getProjectFilesForSession } from "@/app/app/projects/projectsService";
 import { AppInputBarHandle } from "@/sections/input/AppInputBar";
 import { AgentId } from "@/app/admin/agents/interfaces";
 
+// A local/fast backend can resolve get-chat-session in well under a frame,
+// which makes the loading skeleton flash imperceptibly. Match the floor
+// used elsewhere for the same problem (see useChatSessions.ts).
+const MIN_FETCHING_MESSAGES_DURATION_MS = 400;
+
 interface UseChatSessionControllerProps {
   existingChatSessionId: string | null;
   searchParams: ReadonlyURLSearchParams;
@@ -193,6 +198,7 @@ export default function useChatSessionController({
       // Set the current session first, then set fetching state to prevent intro flash
       setCurrentSession(existingChatSessionId);
       setIsFetchingChatMessages(existingChatSessionId, true);
+      const fetchStart = Date.now();
 
       const response = await fetch(
         `/api/chat/get-chat-session/${existingChatSessionId}`,
@@ -243,6 +249,16 @@ export default function useChatSessionController({
         updateSessionAndMessageTree(chatSession.chat_session_id, newMessageMap);
         chatSessionIdRef.current = chatSession.chat_session_id;
       }
+
+      // Enforce a minimum loading duration so the message skeleton doesn't
+      // flash for a single frame when the backend responds very quickly.
+      const elapsed = Date.now() - fetchStart;
+      if (elapsed < MIN_FETCHING_MESSAGES_DURATION_MS) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, MIN_FETCHING_MESSAGES_DURATION_MS - elapsed)
+        );
+      }
+      if (isStaleRequest()) return;
 
       setIsFetchingChatMessages(chatSession.chat_session_id, false);
 

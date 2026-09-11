@@ -41,10 +41,3 @@ async def get_enterprise_settings(
 @router.get("/health")
 async def health_check():
     return await _get_controller().health_check()
-
-
-@router.get("/api/admin/mcp/servers")
-async def get_mcp_servers(
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
-):
-    return await _get_controller().get_mcp_servers()

@@ -33,9 +33,12 @@ export interface ToolStatusUpdateResponse {
  * Delete an MCP server
  */
 export async function deleteMCPServer(serverId: number): Promise<void> {
-  const response = await fetch(`/api/admin/mcp/server/${serverId}`, {
-    method: "DELETE",
-  });
+  const response = await authenticatedFetch(
+    `/api/admin/mcp/server/${serverId}`,
+    {
+      method: "DELETE",
+    }
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -44,14 +47,18 @@ export async function deleteMCPServer(serverId: number): Promise<void> {
 }
 
 /**
- * This performs actual discovery from the MCP server and syncs to DB
+ * Fetch an MCP server's tools as ToolSnapshots.
+ *
+ * `source="mcp"` (default) performs live discovery from the server and upserts
+ * to the DB; `source="db"` returns the cached rows only (no network to the
+ * external server).
  */
 export async function refreshMCPServerTools(
-  serverId: number
+  serverId: number,
+  source: "mcp" | "db" = "mcp"
 ): Promise<ToolSnapshot[]> {
-  // Discovers tools from MCP server, upserts to DB, and returns ToolSnapshot format
   const response = await fetch(
-    `/api/admin/mcp/server/${serverId}/tools/snapshots?source=mcp`
+    `/api/admin/mcp/server/${serverId}/tools/snapshots?source=${source}`
   );
   if (!response.ok) {
     const errorText = await response.text();
@@ -62,13 +69,38 @@ export async function refreshMCPServerTools(
 }
 
 /**
+ * Execute a single tool on an external MCP server (playground / testing).
+ */
+export async function executeMcpServerTool(
+  serverId: number,
+  toolName: string,
+  args: Record<string, any> = {}
+): Promise<ToolExecuteResponse> {
+  const response = await fetch(
+    `/api/admin/mcp/server/${serverId}/tools/${encodeURIComponent(
+      toolName
+    )}/execute`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ arguments: args }),
+    }
+  );
+  if (!response.ok) {
+    const detail = await response.text();
+    return { result: null, error: detail || "Failed to execute tool" };
+  }
+  return await response.json();
+}
+
+/**
  * Update status (enable/disable) for one or more tools
  */
 export async function updateToolsStatus(
   toolIds: number[],
   enabled: boolean
 ): Promise<ToolStatusUpdateResponse> {
-  const response = await fetch("/api/admin/tool/status", {
+  const response = await authenticatedFetch("/api/admin/tool/status", {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -112,7 +144,7 @@ export async function disableAllServerTools(
 export async function createMCPServer(
   data: MCPServerCreateRequest
 ): Promise<MCPServer> {
-  const response = await fetch("/api/admin/mcp/server", {
+  const response = await authenticatedFetch("/api/admin/mcp/server", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -135,13 +167,16 @@ export async function updateMCPServer(
   serverId: number,
   data: MCPServerUpdateRequest
 ): Promise<MCPServer> {
-  const response = await fetch(`/api/admin/mcp/server/${serverId}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
+  const response = await authenticatedFetch(
+    `/api/admin/mcp/server/${serverId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -158,7 +193,7 @@ export async function updateMCPServerStatus(
   serverId: number,
   status: MCPServerStatus
 ): Promise<void> {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `/api/admin/mcp/server/${serverId}/status?status=${status}`,
     {
       method: "PATCH",
@@ -195,7 +230,7 @@ export async function upsertMCPServer(serverData: {
   existing_server_id?: number;
 }): Promise<ApiResponse<UpsertMCPServerResponse>> {
   try {
-    const response = await fetch("/api/admin/mcp/servers/create", {
+    const response = await authenticatedFetch("/api/admin/mcp/servers/create", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -238,9 +273,11 @@ export interface ToolExecuteResponse {
 /**
  * Get list of available tools from the built-in tools-service
  */
-export async function getBuiltInTools(): Promise<BuiltInToolsResponse> {
-  const currentLang = i18n.language || "en";
-  const response = await fetch("/api/proxy/mcp/tools-builtin", {
+export async function getBuiltInTools(
+  language?: string
+): Promise<BuiltInToolsResponse> {
+  const currentLang = language || i18n.language || "en";
+  const response = await authenticatedFetch("/api/proxy/mcp/tools-builtin", {
     headers: {
       "X-Language": currentLang,
       "Accept-Language": currentLang,
@@ -302,7 +339,7 @@ export async function executeBuiltInTool(
   }
 
   const currentLang = i18n.language || "en";
-  const response = await fetch("/api/proxy/mcp/execute", {
+  const response = await authenticatedFetch("/api/proxy/mcp/execute", {
     method: "POST",
     headers: withIdempotencyKey(
       {

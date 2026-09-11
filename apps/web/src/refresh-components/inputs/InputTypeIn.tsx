@@ -128,11 +128,14 @@ const InputTypeIn = React.forwardRef<HTMLInputElement, InputTypeInProps>(
       <div
         className={cn(
           "flex flex-row items-center justify-between flex-1 h-fit p-1.5 rounded-08 relative w-full",
+          disabled ? "cursor-not-allowed" : "cursor-text",
           wrapperClasses[variant],
           className
         )}
         onClick={() => {
-          localInputRef.current?.focus();
+          if (!disabled && !isReadOnly) {
+            localInputRef.current?.focus();
+          }
         }}
       >
         {leftSearchIcon && (
@@ -157,21 +160,21 @@ const InputTypeIn = React.forwardRef<HTMLInputElement, InputTypeInProps>(
           value={value}
           onChange={onChange}
           className={cn(
-            "w-full h-[1.5rem] bg-transparent p-0.5 focus:outline-none",
+            "w-full h-[1.5rem] bg-transparent p-0.5 focus:outline-none cursor-text",
+            disabled && "cursor-not-allowed",
             innerClasses[variant],
             textClasses[variant]
           )}
           {...props}
         />
 
-        {showClearButton && !disabled && !isReadOnly && (
+        {showClearButton && !disabled && !isReadOnly && Boolean(value) && (
           <IconButton
             icon={SvgX}
-            disabled={disabled}
             onClick={noProp(handleClear)}
             type="button"
             internal
-            className={value ? "" : "invisible"}
+            className="cursor-pointer shrink-0"
           />
         )}
 

@@ -13,9 +13,11 @@ import DynamicBottomSpacer from "@/components/chat/DynamicBottomSpacer";
 import {
   useCurrentMessageHistory,
   useCurrentMessageTree,
+  useIsFetchingChatMessages,
   useLoadingError,
   useUncaughtError,
 } from "@/app/app/stores/useChatSessionStore";
+import ChatMessagesSkeleton from "@/refresh-components/skeletons/ChatMessagesSkeleton";
 
 export interface ChatUIProps {
   liveAgent: MinimalPersonaSnapshot;
@@ -33,6 +35,7 @@ export interface ChatUIProps {
     modelOverride?: LlmDescriptor;
     regenerationRequest?: Parameters<RegenerationFactory>[0];
     forceSearch?: boolean;
+    resumePayload?: Record<string, unknown> | null;
   }) => Promise<void>;
   deepResearchEnabled: boolean;
   currentMessageFiles: any[];
@@ -64,6 +67,7 @@ const ChatUI = React.memo(
     const messageTree = useCurrentMessageTree();
     const error = useUncaughtError();
     const loadError = useLoadingError();
+    const isFetchingChatMessages = useIsFetchingChatMessages();
     // Stable fallbacks to avoid changing prop identities on each render
     const emptyDocs = useMemo<OnyxDocument[]>(() => [], []);
     const emptyChildrenIds = useMemo<number[]>(() => [], []);
@@ -93,6 +97,37 @@ const ChatUI = React.memo(
       []
     );
 
+    // A FlowAgent run parked at a HumanInput node resumes on the next ordinary
+    // message, so a decision button is just a pre-filled send. The label also
+    // lands in the transcript, which is what an approval step wants.
+    const handleHumanDecision = useCallback((decision: string) => {
+      onSubmitRef.current({
+        message: decision,
+        currentMessageFiles: [],
+        deepResearch: deepResearchEnabledRef.current,
+      });
+    }, []);
+
+    // An ask_user card is answered the same way a HumanInput decision is — an
+    // ordinary send that the backend turns into `Command(resume=...)`. The
+    // difference is the payload: selections travel structured, keyed by
+    // question, while the text is only what the user sees in their own
+    // bubble. Nothing downstream has to parse that text back into answers.
+    const handleClarificationAnswer = useCallback(
+      (answer: { answered: true; answers: Record<string, string[]> }) => {
+        const summary = Object.entries(answer.answers)
+          .map(([header, labels]) => `${header}: ${labels.join(", ") || "—"}`)
+          .join("\n");
+        onSubmitRef.current({
+          message: summary,
+          currentMessageFiles: [],
+          deepResearch: deepResearchEnabledRef.current,
+          resumePayload: answer,
+        });
+      },
+      []
+    );
+
     const handleEditWithMessageId = useCallback(
       (editedContent: string, msgId: number) => {
         onSubmitRef.current({
@@ -108,100 +143,107 @@ const ChatUI = React.memo(
     return (
       <>
         <div className="flex flex-col w-full max-w-[var(--app-page-main-content-width)] h-full px-3 pt-5 pb-10 gap-8 md:gap-10">
-          {messages.map((message, i) => {
-            const messageReactComponentKey = `message-${message.nodeId}`;
-            const parentMessage = message.parentNodeId
-              ? messageTree?.get(message.parentNodeId)
-              : null;
-            if (message.type === "user") {
-              const nextMessage =
-                messages.length > i + 1 ? messages[i + 1] : null;
+          {isFetchingChatMessages && messages.length === 0 ? (
+            <ChatMessagesSkeleton />
+          ) : (
+            messages.map((message, i) => {
+              const messageReactComponentKey = `message-${message.nodeId}`;
+              const parentMessage = message.parentNodeId
+                ? messageTree?.get(message.parentNodeId)
+                : null;
+              if (message.type === "user") {
+                const nextMessage =
+                  messages.length > i + 1 ? messages[i + 1] : null;
 
-              return (
-                <div
-                  id={messageReactComponentKey}
-                  key={messageReactComponentKey}
-                  className="w-full scroll-mt-6"
-                >
-                  <HumanMessage
-                    disableSwitchingForStreaming={
-                      (nextMessage && nextMessage.is_generating) || false
-                    }
-                    stopGenerating={stopGenerating}
-                    content={message.message}
-                    files={message.files}
-                    messageId={message.messageId}
-                    nodeId={message.nodeId}
-                    onEdit={handleEditWithMessageId}
-                    otherMessagesCanSwitchTo={
-                      parentMessage?.childrenNodeIds ?? emptyChildrenIds
-                    }
-                    onMessageSelection={onMessageSelection}
-                  />
-                </div>
-              );
-            } else if (message.type === "assistant") {
-              if ((error || loadError) && i === messages.length - 1) {
                 return (
-                  <div key={`error-${message.nodeId}`} className="p-4">
-                    <ErrorBanner
-                      resubmit={onResubmit}
-                      error={error || loadError || ""}
-                      errorCode={message.errorCode || undefined}
-                      isRetryable={message.isRetryable ?? true}
-                      details={message.errorDetails || undefined}
-                      stackTrace={message.stackTrace || undefined}
+                  <div
+                    id={messageReactComponentKey}
+                    key={messageReactComponentKey}
+                    className="w-full scroll-mt-6"
+                  >
+                    <HumanMessage
+                      disableSwitchingForStreaming={
+                        (nextMessage && nextMessage.is_generating) || false
+                      }
+                      stopGenerating={stopGenerating}
+                      content={message.message}
+                      files={message.files}
+                      messageId={message.messageId}
+                      nodeId={message.nodeId}
+                      onEdit={handleEditWithMessageId}
+                      otherMessagesCanSwitchTo={
+                        parentMessage?.childrenNodeIds ?? emptyChildrenIds
+                      }
+                      onMessageSelection={onMessageSelection}
+                    />
+                  </div>
+                );
+              } else if (message.type === "assistant") {
+                if ((error || loadError) && i === messages.length - 1) {
+                  return (
+                    <div key={`error-${message.nodeId}`} className="p-4">
+                      <ErrorBanner
+                        resubmit={onResubmit}
+                        error={error || loadError || ""}
+                        errorCode={message.errorCode || undefined}
+                        isRetryable={message.isRetryable ?? true}
+                        details={message.errorDetails || undefined}
+                        stackTrace={message.stackTrace || undefined}
+                      />
+                    </div>
+                  );
+                }
+
+                const previousMessage = i !== 0 ? messages[i - 1] : null;
+                const chatStateData = {
+                  agent: liveAgent,
+                  docs: message.documents ?? emptyDocs,
+                  citations: message.citations,
+                  setPresentingDocument,
+                  // The model that actually produced this specific message,
+                  // not whatever is currently selected in the input bar —
+                  // otherwise retry's model popover preselects the live
+                  // selection instead of the model this message used.
+                  overriddenModel:
+                    message.overridden_model ||
+                    llmManager.currentLlm?.modelName,
+                  researchType: message.researchType,
+                  onHumanDecision: handleHumanDecision,
+                  onClarificationAnswer: handleClarificationAnswer,
+                };
+
+                return (
+                  <div
+                    id={`message-${message.nodeId}`}
+                    key={messageReactComponentKey}
+                    className="w-full scroll-mt-6"
+                  >
+                    <AgentMessage
+                      rawPackets={message.packets ?? []}
+                      packetCount={message.packetCount}
+                      chatState={chatStateData}
+                      nodeId={message.nodeId}
+                      messageId={message.messageId}
+                      currentFeedback={message.currentFeedback}
+                      llmManager={llmManager}
+                      otherMessagesCanSwitchTo={
+                        parentMessage?.childrenNodeIds ?? emptyChildrenIds
+                      }
+                      onMessageSelection={onMessageSelection}
+                      onRegenerate={createRegenerator}
+                      parentMessage={previousMessage}
+                      originalPersonaId={message.alternateAgentID}
+                      processingDurationSeconds={
+                        message.processingDurationSeconds
+                      }
+                      finalMessageText={message.message}
                     />
                   </div>
                 );
               }
-
-              const previousMessage = i !== 0 ? messages[i - 1] : null;
-              const chatStateData = {
-                agent: liveAgent,
-                docs: message.documents ?? emptyDocs,
-                citations: message.citations,
-                setPresentingDocument,
-                // The model that actually produced this specific message,
-                // not whatever is currently selected in the input bar —
-                // otherwise retry's model popover preselects the live
-                // selection instead of the model this message used.
-                overriddenModel:
-                  message.overridden_model || llmManager.currentLlm?.modelName,
-                researchType: message.researchType,
-              };
-
-              return (
-                <div
-                  id={`message-${message.nodeId}`}
-                  key={messageReactComponentKey}
-                  className="w-full scroll-mt-6"
-                >
-                  <AgentMessage
-                    rawPackets={message.packets ?? []}
-                    packetCount={message.packetCount}
-                    chatState={chatStateData}
-                    nodeId={message.nodeId}
-                    messageId={message.messageId}
-                    currentFeedback={message.currentFeedback}
-                    llmManager={llmManager}
-                    otherMessagesCanSwitchTo={
-                      parentMessage?.childrenNodeIds ?? emptyChildrenIds
-                    }
-                    onMessageSelection={onMessageSelection}
-                    onRegenerate={createRegenerator}
-                    parentMessage={previousMessage}
-                    originalPersonaId={message.alternateAgentID}
-                    processingDurationSeconds={
-                      message.processingDurationSeconds
-                    }
-                    finalMessageText={message.message}
-                  />
-                </div>
-              );
-            }
-            return null;
-          })}
+              return null;
+            })
+          )}
 
           {/* Error banner when last message is user message or error type */}
           {(((error !== null || loadError !== null) &&

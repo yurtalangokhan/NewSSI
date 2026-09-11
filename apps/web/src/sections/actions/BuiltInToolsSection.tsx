@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BuiltInTool } from "@/lib/tools/interfaces";
 import _ from "lodash";
@@ -10,8 +10,7 @@ import {
   buildCategoryLabelMap,
   ToolWithCategory,
 } from "@/lib/tools/builtInToolUtils";
-import { getBuiltInTools } from "@/lib/tools/mcpService";
-import { toast } from "@/hooks/useToast";
+import useBuiltInTools from "@/hooks/useBuiltInTools";
 import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
@@ -20,6 +19,8 @@ import {
 } from "@/refresh-components/Collapsible";
 import { Wrench, ChevronDown, Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import Text from "@/refresh-components/texts/Text";
+import ListSkeleton from "@/refresh-components/skeletons/ListSkeleton";
 import { useTranslation } from "react-i18next";
 
 interface BuiltInToolsSectionProps {
@@ -37,12 +38,12 @@ function ToolCard({
 }) {
   return (
     <div className="border border-border-01 rounded-lg p-4 hover:bg-background-tint-00 transition-colors">
-      <h3 className="font-medium truncate mb-2">
+      <Text as="p" mainUiBody className="truncate mb-2">
         {tool.title || _.startCase(tool.name)}
-      </h3>
-      <p className="text-sm text-text-03 line-clamp-2 mb-3">
+      </Text>
+      <Text as="p" secondaryBody text03 className="line-clamp-2 mb-3">
         {tool.description || t("toolPlayground.noDescription")}
-      </p>
+      </Text>
       <button
         onClick={() => onTest(tool)}
         className="text-sm text-theme-primary-04 hover:text-theme-primary-05 font-medium"
@@ -66,39 +67,14 @@ function ToolCardSkeleton() {
 export default function BuiltInToolsSection({
   onToolSelect,
 }: BuiltInToolsSectionProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const router = useRouter();
-  const [tools, setTools] = useState<BuiltInTool[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { tools, isLoading, error } = useBuiltInTools();
   const [searchQuery, setSearchQuery] = useState("");
-
-  useEffect(() => {
-    async function fetchTools() {
-      setIsLoading(true);
-      try {
-        const response = await getBuiltInTools();
-        if (response.error) {
-          setError(response.error);
-          toast.error(response.error);
-        } else {
-          setTools(response.tools);
-        }
-      } catch (err) {
-        const errorMsg =
-          err instanceof Error ? err.message : t("admin.mcp.fetchingTools");
-        setError(errorMsg);
-        toast.error(errorMsg);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchTools();
-  }, [i18n.language]);
+  const [sectionOpen, setSectionOpen] = useState(true);
 
   const toolsWithCategory = useMemo(() => {
-    return tools.map((tool) => parseToolCategory(tool));
+    return tools.map((tool) => parseToolCategory(tool as BuiltInTool));
   }, [tools]);
 
   const filteredTools = useMemo(() => {
@@ -140,74 +116,83 @@ export default function BuiltInToolsSection({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between gap-4 mb-4">
-        <div className="flex items-center gap-2">
-          <Wrench className="size-5" />
-          <h2 className="text-lg font-semibold">
-            {t("admin.mcpAuth.builtInToolsName")}
-          </h2>
-          <Badge variant="outline">{tools.length}</Badge>
+      <Collapsible open={sectionOpen} onOpenChange={setSectionOpen}>
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <CollapsibleTrigger className="group flex flex-1 items-center gap-2 rounded-md px-2 py-2 hover:bg-background-neutral-00 text-left">
+            <ChevronDown className="size-4 transition-transform group-data-[state=closed]:-rotate-90" />
+            <Wrench className="size-5" />
+            <Text as="p" headingH3>
+              {t("admin.mcpAuth.builtInToolsName")}
+            </Text>
+            <Badge variant="outline">{tools.length}</Badge>
+          </CollapsibleTrigger>
+          {sectionOpen && (
+            <div className="relative w-64 shrink-0">
+              <Search className="absolute left-2.5 top-2.5 size-4 text-text-03" />
+              <Input
+                type="text"
+                placeholder={t("admin.mcp.searchTools")}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          )}
         </div>
-        <div className="relative w-64">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-text-03" />
-          <Input
-            type="text"
-            placeholder={t("admin.mcp.searchTools")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-      </div>
+        <CollapsibleContent>
+          {isLoading && (
+            <div className="py-4">
+              <ListSkeleton itemCount={4} hasIcon={true} />
+            </div>
+          )}
 
-      {isLoading && (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="size-6 animate-spin mr-2" />
-          <span>{t("admin.mcp.fetchingTools")}</span>
-        </div>
-      )}
+          {error && !isLoading && (
+            <div className="text-center py-8 text-status-error-06">{error}</div>
+          )}
 
-      {error && !isLoading && (
-        <div className="text-center py-8 text-status-error-06">{error}</div>
-      )}
+          {!isLoading && !error && tools.length === 0 && (
+            <div className="text-center py-12 text-text-03">
+              <Wrench className="size-8 mx-auto mb-2 opacity-50" />
+              <Text as="p" mainUiBody>
+                {t("admin.mcp.noToolsAvailable")}
+              </Text>
+              <Text as="p" secondaryBody className="mt-1">
+                {t("admin.mcp.connectServerHint")}
+              </Text>
+            </div>
+          )}
 
-      {!isLoading && !error && tools.length === 0 && (
-        <div className="text-center py-12 text-text-03">
-          <Wrench className="size-8 mx-auto mb-2 opacity-50" />
-          <p>{t("admin.mcp.noToolsAvailable")}</p>
-          <p className="text-sm mt-1">{t("admin.mcp.connectServerHint")}</p>
-        </div>
-      )}
-
-      {!isLoading && !error && tools.length > 0 && (
-        <div className="flex-1 overflow-y-auto">
-          {sortedCategories.map((category) => (
-            <Collapsible key={category} defaultOpen={true}>
-              <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md px-2 py-2 hover:bg-background-neutral-00 text-left">
-                <ChevronDown className="size-4 transition-transform group-data-[state=closed]:-rotate-90" />
-                <span className="text-base font-semibold">
-                  {categoryLabelMap[category] || category}
-                </span>
-                <Badge variant="secondary" className="ml-1 text-xs">
-                  {(groupedTools[category] ?? []).length}
-                </Badge>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-2 pb-4 pt-2">
-                  {(groupedTools[category] ?? []).map((tool) => (
-                    <ToolCard
-                      key={tool.name}
-                      tool={tool}
-                      onTest={handleTestTool}
-                      t={t}
-                    />
-                  ))}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          ))}
-        </div>
-      )}
+          {!isLoading && !error && tools.length > 0 && (
+            <div className="flex-1 overflow-y-auto">
+              {sortedCategories.map((category) => (
+                <Collapsible key={category} defaultOpen={true}>
+                  <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md px-2 py-2 hover:bg-background-neutral-00 text-left">
+                    <ChevronDown className="size-4 transition-transform group-data-[state=closed]:-rotate-90" />
+                    <span className="text-base font-semibold">
+                      {categoryLabelMap[category] || category}
+                    </span>
+                    <Badge variant="secondary" className="ml-1 text-xs">
+                      {(groupedTools[category] ?? []).length}
+                    </Badge>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-2 pb-4 pt-2">
+                      {(groupedTools[category] ?? []).map((tool) => (
+                        <ToolCard
+                          key={tool.name}
+                          tool={tool}
+                          onTest={handleTestTool}
+                          t={t}
+                        />
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
+            </div>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

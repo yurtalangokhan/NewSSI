@@ -1,3 +1,4 @@
+import DropzoneInput from "@/refresh-components/inputs/DropzoneInput";
 import { SubLabel } from "@/components/Field";
 import { toast } from "@/hooks/useToast";
 import { useEffect, useState } from "react";
@@ -57,7 +58,7 @@ export function ImageUpload({
               (dragActive ? " border-accent" : "")
             }
           >
-            <input {...getInputProps()} />
+            <DropzoneInput {...getInputProps()} />
             <b className="text-text-darker">{t("dragDropHint")}</b>
           </div>
 

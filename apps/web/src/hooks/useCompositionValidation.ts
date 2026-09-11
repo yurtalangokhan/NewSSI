@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { authenticatedFetch } from "@/lib/fetcher";
 
 interface CompositionValidationResult {
   valid: boolean;
@@ -52,17 +53,20 @@ export function useCompositionValidation(
           setIsValidating(true);
           setError(null);
 
-          const response = await fetch("/api/agent-definitions/validate-composition", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              agent_id: agentId,
-              graph_schema: graphSchema,
-              sub_agent_ids: subAgentIds,
-            }),
-          });
+          const response = await authenticatedFetch(
+            "/api/agent-definitions/validate-composition",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                agent_id: agentId,
+                graph_schema: graphSchema,
+                sub_agent_ids: subAgentIds,
+              }),
+            }
+          );
 
           if (!response.ok) {
             throw new Error(`Validation failed: ${response.statusText}`);
@@ -71,7 +75,8 @@ export function useCompositionValidation(
           const data = await response.json();
           setResult(data);
         } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : "Validation error";
+          const errorMsg =
+            err instanceof Error ? err.message : "Validation error";
           setError(errorMsg);
           setResult({
             valid: false,

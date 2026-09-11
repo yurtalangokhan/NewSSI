@@ -1,11 +1,11 @@
-import logging
 from typing import Any
 
 from i18n import t
 
+from src.core.observability import get_logger
 from src.repository import PermissionRepository, RoleRepository
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class RoleService:
@@ -124,6 +124,16 @@ class RoleService:
 
     async def get_aggregated_permissions(self, role_names: list[str]) -> list[str]:
         """Aggregate all permissions from a list of role names."""
+        if hasattr(self.repo, "get_permissions_by_names"):
+            permissions_by_role = await self.repo.get_permissions_by_names(role_names)
+            return sorted(
+                {
+                    permission
+                    for permissions in permissions_by_role.values()
+                    for permission in permissions
+                }
+            )
+
         roles = await self.repo.get_by_names(role_names)
         seen: set[str] = set()
         for r in roles:

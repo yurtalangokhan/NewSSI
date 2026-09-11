@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import "./loading.css";
-import { ThreeDots } from "react-loader-spinner";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 
@@ -49,18 +48,15 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
 
 export const ThreeDotsLoader = () => {
   return (
-    <div className="flex my-auto">
-      <div className="mx-auto">
-        <ThreeDots
-          height="30"
-          width="50"
-          color="#3b82f6"
-          ariaLabel="grid-loading"
-          radius="12.5"
-          wrapperStyle={{}}
-          wrapperClass=""
-          visible={true}
-        />
+    <div
+      className="flex my-auto items-center justify-center py-4"
+      role="status"
+      aria-label="Loading..."
+    >
+      <div className="flex items-center gap-1.5">
+        <div className="h-2.5 w-2.5 rounded-full bg-background-tint-04 animate-pulse" />
+        <div className="h-2.5 w-2.5 rounded-full bg-background-tint-04 animate-pulse [animation-delay:200ms]" />
+        <div className="h-2.5 w-2.5 rounded-full bg-background-tint-04 animate-pulse [animation-delay:400ms]" />
       </div>
     </div>
   );

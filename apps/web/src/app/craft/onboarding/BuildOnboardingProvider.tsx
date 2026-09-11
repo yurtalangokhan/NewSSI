@@ -1,4 +1,5 @@
 "use client";
+import Skeleton from "@/refresh-components/skeletons/Skeleton";
 
 import { createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
@@ -35,8 +36,16 @@ export function BuildOnboardingProvider({
   // Show loading state while user data is loading
   if (!user) {
     return (
-      <div className="flex items-center justify-center w-full h-full">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-01" />
+      <div className="flex w-full h-screen bg-background-neutral-01">
+        <div className="w-64 border-r border-border-02 p-4 flex flex-col gap-3">
+          <Skeleton className="h-8 w-36 rounded-08" />
+          <Skeleton className="h-6 w-full rounded-08" />
+          <Skeleton className="h-6 w-full rounded-08" />
+        </div>
+        <div className="flex-1 p-6 flex flex-col gap-4">
+          <Skeleton className="h-10 w-64 rounded-08" />
+          <Skeleton className="h-64 w-full rounded-08" />
+        </div>
       </div>
     );
   }

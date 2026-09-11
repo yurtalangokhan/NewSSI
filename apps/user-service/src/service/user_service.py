@@ -1,4 +1,3 @@
-import logging
 import uuid
 from typing import Any
 
@@ -6,6 +5,7 @@ from i18n import t
 
 from src.core.database.models.user_model import normalize_user_role
 from src.core.exceptions import ForbiddenError, NotFoundError
+from src.core.observability import get_logger
 from src.repository import (
     CompositeRoleRepository,
     UserRepository,
@@ -16,7 +16,7 @@ from src.repository import (
 from .keycloak_service import get_keycloak_service
 from .permission_resolver_service import get_permission_resolver_service
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class UserService:
@@ -46,12 +46,12 @@ class UserService:
         users = await self.user_repo.get_by_ids(user_ids)
         return [self._user_to_dict(user) for user in users]
 
-    async def get_user_permissions(self, user_id: uuid.UUID) -> dict[str, list[str]] | None:
+    async def get_user_permissions(self, user_id: uuid.UUID) -> dict[str, Any] | None:
         user = await self.user_repo.get_by_id(user_id)
         if not user:
             return None
-        permissions = await self.permission_resolver.resolve_effective_permissions(user_id)
-        return {"permissions": permissions}
+        permissions, is_admin = await self.permission_resolver.resolve_effective_access(user_id)
+        return {"permissions": permissions, "is_admin": is_admin}
 
     async def user_has_permission(self, user_id: uuid.UUID, permission: str) -> dict[str, Any]:
         permission_data = await self.get_user_permissions(user_id)
@@ -162,6 +162,9 @@ class UserService:
             include_external_keycloak_users=self._external_keycloak_enabled(),
         )
         return [self._user_to_dict(u) for u in users]
+
+    async def get_role_distribution(self) -> list[dict[str, Any]]:
+        return await self.user_repo.count_by_role()
 
     async def create_user(
         self,
@@ -430,7 +433,13 @@ class UserService:
             # No Keycloak: update DB only
             user = await self.user_repo.update(user_id, role=role)
 
-        await self.user_role_repo.assign_roles(user_id, [role], primary_role=role)
+        # Replace, don't append: this setter is authoritative for the user's
+        # single role (it also mirrors to `users.role` and the Keycloak realm
+        # role above). Appending would leave any previously assigned role in
+        # place, and permission resolution unions across every assigned role -
+        # so a user demoted here would keep the old role's access while the
+        # UI showed only the new one.
+        await self.user_role_repo.replace_roles(user_id, [role], primary_role=role)
         await self.permission_resolver.invalidate_user(user_id)
         return self._user_to_dict(user)
 

@@ -58,6 +58,10 @@ class ToolDescriptor:
     key: str
     description: str
     required_trusted_bindings: tuple[str, ...] = ()
+    input_schema: Mapping[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "input_schema", _freeze_value(self.input_schema))
 
 
 @dataclass(frozen=True)

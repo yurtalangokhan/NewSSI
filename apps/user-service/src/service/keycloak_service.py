@@ -1,4 +1,3 @@
-import fnmatch
 import time
 from typing import Any
 from urllib.parse import quote, urlparse
@@ -10,6 +9,7 @@ from jwt import PyJWKClient
 
 from src.config import get_settings
 from src.core.env import get_env
+from src.service import keycloak_helpers
 from src.service.keycloak_broker import KeycloakBrokerMixin
 
 _env = get_env()
@@ -257,6 +257,7 @@ class KeycloakService(KeycloakBrokerMixin):
                     "verify_aud": bool(audiences),
                     "verify_iss": True,
                     "verify_exp": True,
+                    "verify_iat": False,
                 },
             )
             return claims
@@ -509,48 +510,6 @@ class KeycloakService(KeycloakBrokerMixin):
             },
         }
 
-    @staticmethod
-    def _csv_values(raw: str | None) -> list[str]:
-        return [value.strip() for value in (raw or "").split(",") if value.strip()]
-
-    @staticmethod
-    def _merge_unique_values(existing: list[Any], configured: list[str]) -> list[str]:
-        merged: list[str] = []
-        for value in [*existing, *configured]:
-            if not isinstance(value, str):
-                continue
-            item = value.strip()
-            if item and item not in merged:
-                merged.append(item)
-        return merged
-
-    @staticmethod
-    def _value_matches_pattern(value: str, patterns: list[str]) -> bool:
-        return any(
-            pattern in ("*", "+") or fnmatch.fnmatchcase(value, pattern) for pattern in patterns
-        )
-
-    @staticmethod
-    def _origin_from_url(url: str) -> str | None:
-        parsed = urlparse(url)
-        if parsed.scheme not in ("http", "https") or not parsed.netloc:
-            return None
-        return f"{parsed.scheme}://{parsed.netloc}"
-
-    @staticmethod
-    def _post_logout_redirect_values(raw: Any) -> list[str]:
-        values = raw if isinstance(raw, list) else str(raw or "").split("##")
-        return [value.strip() for value in values if isinstance(value, str) and value.strip()]
-
-    @classmethod
-    def _merge_post_logout_redirect_uris(cls, existing: Any, configured: str) -> str:
-        return "##".join(
-            cls._merge_unique_values(
-                cls._post_logout_redirect_values(existing),
-                cls._post_logout_redirect_values(configured),
-            )
-        )
-
     def _login_client_redirect_uris(self) -> list[str]:
         raw = self._str_config(
             "KEYCLOAK_REDIRECT_URIS",
@@ -559,14 +518,14 @@ class KeycloakService(KeycloakBrokerMixin):
             or _env.KEYCLOAK_REDIRECT_URI
             or _settings.KEYCLOAK_REDIRECT_URI,
         )
-        return self._csv_values(raw) or ["*"]
+        return keycloak_helpers.csv_values(raw) or ["*"]
 
     def _login_client_web_origins(self) -> list[str]:
         raw = self._str_config(
             "KEYCLOAK_WEB_ORIGINS",
             _env.KEYCLOAK_WEB_ORIGINS or _settings.KEYCLOAK_WEB_ORIGINS,
         )
-        return self._csv_values(raw) or ["+"]
+        return keycloak_helpers.csv_values(raw) or ["+"]
 
     def _login_client_post_logout_redirect_uris(self) -> str:
         return (
@@ -605,7 +564,7 @@ class KeycloakService(KeycloakBrokerMixin):
             action = "created"
 
         attributes = dict(current.get("attributes") or {})
-        attributes["post.logout.redirect.uris"] = self._merge_post_logout_redirect_uris(
+        attributes["post.logout.redirect.uris"] = keycloak_helpers.merge_post_logout_redirect_uris(
             attributes.get("post.logout.redirect.uris"),
             self._login_client_post_logout_redirect_uris(),
         )
@@ -621,11 +580,11 @@ class KeycloakService(KeycloakBrokerMixin):
             "implicitFlowEnabled": False,
             "directAccessGrantsEnabled": True,
             "serviceAccountsEnabled": False,
-            "redirectUris": self._merge_unique_values(
+            "redirectUris": keycloak_helpers.merge_unique_values(
                 list(current.get("redirectUris") or []),
                 self._login_client_redirect_uris(),
             ),
-            "webOrigins": self._merge_unique_values(
+            "webOrigins": keycloak_helpers.merge_unique_values(
                 list(current.get("webOrigins") or []),
                 self._login_client_web_origins(),
             ),
@@ -676,7 +635,7 @@ class KeycloakService(KeycloakBrokerMixin):
         if not redirect_uri:
             return {"status": "skipped", "reason": "redirect_uri is not set"}
 
-        web_origin = self._origin_from_url(redirect_uri)
+        web_origin = keycloak_helpers.origin_from_url(redirect_uri)
         if web_origin is None:
             return {
                 "status": "skipped",
@@ -692,20 +651,24 @@ class KeycloakService(KeycloakBrokerMixin):
         if not isinstance(current, dict):
             raise ValueError(t("keycloak.client_response_invalid", client_id=client_id))
 
-        current_redirect_uris = self._merge_unique_values(
+        current_redirect_uris = keycloak_helpers.merge_unique_values(
             list(current.get("redirectUris") or []), []
         )
-        current_web_origins = self._merge_unique_values(list(current.get("webOrigins") or []), [])
+        current_web_origins = keycloak_helpers.merge_unique_values(
+            list(current.get("webOrigins") or []), []
+        )
         attributes = dict(current.get("attributes") or {})
-        current_post_logout_redirect_uris = self._post_logout_redirect_values(
+        current_post_logout_redirect_uris = keycloak_helpers.post_logout_redirect_values(
             attributes.get("post.logout.redirect.uris")
         )
-        redirect_exists = self._value_matches_pattern(redirect_uri, current_redirect_uris)
-        origin_exists = self._value_matches_pattern(web_origin, current_web_origins)
+        redirect_exists = keycloak_helpers.value_matches_pattern(
+            redirect_uri, current_redirect_uris
+        )
+        origin_exists = keycloak_helpers.value_matches_pattern(web_origin, current_web_origins)
         post_logout_exists = (
             not post_logout_redirect_uri
             or post_logout_redirect_uri in current_post_logout_redirect_uris
-            or self._value_matches_pattern(
+            or keycloak_helpers.value_matches_pattern(
                 post_logout_redirect_uri,
                 [uri for uri in current_post_logout_redirect_uris if uri != "+"],
             )
@@ -1932,7 +1895,7 @@ class KeycloakService(KeycloakBrokerMixin):
         """Exchange a refresh token for a new set of tokens from Keycloak.
 
         POSTs to Keycloak's token endpoint with grant_type=refresh_token.
-        Returns { access_token, refresh_token, id_token, expires_in, token_type }.
+        Returns { access_token, refresh_token, id_token?, expires_in, token_type }.
         Raises ValueError on authentication failure.
         """
         async with httpx.AsyncClient() as client:
@@ -1942,21 +1905,21 @@ class KeycloakService(KeycloakBrokerMixin):
                     "grant_type": "refresh_token",
                     **self._login_client_credentials_payload(),
                     "refresh_token": refresh_token,
+                    "scope": "openid profile email",
                 },
             )
             if resp.is_success:
                 return resp.json()
 
+            detail = t("keycloak.token_refresh_failed_status", status=resp.status_code)
             try:
                 error_body = resp.json()
                 if isinstance(error_body, dict):
                     detail = (
-                        error_body.get("error_description")
-                        or error_body.get("error")
-                        or t("keycloak.token_refresh_failed_status", status=resp.status_code)
+                        error_body.get("error_description") or error_body.get("error") or detail
                     )
             except Exception:
-                detail = t("keycloak.token_refresh_failed_status", status=resp.status_code)
+                pass
             raise ValueError(detail)
 
     # ------------------------------------------------------------------

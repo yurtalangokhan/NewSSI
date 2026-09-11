@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
@@ -131,7 +132,7 @@ export default function ProviderCreationModal({
         deployment_name: values.deployment_name,
       };
 
-      const initialResponse = await fetch(
+      const initialResponse = await authenticatedFetch(
         "/api/admin/embedding/test-embedding",
         {
           method: "POST",
@@ -148,7 +149,7 @@ export default function ProviderCreationModal({
         return;
       }
 
-      const response = await fetch(EMBEDDING_PROVIDERS_ADMIN_URL, {
+      const response = await authenticatedFetch(EMBEDDING_PROVIDERS_ADMIN_URL, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -275,7 +276,11 @@ export default function ProviderCreationModal({
                         onChange={(e) => handleFileUpload(e, setFieldValue)}
                         className="text-lg w-full p-1"
                       />
-                      {fileName && <p>{t("uploadedFileText", { fileName })}</p>}
+                      {fileName && (
+                        <Text as="p">
+                          {t("uploadedFileText", { fileName })}
+                        </Text>
+                      )}
                     </>
                   ) : (
                     <TextFormField

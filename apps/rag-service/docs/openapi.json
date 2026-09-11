@@ -1,0 +1,3666 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "LangConnect API",
+    "description": "A REST API for a RAG system using FastAPI and LangChain",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/collections": {
+      "get": {
+        "tags": [
+          "collections"
+        ],
+        "summary": "Collections List",
+        "description": "Lists all available vector collections (name and UUID).",
+        "operationId": "collections_list_api_v1_collections_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CollectionResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Collections List Api V1 Collections Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "collections"
+        ],
+        "summary": "Collections Create",
+        "description": "Creates a new vector collection by name with optional metadata.",
+        "operationId": "collections_create_api_v1_collections_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectionCreate"
+              },
+              "example": {
+                "name": "Sample Name",
+                "metadata": {
+                  "key": "value",
+                  "nested": {
+                    "data": "example"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/collections/{collection_id}": {
+      "get": {
+        "tags": [
+          "collections"
+        ],
+        "summary": "Collections Get",
+        "description": "Retrieves details (name and UUID) of a specific vector collection.",
+        "operationId": "collections_get_api_v1_collections__collection_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Collection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "collections"
+        ],
+        "summary": "Collections Delete",
+        "description": "Deletes a specific vector collection by name.",
+        "operationId": "collections_delete_api_v1_collections__collection_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Collection Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "collections"
+        ],
+        "summary": "Collections Update",
+        "description": "Updates a specific vector collection's name and/or metadata.",
+        "operationId": "collections_update_api_v1_collections__collection_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Collection Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectionUpdate"
+              },
+              "example": {
+                "name": "Sample Name",
+                "metadata": {
+                  "key": "value",
+                  "nested": {
+                    "data": "example"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/force": {
+      "delete": {
+        "tags": [
+          "collections"
+        ],
+        "summary": "Collections Force Delete",
+        "description": "Deletes a collection while bypassing connector-managed read-only checks.",
+        "operationId": "collections_force_delete_api_v1_collections__collection_id__force_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Collection Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasources/knowledge-selector": {
+      "get": {
+        "tags": [
+          "datasources"
+        ],
+        "summary": "Knowledge Selector",
+        "description": "Return categorised knowledge sources for the agent editor.\n\nReturns two lists:\n- ``document_processing``: all Milvus-backed collections (vector similarity search)\n- ``knowledge_graph``: collections that have a built knowledge graph in Neo4j",
+        "operationId": "knowledge_selector_api_v1_datasources_knowledge_selector_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "items": {
+                      "additionalProperties": true,
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "type": "object",
+                  "title": "Response Knowledge Selector Api V1 Datasources Knowledge Selector Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/collections/{collection_id}/documents": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Documents Create",
+        "description": "Processes and indexes (adds) new document files with optional metadata.",
+        "operationId": "documents_create_api_v1_collections__collection_id__documents_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Collection Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_documents_create_api_v1_collections__collection_id__documents_post"
+              },
+              "example": {
+                "files": "document.pdf",
+                "metadatas_json": {
+                  "key": "value",
+                  "nested": {
+                    "data": "example"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Documents Create Api V1 Collections  Collection Id  Documents Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Documents List",
+        "description": "Lists documents within a specific collection.",
+        "operationId": "documents_list_api_v1_collections__collection_id__documents_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Collection Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Documents List Api V1 Collections  Collection Id  Documents Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/documents/upload-jobs": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Documents Upload Job Start",
+        "description": "Start an async upload/embedding job and return immediately.\n\nPoll /collections/{collection_id}/documents/upload-jobs/status to track\nprogress. Progress survives page navigation on the frontend since it is\ntracked server-side, keyed by collection_id.",
+        "operationId": "documents_upload_job_start_api_v1_collections__collection_id__documents_upload_jobs_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Collection Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_documents_upload_job_start_api_v1_collections__collection_id__documents_upload_jobs_post"
+              },
+              "example": {
+                "files": "document.pdf",
+                "metadatas_json": {
+                  "key": "value",
+                  "nested": {
+                    "data": "example"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadJobStartResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/documents/upload-jobs/status": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Documents Upload Job Status",
+        "description": "Get the current upload job progress for a collection.\n\nReturns ``null`` when no upload job has ever been started for this\ncollection.",
+        "operationId": "documents_upload_job_status_api_v1_collections__collection_id__documents_upload_jobs_status_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Collection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/UploadProgress"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Documents Upload Job Status Api V1 Collections  Collection Id  Documents Upload Jobs Status Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/documents/{document_id}/chunks": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Documents List Chunks",
+        "description": "Lists a page of chunks (plus file-level stats) for a document (file_id).\n\nChunks are paginated \u2014 large files can have thousands of chunks, and\nfetching them all in one response is heavy on both Milvus and the\nbrowser. Use `stats.total_chunks` / `has_more` to drive incremental\nloading on the client.",
+        "operationId": "documents_list_chunks_api_v1_collections__collection_id__documents__document_id__chunks_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Collection Id"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Documents List Chunks Api V1 Collections  Collection Id  Documents  Document Id  Chunks Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/documents/{document_id}": {
+      "delete": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Documents Delete",
+        "description": "Deletes a specific document from a collection by its ID.",
+        "operationId": "documents_delete_api_v1_collections__collection_id__documents__document_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Collection Id"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Documents Delete Api V1 Collections  Collection Id  Documents  Document Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/documents/search": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Documents Search",
+        "description": "Search for documents within a specific collection.",
+        "operationId": "documents_search_api_v1_collections__collection_id__documents_search_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Collection Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchQuery"
+              },
+              "example": {
+                "query": "search term",
+                "limit": 10,
+                "filter": "sample text"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SearchResult"
+                  },
+                  "title": "Response Documents Search Api V1 Collections  Collection Id  Documents Search Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/build": {
+      "post": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Build Graph",
+        "description": "Trigger knowledge graph construction from a vector collection.\n\nThis runs in the background and returns immediately.\nPoll /graph/build/{collection_id}/status to track progress.",
+        "operationId": "build_graph_api_v1_graph_build_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphBuildRequest"
+              },
+              "example": {
+                "collection_id": "abc123def456",
+                "entity_types": "user",
+                "relationship_types": "user"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphBuildResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/graph/build/{collection_id}/status": {
+      "get": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Get Build Status",
+        "description": "Get the current build progress for a collection.\n\nReturns ``null`` when no build has ever been started for this\ncollection, so the frontend can distinguish \"never built\" from\n\"pending\".",
+        "operationId": "get_build_status_api_v1_graph_build__collection_id__status_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BuildProgress"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Build Status Api V1 Graph Build  Collection Id  Status Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/build/{collection_id}/pause": {
+      "post": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Pause Build",
+        "description": "Pause a currently running graph build.",
+        "operationId": "pause_build_api_v1_graph_build__collection_id__pause_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphBuildResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/build/{collection_id}/resume": {
+      "post": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Resume Build",
+        "description": "Resume a paused graph build.",
+        "operationId": "resume_build_api_v1_graph_build__collection_id__resume_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphBuildResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/build/{collection_id}/stop": {
+      "post": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Stop Build",
+        "description": "Request cancellation for a currently running graph build.",
+        "operationId": "stop_build_api_v1_graph_build__collection_id__stop_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphBuildResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/collections": {
+      "get": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "List Graph Collections",
+        "description": "Return the list of collection IDs that have a knowledge graph built.",
+        "operationId": "list_graph_collections_api_v1_graph_collections_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/graph/collections/{collection_id}/nodes": {
+      "get": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "List Nodes",
+        "description": "List nodes in the knowledge graph for a collection.",
+        "operationId": "list_nodes_api_v1_graph_collections__collection_id__nodes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Label"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/collections/{collection_id}/edges": {
+      "get": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "List Edges",
+        "description": "List edges (relationships) in the knowledge graph for a collection.",
+        "operationId": "list_edges_api_v1_graph_collections__collection_id__edges_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/collections/{collection_id}/data": {
+      "get": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Get Graph Data",
+        "description": "Get full graph data (nodes + edges) for visualization.",
+        "operationId": "get_graph_data_api_v1_graph_collections__collection_id__data_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id"
+            }
+          },
+          {
+            "name": "node_limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 200,
+              "title": "Node Limit"
+            }
+          },
+          {
+            "name": "edge_limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Edge Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphData"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/collections/{collection_id}/data/scalable": {
+      "get": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Get Scalable Graph Data",
+        "description": "Scalable graph visualization endpoint.\n\nModes:\n    - auto: Automatically choose best mode based on graph size\n    - overview: Clustered supernodes for large graphs\n    - expand: Drill into a cluster (requires cluster_label)\n    - neighborhood: Ego graph around a node (requires node_id)\n    - full: All nodes sorted by importance",
+        "operationId": "get_scalable_graph_data_api_v1_graph_collections__collection_id__data_scalable_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(auto|overview|expand|neighborhood|full)$",
+              "default": "auto",
+              "title": "Mode"
+            }
+          },
+          {
+            "name": "node_limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 5000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Node Limit"
+            }
+          },
+          {
+            "name": "edge_limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": 1,
+              "default": 1000,
+              "title": "Edge Limit"
+            }
+          },
+          {
+            "name": "cluster_label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cluster Label"
+            }
+          },
+          {
+            "name": "node_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Node Id"
+            }
+          },
+          {
+            "name": "depth",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 3,
+              "minimum": 1,
+              "default": 1,
+              "title": "Depth"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClusteredGraphData"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/collections/{collection_id}/neighborhood": {
+      "get": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Get Neighborhood",
+        "description": "Get ego-graph (neighborhood) around a specific node.",
+        "operationId": "get_neighborhood_api_v1_graph_collections__collection_id__neighborhood_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id"
+            }
+          },
+          {
+            "name": "node_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Node Id"
+            }
+          },
+          {
+            "name": "depth",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 3,
+              "minimum": 1,
+              "default": 1,
+              "title": "Depth"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphData"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/collections/{collection_id}/expand": {
+      "get": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Expand Cluster",
+        "description": "Expand a cluster to see individual nodes with the given label.",
+        "operationId": "expand_cluster_api_v1_graph_collections__collection_id__expand_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id"
+            }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Label"
+            }
+          },
+          {
+            "name": "node_limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 200,
+              "title": "Node Limit"
+            }
+          },
+          {
+            "name": "edge_limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Edge Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphData"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/collections/{collection_id}/stats": {
+      "get": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Get Graph Stats",
+        "description": "Get statistics about the knowledge graph for a collection.",
+        "operationId": "get_graph_stats_api_v1_graph_collections__collection_id__stats_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id"
+            }
+          },
+          {
+            "name": "scope_label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Scope stats to this label group",
+              "title": "Scope Label"
+            },
+            "description": "Scope stats to this label group"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphStats"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/collections/{collection_id}/stats/labels": {
+      "get": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Get Labels Paginated",
+        "description": "Return entity labels with counts (paginated, searchable).",
+        "operationId": "get_labels_paginated_api_v1_graph_collections__collection_id__stats_labels_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "scope_label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Scope to neighbour labels of this label group",
+              "title": "Scope Label"
+            },
+            "description": "Scope to neighbour labels of this label group"
+          },
+          {
+            "name": "rel_type_filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated relationship types to cross-filter labels by",
+              "title": "Rel Type Filter"
+            },
+            "description": "Comma-separated relationship types to cross-filter labels by"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedCounts"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/collections/{collection_id}/stats/relationship-types": {
+      "get": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Get Relationship Types Paginated",
+        "description": "Return relationship types with counts (paginated, searchable).",
+        "operationId": "get_relationship_types_paginated_api_v1_graph_collections__collection_id__stats_relationship_types_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "scope_label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Scope to relationships involving this label group",
+              "title": "Scope Label"
+            },
+            "description": "Scope to relationships involving this label group"
+          },
+          {
+            "name": "scope_skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Chunk offset \u2014 scopes counts to a node slice within the label",
+              "title": "Scope Skip"
+            },
+            "description": "Chunk offset \u2014 scopes counts to a node slice within the label"
+          },
+          {
+            "name": "scope_limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Chunk size \u2014 scopes counts to a node slice within the label",
+              "title": "Scope Limit"
+            },
+            "description": "Chunk size \u2014 scopes counts to a node slice within the label"
+          },
+          {
+            "name": "label_filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated entity labels to cross-filter relationship types by",
+              "title": "Label Filter"
+            },
+            "description": "Comma-separated entity labels to cross-filter relationship types by"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedCounts"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/search": {
+      "post": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Search Graph",
+        "description": "Hybrid search: combines vector similarity + graph traversal with RRF scoring.",
+        "operationId": "search_graph_api_v1_graph_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphSearchQuery"
+              },
+              "example": {
+                "query": "search term",
+                "collection_id": "abc123def456",
+                "limit": 20,
+                "search_type": "hybrid",
+                "vector_weight": 0.5,
+                "graph_weight": 0.5,
+                "include_vector_context": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphSearchResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/graph/collections/{collection_id}/search/entities": {
+      "get": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Search Entities",
+        "description": "Search entities by name (full-text) in the knowledge graph.",
+        "operationId": "search_entities_api_v1_graph_collections__collection_id__search_entities_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/collections/{collection_id}/search/entity-clusters": {
+      "get": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Search Entity Clusters",
+        "description": "Return ``{label: count}`` or ``{chunk_id: count}`` for clusters that contain entities matching *q*.\n\nThis is a lightweight endpoint used by the clustered graph explorer to\nhighlight matching clusters without breaking them apart.",
+        "operationId": "search_entity_clusters_api_v1_graph_collections__collection_id__search_entity_clusters_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Q"
+            }
+          },
+          {
+            "name": "scope_label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "If provided, returns counts for offset-based subclusters",
+              "title": "Scope Label"
+            },
+            "description": "If provided, returns counts for offset-based subclusters"
+          },
+          {
+            "name": "chunk_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Chunk size for subclusters (should match node_limit of expand)",
+              "default": 200,
+              "title": "Chunk Size"
+            },
+            "description": "Chunk size for subclusters (should match node_limit of expand)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/cypher": {
+      "post": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Execute Cypher",
+        "description": "Execute a Cypher query scoped to a collection (read-only recommended).",
+        "operationId": "execute_cypher_api_v1_graph_cypher_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CypherQueryRequest"
+              },
+              "example": {
+                "query": "search term",
+                "collection_id": "abc123def456",
+                "parameters": {
+                  "key": "value"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/graph/collections/{collection_id}": {
+      "delete": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Delete Graph",
+        "description": "Delete the entire knowledge graph for a collection.",
+        "operationId": "delete_graph_api_v1_graph_collections__collection_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/health": {
+      "get": {
+        "tags": [
+          "graph-rag"
+        ],
+        "summary": "Graph Health",
+        "description": "Check Neo4j connectivity.",
+        "operationId": "graph_health_api_v1_graph_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/retrieval": {
+      "post": {
+        "tags": [
+          "retrieval"
+        ],
+        "summary": "Retrieve Knowledge",
+        "description": "Retrieve vector and/or graph context for an authorized collection.",
+        "operationId": "retrieve_knowledge_api_v1_retrieval_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetrievalRequestBody"
+              },
+              "example": {
+                "query": "search term",
+                "collection_id": "abc123def456",
+                "kind": "vector",
+                "limit": 10
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalResponseBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "summary": "Api Health Check",
+        "description": "Versioned health check endpoint.",
+        "operationId": "api_health_check_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Api Health Check Api V1 Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/health/ready": {
+      "get": {
+        "summary": "Api Readiness Check",
+        "description": "Readiness endpoint reporting dependency state.",
+        "operationId": "api_readiness_check_api_v1_health_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_documents_create_api_v1_collections__collection_id__documents_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "format": "binary",
+              "example": "item"
+            },
+            "type": "array",
+            "title": "Files",
+            "example": "document.pdf"
+          },
+          "metadatas_json": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadatas Json",
+            "example": {
+              "key": "value",
+              "nested": {
+                "data": "example"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_documents_create_api_v1_collections__collection_id__documents_post"
+      },
+      "Body_documents_upload_job_start_api_v1_collections__collection_id__documents_upload_jobs_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "format": "binary",
+              "example": "item"
+            },
+            "type": "array",
+            "title": "Files",
+            "example": "document.pdf"
+          },
+          "metadatas_json": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadatas Json",
+            "example": {
+              "key": "value",
+              "nested": {
+                "data": "example"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_documents_upload_job_start_api_v1_collections__collection_id__documents_upload_jobs_post"
+      },
+      "BuildProgress": {
+        "properties": {
+          "collection_id": {
+            "type": "string",
+            "title": "Collection Id",
+            "example": "abc123def456"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BuildStatus",
+            "default": "pending",
+            "example": "pending"
+          },
+          "is_paused": {
+            "type": "boolean",
+            "title": "Is Paused",
+            "default": false,
+            "example": false
+          },
+          "total_chunks": {
+            "type": "integer",
+            "title": "Total Chunks",
+            "default": 0,
+            "example": 0
+          },
+          "processed_chunks": {
+            "type": "integer",
+            "title": "Processed Chunks",
+            "default": 0,
+            "example": 0
+          },
+          "extracted_entities": {
+            "type": "integer",
+            "title": "Extracted Entities",
+            "default": 0,
+            "example": 0
+          },
+          "extracted_relations": {
+            "type": "integer",
+            "title": "Extracted Relations",
+            "default": 0,
+            "example": 0
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "example": "sample text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "collection_id"
+        ],
+        "title": "BuildProgress",
+        "description": "Progress information for a graph build pipeline."
+      },
+      "BuildStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "extracting",
+          "building",
+          "completed",
+          "failed"
+        ],
+        "title": "BuildStatus",
+        "description": "Status of a graph build pipeline."
+      },
+      "ClusterEdge": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Aggregated edge identifier.",
+            "example": "abc123def456"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "Source cluster id.",
+            "example": "sample text"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target",
+            "description": "Target cluster id.",
+            "example": "sample text"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "Dominant relationship type.",
+            "default": "RELATED_TO",
+            "example": "RELATED_TO"
+          },
+          "weight": {
+            "type": "integer",
+            "title": "Weight",
+            "description": "Number of original edges bundled.",
+            "default": 1,
+            "example": 1
+          },
+          "relationship_types": {
+            "items": {
+              "type": "string",
+              "example": "item"
+            },
+            "type": "array",
+            "title": "Relationship Types",
+            "description": "All relationship types in this bundle.",
+            "example": "user"
+          },
+          "properties": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Properties",
+            "example": {
+              "key": "value"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "target"
+        ],
+        "title": "ClusterEdge",
+        "description": "An aggregated edge between two clusters."
+      },
+      "ClusterNode": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Cluster identifier (e.g. 'cluster_0').",
+            "example": "abc123def456"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "Dominant label in this cluster.",
+            "example": "Person"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Display name for the cluster.",
+            "example": "Sample Name"
+          },
+          "node_count": {
+            "type": "integer",
+            "title": "Node Count",
+            "description": "Number of nodes in this cluster.",
+            "default": 0,
+            "example": 0
+          },
+          "top_entities": {
+            "items": {
+              "type": "string",
+              "example": "item"
+            },
+            "type": "array",
+            "title": "Top Entities",
+            "description": "Names of the most important entities in the cluster.",
+            "example": [
+              "item1",
+              "item2"
+            ]
+          },
+          "properties": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Properties",
+            "example": {
+              "key": "value"
+            }
+          },
+          "is_cluster": {
+            "type": "boolean",
+            "title": "Is Cluster",
+            "description": "Flag to identify supernode clusters.",
+            "default": true,
+            "example": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "name"
+        ],
+        "title": "ClusterNode",
+        "description": "A supernode representing a cluster of entities."
+      },
+      "ClusteredGraphData": {
+        "properties": {
+          "nodes": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/GraphNode"
+                },
+                {
+                  "$ref": "#/components/schemas/ClusterNode"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Nodes",
+            "example": {
+              "id": "node_123",
+              "type": "KNOWS"
+            }
+          },
+          "edges": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/GraphEdge"
+                },
+                {
+                  "$ref": "#/components/schemas/ClusterEdge"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Edges",
+            "example": {
+              "id": "node_123",
+              "type": "KNOWS"
+            }
+          },
+          "total_node_count": {
+            "type": "integer",
+            "title": "Total Node Count",
+            "description": "Total nodes in DB.",
+            "default": 0,
+            "example": 0
+          },
+          "total_edge_count": {
+            "type": "integer",
+            "title": "Total Edge Count",
+            "description": "Total edges in DB.",
+            "default": 0,
+            "example": 0
+          },
+          "cluster_count": {
+            "type": "integer",
+            "title": "Cluster Count",
+            "description": "Number of clusters generated.",
+            "default": 0,
+            "example": 0
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode",
+            "description": "'overview' | 'expand' | 'neighborhood' | 'full'",
+            "default": "overview",
+            "example": "overview"
+          },
+          "scope_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Label",
+            "description": "The label currently being viewed (expand/sub-cluster). None for overview/full modes.",
+            "example": "Person"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata",
+            "description": "Optional metadata: neighbor_label_counts, rel_type_counts for the current scope.",
+            "example": {
+              "key": "value",
+              "nested": {
+                "data": "example"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "title": "ClusteredGraphData",
+        "description": "Clustered graph data for scalable visualization."
+      },
+      "CollectionCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "The unique name of the collection.",
+            "example": "Sample Name"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata",
+            "description": "Optional metadata for the collection.",
+            "example": {
+              "key": "value",
+              "nested": {
+                "data": "example"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "CollectionCreate",
+        "description": "Schema for creating a new collection."
+      },
+      "CollectionResponse": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "title": "Uuid",
+            "description": "The unique identifier of the vector collection.",
+            "example": "abc123def456"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "The name of the collection.",
+            "example": "Sample Name"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata",
+            "description": "Metadata associated with the collection.",
+            "example": {
+              "key": "value",
+              "nested": {
+                "data": "example"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuid",
+          "name"
+        ],
+        "title": "CollectionResponse",
+        "description": "Schema for representing a vector collection."
+      },
+      "CollectionUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "New name for the collection.",
+            "example": "Sample Name"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata",
+            "description": "Updated metadata for the collection.",
+            "example": {
+              "key": "value",
+              "nested": {
+                "data": "example"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "title": "CollectionUpdate",
+        "description": "Schema for updating an existing collection."
+      },
+      "CypherQueryRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query",
+            "description": "Cypher query to execute.",
+            "example": "search term"
+          },
+          "collection_id": {
+            "type": "string",
+            "title": "Collection Id",
+            "description": "Collection scope.",
+            "example": "abc123def456"
+          },
+          "parameters": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Parameters",
+            "example": {
+              "key": "value"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "collection_id"
+        ],
+        "title": "CypherQueryRequest",
+        "description": "Request to execute a raw Cypher query."
+      },
+      "GraphBuildRequest": {
+        "properties": {
+          "collection_id": {
+            "type": "string",
+            "title": "Collection Id",
+            "description": "UUID of the source vector collection.",
+            "example": "abc123def456"
+          },
+          "entity_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Types",
+            "description": "Optional list of entity types to extract (e.g. ['Person', 'Organization']).",
+            "example": "user"
+          },
+          "relationship_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship Types",
+            "description": "Optional list of relationship types to extract.",
+            "example": "user"
+          }
+        },
+        "type": "object",
+        "required": [
+          "collection_id"
+        ],
+        "title": "GraphBuildRequest",
+        "description": "Request to build a knowledge graph from a collection."
+      },
+      "GraphBuildResponse": {
+        "properties": {
+          "collection_id": {
+            "type": "string",
+            "title": "Collection Id",
+            "example": "abc123def456"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BuildStatus",
+            "example": "pending"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "example": "Hello, world!"
+          }
+        },
+        "type": "object",
+        "required": [
+          "collection_id",
+          "status",
+          "message"
+        ],
+        "title": "GraphBuildResponse",
+        "description": "Response for a graph build request."
+      },
+      "GraphData": {
+        "properties": {
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/GraphNode"
+            },
+            "type": "array",
+            "title": "Nodes",
+            "example": {
+              "id": "node_123",
+              "type": "KNOWS"
+            }
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/GraphEdge"
+            },
+            "type": "array",
+            "title": "Edges",
+            "example": {
+              "id": "node_123",
+              "type": "KNOWS"
+            }
+          }
+        },
+        "type": "object",
+        "title": "GraphData",
+        "description": "Combined graph data with nodes and edges."
+      },
+      "GraphEdge": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Neo4j internal element id or custom id.",
+            "example": "abc123def456"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "Element id of the source node.",
+            "example": "sample text"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target",
+            "description": "Element id of the target node.",
+            "example": "sample text"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "Relationship type (e.g. WORKS_AT, KNOWS).",
+            "example": "user"
+          },
+          "properties": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Properties",
+            "description": "Additional properties stored on the relationship.",
+            "example": {
+              "key": "value"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "target",
+          "type"
+        ],
+        "title": "GraphEdge",
+        "description": "An edge (relationship) in the knowledge graph."
+      },
+      "GraphNode": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Neo4j internal element id or custom id.",
+            "example": "abc123def456"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "Primary label of the node (e.g. Person, Company).",
+            "example": "Person"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Human-readable name of the entity.",
+            "example": "Sample Name"
+          },
+          "properties": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Properties",
+            "description": "Additional properties stored on the node.",
+            "example": {
+              "key": "value"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "name"
+        ],
+        "title": "GraphNode",
+        "description": "A node in the knowledge graph."
+      },
+      "GraphSearchQuery": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query",
+            "description": "Natural language query or entity name.",
+            "example": "search term"
+          },
+          "collection_id": {
+            "type": "string",
+            "title": "Collection Id",
+            "description": "Collection to search within.",
+            "example": "abc123def456"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "default": 20,
+            "example": 20
+          },
+          "search_type": {
+            "type": "string",
+            "title": "Search Type",
+            "description": "Search type: 'entity', 'cypher', or 'hybrid'.",
+            "default": "hybrid",
+            "example": "hybrid"
+          },
+          "vector_weight": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Vector Weight",
+            "description": "Weight for vector (cosine similarity) results in RRF fusion.",
+            "default": 0.5,
+            "example": 0.5
+          },
+          "graph_weight": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Graph Weight",
+            "description": "Weight for graph (entity traversal) results in RRF fusion.",
+            "default": 0.5,
+            "example": 0.5
+          },
+          "include_vector_context": {
+            "type": "boolean",
+            "title": "Include Vector Context",
+            "description": "Whether graph search should also include supporting vector results from the source document collection.",
+            "default": false,
+            "example": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "collection_id"
+        ],
+        "title": "GraphSearchQuery",
+        "description": "Query for searching the knowledge graph."
+      },
+      "GraphSearchResult": {
+        "properties": {
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/GraphNode"
+            },
+            "type": "array",
+            "title": "Nodes",
+            "example": {
+              "id": "node_123",
+              "type": "KNOWS"
+            }
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/GraphEdge"
+            },
+            "type": "array",
+            "title": "Edges",
+            "example": {
+              "id": "node_123",
+              "type": "KNOWS"
+            }
+          },
+          "context": {
+            "type": "string",
+            "title": "Context",
+            "description": "Formatted text context from the graph for RAG.",
+            "default": "",
+            "example": ""
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "description": "Relevance score.",
+            "default": 0.0,
+            "example": 0.0
+          }
+        },
+        "type": "object",
+        "title": "GraphSearchResult",
+        "description": "Result from a graph search."
+      },
+      "GraphStats": {
+        "properties": {
+          "collection_id": {
+            "type": "string",
+            "title": "Collection Id",
+            "example": "abc123def456"
+          },
+          "node_count": {
+            "type": "integer",
+            "title": "Node Count",
+            "default": 0,
+            "example": 0
+          },
+          "edge_count": {
+            "type": "integer",
+            "title": "Edge Count",
+            "default": 0,
+            "example": 0
+          },
+          "label_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Label Counts",
+            "example": 42
+          },
+          "relationship_type_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Relationship Type Counts",
+            "example": 42
+          }
+        },
+        "type": "object",
+        "required": [
+          "collection_id"
+        ],
+        "title": "GraphStats",
+        "description": "Statistics about the knowledge graph for a collection."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail",
+            "example": [
+              "item"
+            ]
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "PaginatedCounts": {
+        "properties": {
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "List of {name, count} dicts.",
+            "example": [
+              {
+                "key": "value"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total number of items (before pagination).",
+            "default": 0,
+            "example": 0
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page",
+            "description": "Current page number (1-based).",
+            "default": 1,
+            "example": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size",
+            "description": "Items per page.",
+            "default": 25,
+            "example": 25
+          },
+          "has_next": {
+            "type": "boolean",
+            "title": "Has Next",
+            "description": "Whether there is a next page.",
+            "default": false,
+            "example": false
+          }
+        },
+        "type": "object",
+        "title": "PaginatedCounts",
+        "description": "Paginated list of name:count pairs with search support."
+      },
+      "RetrievalHitBody": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "example": "abc123def456"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content",
+            "example": "This is sample content text for the request."
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "example": 24
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "example": "sample text"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata",
+            "example": {
+              "key": "value",
+              "nested": {
+                "data": "example"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "content",
+          "score",
+          "source",
+          "metadata"
+        ],
+        "title": "RetrievalHitBody",
+        "description": "One retrieval hit in the HTTP response."
+      },
+      "RetrievalRequestBody": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query",
+            "example": "search term"
+          },
+          "collection_id": {
+            "type": "string",
+            "title": "Collection Id",
+            "example": "abc123def456"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "vector",
+              "graph",
+              "hybrid"
+            ],
+            "title": "Kind",
+            "default": "vector",
+            "example": "vector"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "default": 10,
+            "example": 10
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "query",
+          "collection_id"
+        ],
+        "title": "RetrievalRequestBody",
+        "description": "HTTP body for the agent-facing retrieval contract."
+      },
+      "RetrievalResponseBody": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "example": "vector"
+          },
+          "collection_id": {
+            "type": "string",
+            "title": "Collection Id",
+            "example": "abc123def456"
+          },
+          "hits": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalHitBody"
+            },
+            "type": "array",
+            "title": "Hits",
+            "example": [
+              "item"
+            ]
+          },
+          "context": {
+            "type": "string",
+            "title": "Context",
+            "example": "This is sample content text for the request."
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "collection_id",
+          "hits",
+          "context"
+        ],
+        "title": "RetrievalResponseBody",
+        "description": "HTTP response for the agent-facing retrieval contract."
+      },
+      "SearchQuery": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query",
+            "example": "search term"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit",
+            "default": 10,
+            "example": 10
+          },
+          "filter": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filter",
+            "example": "sample text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "SearchQuery"
+      },
+      "SearchResult": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "example": "abc123def456"
+          },
+          "page_content": {
+            "type": "string",
+            "title": "Page Content",
+            "example": "This is sample content text for the request."
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata",
+            "example": {
+              "key": "value",
+              "nested": {
+                "data": "example"
+              }
+            }
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "example": 3
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "page_content",
+          "score"
+        ],
+        "title": "SearchResult"
+      },
+      "UploadJobStartResponse": {
+        "properties": {
+          "collection_id": {
+            "type": "string",
+            "title": "Collection Id",
+            "example": "abc123def456"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UploadStatus",
+            "example": "pending"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "example": "Hello, world!"
+          }
+        },
+        "type": "object",
+        "required": [
+          "collection_id",
+          "status",
+          "message"
+        ],
+        "title": "UploadJobStartResponse",
+        "description": "Response for a document upload job start request."
+      },
+      "UploadProgress": {
+        "properties": {
+          "collection_id": {
+            "type": "string",
+            "title": "Collection Id",
+            "example": "abc123def456"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UploadStatus",
+            "default": "pending",
+            "example": "pending"
+          },
+          "total_files": {
+            "type": "integer",
+            "title": "Total Files",
+            "default": 0,
+            "example": 0
+          },
+          "processed_files": {
+            "type": "integer",
+            "title": "Processed Files",
+            "default": 0,
+            "example": 0
+          },
+          "current_file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current File",
+            "example": "document.pdf"
+          },
+          "total_chunks": {
+            "type": "integer",
+            "title": "Total Chunks",
+            "default": 0,
+            "example": 0
+          },
+          "processed_chunks": {
+            "type": "integer",
+            "title": "Processed Chunks",
+            "default": 0,
+            "example": 0
+          },
+          "duplicate_files": {
+            "items": {
+              "type": "string",
+              "example": "item"
+            },
+            "type": "array",
+            "title": "Duplicate Files",
+            "default": [],
+            "example": []
+          },
+          "failed_files": {
+            "items": {
+              "type": "string",
+              "example": "item"
+            },
+            "type": "array",
+            "title": "Failed Files",
+            "default": [],
+            "example": []
+          },
+          "added_chunk_ids": {
+            "items": {
+              "type": "string",
+              "example": "item"
+            },
+            "type": "array",
+            "title": "Added Chunk Ids",
+            "default": [],
+            "example": []
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "example": "sample text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "collection_id"
+        ],
+        "title": "UploadProgress",
+        "description": "Progress information for a document upload/embedding job."
+      },
+      "UploadStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "processing",
+          "completed",
+          "failed"
+        ],
+        "title": "UploadStatus",
+        "description": "Status of a document upload/embedding job."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location",
+            "example": [
+              "item"
+            ]
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message",
+            "example": "sample text"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type",
+            "example": "user"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

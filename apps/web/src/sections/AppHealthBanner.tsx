@@ -5,6 +5,7 @@ import {
   authenticatedFetch,
   errorHandlingFetcher,
   RedirectError,
+  refreshSessionProactively,
 } from "@/lib/fetcher";
 import useSWR from "swr";
 import Modal from "@/refresh-components/Modal";
@@ -20,6 +21,12 @@ import { useUser } from "@/providers/UserProvider";
 
 import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
+
+/** Renew this long before the access token expires. */
+const PROACTIVE_REFRESH_LEAD_SECONDS = 60;
+/** Never schedule a renewal tighter than this, to avoid a tight retry loop. */
+const MIN_REFRESH_DELAY_SECONDS = 5;
+const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
 export default function AppHealthBanner() {
   const router = useRouter();
@@ -45,21 +52,34 @@ export default function AppHealthBanner() {
     await refreshUser();
   }, [refreshUser]);
 
+  const markSessionExpired = useCallback(() => {
+    setExpired(true);
+    if (!pathname?.includes("/auth")) {
+      setShowLoggedOutModal(true);
+    }
+  }, [pathname]);
+
   const verifySession = useCallback(async () => {
     try {
-      const response = await authenticatedFetch("/api/health");
+      // `/api/health` is a static route that always answers 200, so probing it
+      // could never detect an expired session. `/api/me` is authenticated, and
+      // `redirectOnAuthError: false` keeps the decision here instead of hard
+      // navigating out from under the user.
+      const response = await authenticatedFetch("/api/me", {
+        redirectOnAuthError: false,
+      });
       if (response.ok) {
         await synchronizeRefreshedSession();
+        return;
       }
-    } catch (error) {
-      if (error instanceof RedirectError) {
-        setExpired(true);
-        if (!pathname?.includes("/auth")) {
-          setShowLoggedOutModal(true);
-        }
+      if (response.status === 401 || response.status === 403) {
+        markSessionExpired();
       }
+    } catch {
+      // Network failure - the backend banner covers this; don't log the user
+      // out over a blip.
     }
-  }, [pathname, synchronizeRefreshedSession]);
+  }, [markSessionExpired, synchronizeRefreshedSession]);
 
   useEffect(() => {
     const handleSessionRefreshed = () => {
@@ -78,7 +98,8 @@ export default function AppHealthBanner() {
     };
   }, [synchronizeRefreshedSession]);
 
-  // Function to set up expiration timeout
+  // Renew slightly before the access token actually dies, so the user never
+  // makes a request with an expired token in the first place.
   const setupExpirationTimeout = useCallback(
     (secondsUntilExpiration: number) => {
       // Clear any existing timeout
@@ -86,13 +107,27 @@ export default function AppHealthBanner() {
         clearTimeout(expirationTimeoutRef.current);
       }
 
-      // Set timeout to show logout modal when session expires
-      const timeUntilExpire = (secondsUntilExpiration + 10) * 1000;
+      const secondsUntilRefresh = Math.max(
+        secondsUntilExpiration - PROACTIVE_REFRESH_LEAD_SECONDS,
+        MIN_REFRESH_DELAY_SECONDS
+      );
+      const delayMs = secondsUntilRefresh * 1000;
+      if (delayMs > MAX_TIMEOUT_MS) {
+        // setTimeout overflows past ~24.8 days and would fire immediately.
+        return;
+      }
+
       expirationTimeoutRef.current = setTimeout(() => {
-        void verifySession();
-      }, timeUntilExpire);
+        void (async () => {
+          if (await refreshSessionProactively()) {
+            await synchronizeRefreshedSession();
+            return;
+          }
+          await verifySession();
+        })();
+      }, delayMs);
     },
-    [verifySession]
+    [synchronizeRefreshedSession, verifySession]
   );
 
   // Clean up any timeouts/intervals when component unmounts
@@ -132,7 +167,7 @@ export default function AppHealthBanner() {
               throw new Error("Failed to refresh token");
             }
 
-            const response = await fetch(
+            const response = await authenticatedFetch(
               "/api/enterprise-settings/refresh-token",
               {
                 method: "POST",

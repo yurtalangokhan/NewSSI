@@ -530,3 +530,330 @@ def test_reconstruct_messages_groups_web_search_and_fetch_webpage_turns_consiste
 
     # Turn 4: final answer message_start + stop
     assert by_turn[4] == ["message_start", "stop"]
+
+
+# ---------------------------------------------------------------------------
+# FlowAgent: forked-tree reconstruction with multi-message super-steps, plus
+# persisted graph-stage-timeline replay (.tmp/2026-08-27-flow-agent-
+# checkpoint-and-stage-timeline-design.md).
+# ---------------------------------------------------------------------------
+
+
+def _flow_forked_checkpoints():
+    """A flow turn writes several checkpoints per super-step and adds more
+    than one message at a time. The retry forks from the [human]-only
+    checkpoint. No subgraph-namespace checkpoints appear here — the
+    ThreadController history filter already excluded them."""
+    h1 = HumanMessage(content="rapor hazırla", id="h1")
+    a_step1 = AIMessage(
+        content="", id="a1", tool_calls=[{"name": "web_search", "args": {}, "id": "c1"}]
+    )
+    a_tool = ToolMessage(content="bulgular", tool_call_id="c1", name="web_search")
+    a_final = AIMessage(content="ilk rapor", id="a-final")
+
+    b_step1 = AIMessage(
+        content="", id="b1", tool_calls=[{"name": "web_search", "args": {}, "id": "c2"}]
+    )
+    b_tool = ToolMessage(content="yeni bulgular", tool_call_id="c2", name="web_search")
+    b_final = AIMessage(content="ikinci rapor", id="b-final")
+
+    return [
+        {"checkpoint_id": "root", "parent_checkpoint_id": None, "messages": []},
+        {"checkpoint_id": "c-human", "parent_checkpoint_id": "root", "messages": [h1]},
+        # branch A
+        {
+            "checkpoint_id": "a-1",
+            "parent_checkpoint_id": "c-human",
+            "messages": [h1, a_step1, a_tool],
+        },
+        {
+            "checkpoint_id": "a-2",
+            "parent_checkpoint_id": "a-1",
+            "messages": [h1, a_step1, a_tool, a_final],
+        },
+        # branch B — forked from the same [human]-only checkpoint
+        {
+            "checkpoint_id": "b-1",
+            "parent_checkpoint_id": "c-human",
+            "messages": [h1, b_step1, b_tool],
+        },
+        {
+            "checkpoint_id": "b-2",
+            "parent_checkpoint_id": "b-1",
+            "messages": [h1, b_step1, b_tool, b_final],
+        },
+    ]
+
+
+def test_flow_forked_tree_reconstructs_both_answers_as_siblings():
+    messages, _ = reconstruct_message_tree(
+        _flow_forked_checkpoints(),
+        thread_metadata={"persona_id": 7},
+        chat_session_id="thread-flow-fork",
+    )
+
+    by_content = {m["message"]: m for m in messages if m["message"]}
+    user = next(m for m in messages if m["message_type"] == "user")
+    assert by_content["ilk rapor"]["parent_message"] == user["message_id"]
+    assert by_content["ikinci rapor"]["parent_message"] == user["message_id"]
+    # distinct, non-colliding ids
+    assert by_content["ilk rapor"]["message_id"] != by_content["ikinci rapor"]["message_id"]
+    # newest branch is the active one
+    assert user["latest_child_message"] == by_content["ikinci rapor"]["message_id"]
+
+
+def test_flow_stage_timeline_is_replayed_as_graph_stage_packets_on_the_matching_turn():
+    checkpoints = _flow_forked_checkpoints()
+    metadata = {
+        "persona_id": 7,
+        "flow_stage_timelines": {
+            "a-final": [
+                {"stage_name": "ChatInput-1", "event": "start", "timestamp": 1000},
+                {"stage_name": "ChatInput-1", "event": "end", "timestamp": 1200},
+                {"stage_name": "ReActAgent-x", "event": "start", "timestamp": 1200},
+                {"stage_name": "ReActAgent-x", "event": "end", "timestamp": 2600},
+            ]
+        },
+    }
+    messages, packets_2d = reconstruct_message_tree(
+        checkpoints, thread_metadata=metadata, chat_session_id="thread-flow-fork"
+    )
+
+    assistants = [m for m in messages if m["message_type"] == "assistant"]
+    first_idx = next(i for i, m in enumerate(assistants) if m["message"] == "ilk rapor")
+    second_idx = next(i for i, m in enumerate(assistants) if m["message"] == "ikinci rapor")
+
+    first_types = [p["obj"]["type"] for p in packets_2d[first_idx]]
+    assert first_types[:4] == [
+        "graph_stage_start",
+        "graph_stage_end",
+        "graph_stage_start",
+        "graph_stage_end",
+    ]
+    replayed = packets_2d[first_idx][:4]
+    assert replayed[0]["obj"] == {
+        "type": "graph_stage_start",
+        "stage_name": "ChatInput-1",
+        "timestamp": 1000,
+    }
+    assert replayed[3]["obj"]["timestamp"] == 2600
+
+    # The other branch has no timeline entry — its packet list is untouched.
+    assert not any(p["obj"]["type"].startswith("graph_stage_") for p in packets_2d[second_idx])
+
+
+def test_flow_stage_timeline_replay_works_in_the_flat_reconstruct_messages_path():
+    h1 = HumanMessage(content="soru", id="h1")
+    a_final = AIMessage(content="cevap", id="a-final")
+    messages, packets_2d = reconstruct_messages(
+        [h1, a_final],
+        thread_metadata={
+            "persona_id": 0,
+            "flow_stage_timelines": {
+                "a-final": [
+                    {"stage_name": "Node-1", "event": "start", "timestamp": 5},
+                    {"stage_name": "Node-1", "event": "end", "timestamp": 9},
+                ]
+            },
+        },
+        chat_session_id="thread-flat",
+    )
+
+    assert [p["obj"]["type"] for p in packets_2d[0][:2]] == [
+        "graph_stage_start",
+        "graph_stage_end",
+    ]
+    assert packets_2d[0][0]["obj"]["stage_name"] == "Node-1"
+
+
+def test_flow_stage_timeline_table_is_shared_by_reference_across_branch_clones():
+    """Both sibling branches must see the same lookup table without one
+    branch's walk mutating it for the other."""
+    checkpoints = _flow_forked_checkpoints()
+    table = {
+        "a-final": [{"stage_name": "N", "event": "start", "timestamp": 1}],
+        "b-final": [{"stage_name": "N", "event": "start", "timestamp": 2}],
+    }
+    metadata = {"persona_id": 7, "flow_stage_timelines": table}
+    reconstruct_message_tree(checkpoints, thread_metadata=metadata, chat_session_id="t")
+    assert table == {
+        "a-final": [{"stage_name": "N", "event": "start", "timestamp": 1}],
+        "b-final": [{"stage_name": "N", "event": "start", "timestamp": 2}],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Flow single-turn output — a multi-stage FlowAgent run collapses to ONE
+# assistant turn on reload. Read-only, in reconstruct_message_tree; the
+# compiled graph is never touched. (project_flow_single_turn_output)
+#
+# Rule: a stage's text FOLDS into collapsed reasoning iff a LATER stage in
+# the run still calls a tool (it was prep, not the answer). Every trailing
+# text-only stage IS the answer; consecutive ones concatenate into one
+# bubble. Gated on flow_stage_timelines carrying the run's last message id.
+# ---------------------------------------------------------------------------
+
+
+def _flow_run_checkpoints(react_final="## Final comparison table\n| Model | Ctx |"):
+    """research (web_search) -> analysis (run_python) -> react (text only),
+    then the noop loop/merge/output nodes."""
+    h = HumanMessage(content="research 3 llms")
+    r_call = AIMessage(
+        content="", tool_calls=[{"name": "web_search", "args": {"query": "llama ctx"}, "id": "w1"}]
+    )
+    r_res = ToolMessage(
+        content="TITLE: Llama\nURL: http://x\nSNIPPET: 128k", tool_call_id="w1", name="web_search"
+    )
+    r_final = AIMessage(content="## Research briefing\n- Llama 3.1: 128000", id="ai-research")
+    a_call = AIMessage(
+        content="",
+        tool_calls=[{"name": "run_python", "args": {"code": "print(128000)"}, "id": "p1"}],
+    )
+    a_res = ToolMessage(content="128000", tool_call_id="p1", name="run_python")
+    a_final = AIMessage(content="## Calc summary\nAverage: 128000 tokens", id="ai-analysis")
+    react_msg = AIMessage(content=react_final, id="ai-final")
+
+    after_input = [h]
+    after_research = after_input + [r_call, r_res, r_final]
+    after_analysis = after_research + [a_call, a_res, a_final]
+    after_react = after_analysis + [react_msg]
+    return [
+        {"checkpoint_id": "c0", "parent_checkpoint_id": None, "messages": after_input},
+        {"checkpoint_id": "c1", "parent_checkpoint_id": "c0", "messages": after_research},
+        {"checkpoint_id": "c2", "parent_checkpoint_id": "c1", "messages": after_analysis},
+        {"checkpoint_id": "c3", "parent_checkpoint_id": "c2", "messages": after_react},
+        {"checkpoint_id": "c4", "parent_checkpoint_id": "c3", "messages": after_react},
+        {"checkpoint_id": "c5", "parent_checkpoint_id": "c4", "messages": after_react},
+        {"checkpoint_id": "c6", "parent_checkpoint_id": "c5", "messages": after_react},
+    ]
+
+
+_FLOW_TIMELINE = {
+    "ai-final": [
+        {"stage_name": "node-stage-research", "event": "start", "timestamp": 1},
+        {"stage_name": "node-stage-research", "event": "end", "timestamp": 9},
+    ]
+}
+_FLOW_MD = {"persona_id": 50, "flow_stage_timelines": _FLOW_TIMELINE}
+
+
+def test_flow_run_collapses_to_one_turn_prep_folded_answer_kept():
+    messages, packets_2d = reconstruct_message_tree(
+        _flow_run_checkpoints(), thread_metadata=_FLOW_MD, chat_session_id="t-flow"
+    )
+    assistants = [m for m in messages if m["message_type"] == "assistant"]
+    assert len(assistants) == 1
+    # research (a later stage still calls run_python) -> folded into reasoning
+    # analysis + react (no tool after them) -> concatenated as the answer
+    assert assistants[0]["message"] == (
+        "## Calc summary\nAverage: 128000 tokens\n\n## Final comparison table\n| Model | Ctx |"
+    )
+
+    flat = [p["obj"] for turn in packets_2d for p in turn]
+    reasoning = [p["reasoning"] for p in flat if p.get("type") == "reasoning_delta"]
+    assert any("Research briefing" in r and "128000" in r for r in reasoning)
+    assert not any("Calc summary" in r for r in reasoning)  # answer content, not folded
+    kinds = [p.get("type") for p in flat]
+    assert any(k and "search" in k for k in kinds)
+    assert any(p.get("tool_name") == "run_python" for p in flat)
+    assert kinds.count("graph_stage_start") == 1  # one strip on the one turn
+
+
+def test_flow_run_weak_final_stage_still_keeps_the_real_answer():
+    """The bug from thread 39134dae: react only emitted a references footer.
+    The calc summary (previous text-only stage) must stay in the headline,
+    not be folded away."""
+    messages, _ = reconstruct_message_tree(
+        _flow_run_checkpoints(react_final="## References\n- Meta Llama 3.1 Blog Post"),
+        thread_metadata=_FLOW_MD,
+        chat_session_id="t-weakfinal",
+    )
+    assistants = [m for m in messages if m["message_type"] == "assistant"]
+    assert len(assistants) == 1
+    assert "Calc summary" in assistants[0]["message"]
+    assert "References" in assistants[0]["message"]
+
+
+def test_flow_run_not_collapsed_without_stage_timeline():
+    messages, _ = reconstruct_message_tree(
+        _flow_run_checkpoints(),
+        thread_metadata={"persona_id": 50},
+        chat_session_id="t-noflow",
+    )
+    assert [m["message"] for m in messages if m["message_type"] == "assistant"] == [
+        "## Research briefing\n- Llama 3.1: 128000",
+        "## Calc summary\nAverage: 128000 tokens",
+        "## Final comparison table\n| Model | Ctx |",
+    ]
+
+
+def test_flow_run_not_collapsed_when_trailing_id_absent_from_timeline():
+    messages, _ = reconstruct_message_tree(
+        _flow_run_checkpoints(),
+        thread_metadata={
+            "persona_id": 50,
+            "flow_stage_timelines": {
+                "unrelated": [{"stage_name": "N", "event": "start", "timestamp": 1}]
+            },
+        },
+        chat_session_id="t-mismatch",
+    )
+    assert len([m for m in messages if m["message_type"] == "assistant"]) == 3
+
+
+def test_classic_two_turn_thread_unaffected_even_with_timeline_present():
+    h1, h2 = HumanMessage(content="q1"), HumanMessage(content="q2")
+    a1, a2 = AIMessage(content="answer 1", id="x1"), AIMessage(content="answer 2", id="x2")
+    checkpoints = [
+        {"checkpoint_id": "c0", "parent_checkpoint_id": None, "messages": [h1]},
+        {"checkpoint_id": "c1", "parent_checkpoint_id": "c0", "messages": [h1, a1]},
+        {"checkpoint_id": "c2", "parent_checkpoint_id": "c1", "messages": [h1, a1, h2]},
+        {"checkpoint_id": "c3", "parent_checkpoint_id": "c2", "messages": [h1, a1, h2, a2]},
+    ]
+    messages, _ = reconstruct_message_tree(
+        checkpoints,
+        thread_metadata={"persona_id": 1, "flow_stage_timelines": {"x1": [], "x2": []}},
+        chat_session_id="t-classic",
+    )
+    assert [m["message"] for m in messages if m["message_type"] == "assistant"] == [
+        "answer 1",
+        "answer 2",
+    ]
+
+
+def test_retry_fork_mid_flow_run_is_not_collapsed():
+    h = HumanMessage(content="q")
+    stage = AIMessage(content="stage draft", id="ai-stage")
+    fa, fb = AIMessage(content="final A", id="final-a"), AIMessage(content="final B", id="final-b")
+    checkpoints = [
+        {"checkpoint_id": "c0", "parent_checkpoint_id": None, "messages": [h]},
+        {"checkpoint_id": "s1", "parent_checkpoint_id": "c0", "messages": [h, stage]},
+        {"checkpoint_id": "s2a", "parent_checkpoint_id": "s1", "messages": [h, stage, fa]},
+        {"checkpoint_id": "s2b", "parent_checkpoint_id": "s1", "messages": [h, stage, fb]},
+    ]
+    messages, _ = reconstruct_message_tree(
+        checkpoints,
+        thread_metadata={"persona_id": 50, "flow_stage_timelines": {"final-a": [], "final-b": []}},
+        chat_session_id="t-forkflow",
+    )
+    assert {m["message"] for m in messages if m["message_type"] == "assistant"} == {
+        "stage draft",
+        "final A",
+        "final B",
+    }
+
+
+def test_flow_run_then_classic_turn_in_same_thread():
+    cps = _flow_run_checkpoints()
+    tail = cps[-1]["messages"]
+    h2 = HumanMessage(content="thanks")
+    a2 = AIMessage(content="you're welcome", id="ai-tail")
+    cps += [
+        {"checkpoint_id": "c7", "parent_checkpoint_id": "c6", "messages": tail + [h2]},
+        {"checkpoint_id": "c8", "parent_checkpoint_id": "c7", "messages": tail + [h2, a2]},
+    ]
+    messages, _ = reconstruct_message_tree(cps, thread_metadata=_FLOW_MD, chat_session_id="t-mixed")
+    assert [m["message_type"] for m in messages] == ["user", "assistant", "user", "assistant"]
+    ai = [m["message"] for m in messages if m["message_type"] == "assistant"]
+    assert ai[0].endswith("## Final comparison table\n| Model | Ctx |")
+    assert ai[1] == "you're welcome"

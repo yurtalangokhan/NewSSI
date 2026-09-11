@@ -306,6 +306,34 @@ class Env:
         return os.environ.get("ENCRYPTION_KEY")
 
     @property
+    def MCP_OAUTH_REDIRECT_BASE(self) -> str:
+        return os.environ.get("MCP_OAUTH_REDIRECT_BASE", "http://localhost:3000")
+
+    @property
+    def MCP_EXTERNAL_ENABLED(self) -> bool:
+        return os.environ.get("MCP_EXTERNAL_ENABLED", "true").lower() == "true"
+
+    @property
+    def MCP_OAUTH_HTTP_TIMEOUT(self) -> float:
+        return float(os.environ.get("MCP_OAUTH_HTTP_TIMEOUT", "30"))
+
+    @property
+    def MCP_OAUTH_DEFAULT_TOKEN_TTL_SECONDS(self) -> int:
+        """Fallback lifetime for an OAuth access token when the token
+        response omits ``expires_in`` (RFC 6749 leaves it optional)."""
+        return int(os.environ.get("MCP_OAUTH_DEFAULT_TOKEN_TTL_SECONDS", "3600"))
+
+    @property
+    def MCP_OAUTH_SESSION_TTL_SECONDS(self) -> int:
+        """How long a pending authorization-code exchange stays valid."""
+        return int(os.environ.get("MCP_OAUTH_SESSION_TTL_SECONDS", "600"))
+
+    @property
+    def MCP_OAUTH_CLIENT_NAME(self) -> str:
+        """``client_name`` sent during dynamic client registration."""
+        return os.environ.get("MCP_OAUTH_CLIENT_NAME", "Agentic AI")
+
+    @property
     def LOG_FORMAT(self) -> str:
         return os.environ.get("LOG_FORMAT", "text")
 
@@ -324,6 +352,19 @@ class Env:
     @property
     def LOG_BACKUP_COUNT(self) -> int:
         return int(os.environ.get("LOG_BACKUP_COUNT", "5"))
+
+    @property
+    def PLAYGROUND_RETENTION_DAYS(self) -> int:
+        return int(os.environ.get("PLAYGROUND_RETENTION_DAYS", "30"))
+
+    @property
+    def PLAYGROUND_RETENTION_POLL_INTERVAL_SECONDS(self) -> int:
+        return int(os.environ.get("PLAYGROUND_RETENTION_POLL_INTERVAL_SECONDS", "86400"))
+
+    @property
+    def PLAYGROUND_RETENTION_STARTUP_DELAY_SECONDS(self) -> int:
+        """Grace period before the first sweep, so dependencies can warm up."""
+        return int(os.environ.get("PLAYGROUND_RETENTION_STARTUP_DELAY_SECONDS", "10"))
 
 
 @cache

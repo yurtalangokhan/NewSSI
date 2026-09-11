@@ -56,7 +56,10 @@ export default function MCPPageContent() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const mcpServers = useMemo(
-    () => (mcpData?.mcp_servers || []) as MCPServer[],
+    () =>
+      ((mcpData?.mcp_servers || []) as MCPServer[]).filter(
+        (server) => server.id !== 1
+      ),
     [mcpData?.mcp_servers]
   );
   const isLoading = isMcpLoading;

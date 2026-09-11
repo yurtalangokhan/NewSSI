@@ -41,7 +41,7 @@ async def test_graph_builder_wraps_send_email_with_selected_mail_config(monkeypa
     )
 
     mail_service = SimpleNamespace(
-        get_decrypted_config=AsyncMock(
+        get_effective_user_smtp_config=AsyncMock(
             return_value={
                 "host": "smtp.example.com",
                 "port": 587,
@@ -77,7 +77,11 @@ async def test_graph_builder_wraps_send_email_with_selected_mail_config(monkeypa
 
     assert result == "sent"
     assert captured["smtp_config"]["host"] == "smtp.example.com"
-    mail_service.get_decrypted_config.assert_awaited_once_with("user-1", "mail-config-1")
+    mail_service.get_effective_user_smtp_config.assert_awaited_once_with(
+        user_id="user-1",
+        mail_config_id="mail-config-1",
+        owner_user_id=None,
+    )
 
 
 @pytest.mark.asyncio
@@ -105,7 +109,7 @@ async def test_graph_builder_resolves_selected_chat_attachments(monkeypatch):
     )
 
     mail_service = SimpleNamespace(
-        get_decrypted_config=AsyncMock(
+        get_effective_user_smtp_config=AsyncMock(
             return_value={
                 "host": "smtp.example.com",
                 "port": 587,

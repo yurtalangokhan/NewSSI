@@ -2,12 +2,31 @@
 
 from __future__ import annotations
 
-import logging
+import re
 from typing import Any
 
-from core.db.repositories import MCPProviderRepository, MCPToolRepository
+from langchain_mcp_adapters.client import MultiServerMCPClient
 
-logger = logging.getLogger(__name__)
+from core.db.repositories import MCPProviderRepository, MCPToolRepository
+from core.logger import get_logger
+from service.MCPCredentialService import MCPCredentialService
+
+logger = get_logger(__name__)
+
+
+def _server_slug(name: str | None) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "_", (name or "").lower()).strip("_")
+    return slug or "mcp"
+
+
+def qualify_mcp_tool_name(provider_row: dict[str, Any], raw_name: str) -> str:
+    """Server-scoped tool identity, e.g. ``deepwiki__ask_question``.
+
+    Two external MCP servers may expose a tool with the same raw name; agent
+    tool selection and the runtime tool pool key on this qualified name so they
+    stay distinct. The raw name is still used to actually call the server.
+    """
+    return f"{_server_slug(provider_row.get('name'))}__{raw_name}"
 
 
 class MCPToolService:
@@ -57,41 +76,142 @@ class MCPToolService:
     async def get_tools_by_category(self, category: str) -> list[dict[str, Any]]:
         return await self._tool_repo.get_by_category(category)
 
-    async def sync_tools_from_provider(self, provider_id: str) -> int:
-        provider = await self._provider_repo.get_by_id(provider_id)
+    async def sync_tools_from_provider(
+        self, provider_ref: str | int, *, user_id: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Discover tools from a provider (with auth) and upsert them.
+
+        ``provider_ref`` may be the surrogate ``int_id`` (from the admin API) or
+        the UUID string (legacy ``/mcp-providers`` callers). Returns the
+        provider's tools in frontend ``ToolSnapshot`` shape.
+        """
+        if isinstance(provider_ref, int):
+            provider = await self._provider_repo.get_by_int_id(provider_ref)
+        else:
+            provider = await self._provider_repo.get_by_id(str(provider_ref))
         if not provider:
-            raise ValueError(f"Provider {provider_id} not found")
-
+            raise ValueError(f"Provider {provider_ref} not found")
         if not provider.get("url"):
-            raise ValueError(f"Provider {provider_id} has no URL")
+            raise ValueError(f"Provider {provider_ref} has no URL")
 
-        tools = await self._fetch_tools_from_mcp(provider["url"])
-        return await self._tool_repo.bulk_upsert(provider_id, tools)
+        headers = await MCPCredentialService.get_instance().resolve_headers(
+            provider, user_id=user_id
+        )
+        raw_tools = await self._fetch_tools_via_client(
+            provider["url"], provider.get("transport", "streamable_http"), headers
+        )
+        normalized = self._normalize_tools(raw_tools)
+        await self._tool_repo.bulk_upsert(provider["id"], normalized)
 
-    async def _fetch_tools_from_mcp(self, mcp_url: str) -> list[dict[str, Any]]:
+        rows = await self._tool_repo.list_by_provider(provider["id"], include_inactive=False)
+        return [self.to_tool_snapshot(r, provider) for r in rows]
+
+    async def _fetch_tools_via_client(
+        self, mcp_url: str, transport: str, headers: dict[str, str]
+    ) -> list[dict[str, Any]]:
+        conn: dict[str, Any] = {
+            "transport": "sse" if str(transport).lower() == "sse" else "streamable_http",
+            "url": mcp_url,
+        }
+        if headers:
+            conn["headers"] = headers
         try:
-            import httpx
+            client = MultiServerMCPClient({"sync": conn})
+            tools = await client.get_tools()
+        except Exception as exc:  # noqa: BLE001 - normalized for the route layer
+            raise RuntimeError(f"failed to reach MCP server: {exc}") from exc
 
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    mcp_url,
-                    json={
-                        "jsonrpc": "2.0",
-                        "id": 1,
-                        "method": "tools/list",
-                    },
-                    timeout=30.0,
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    tools = data.get("result", {}).get("tools", [])
-                    return self._normalize_tools(tools)
-                else:
-                    logger.warning(f"MCP list tools failed: {response.status_code}")
-                    return []
-        except Exception as e:
-            logger.warning(f"Failed to fetch tools from MCP: {e}")
-            return []
+        result: list[dict[str, Any]] = []
+        for tool in tools:
+            schema = getattr(tool, "args_schema", None) or getattr(tool, "tool_call_schema", None)
+            if hasattr(schema, "model_json_schema"):
+                schema = schema.model_json_schema()
+            result.append(
+                {
+                    "name": tool.name,
+                    "description": getattr(tool, "description", "") or "",
+                    "inputSchema": schema if isinstance(schema, dict) else {},
+                }
+            )
+        return result
+
+    def to_tool_snapshot(
+        self, tool_row: dict[str, Any], provider_row: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Map a ``mcp_tool`` row to the frontend ``ToolSnapshot`` shape."""
+        enabled = bool(tool_row.get("enabled", True))
+        return {
+            "id": tool_row["int_id"],
+            "name": tool_row["name"],
+            "qualified_name": qualify_mcp_tool_name(provider_row, tool_row["name"]),
+            "display_name": tool_row["name"],
+            "description": tool_row.get("description") or "",
+            "definition": None,
+            "custom_headers": [],
+            "in_code_tool_id": None,
+            "passthrough_auth": provider_row.get("auth_type") == "PT_OAUTH",
+            "oauth_config_id": None,
+            "oauth_config_name": None,
+            "mcp_server_id": provider_row.get("int_id"),
+            "user_id": None,
+            "enabled": enabled,
+            "chat_selectable": True,
+            "agent_creation_selectable": True,
+            "default_enabled": enabled,
+            "input_schema": tool_row.get("input_schema") or {},
+        }
+
+    async def execute_tool(
+        self,
+        int_id: int,
+        tool_name: str,
+        arguments: dict[str, Any],
+        *,
+        user_id: str | None,
+    ) -> dict[str, Any]:
+        """Invoke one tool on an external MCP server.
+
+        Returns ``{"result": <value>, "error": <str|None>}``. Only a missing
+        provider raises (``ValueError``); tool-level failures are returned in
+        ``error`` so the playground can show them.
+        """
+        provider = await self._provider_repo.get_by_int_id(int_id)
+        if not provider or not provider.get("url"):
+            raise ValueError(f"Provider {int_id} not found")
+
+        try:
+            headers = await MCPCredentialService.get_instance().resolve_headers(
+                provider, user_id=user_id
+            )
+            transport = (
+                "sse" if str(provider.get("transport", "")).lower() == "sse" else "streamable_http"
+            )
+            conn: dict[str, Any] = {"transport": transport, "url": provider["url"]}
+            if headers:
+                conn["headers"] = headers
+            client = MultiServerMCPClient({"exec": conn})
+            tools = await client.get_tools()
+            tool = next((t for t in tools if t.name == tool_name), None)
+            if tool is None:
+                return {
+                    "result": None,
+                    "error": f"tool {tool_name!r} not found on server",
+                }
+            result = await tool.ainvoke(arguments)
+            return {"result": result, "error": None}
+        except Exception as exc:  # noqa: BLE001 - surfaced to the caller as data
+            logger.warning("MCP execute_tool %s/%s failed: %s", int_id, tool_name, exc)
+            return {"result": None, "error": str(exc)}
+
+    async def set_tools_enabled(self, int_ids: list[int], enabled: bool) -> int:
+        return await self._tool_repo.set_enabled(int_ids, enabled)
+
+    async def list_snapshots_for_provider(self, int_id: int) -> list[dict[str, Any]]:
+        provider = await self._provider_repo.get_by_int_id(int_id)
+        if not provider:
+            raise ValueError(f"Provider {int_id} not found")
+        rows = await self._tool_repo.list_by_provider(provider["id"], include_inactive=False)
+        return [self.to_tool_snapshot(r, provider) for r in rows]
 
     def _normalize_tools(self, mcp_tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
         normalized = []
@@ -142,8 +262,8 @@ class MCPToolService:
         for provider in providers:
             if provider.get("is_active") and provider.get("url"):
                 try:
-                    count = await self.sync_tools_from_provider(provider["id"])
-                    results[provider["name"]] = count
+                    snapshots = await self.sync_tools_from_provider(provider["id"])
+                    results[provider["name"]] = len(snapshots)
                 except Exception as e:
                     logger.warning(f"Failed to sync provider {provider['name']}: {e}")
                     results[provider["name"]] = 0
@@ -164,6 +284,9 @@ class MCPToolService:
             input_schema=input_schema,
             category=category,
         )
+
+    async def set_tool_active(self, tool_id: str, is_active: bool) -> bool:
+        return await self._tool_repo.set_active(tool_id, is_active)
 
     async def delete_tool(self, tool_id: str) -> bool:
         return await self._tool_repo.delete(tool_id)

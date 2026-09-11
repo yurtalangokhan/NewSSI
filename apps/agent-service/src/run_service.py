@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import os
 import sys
 
@@ -7,18 +6,17 @@ import uvicorn
 from dotenv import load_dotenv
 
 from core import settings
+from core.observability import configure_logging, get_logger
 
 load_dotenv()
+configure_logging(
+    service_name="agent-service",
+    log_level=settings.LOG_LEVEL.value,
+    log_format=settings.LOG_FORMAT,
+)
+logger = get_logger(__name__)
 
 if __name__ == "__main__":
-    root_logger = logging.getLogger()
-    if root_logger.handlers:
-        print(
-            f"Warning: Root logger already has {len(root_logger.handlers)} handler(s) configured. "
-            f"basicConfig() will be ignored. Current level: {logging.getLevelName(root_logger.level)}"
-        )
-
-    logging.basicConfig(level=settings.LOG_LEVEL.to_logging_level())
     # Set Compatible event loop policy on Windows Systems.
     # On Windows systems, the default ProactorEventLoop can cause issues with
     # certain async database drivers like psycopg (PostgreSQL driver).
@@ -34,7 +32,7 @@ if __name__ == "__main__":
     # Watchfiles can detect this as a filesystem loop, so disable auto-reload.
     reload_enabled = settings.is_dev()
     if reload_enabled and os.path.islink("src") and os.path.realpath("src") == os.getcwd():
-        logging.getLogger(__name__).warning("Disabling reload due to /app/src symlink loop")
+        logger.warning("Disabling reload due to /app/src symlink loop")
         reload_enabled = False
 
     uvicorn.run(

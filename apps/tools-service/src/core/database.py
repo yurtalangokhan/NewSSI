@@ -8,6 +8,7 @@ try:
 except ImportError:  # pragma: no cover - optional dependency in local dev
     asyncpg = None
 
+from .observability import retry_async
 from .settings import get_settings
 
 
@@ -68,18 +69,30 @@ class DatabaseManager:
             raise RuntimeError("asyncpg is not installed")
 
         if self._pool is None:
-            ensure_result = ensure_database_exists()
-            if isawaitable(ensure_result):
-                await ensure_result
+
+            async def ensure_database_operation() -> None:
+                ensure_result = ensure_database_exists()
+                if isawaitable(ensure_result):
+                    await ensure_result
+
+            await retry_async(
+                ensure_database_operation,
+                operation_name="ensure_database",
+                dependency="postgres",
+            )
             config = self.config
-            self._pool = await asyncpg.create_pool(
-                user=config["user"],
-                password=config["password"],
-                host=config["host"],
-                port=config["port"],
-                database=config["database"],
-                min_size=2,
-                max_size=10,
+            self._pool = await retry_async(
+                lambda: asyncpg.create_pool(
+                    user=config["user"],
+                    password=config["password"],
+                    host=config["host"],
+                    port=config["port"],
+                    database=config["database"],
+                    min_size=2,
+                    max_size=10,
+                ),
+                operation_name="create_pool",
+                dependency="postgres",
             )
         return self._pool
 

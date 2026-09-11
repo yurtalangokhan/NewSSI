@@ -6,287 +6,30 @@ from typing import Any
 
 from core.logger import get_logger
 from core.settings import settings
+from core.utils.model_classifier import gemini_supports_reasoning, is_embedding_model
+from domain.providers import known_providers
 from domain.providers.repository import ProviderRepository
 
 logger = get_logger(__name__)
 
 
-def _known_model(
-    name: str,
-    *,
-    display_name: str | None = None,
-    supports_image_input: bool = False,
-    supports_reasoning: bool = False,
-    max_input_tokens: int | None = None,
-    is_remote: bool = False,
-) -> dict[str, Any]:
-    return {
-        "name": name,
-        "display_name": display_name or name,
-        "is_visible": True,
-        "max_input_tokens": max_input_tokens,
-        "supports_image_input": supports_image_input,
-        "supports_reasoning": supports_reasoning,
-        "is_remote": is_remote,
-    }
+def _is_selectable_gemini_model(model_name: str) -> bool:
+    """Exclude the unversioned ``*-latest`` Gemini aliases from discovery.
+
+    They resolve to a Gemini 3.x model server-side, but langchain-google-genai
+    keys its mandatory ``thought_signature`` round-trip for tool calls off the
+    literal string containing ``gemini-3``. An alias like ``gemini-flash-latest``
+    is not recognised, so multi-turn tool use against it fails with a hard 400.
+    Concrete versioned names (``gemini-3.6-flash`` …) are unaffected.
+    """
+    return not (model_name or "").lower().endswith("-latest")
 
 
-KNOWN_MODELS_BY_PROVIDER: dict[str, list[dict[str, Any]]] = {
-    "openai": [
-        _known_model("gpt-5", supports_reasoning=True, max_input_tokens=200000),
-        _known_model("gpt-5-mini", supports_reasoning=True, max_input_tokens=200000),
-        _known_model("gpt-4.1", supports_image_input=True, max_input_tokens=128000),
-        _known_model("gpt-4o", supports_image_input=True, max_input_tokens=128000),
-    ],
-    "anthropic": [
-        _known_model(
-            "claude-opus-4-1",
-            supports_image_input=True,
-            supports_reasoning=True,
-            max_input_tokens=200000,
-        ),
-        _known_model(
-            "claude-sonnet-4",
-            supports_image_input=True,
-            supports_reasoning=True,
-            max_input_tokens=200000,
-        ),
-        _known_model(
-            "claude-3-7-sonnet-latest", supports_image_input=True, max_input_tokens=200000
-        ),
-    ],
-    "google_genai": [
-        _known_model(
-            "gemini-2.5-pro",
-            supports_image_input=True,
-            supports_reasoning=True,
-            max_input_tokens=1000000,
-        ),
-        _known_model("gemini-2.5-flash", supports_image_input=True, max_input_tokens=1000000),
-        _known_model("gemini-2.0-flash", supports_image_input=True, max_input_tokens=1000000),
-    ],
-    "google_vertexai": [
-        _known_model(
-            "gemini-2.5-pro",
-            supports_image_input=True,
-            supports_reasoning=True,
-            max_input_tokens=1000000,
-        ),
-        _known_model("gemini-2.5-flash", supports_image_input=True, max_input_tokens=1000000),
-    ],
-    "azure_openai": [
-        _known_model("gpt-5", supports_reasoning=True, max_input_tokens=200000),
-        _known_model("gpt-4.1", supports_image_input=True, max_input_tokens=128000),
-        _known_model("gpt-4o", supports_image_input=True, max_input_tokens=128000),
-    ],
-    "aws_bedrock": [
-        _known_model(
-            "anthropic.claude-3-7-sonnet-20250219-v1:0",
-            supports_image_input=True,
-            max_input_tokens=200000,
-        ),
-        _known_model(
-            "anthropic.claude-3-5-sonnet-20241022-v2:0",
-            supports_image_input=True,
-            max_input_tokens=200000,
-        ),
-        _known_model("amazon.nova-pro-v1:0", supports_image_input=True, max_input_tokens=300000),
-    ],
-    "groq": [
-        _known_model("llama-3.3-70b-versatile", max_input_tokens=131072),
-        _known_model("llama-3.1-8b-instant", max_input_tokens=131072),
-        _known_model("mixtral-8x7b-32768", max_input_tokens=32768),
-    ],
-    "mistral": [
-        _known_model("mistral-large-latest", supports_reasoning=True, max_input_tokens=128000),
-        _known_model("mistral-medium-latest", max_input_tokens=128000),
-        _known_model("ministral-8b-latest", max_input_tokens=128000),
-    ],
-    "cohere": [
-        _known_model("command-a-03-2025", max_input_tokens=128000),
-        _known_model("command-r-plus", max_input_tokens=128000),
-        _known_model("command-r", max_input_tokens=128000),
-    ],
-    "deepseek": [
-        _known_model("deepseek-chat", max_input_tokens=128000),
-        _known_model("deepseek-reasoner", supports_reasoning=True, max_input_tokens=128000),
-    ],
-    "xai": [
-        _known_model("grok-3-beta", supports_reasoning=True, max_input_tokens=131072),
-        _known_model("grok-2-vision", supports_image_input=True, max_input_tokens=32768),
-    ],
-    "perplexity": [
-        _known_model("sonar-pro", supports_reasoning=True, max_input_tokens=127000),
-        _known_model("sonar", max_input_tokens=127000),
-    ],
-    "together": [
-        _known_model("meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo", max_input_tokens=131072),
-        _known_model("Qwen/Qwen2.5-72B-Instruct-Turbo", max_input_tokens=32768),
-    ],
-    "fireworks": [
-        _known_model("accounts/fireworks/models/llama-v3p1-70b-instruct", max_input_tokens=131072),
-        _known_model("accounts/fireworks/models/mixtral-8x22b-instruct", max_input_tokens=65536),
-    ],
-    "cerebras": [
-        _known_model("llama-3.3-70b", max_input_tokens=131072),
-        _known_model("llama-3.1-8b", max_input_tokens=131072),
-    ],
-    "huggingface": [
-        _known_model("meta-llama/Llama-3.1-70B-Instruct", max_input_tokens=131072),
-        _known_model("Qwen/Qwen2.5-72B-Instruct", max_input_tokens=32768),
-    ],
-    "nvidia": [
-        _known_model("meta/llama-3.1-70b-instruct", max_input_tokens=131072),
-        _known_model("google/gemma-2-9b-it", max_input_tokens=8192),
-    ],
-    "ibm_watsonx": [
-        _known_model("ibm/granite-3-8b-instruct", max_input_tokens=32768),
-        _known_model("meta-llama/llama-3-1-70b-instruct", max_input_tokens=131072),
-    ],
-    "sambanova": [
-        _known_model("Meta-Llama-3.1-405B-Instruct", max_input_tokens=131072),
-        _known_model("Meta-Llama-3.1-70B-Instruct", max_input_tokens=131072),
-    ],
-    "openrouter": [
-        _known_model("openai/gpt-5", supports_reasoning=True, max_input_tokens=200000),
-        _known_model(
-            "anthropic/claude-sonnet-4",
-            supports_image_input=True,
-            supports_reasoning=True,
-            max_input_tokens=200000,
-        ),
-        _known_model(
-            "google/gemini-2.5-pro",
-            supports_image_input=True,
-            supports_reasoning=True,
-            max_input_tokens=1000000,
-        ),
-    ],
-}
-
-
-def _well_known_api_key(
-    name: str,
-    provider_type: str,
-    *,
-    icon: str,
-    default_model: str | None = None,
-    default_model_display: str | None = None,
-) -> dict[str, Any]:
-    return {
-        "name": name,
-        "provider_type": provider_type,
-        "category": "api_key",
-        "icon": icon,
-        "known_models": KNOWN_MODELS_BY_PROVIDER.get(provider_type, []),
-        "recommended_default_model": (
-            {"name": default_model, "display_name": default_model_display or default_model}
-            if default_model
-            else None
-        ),
-    }
-
-
-WELL_KNOWN_PROVIDERS: list[dict[str, Any]] = [
-    # URL-based
-    {"name": "Ollama", "provider_type": "ollama", "category": "url_based", "icon": "ollama"},
-    {"name": "vLLM", "provider_type": "vllm", "category": "url_based", "icon": "cpu"},
-    {
-        "name": "OpenAI-Compatible",
-        "provider_type": "openai_compatible",
-        "category": "url_based",
-        "icon": "openai",
-    },
-    {"name": "LiteLLM Proxy", "provider_type": "litellm", "category": "url_based", "icon": "cpu"},
-    # API-key-based
-    _well_known_api_key("OpenAI", "openai", icon="openai", default_model="gpt-5"),
-    _well_known_api_key(
-        "Anthropic", "anthropic", icon="anthropic", default_model="claude-sonnet-4"
-    ),
-    _well_known_api_key(
-        "Google Gemini", "google_genai", icon="google", default_model="gemini-2.5-pro"
-    ),
-    _well_known_api_key(
-        "Google Vertex AI", "google_vertexai", icon="google", default_model="gemini-2.5-pro"
-    ),
-    _well_known_api_key("Azure OpenAI", "azure_openai", icon="azure", default_model="gpt-5"),
-    _well_known_api_key("Azure AI", "azure_ai", icon="azure"),
-    _well_known_api_key(
-        "AWS Bedrock",
-        "aws_bedrock",
-        icon="amazon",
-        default_model="anthropic.claude-3-7-sonnet-20250219-v1:0",
-        default_model_display="Anthropic Claude 3.7 Sonnet",
-    ),
-    _well_known_api_key(
-        "Groq",
-        "groq",
-        icon="cpu",
-        default_model="llama-3.3-70b-versatile",
-        default_model_display="Llama 3.3 70B Versatile",
-    ),
-    _well_known_api_key(
-        "MistralAI", "mistral", icon="mistral", default_model="mistral-large-latest"
-    ),
-    _well_known_api_key("Cohere", "cohere", icon="cpu", default_model="command-a-03-2025"),
-    _well_known_api_key("DeepSeek", "deepseek", icon="deepseek", default_model="deepseek-chat"),
-    _well_known_api_key("xAI (Grok)", "xai", icon="cpu", default_model="grok-3-beta"),
-    _well_known_api_key("Perplexity", "perplexity", icon="cpu", default_model="sonar-pro"),
-    _well_known_api_key(
-        "Together AI",
-        "together",
-        icon="cpu",
-        default_model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
-        default_model_display="Llama 3.1 70B Turbo",
-    ),
-    _well_known_api_key(
-        "Fireworks AI",
-        "fireworks",
-        icon="cpu",
-        default_model="accounts/fireworks/models/llama-v3p1-70b-instruct",
-        default_model_display="Llama v3.1 70B",
-    ),
-    _well_known_api_key("Cerebras", "cerebras", icon="cpu", default_model="llama-3.3-70b"),
-    _well_known_api_key(
-        "HuggingFace",
-        "huggingface",
-        icon="cpu",
-        default_model="meta-llama/Llama-3.1-70B-Instruct",
-        default_model_display="Llama 3.1 70B Instruct",
-    ),
-    _well_known_api_key(
-        "NVIDIA AI",
-        "nvidia",
-        icon="cpu",
-        default_model="meta/llama-3.1-70b-instruct",
-        default_model_display="Llama 3.1 70B Instruct",
-    ),
-    _well_known_api_key(
-        "IBM WatsonX",
-        "ibm_watsonx",
-        icon="cpu",
-        default_model="ibm/granite-3-8b-instruct",
-        default_model_display="granite-3-8b-instruct",
-    ),
-    _well_known_api_key(
-        "SambaNova",
-        "sambanova",
-        icon="cpu",
-        default_model="Meta-Llama-3.1-405B-Instruct",
-        default_model_display="Llama 3.1 405B Instruct",
-    ),
-    _well_known_api_key(
-        "OpenRouter",
-        "openrouter",
-        icon="openrouter",
-        default_model="openai/gpt-5",
-        default_model_display="OpenAI GPT-5",
-    ),
-]
-
-_WELL_KNOWN_BY_TYPE: dict[str, dict[str, Any]] = {
-    p["provider_type"]: p for p in WELL_KNOWN_PROVIDERS
-}
+# Re-export the well-known provider catalog so existing callers that import it
+# from this module keep working.
+WELL_KNOWN_PROVIDERS = known_providers.WELL_KNOWN_PROVIDERS
+KNOWN_MODELS_BY_PROVIDER = known_providers.KNOWN_MODELS_BY_PROVIDER
+_WELL_KNOWN_BY_TYPE = known_providers._WELL_KNOWN_BY_TYPE
 
 
 class ProviderService:
@@ -381,6 +124,7 @@ class ProviderService:
                         "max_input_tokens": m.get("max_input_tokens"),
                         "supports_image_input": m.get("supports_image_input", False),
                         "supports_reasoning": m.get("supports_reasoning", False),
+                        **({"supports_embedding": True} if m.get("supports_embedding") else {}),
                         "is_remote": m.get("is_remote", False),
                     }
                     for m in live_models
@@ -400,15 +144,16 @@ class ProviderService:
             if default_model and not any(
                 m.get("name") == default_model for m in model_configurations
             ):
-                model_configurations.append(_known_model(default_model))
+                model_configurations.append(known_providers._known_model(default_model))
 
+            filtered_configs = [m for m in model_configurations if not is_embedding_model(m)]
             results.append(
                 {
                     "id": provider.get("id"),
                     "name": provider.get("name") or provider.get("provider_type"),
                     "provider": provider.get("provider_type"),
                     "provider_display_name": provider.get("name") or provider.get("provider_type"),
-                    "model_configurations": model_configurations,
+                    "model_configurations": filtered_configs,
                 }
             )
 
@@ -425,7 +170,7 @@ class ProviderService:
                 user_config = {}
             default_model = user_config.get("default_model")
             provider_type = provider.get("provider_type")
-            known = _WELL_KNOWN_BY_TYPE.get(provider_type, {})
+            known = known_providers._WELL_KNOWN_BY_TYPE.get(provider_type, {})
             try:
                 api_key = await self._get_provider_api_key(provider, user_id)
                 live_models = await self._fetch_api_key_provider_models(
@@ -455,17 +200,18 @@ class ProviderService:
             if default_model and not any(
                 m.get("name") == default_model for m in model_configurations
             ):
-                model_configurations.append(_known_model(default_model))
+                model_configurations.append(known_providers._known_model(default_model))
 
             provider_display_name = known.get("name") or provider.get("name") or provider_type
 
+            filtered_configs = [m for m in model_configurations if not is_embedding_model(m)]
             results.append(
                 {
                     "id": provider.get("id"),
                     "name": provider.get("name") or provider_display_name,
                     "provider": provider_type,
                     "provider_display_name": provider_display_name,
-                    "model_configurations": model_configurations,
+                    "model_configurations": filtered_configs,
                 }
             )
 
@@ -581,7 +327,7 @@ class ProviderService:
     def _model_payload_to_configuration(model: dict[str, Any]) -> dict[str, Any]:
         name = model.get("name")
         display_name = model.get("display_name") or name
-        return {
+        res = {
             "name": name,
             "display_name": display_name,
             "is_visible": model.get("is_visible", True),
@@ -590,6 +336,9 @@ class ProviderService:
             "supports_reasoning": model.get("supports_reasoning", False),
             "is_remote": model.get("is_remote", False),
         }
+        if model.get("supports_embedding"):
+            res["supports_embedding"] = True
+        return res
 
     async def test_connection(
         self,
@@ -734,20 +483,9 @@ class ProviderService:
         provider_type: str, api_key: str, base_url: str | None
     ) -> dict[str, Any]:
         """Fallback: try /v1/models with the api_key as Bearer token."""
-        default_base_urls = {
-            "openrouter": "https://openrouter.ai/api",
-            "deepseek": "https://api.deepseek.com",
-            "groq": "https://api.groq.com/openai",
-            "xai": "https://api.x.ai",
-            "perplexity": "https://api.perplexity.ai",
-            "together": "https://api.together.xyz",
-            "fireworks": "https://api.fireworks.ai/inference",
-            "cerebras": "https://api.cerebras.ai",
-            "huggingface": "https://router.huggingface.co",
-            "nvidia": "https://integrate.api.nvidia.com",
-            "sambanova": "https://api.sambanova.ai",
-        }
-        resolved_base_url = (base_url or default_base_urls.get(provider_type) or "").rstrip("/")
+        resolved_base_url = (
+            base_url or ProviderService._default_api_base_for_provider(provider_type) or ""
+        ).rstrip("/")
         if not resolved_base_url:
             return {"success": False, "error": f"No base_url configured for {provider_type}"}
         import httpx
@@ -808,6 +546,10 @@ class ProviderService:
                 "max_input_tokens": m.get("max_input_tokens"),
                 "supports_image_input": m.get("supports_image_input", False),
                 "supports_reasoning": m.get("supports_reasoning", False),
+                "supports_tools": m.get("supports_tools", False),
+                "supports_embedding": m.get("supports_embedding", False),
+                "supports_code": m.get("supports_code", False),
+                "supports_audio": m.get("supports_audio", False),
                 "is_remote": m.get("is_remote", False),
             }
             for m in models
@@ -1130,6 +872,7 @@ class ProviderService:
                         or m.get("max_input_tokens"),
                         "supports_image_input": ProviderService._infer_vllm_image_support(m),
                         "supports_reasoning": ProviderService._infer_vllm_reasoning_support(m),
+                        "supports_embedding": is_embedding_model(m),
                     }
                     for m in resp.json().get("data", [])
                 ]
@@ -1218,6 +961,7 @@ class ProviderService:
                         or model.get("max_input_tokens"),
                         "supports_image_input": ProviderService._infer_vllm_image_support(model),
                         "supports_reasoning": ProviderService._infer_vllm_reasoning_support(model),
+                        "supports_embedding": is_embedding_model(model),
                         "is_remote": True,
                     }
                     for model in models
@@ -1289,6 +1033,13 @@ class ProviderService:
                     methods = model.get("supportedGenerationMethods") or []
                     if isinstance(methods, list) and "generateContent" not in methods:
                         continue
+                    if not _is_selectable_gemini_model(name):
+                        continue
+                    supports_embedding = (
+                        isinstance(methods, list)
+                        and "embedContent" in methods
+                        and "generateContent" not in methods
+                    )
                     results.append(
                         {
                             "name": name,
@@ -1296,7 +1047,8 @@ class ProviderService:
                             "provider_type": "google_genai",
                             "max_input_tokens": model.get("inputTokenLimit"),
                             "supports_image_input": True,
-                            "supports_reasoning": "thinking" in name.lower(),
+                            "supports_reasoning": gemini_supports_reasoning(name),
+                            "supports_embedding": supports_embedding,
                             "is_remote": True,
                         }
                     )

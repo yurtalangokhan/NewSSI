@@ -16,6 +16,7 @@ export interface CollapsedStreamingContentProps {
   chatState: FullChatState;
   stopReason?: StopReason;
   renderTypeOverride?: RenderType;
+  "data-testid"?: string;
 }
 
 export const CollapsedStreamingContent = React.memo(
@@ -24,6 +25,7 @@ export const CollapsedStreamingContent = React.memo(
     chatState,
     stopReason,
     renderTypeOverride,
+    "data-testid": testId,
   }: CollapsedStreamingContentProps) {
     const renderContentOnly = useCallback(
       (results: TimelineRendererOutput) => (
@@ -38,7 +40,11 @@ export const CollapsedStreamingContent = React.memo(
 
     return (
       <TimelineRow railVariant="spacer">
-        <TimelineSurface className="px-2 pb-2" roundedBottom>
+        <TimelineSurface
+          className="px-2 pb-2"
+          roundedBottom
+          data-testid={testId}
+        >
           <TimelineRendererComponent
             key={`${step.key}-compact`}
             packets={step.packets}

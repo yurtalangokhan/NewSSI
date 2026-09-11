@@ -25,8 +25,8 @@ class ZeroShotGraphStrategy(GraphSchemaStrategy):
 
     async def build(self, config: dict[str, Any]) -> CompiledStateGraph:
         """Build zero-shot chat graph."""
-        from langgraph.graph import END
-        from langgraph.graph.state import MessagesState, StateGraph
+        from langgraph.graph import END, MessagesState
+        from langgraph.graph.state import StateGraph
 
         tool_names = config.get("mcp_tools", [])
         extra_tools = config.get("extra_tools", []) or []

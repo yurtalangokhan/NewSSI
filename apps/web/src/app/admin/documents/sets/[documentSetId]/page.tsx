@@ -4,7 +4,7 @@ import { use } from "react";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { refreshDocumentSets, useDocumentSets } from "../hooks";
 import { useConnectorStatus, useUserGroups } from "@/lib/hooks";
-import { ThreeDotsLoader } from "@/components/Loading";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import CardSection from "@/components/admin/CardSection";
@@ -34,7 +34,9 @@ function Main({ documentSetId }: { documentSetId: number }) {
   if (isDocumentSetsLoading || isCCPairsLoading || userGroupsIsLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
-        <ThreeDotsLoader />
+        <div className="p-4">
+          <FormSkeleton fieldCount={4} />
+        </div>
       </div>
     );
   }

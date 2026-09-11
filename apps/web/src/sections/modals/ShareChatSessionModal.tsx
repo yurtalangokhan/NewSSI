@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ChatSession, ChatSessionSharedStatus } from "@/app/app/interfaces";
@@ -26,11 +28,14 @@ function buildShareLink(chatSessionId: string) {
 }
 
 async function generateShareLink(chatSessionId: string) {
-  const response = await fetch(`/api/chat/chat-session/${chatSessionId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sharing_status: "public" }),
-  });
+  const response = await authenticatedFetch(
+    `/api/chat/chat-session/${chatSessionId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sharing_status: "public" }),
+    }
+  );
 
   if (response.ok) {
     return buildShareLink(chatSessionId);
@@ -39,11 +44,14 @@ async function generateShareLink(chatSessionId: string) {
 }
 
 async function deleteShareLink(chatSessionId: string) {
-  const response = await fetch(`/api/chat/chat-session/${chatSessionId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sharing_status: "private" }),
-  });
+  const response = await authenticatedFetch(
+    `/api/chat/chat-session/${chatSessionId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sharing_status: "private" }),
+    }
+  );
 
   return response.ok;
 }
@@ -182,7 +190,11 @@ export default function ShareChatSessionModal({
       <Modal.Content width="sm">
         <Modal.Header
           icon={SvgShare}
-          title={isShared ? t("modals.shareChat.sharedTitle") : t("modals.shareChat.shareTitle")}
+          title={
+            isShared
+              ? t("modals.shareChat.sharedTitle")
+              : t("modals.shareChat.shareTitle")
+          }
           description={t("modals.shareChat.description")}
           onClose={onClose}
         />
@@ -210,7 +222,9 @@ export default function ShareChatSessionModal({
               <PrivacyOption
                 icon={SvgUsers}
                 title={t("modals.shareChat.organizationOptionTitle")}
-                description={t("modals.shareChat.organizationOptionDescription")}
+                description={t(
+                  "modals.shareChat.organizationOptionDescription"
+                )}
                 selected={selectedPrivacy === "public"}
                 onClick={() => setSelectedPrivacy("public")}
                 ariaLabel="share-modal-option-public"

@@ -1,3 +1,4 @@
+import { idempotentFetch } from "@/lib/api/idempotency";
 import React, { useState, useMemo, ReactNode } from "react";
 import { Form, Formik, FormikProps } from "formik";
 import * as Yup from "yup";
@@ -201,7 +202,7 @@ export function OnboardingFormWrapper<T extends Record<string, any>>({
     setApiStatus("success");
 
     // Create the provider
-    const response = await fetch(
+    const response = await idempotentFetch(
       `${LLM_PROVIDERS_ADMIN_URL}?is_creation=true`,
       {
         method: "PUT",
@@ -239,14 +240,17 @@ export function OnboardingFormWrapper<T extends Record<string, any>>({
               "No model name available to set as default — skipping set-default call"
             );
           } else {
-            const setDefaultResponse = await fetch(`${LLM_ADMIN_URL}/default`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                provider_id: newLlmProvider.id,
-                model_name: defaultModelName,
-              }),
-            });
+            const setDefaultResponse = await idempotentFetch(
+              `${LLM_ADMIN_URL}/default`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  provider_id: newLlmProvider.id,
+                  model_name: defaultModelName,
+                }),
+              }
+            );
             if (!setDefaultResponse.ok) {
               const err = await setDefaultResponse.json().catch(() => ({}));
               setErrorMessage(

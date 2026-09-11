@@ -1,7 +1,5 @@
 """Controller for chat session CRUD and metadata endpoints."""
 
-import logging
-import re
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -10,12 +8,18 @@ from i18n import t
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from controller.base import BaseController
+from controller.chat_helpers import (
+    detect_response_language,
+    is_invalid_generated_title,
+    normalize_title,
+)
 from controller.thread_controller import ThreadController, get_thread_controller
 from core.llm import get_model
+from core.logger import get_logger
 from service.ChatHistoryReconstruction import reconstruct_message_tree, reconstruct_messages
 from service.CheckpointerService import get_checkpointer
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ChatController(BaseController):
@@ -162,164 +166,6 @@ class ChatController(BaseController):
 
         return False
 
-    def _is_invalid_generated_title(self, title: str) -> bool:
-        text = (title or "").strip().lower()
-        if not text:
-            return True
-
-        invalid_markers = [
-            "no llm models are currently available",
-            "please ensure your llm provider",
-            "check the admin panel",
-            "no llm providers are configured",
-            "model '",
-            "not found",
-        ]
-        return any(marker in text for marker in invalid_markers)
-
-    def _normalize_title(self, raw_title: str) -> str:
-        title = (raw_title or "").strip()
-        if not title:
-            return ""
-
-        # Keep only the first line and trim common wrappers like "Baslik:".
-        title = title.splitlines()[0].strip()
-        title = re.sub(r"^(baslik|başlık|title)\s*[:\-]\s*", "", title, flags=re.IGNORECASE)
-        title = title.strip("\"'`“”‘’[](){}.,;:!? ")
-        title = re.sub(r"\s+", " ", title).strip()
-        return title[:80]
-
-    def _detect_response_language(self, text: str) -> str:
-        """Heuristic language detection for title generation prompting."""
-        lowered = (text or "").lower()
-        if not lowered.strip():
-            return "same as input"
-
-        # Quick Turkish signal via unique characters.
-        if re.search(r"[çğıöşü]", lowered):
-            return "Turkish"
-
-        tokens = re.findall(r"[a-zA-Z]+", lowered)
-        if not tokens:
-            return "same as input"
-
-        tr_markers = {
-            "ve",
-            "ile",
-            "icin",
-            "için",
-            "bir",
-            "bu",
-            "gibi",
-            "daha",
-            "olarak",
-            "ancak",
-            "cunku",
-            "çünkü",
-            "sonra",
-            "kadar",
-        }
-        en_markers = {
-            "the",
-            "and",
-            "for",
-            "with",
-            "this",
-            "that",
-            "from",
-            "into",
-            "about",
-            "before",
-            "after",
-        }
-
-        tr_score = sum(1 for t in tokens if t in tr_markers)
-        en_score = sum(1 for t in tokens if t in en_markers)
-
-        if tr_score > en_score:
-            return "Turkish"
-        if en_score > tr_score:
-            return "English"
-        return "same as input"
-
-    def _is_trivial_prefix_title(self, title: str, source_text: str) -> bool:
-        """Reject titles that are just the opening words of the response."""
-        title_words = re.findall(r"[A-Za-z0-9ÇĞİÖŞÜçğıöşü]+", title.lower())
-        source_words = re.findall(r"[A-Za-z0-9ÇĞİÖŞÜçğıöşü]+", source_text.lower())
-        if not title_words or len(source_words) < len(title_words):
-            return False
-        return source_words[: len(title_words)] == title_words
-
-    def _heuristic_title_from_ai_response(self, ai_response: str) -> str:
-        """Build a short summary-like title from assistant response text without using an LLM."""
-        cleaned = re.sub(r"\s+", " ", (ai_response or "")).strip()
-        if not cleaned:
-            return ""
-
-        words = re.findall(r"[A-Za-z0-9ÇĞİÖŞÜçğıöşü]+", cleaned)
-        stopwords = {
-            "ve",
-            "veya",
-            "ile",
-            "için",
-            "icin",
-            "bu",
-            "bir",
-            "the",
-            "and",
-            "for",
-            "that",
-            "from",
-            "your",
-            "you",
-            "olarak",
-            "ancak",
-            "çünkü",
-            "sonuç",
-            "buna",
-            "göre",
-            "daha",
-            "gibi",
-            "olur",
-            "olacak",
-            "yapmak",
-            "yapabilir",
-            "adım",
-            "1",
-            "2",
-            "3",
-        }
-
-        # Score keywords by frequency and reward words that appear beyond the opening phrase.
-        frequencies: dict[str, int] = {}
-        first_seen: dict[str, int] = {}
-        for idx, word in enumerate(words):
-            lw = word.lower()
-            if len(lw) <= 2 or lw in stopwords:
-                continue
-            frequencies[lw] = frequencies.get(lw, 0) + 1
-            first_seen.setdefault(lw, idx)
-
-        if not frequencies:
-            return ""
-
-        ranked = sorted(
-            frequencies.keys(),
-            key=lambda w: (
-                frequencies[w],
-                -first_seen[w],
-            ),
-            reverse=True,
-        )
-
-        selected = ranked[:4]
-        title = " ".join(selected).strip().capitalize()
-        if self._is_invalid_generated_title(title):
-            return ""
-        if self._is_trivial_prefix_title(title, ai_response):
-            return ""
-        return title[:80]
-
     async def _extract_first_human_message(self, session_id: str) -> str:
         """Return the first human message text for the session, if present."""
         state = await self._thread_controller.get_thread_state(session_id)
@@ -364,7 +210,7 @@ class ChatController(BaseController):
         if not human_message:
             return ""
 
-        target_language = self._detect_response_language(human_message)
+        target_language = detect_response_language(human_message)
 
         system_prompt = (
             "You generate short chat session titles. "
@@ -399,8 +245,8 @@ class ChatController(BaseController):
             if not isinstance(content, str):
                 content = str(content or "")
 
-            normalized = self._normalize_title(content)
-            if self._is_invalid_generated_title(normalized):
+            normalized = normalize_title(content)
+            if is_invalid_generated_title(normalized):
                 return ""
             return normalized[:80] if normalized else ""
         except Exception:
@@ -543,6 +389,33 @@ class ChatController(BaseController):
             "current_temperature_override": None,
         }
 
+    async def _pending_interrupt_packet(self, chat_session_id: str) -> dict[str, Any] | None:
+        """The packet a reloaded turn needs to keep showing its controls.
+
+        Each interrupt kind renders differently, so the packet is built from
+        the kind rather than passed through: a HumanInput payload IS its own
+        packet, while a clarification payload has to become one.
+
+        Never raises: an unreadable checkpoint just means "nothing pending",
+        which loses the buttons but not the conversation.
+        """
+        from agents.clarification.packets import packet_from_interrupt
+        from agents.interrupts.classify import HUMAN_INPUT, USER_CLARIFICATION
+
+        try:
+            pending = await self._thread_controller.get_pending_interrupt(chat_session_id)
+        except Exception:
+            logger.warning("Could not read pending interrupt for session %s", chat_session_id)
+            return None
+
+        if pending is None:
+            return None
+        if pending.kind == HUMAN_INPUT:
+            return pending.value
+        if pending.kind == USER_CLARIFICATION:
+            return packet_from_interrupt(pending.value, pending.interrupt_id)
+        return None
+
     async def get_chat_session(self, chat_session_id: str) -> dict[str, Any]:
         thread = await self._thread_controller.get_thread(chat_session_id)
         if thread and not await self._ensure_thread_belongs_to_user(chat_session_id, thread):
@@ -600,6 +473,99 @@ class ChatController(BaseController):
             messages, packets_2d = reconstruct_messages(
                 langgraph_messages, metadata, chat_session_id
             )
+
+        # A run parked on an interrupt — a FlowAgent HumanInput node or an
+        # `ask_user` question: the live packet died with the stream, so replay
+        # it from the checkpoint's pending interrupt. Without this the reloaded
+        # turn shows no controls and the run looks stuck, even though it is
+        # still waiting.
+        pending_packet = await self._pending_interrupt_packet(chat_session_id)
+
+        if pending_packet:
+            if not packets_2d:
+                packets_2d = [[]]
+            # Its own turn_index, matching what the live stream does
+            # (streamingUtils): a pause shares no display group with the answer
+            # that preceded it, or the client hands the mixed group to the text
+            # renderer and the buttons never render.
+            last_turn = packets_2d[-1]
+            next_turn_index = 1 + max(
+                (
+                    p.get("placement", {}).get("turn_index", 0)
+                    for p in last_turn
+                    if isinstance(p, dict)
+                ),
+                default=-1,
+            )
+            last_turn.append(
+                {
+                    "placement": {
+                        "turn_index": next_turn_index,
+                        "sub_turn_index": None,
+                    },
+                    "obj": pending_packet,
+                }
+            )
+
+            # A packet group with no assistant `messages` row never renders —
+            # the chat bubble it would hang on does not exist. When the pause
+            # happened before any assistant message was persisted (an
+            # `ask_user` as the model's first act interrupts the node before
+            # it returns), synthesise that row so the card has somewhere to
+            # land. Runs that had already streamed an answer keep their real
+            # message and skip this.
+            if messages and messages[-1].get("message_type") != "assistant":
+                # Without a `stop` the client's pacing logic reads this turn as
+                # still streaming and shows a "thinking…" spinner forever on
+                # reload (the live stream instead ends with `[DONE]`). On its
+                # own turn so it does not pull the card's group into the text
+                # renderer — the split `_flush_trailing_tool_packets` uses.
+                for obj in (
+                    {"type": "message_start", "content": "", "final_documents": None},
+                    {"type": "stop", "stop_reason": "finished"},
+                ):
+                    last_turn.append(
+                        {
+                            "placement": {
+                                "turn_index": next_turn_index + 1,
+                                "sub_turn_index": None,
+                            },
+                            "obj": obj,
+                        }
+                    )
+
+                parent_id = messages[-1].get("message_id")
+                synthetic_id = max((m.get("message_id") or 0) for m in messages) + 1
+                messages.append(
+                    {
+                        "message_id": synthetic_id,
+                        "message_type": "assistant",
+                        "research_type": None,
+                        "parent_message": parent_id,
+                        "latest_child_message": None,
+                        "message": "",
+                        "rephrased_query": None,
+                        "context_docs": None,
+                        "time_sent": None,
+                        "overridden_model": None,
+                        "alternate_assistant_id": metadata.get("persona_id", 0),
+                        "chat_session_id": chat_session_id,
+                        "citations": None,
+                        "files": [],
+                        "tool_call": None,
+                        "current_feedback": None,
+                        "processing_duration_seconds": None,
+                        "sub_questions": [],
+                        "comments": None,
+                        "parentMessageId": parent_id,
+                        "refined_answer_improvement": None,
+                        "is_agentic": None,
+                    }
+                )
+                for m in messages:
+                    if m.get("message_id") == parent_id:
+                        m["latest_child_message"] = synthetic_id
+                        break
 
         return {
             "chat_session_id": chat_session_id,

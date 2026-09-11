@@ -57,6 +57,20 @@ describe("user-service API proxy routing", () => {
     );
   });
 
+  it("keeps the organization collection on its canonical no-slash route", () => {
+    const request = new NextRequest(
+      "http://localhost/api/user-service/organizations"
+    );
+
+    expect(isUserServiceCollectionPath(["organizations"])).toBe(false);
+    expect(buildUserServicePath(["organizations"], request)).toBe(
+      "/api/v1/organizations"
+    );
+    expect(getBackendUrl(["user-service", "organizations"]).pathname).toBe(
+      "/api/v1/organizations"
+    );
+  });
+
   it("forwards organization layout paths without treating them as collections", () => {
     const layoutUrl = getBackendUrl([
       "user-service",

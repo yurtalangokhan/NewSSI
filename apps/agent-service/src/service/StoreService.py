@@ -15,11 +15,12 @@ compatibility during the migration period.  New code should import the
 repositories directly from ``core.db``.
 """
 
-import logging
+from collections.abc import Sequence
 
 from core.db import AssistantRepository, ThreadRepository
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # ------------------------------------------------------------------
 # Global singletons (backward compat)
@@ -118,9 +119,17 @@ async def get_thread_from_store(thread_id: str) -> dict | None:
 
 
 async def list_threads_from_store(
-    limit: int = 100, offset: int = 0, metadata: dict | None = None
+    limit: int = 100,
+    offset: int = 0,
+    metadata: dict | None = None,
+    run_kinds: Sequence[str] | None = None,
 ) -> list[dict]:
-    return await _thread_repo().list_threads(limit=limit, offset=offset, metadata_filter=metadata)
+    return await _thread_repo().list_threads(
+        limit=limit,
+        offset=offset,
+        metadata_filter=metadata,
+        run_kinds=run_kinds,
+    )
 
 
 async def list_chat_sessions_by_activity_from_store(
@@ -128,6 +137,7 @@ async def list_chat_sessions_by_activity_from_store(
     before_activity: str | None = None,
     before_id: str | None = None,
     metadata: dict | None = None,
+    run_kinds: Sequence[str] | None = None,
 ) -> list[dict]:
     """List chat threads using the dedicated conversational activity order."""
     return await _thread_repo().list_chat_sessions_by_activity(
@@ -135,6 +145,7 @@ async def list_chat_sessions_by_activity_from_store(
         before_activity=before_activity,
         before_id=before_id,
         metadata_filter=metadata,
+        run_kinds=run_kinds,
     )
 
 

@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import useSWR from "swr";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 import {
   AllProvidersResponse,
   BuiltinOllamaStatus,
@@ -99,7 +99,7 @@ export function useBuiltinOllamaModels() {
 
 export function useDeleteBuiltinOllamaModel() {
   return useCallback(async (modelName: string) => {
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `/api/admin/ollama/models/${encodeURIComponent(modelName)}`,
       { method: "DELETE" }
     );
@@ -115,7 +115,7 @@ export function useDeleteBuiltinOllamaModel() {
 
 export function useReorderProviders() {
   return useCallback(async (orderedConfigIds: string[]) => {
-    await fetch("/api/admin/providers/order", {
+    await authenticatedFetch("/api/admin/providers/order", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ordered_config_ids: orderedConfigIds }),
@@ -125,7 +125,7 @@ export function useReorderProviders() {
 
 export function useUpdateProviderDefaultModel() {
   return useCallback(async (configId: string, model: string | null) => {
-    await fetch(`/api/admin/providers/${configId}/default-model`, {
+    await authenticatedFetch(`/api/admin/providers/${configId}/default-model`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model }),

@@ -127,7 +127,9 @@ function OllamaFormFields({
         <Tabs.Trigger value={OllamaTab.SelfHosted}>
           {t("llmOnboarding.selfHostedOllama")}
         </Tabs.Trigger>
-        <Tabs.Trigger value={OllamaTab.Cloud}>{t("llmOnboarding.ollamaCloud")}</Tabs.Trigger>
+        <Tabs.Trigger value={OllamaTab.Cloud}>
+          {t("llmOnboarding.ollamaCloud")}
+        </Tabs.Trigger>
       </Tabs.List>
 
       <Tabs.Content value={OllamaTab.SelfHosted}>
@@ -136,7 +138,9 @@ function OllamaFormFields({
             name={FIELD_API_BASE}
             render={(field, helper, meta, state) => (
               <FormField name={FIELD_API_BASE} state={state} className="w-full">
-                <FormField.Label>{t("llmOnboarding.apiBaseUrl")}</FormField.Label>
+                <FormField.Label>
+                  {t("llmOnboarding.apiBaseUrl")}
+                </FormField.Label>
                 <FormField.Control>
                   <InputTypeIn
                     {...field}
@@ -221,7 +225,9 @@ function OllamaFormFields({
                     messages={{
                       loading: t("llmOnboarding.fetchingModels"),
                       success: t("llmOnboarding.modelsFetched"),
-                      error: modelsErrorMessage || t("llmOnboarding.failedFetchModels"),
+                      error:
+                        modelsErrorMessage ||
+                        t("llmOnboarding.failedFetchModels"),
                     }}
                   />
                 )}
@@ -343,7 +349,9 @@ function OllamaFormFields({
                     messages={{
                       loading: t("llmOnboarding.fetchingModels"),
                       success: t("llmOnboarding.modelsFetched"),
-                      error: modelsErrorMessage || t("llmOnboarding.failedFetchModels"),
+                      error:
+                        modelsErrorMessage ||
+                        t("llmOnboarding.failedFetchModels"),
                     }}
                   />
                 )}
@@ -391,7 +399,9 @@ export function OllamaOnboardingForm({
   const validationSchema = useMemo(() => {
     if (activeTab === OllamaTab.SelfHosted) {
       return Yup.object().shape({
-        [FIELD_API_BASE]: Yup.string().required(t("llmOnboardingForms.apiKeyRequired")),
+        [FIELD_API_BASE]: Yup.string().required(
+          t("llmOnboardingForms.apiKeyRequired")
+        ),
         [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(
           t("llmOnboardingForms.modelNameRequired")
         ),
@@ -399,7 +409,9 @@ export function OllamaOnboardingForm({
     } else {
       return Yup.object().shape({
         custom_config: Yup.object().shape({
-          OLLAMA_API_KEY: Yup.string().required(t("llmOnboardingForms.apiKeyRequired")),
+          OLLAMA_API_KEY: Yup.string().required(
+            t("llmOnboardingForms.apiKeyRequired")
+          ),
         }),
         [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(
           t("llmOnboardingForms.modelNameRequired")

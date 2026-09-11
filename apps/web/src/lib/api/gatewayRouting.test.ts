@@ -1,4 +1,7 @@
-import { buildServiceUrl, canonicalServicePath } from "@/lib/api/gatewayRouting";
+import {
+  buildServiceUrl,
+  canonicalServicePath,
+} from "@/lib/api/gatewayRouting";
 
 describe("gateway service routing", () => {
   it("normalizes legacy api paths to api v1", () => {
@@ -18,11 +21,7 @@ describe("gateway service routing", () => {
 
   it("adds service scope when the base URL points at Kong", () => {
     expect(
-      buildServiceUrl(
-        "http://kong:8000",
-        "rag",
-        "/collections"
-      ).toString()
+      buildServiceUrl("http://kong:8000", "rag", "/collections").toString()
     ).toBe("http://kong:8000/rag-service/api/v1/collections");
   });
 

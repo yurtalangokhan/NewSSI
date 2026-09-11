@@ -1,0 +1,6496 @@
+{
+  "info": {
+    "name": "Agent Service API",
+    "description": "",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Api Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "health"
+          ]
+        },
+        "description": "Versioned health check endpoint."
+      }
+    },
+    {
+      "name": "Api Readiness Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/health/ready",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "health",
+            "ready"
+          ]
+        },
+        "description": "Readiness endpoint reporting dependency state."
+      }
+    },
+    {
+      "name": "Info",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agents/info",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agents",
+            "info"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Agent Catalog",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agents/catalog",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agents",
+            "catalog"
+          ]
+        },
+        "description": "Return lightweight product agent summaries for catalog and chat selection.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Agent Composition Catalog",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agents/composition/catalog",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agents",
+            "composition",
+            "catalog"
+          ]
+        },
+        "description": "Return available agent composition components from the canonical catalog.Query param ``kind`` filters by component kind:brain, perceptron, graph_strategy, runtime_policy.When omitted returns all available entries.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Agent Detail",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agents/{{agent_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agents",
+            "{{agent_id}}"
+          ]
+        },
+        "description": "Return full product agent detail for viewer, edit, share, and chat actions.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Invoke",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agents/invoke",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agents",
+            "invoke"
+          ],
+          "query": [
+            {
+              "key": "agent_id",
+              "value": "chatbot",
+              "required": false
+            }
+          ]
+        },
+        "description": "Invoke an agent with user input to retrieve a final response.If agent_id is not provided, the default agent will be used.Use thread_id to persist and continue a multi-turn conversation. run_id kwargis also attached to messages for recording feedback.Use user_id to persist and continue a conversation across multiple threads.The user_id can also be automatically extracted from the x-api-key header.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"Hello, world!\",\n  \"messages\": \"Hello, world!\",\n  \"model\": \"gpt-4\",\n  \"thread_id\": \"abc123def456\",\n  \"user_id\": \"abc123def456\",\n  \"agent_id\": \"abc123def456\",\n  \"agent_config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"file_content_blocks\": \"This is sample content text for the request.\",\n  \"files_metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  },\n  \"mail_attachments\": \"2024-01-15T10:30:00Z\",\n  \"is_regenerate\": false,\n  \"retry_target_message_id\": \"abc123def456\",\n  \"is_edit\": false,\n  \"edit_target_message_id\": \"abc123def456\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Invoke",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agents/{{agent_id}}/invoke",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agents",
+            "{{agent_id}}",
+            "invoke"
+          ]
+        },
+        "description": "Invoke an agent with user input to retrieve a final response.If agent_id is not provided, the default agent will be used.Use thread_id to persist and continue a multi-turn conversation. run_id kwargis also attached to messages for recording feedback.Use user_id to persist and continue a conversation across multiple threads.The user_id can also be automatically extracted from the x-api-key header.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"Hello, world!\",\n  \"messages\": \"Hello, world!\",\n  \"model\": \"gpt-4\",\n  \"thread_id\": \"abc123def456\",\n  \"user_id\": \"abc123def456\",\n  \"agent_id\": \"abc123def456\",\n  \"agent_config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"file_content_blocks\": \"This is sample content text for the request.\",\n  \"files_metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  },\n  \"mail_attachments\": \"2024-01-15T10:30:00Z\",\n  \"is_regenerate\": false,\n  \"retry_target_message_id\": \"abc123def456\",\n  \"is_edit\": false,\n  \"edit_target_message_id\": \"abc123def456\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Stream",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agents/stream",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agents",
+            "stream"
+          ],
+          "query": [
+            {
+              "key": "agent_id",
+              "value": "chatbot",
+              "required": false
+            }
+          ]
+        },
+        "description": "Stream an agent's response to a user input, including intermediate messages and tokens.If agent_id is not provided, the default agent will be used.Use thread_id to persist and continue a multi-turn conversation.Set ``stream_tokens=false`` to return intermediate messages but not token-by-token.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"Hello, world!\",\n  \"messages\": \"Hello, world!\",\n  \"model\": \"gpt-4\",\n  \"thread_id\": \"abc123def456\",\n  \"user_id\": \"abc123def456\",\n  \"agent_id\": \"abc123def456\",\n  \"agent_config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"file_content_blocks\": \"This is sample content text for the request.\",\n  \"files_metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  },\n  \"mail_attachments\": \"2024-01-15T10:30:00Z\",\n  \"is_regenerate\": false,\n  \"retry_target_message_id\": \"abc123def456\",\n  \"is_edit\": false,\n  \"edit_target_message_id\": \"abc123def456\",\n  \"stream_tokens\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Stream",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agents/{{agent_id}}/stream",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agents",
+            "{{agent_id}}",
+            "stream"
+          ]
+        },
+        "description": "Stream an agent's response to a user input, including intermediate messages and tokens.If agent_id is not provided, the default agent will be used.Use thread_id to persist and continue a multi-turn conversation.Set ``stream_tokens=false`` to return intermediate messages but not token-by-token.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"Hello, world!\",\n  \"messages\": \"Hello, world!\",\n  \"model\": \"gpt-4\",\n  \"thread_id\": \"abc123def456\",\n  \"user_id\": \"abc123def456\",\n  \"agent_id\": \"abc123def456\",\n  \"agent_config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"file_content_blocks\": \"This is sample content text for the request.\",\n  \"files_metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  },\n  \"mail_attachments\": \"2024-01-15T10:30:00Z\",\n  \"is_regenerate\": false,\n  \"retry_target_message_id\": \"abc123def456\",\n  \"is_edit\": false,\n  \"edit_target_message_id\": \"abc123def456\",\n  \"stream_tokens\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Feedback",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agents/feedback",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agents",
+            "feedback"
+          ]
+        },
+        "description": "Accept feedback for a run.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"run_id\": \"abc123def456\",\n  \"key\": \"sample text\",\n  \"score\": 42,\n  \"kwargs\": {\n    \"key\": \"value\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "History",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agents/history",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agents",
+            "history"
+          ]
+        },
+        "description": "Get chat history.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"thread_id\": \"abc123def456\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Schemas",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agent-definitions/schemas/list",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agent-definitions",
+            "schemas",
+            "list"
+          ]
+        },
+        "description": "Return all available graph schemas with their capabilities.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Brain Types",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agent-definitions/brains/list",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agent-definitions",
+            "brains",
+            "list"
+          ]
+        },
+        "description": "Return all available brain types.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Memory Types",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agent-definitions/memory/list",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agent-definitions",
+            "memory",
+            "list"
+          ]
+        },
+        "description": "Return all available memory types.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Agent Definition",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agent-definitions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agent-definitions"
+          ]
+        },
+        "description": "Create a new agent definition.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"graph_schema\": \"zero_shot\",\n  \"brain_type\": \"llm\",\n  \"memory_type\": \"none\",\n  \"system_prompt\": \"You are a helpful assistant.\",\n  \"model\": \"gpt-4\",\n  \"mcp_tools\": [\n    \"item1\",\n    \"item2\"\n  ],\n  \"mcp_tool_configs\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"rag_config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"sub_agents\": [\n    \"item\"\n  ],\n  \"sub_agent_ids\": \"abc123def456\",\n  \"supervisor_prompt\": \"You are a helpful assistant.\",\n  \"stages\": [\n    \"item\"\n  ],\n  \"pipeline_prompt\": \"You are a helpful assistant.\",\n  \"reflection_prompt\": \"You are a helpful assistant.\",\n  \"max_iterations\": 3,\n  \"description\": \"This is a sample description text.\",\n  \"tags\": [\n    \"item1\",\n    \"item2\"\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Agent Definitions",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agent-definitions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agent-definitions"
+          ],
+          "query": [
+            {
+              "key": "active_only",
+              "value": true,
+              "required": false
+            }
+          ]
+        },
+        "description": "List all agent definitions, optionally filtered by graph_schema.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Validate Composition",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agent-definitions/validate-composition",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agent-definitions",
+            "validate-composition"
+          ]
+        },
+        "description": "Validate agent composition before saving.Request body:{    \"agent_id\": UUID (null if creating new),    \"graph_schema\": str (SUPERVISOR, PIPELINE, etc.),    \"sub_agent_ids\": [UUID, UUID, ...]}Returns: {    \"valid\": bool,    \"errors\": [str],    \"warnings\": [str],    \"depth\": int}",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Available For Composition",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agent-definitions/available-for-composition",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agent-definitions",
+            "available-for-composition"
+          ]
+        },
+        "description": "List all agents available for composition as sub-agents.Request body (all optional):{    \"schema\": \"SUPERVISOR\" | \"PIPELINE\" (optional, filter eligible agents),    \"exclude_ids\": [UUID, ...] (optional, exclude certain agents)}Returns:[    {        \"id\": str,        \"name\": str,        \"graph_schema\": str,        \"status\": \"active\" | \"inactive\",        \"depth\": int    }]",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Composition Info",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agent-definitions/{{definition_id}}/composition-info",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agent-definitions",
+            "{{definition_id}}",
+            "composition-info"
+          ]
+        },
+        "description": "Get hierarchical composition structure for UI preview.Returns:{    \"id\": str,    \"name\": str,    \"graph_schema\": str,    \"status\": \"active\" | \"inactive\",    \"depth\": int,    \"sub_agents\": [        {same structure recursively}    ]}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Sub Agents",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agent-definitions/{{definition_id}}/sub-agents",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agent-definitions",
+            "{{definition_id}}",
+            "sub-agents"
+          ]
+        },
+        "description": "Update an agent's sub-agent references with validation + cascade invalidation.Request body:{    \"sub_agent_ids\": [UUID, UUID, ...]}Returns:Updated agent definition dict",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Agent Definition",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agent-definitions/{{definition_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agent-definitions",
+            "{{definition_id}}"
+          ]
+        },
+        "description": "Get a single agent definition by ID.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Agent Definition",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agent-definitions/{{definition_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agent-definitions",
+            "{{definition_id}}"
+          ]
+        },
+        "description": "Update an agent definition. Only provided fields are updated.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"graph_schema\": \"graph_rag\",\n  \"brain_type\": \"user\",\n  \"memory_type\": \"user\",\n  \"system_prompt\": \"You are a helpful assistant.\",\n  \"model\": \"gpt-4\",\n  \"mcp_tools\": \"sample text\",\n  \"mcp_tool_configs\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"rag_config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"sub_agents\": \"sample text\",\n  \"sub_agent_ids\": \"abc123def456\",\n  \"supervisor_prompt\": \"You are a helpful assistant.\",\n  \"stages\": \"sample text\",\n  \"pipeline_prompt\": \"You are a helpful assistant.\",\n  \"reflection_prompt\": \"You are a helpful assistant.\",\n  \"max_iterations\": 10,\n  \"description\": \"This is a sample description text.\",\n  \"tags\": \"sample text\",\n  \"is_active\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Agent Definition",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agent-definitions/{{definition_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agent-definitions",
+            "{{definition_id}}"
+          ]
+        },
+        "description": "Delete an agent definition.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Agent Groups",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agent-groups",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agent-groups"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Agent Group",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agent-groups",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agent-groups"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"description\": \"\",\n  \"user_ids\": \"abc123def456\",\n  \"persona_ids\": \"abc123def456\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Agent Group",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agent-groups/{{group_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agent-groups",
+            "{{group_id}}"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"description\": \"\",\n  \"user_ids\": \"abc123def456\",\n  \"persona_ids\": \"abc123def456\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Agent Group",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/agent-groups/{{group_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "agent-groups",
+            "{{group_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Search Assistants",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/assistants/search",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "assistants",
+            "search"
+          ]
+        },
+        "description": "Search for assistants. Returns all available agents as assistants.Compatible with @langchain/langgraph-sdk client.assistants.search()",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"limit\": 100,\n  \"offset\": 0,\n  \"metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  },\n  \"graph_id\": \"abc123def456\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Assistant",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/assistants/{{assistant_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "assistants",
+            "{{assistant_id}}"
+          ]
+        },
+        "description": "Get a specific assistant by ID.Compatible with @langchain/langgraph-sdk client.assistants.get()",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Assistant",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/assistants/{{assistant_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "assistants",
+            "{{assistant_id}}"
+          ]
+        },
+        "description": "Update an assistant.Compatible with @langchain/langgraph-sdk client.assistants.update()",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Assistant",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/assistants/{{assistant_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "assistants",
+            "{{assistant_id}}"
+          ]
+        },
+        "description": "Update an assistant.Compatible with @langchain/langgraph-sdk client.assistants.update()",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Assistant",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/assistants/{{assistant_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "assistants",
+            "{{assistant_id}}"
+          ]
+        },
+        "description": "Delete an assistant.Compatible with @langchain/langgraph-sdk client.assistants.delete()",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Assistant",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/assistants",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "assistants"
+          ]
+        },
+        "description": "Create a new assistant.Compatible with @langchain/langgraph-sdk client.assistants.create()",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"graph_id\": \"abc123def456\",\n  \"name\": \"Sample Name\",\n  \"config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Search Threads",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/threads/search",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "threads",
+            "search"
+          ]
+        },
+        "description": "Search / List threads.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"limit\": 100,\n  \"offset\": 0,\n  \"metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Thread",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/threads",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "threads"
+          ]
+        },
+        "description": "Create a new thread.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"thread_id\": \"abc123def456\",\n  \"metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Thread",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/threads/{{thread_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "threads",
+            "{{thread_id}}"
+          ]
+        },
+        "description": "Get a thread.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Thread",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/threads/{{thread_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "threads",
+            "{{thread_id}}"
+          ]
+        },
+        "description": "Update a thread.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Thread",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/threads/{{thread_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "threads",
+            "{{thread_id}}"
+          ]
+        },
+        "description": "Delete a thread.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Thread State",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/threads/{{thread_id}}/state",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "threads",
+            "{{thread_id}}",
+            "state"
+          ]
+        },
+        "description": "Get thread state including messages.Compatible with @langchain/langgraph-sdk client.threads.getState()",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Current User",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "me"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Settings",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/settings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "settings"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Enterprise Settings",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/enterprise-settings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "enterprise-settings"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "health"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "Get Mcp Servers",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/mcp/servers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "mcp",
+            "servers"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Chat Sessions",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/get-user-chat-sessions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "get-user-chat-sessions"
+          ],
+          "query": [
+            {
+              "key": "page_size",
+              "value": 100,
+              "required": false
+            }
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Chat Sessions",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/sessions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "sessions"
+          ],
+          "query": [
+            {
+              "key": "page_size",
+              "value": 100,
+              "required": false
+            }
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Chat Session",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/sessions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "sessions"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Chat Session",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/create-chat-session",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "create-chat-session"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Chat Session",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/get-chat-session/{{chat_session_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "get-chat-session",
+            "{{chat_session_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Chat Session",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/sessions/{{chat_session_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "sessions",
+            "{{chat_session_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Chat Session",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/sessions/{{chat_session_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "sessions",
+            "{{chat_session_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Chat Session",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/delete-chat-session/{{chat_session_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "delete-chat-session",
+            "{{chat_session_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Chat Session",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/delete-chat-session/{{chat_session_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "delete-chat-session",
+            "{{chat_session_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete All Chat Sessions",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/delete-all-chat-sessions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "delete-all-chat-sessions"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete All Chat Sessions",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/delete-all-chat-sessions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "delete-all-chat-sessions"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Rename Chat Session",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/rename-chat-session",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "rename-chat-session"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Rename Chat Session",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/rename-chat-session",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "rename-chat-session"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Chat Session Model",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/update-chat-session-model",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "update-chat-session-model"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Chat Session Temperature",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/update-chat-session-temperature",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "update-chat-session-temperature"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Stop Chat Session",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/stop-chat-session/{{chat_session_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "stop-chat-session",
+            "{{chat_session_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Set Message As Latest",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/set-message-as-latest",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "set-message-as-latest"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Available Context Tokens",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/available-context-tokens/{{session_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "available-context-tokens",
+            "{{session_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Available Context Tokens",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/available-context-tokens",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "available-context-tokens"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Session Token Count",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/session/{{session_id}}/token-count",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "session",
+            "{{session_id}}",
+            "token-count"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Session Files",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/session/{{session_id}}/files",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "session",
+            "{{session_id}}",
+            "files"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Chat Message Feedback",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/create-chat-message-feedback",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "create-chat-message-feedback"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Remove Chat Message Feedback",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/remove-chat-message-feedback",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "remove-chat-message-feedback"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Send Chat Message",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/send-chat-message",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "send-chat-message"
+          ]
+        },
+        "description": "Send chat message with streaming - uses message_generator.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Send Chat Message",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/messages",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "messages"
+          ]
+        },
+        "description": "Send chat message with streaming - uses message_generator.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Personas",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/persona",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "persona"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Persona",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/persona",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "persona"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"description\": \"This is a sample description text.\",\n  \"system_prompt\": \"\",\n  \"task_prompt\": \"\",\n  \"datetime_aware\": true,\n  \"document_set_ids\": \"abc123def456\",\n  \"is_public\": true,\n  \"llm_model_provider_override\": \"abc123def456\",\n  \"llm_model_version_override\": \"abc123def456\",\n  \"starter_messages\": \"Hello, world!\",\n  \"users\": [\n    \"item\"\n  ],\n  \"groups\": [\n    \"item\"\n  ],\n  \"tool_ids\": \"abc123def456\",\n  \"remove_image\": false,\n  \"uploaded_image_id\": \"abc123def456\",\n  \"icon_name\": \"Sample Name\",\n  \"search_start_date\": \"search term\",\n  \"featured\": false,\n  \"display_priority\": 1,\n  \"label_ids\": \"abc123def456\",\n  \"user_file_ids\": \"abc123def456\",\n  \"replace_base_system_prompt\": false,\n  \"hierarchy_node_ids\": \"abc123def456\",\n  \"document_ids\": \"abc123def456\",\n  \"base_agent\": \"sample text\",\n  \"graph_schema\": \"zero_shot\",\n  \"brain_type\": \"llm\",\n  \"memory_type\": \"none\",\n  \"sub_agent_ids\": \"abc123def456\",\n  \"sub_agents\": [\n    {\n      \"key\": \"value\"\n    }\n  ],\n  \"supervisor_prompt\": \"You are a helpful assistant.\",\n  \"stages\": [\n    {\n      \"key\": \"value\"\n    }\n  ],\n  \"pipeline_prompt\": \"You are a helpful assistant.\",\n  \"reflection_prompt\": \"You are a helpful assistant.\",\n  \"max_iterations\": 3,\n  \"mcp_tools\": [\n    \"item1\",\n    \"item2\"\n  ],\n  \"mcp_tool_configs\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"rag_config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"long_term_memory\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Persona Options",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/persona/options",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "persona",
+            "options"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Persona Labels",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/persona/labels",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "persona",
+            "labels"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Persona",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/persona/{{persona_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "persona",
+            "{{persona_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Persona",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/persona/{{persona_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "persona",
+            "{{persona_id}}"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"description\": \"This is a sample description text.\",\n  \"system_prompt\": \"\",\n  \"task_prompt\": \"\",\n  \"datetime_aware\": true,\n  \"document_set_ids\": \"abc123def456\",\n  \"is_public\": true,\n  \"llm_model_provider_override\": \"abc123def456\",\n  \"llm_model_version_override\": \"abc123def456\",\n  \"starter_messages\": \"Hello, world!\",\n  \"users\": [\n    \"item\"\n  ],\n  \"groups\": [\n    \"item\"\n  ],\n  \"tool_ids\": \"abc123def456\",\n  \"remove_image\": false,\n  \"uploaded_image_id\": \"abc123def456\",\n  \"icon_name\": \"Sample Name\",\n  \"search_start_date\": \"search term\",\n  \"featured\": false,\n  \"display_priority\": 1,\n  \"label_ids\": \"abc123def456\",\n  \"user_file_ids\": \"abc123def456\",\n  \"replace_base_system_prompt\": false,\n  \"hierarchy_node_ids\": \"abc123def456\",\n  \"document_ids\": \"abc123def456\",\n  \"base_agent\": \"sample text\",\n  \"graph_schema\": \"zero_shot\",\n  \"brain_type\": \"llm\",\n  \"memory_type\": \"none\",\n  \"sub_agent_ids\": \"abc123def456\",\n  \"sub_agents\": [\n    {\n      \"key\": \"value\"\n    }\n  ],\n  \"supervisor_prompt\": \"You are a helpful assistant.\",\n  \"stages\": [\n    {\n      \"key\": \"value\"\n    }\n  ],\n  \"pipeline_prompt\": \"You are a helpful assistant.\",\n  \"reflection_prompt\": \"You are a helpful assistant.\",\n  \"max_iterations\": 3,\n  \"mcp_tools\": [\n    \"item1\",\n    \"item2\"\n  ],\n  \"mcp_tool_configs\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"rag_config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"long_term_memory\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Persona",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/persona/{{persona_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "persona",
+            "{{persona_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Upload Persona Image",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/persona/upload-image",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "persona",
+            "upload-image"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Recent Files",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/files/recent",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "files",
+            "recent"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Persona Providers",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/llm/persona/{{persona_id}}/providers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "llm",
+            "persona",
+            "{{persona_id}}",
+            "providers"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Llm Provider",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/llm/provider",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "llm",
+            "provider"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Llm Built In Options",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/llm/built-in/options",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "llm",
+            "built-in",
+            "options"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Test Llm Default",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/llm/test/default",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "llm",
+            "test",
+            "default"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Default Assistant",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/default-assistant",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "default-assistant"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get User Projects",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create User Project",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/create",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "create"
+          ],
+          "query": [
+            {
+              "key": "name",
+              "value": null,
+              "required": true
+            }
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Upload Project Files",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/file/upload",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "file",
+            "upload"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Files In Project",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/files/{{project_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "files",
+            "{{project_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Link File To Project",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/{{project_id}}/files/{{file_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "{{project_id}}",
+            "files",
+            "{{file_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Unlink File From Project",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/{{project_id}}/files/{{file_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "{{project_id}}",
+            "files",
+            "{{file_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get User File",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/file/{{file_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "file",
+            "{{file_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete User File",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/file/{{file_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "file",
+            "{{file_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get User File Statuses",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/file/statuses",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "file",
+            "statuses"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"file_ids\": \"abc123def456\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get User Project",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/{{project_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "{{project_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Rename User Project",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/{{project_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "{{project_id}}"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete User Project",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/{{project_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "{{project_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get User Project Details",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/{{project_id}}/details",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "{{project_id}}",
+            "details"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get User Project Instructions",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/{{project_id}}/instructions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "{{project_id}}",
+            "instructions"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Upsert User Project Instructions",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/{{project_id}}/instructions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "{{project_id}}",
+            "instructions"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"instructions\": \"sample text\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Project Token Count",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/{{project_id}}/token-count",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "{{project_id}}",
+            "token-count"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Move Chat Session To Project",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/{{project_id}}/move_chat_session",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "{{project_id}}",
+            "move_chat_session"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"chat_session_id\": \"abc123def456\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Remove Chat Session From Project",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/user/projects/remove_chat_session",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "user",
+            "projects",
+            "remove_chat_session"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"chat_session_id\": \"abc123def456\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Admin Llm Provider",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/llm/provider",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "llm",
+            "provider"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Save Llm Provider",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/llm/provider",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "llm",
+            "provider"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Llm Provider",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/llm/provider",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "llm",
+            "provider"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Test Llm",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/llm/test",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "llm",
+            "test"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Set Default Llm",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/llm/default",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "llm",
+            "default"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Ollama Models",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/llm/ollama/available-models",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "llm",
+            "ollama",
+            "available-models"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List All Schedules",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/schedules",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "schedules"
+          ]
+        },
+        "description": "Return every sync schedule across all datasources.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Schedule",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/{{datasource_id}}/schedule",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "{{datasource_id}}",
+            "schedule"
+          ]
+        },
+        "description": "Create a sync schedule by setting cron on the Airbyte connection.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cron_expression\": \"0 0 * * *\",\n  \"preset\": \"string\",\n  \"enabled\": true,\n  \"update_graph_rag\": false,\n  \"timezone\": \"UTC\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Schedule",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/{{datasource_id}}/schedule",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "{{datasource_id}}",
+            "schedule"
+          ]
+        },
+        "description": "Get the sync schedule for a datasource.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Schedule",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/{{datasource_id}}/schedule",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "{{datasource_id}}",
+            "schedule"
+          ]
+        },
+        "description": "Update an existing sync schedule.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cron_expression\": \"0 0 * * *\",\n  \"preset\": \"daily\",\n  \"enabled\": true,\n  \"update_graph_rag\": \"2024-01-15T10:30:00Z\",\n  \"timezone\": \"UTC\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Schedule",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/{{datasource_id}}/schedule",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "{{datasource_id}}",
+            "schedule"
+          ]
+        },
+        "description": "Remove the sync schedule (set Airbyte connection to manual).",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Schedule Run Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/{{datasource_id}}/schedule/status",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "{{datasource_id}}",
+            "schedule",
+            "status"
+          ]
+        },
+        "description": "Get combined sync + schedule status for real-time UI updates.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Ingest Batch",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/ingest/batch",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "ingest",
+            "batch"
+          ]
+        },
+        "description": "Receive a batch of records from destination-embedding, embed immediately.Called by the custom Airbyte destination connector during sync.Each call processes one batch:  records \u2192 Documents \u2192 chunks \u2192 embed \u2192 vector DBOn ``batch_index == 0`` (first batch), existing embeddings are clearedso the full-refresh semantic is preserved.On ``is_last_batch == True``, sync status is marked completed andoptional Graph RAG rebuild is triggered.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"datasource_id\": \"abc123def456\",\n  \"records\": [\n    {\n      \"key\": \"value\"\n    }\n  ],\n  \"connector_type\": \"postgres\",\n  \"stream_name\": \"unknown\",\n  \"batch_id\": \"\",\n  \"batch_index\": 0,\n  \"is_last_batch\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Source Preview",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/ingest/source-preview",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "ingest",
+            "source-preview"
+          ]
+        },
+        "description": "Fetch sample records from the original Airbyte source.Used by the frontend documents tab to show raw source datawithout storing it locally.  Queries via Airbyte read API.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"datasource_id\": \"abc123def456\",\n  \"stream\": \"users\",\n  \"limit\": 20\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Mcp Tools",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/proxy/mcp/tools",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "proxy",
+            "mcp",
+            "tools"
+          ],
+          "query": [
+            {
+              "key": "url",
+              "value": "http://tools-service:8003/mcp",
+              "required": false
+            }
+          ]
+        },
+        "description": "Get list of available MCP tools from the specified MCP server.Used by the UI to populate tool selection for pipeline stages.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Ollama Models",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/proxy/ollama/models",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "proxy",
+            "ollama",
+            "models"
+          ]
+        },
+        "description": "Get list of available Ollama models.Fetches from Ollama API at OLLAMA_BASE_URL.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Rag Collections",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/proxy/rag/collections",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "proxy",
+            "rag",
+            "collections"
+          ]
+        },
+        "description": "Proxy endpoint to get RAG collections from langconnect-api.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Builtin Mcp Tools",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/proxy/mcp/tools-builtin",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "proxy",
+            "mcp",
+            "tools-builtin"
+          ]
+        },
+        "description": "Get list of available MCP tools from the built-in tools-service.Uses TOOLS_SERVICE_URL from settings (default: http://localhost:8003/mcp).",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Execute Mcp Tool",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/proxy/mcp/execute",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "proxy",
+            "mcp",
+            "execute"
+          ]
+        },
+        "description": "Execute a tool on the MCP server and return the result.Uses TOOLS_SERVICE_URL from settings if no URL is provided.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tool_name\": \"Sample Name\",\n  \"arguments\": {}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Stream Run",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/threads/{{thread_id}}/runs/stream",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "threads",
+            "{{thread_id}}",
+            "runs",
+            "stream"
+          ]
+        },
+        "description": "Stream runs for a thread using SDK-compatible format.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"assistant_id\": \"abc123def456\",\n  \"input\": \"sample text\",\n  \"model\": \"gpt-4\",\n  \"stream_tokens\": true,\n  \"user_id\": \"abc123def456\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Cancel Run Endpoint",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/threads/{{thread_id}}/runs/{{run_id}}/cancel",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "threads",
+            "{{thread_id}}",
+            "runs",
+            "{{run_id}}",
+            "cancel"
+          ]
+        },
+        "description": "Cancel an active run.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Thread History",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/threads/{{thread_id}}/history",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "threads",
+            "{{thread_id}}",
+            "history"
+          ]
+        },
+        "description": "Get thread history specific checkpointer states.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"limit\": 10,\n  \"before\": \"sample text\",\n  \"metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  },\n  \"checkpoint\": \"sample text\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Connectors",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/connectors",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "connectors"
+          ]
+        },
+        "description": "List all available Airbyte source connectors.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Connector Specification",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/connectors/{{connector_name}}/spec",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "connectors",
+            "{{connector_name}}",
+            "spec"
+          ]
+        },
+        "description": "Get the raw JSON Schema configuration specification for a connector.Returns the native connectionSpecification \u2014 NO flattening.The frontend renders it via the recursive SchemaForm.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Validate Connector Configuration",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/connectors/{{connector_name}}/validate",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "connectors",
+            "{{connector_name}}",
+            "validate"
+          ]
+        },
+        "description": "Validate a connector configuration by testing the connection.Config is the native nested JSON structure from the SchemaForm.",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Connector Streams",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/connectors/{{connector_name}}/streams",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "connectors",
+            "{{connector_name}}",
+            "streams"
+          ]
+        },
+        "description": "Get available streams for a configured connector.",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Datasources",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources"
+          ]
+        },
+        "description": "List all configured data sources.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Datasource",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources"
+          ]
+        },
+        "description": "Create a new data source.1. Create Airbyte source + connection + destination2. Store config in PG collection3. Store Airbyte IDs in mapping table",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"config\": {\n    \"connector_type\": \"postgres\",\n    \"connector_config\": {\n      \"setting\": \"value\",\n      \"enabled\": true\n    },\n    \"streams\": \"users\",\n    \"content_fields\": \"This is sample content text for the request.\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Datasource Details",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/{{id}}/details",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "{{id}}",
+            "details"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": 1,
+              "required": false
+            },
+            {
+              "key": "page_size",
+              "value": 10,
+              "required": false
+            }
+          ]
+        },
+        "description": "Get detailed information about a data source with paginated documents.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Datasource",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/{{id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "{{id}}"
+          ]
+        },
+        "description": "Update a data source's name, configuration, streams, and/or sync mode.Updates the Airbyte source config, connection streams/sync mode, and local metadata.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"connector_config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"streams\": \"users\",\n  \"sync_mode\": \"sample text\",\n  \"destination_sync_mode\": \"sample text\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Datasource",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/{{id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "{{id}}"
+          ]
+        },
+        "description": "Delete a data source, its embeddings, and Airbyte objects.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Sync Datasource",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/{{id}}/sync",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "{{id}}",
+            "sync"
+          ]
+        },
+        "description": "Trigger synchronization for a data source.If the datasource has an Airbyte connection, triggers via Airbyte API.Falls back to sync queue for manual extraction.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Sync Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/{{id}}/status",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "{{id}}",
+            "status"
+          ]
+        },
+        "description": "Get current sync status for real-time progress tracking.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Sync History",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/{{id}}/sync-history",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "{{id}}",
+            "sync-history"
+          ],
+          "query": [
+            {
+              "key": "limit",
+              "value": 20,
+              "required": false
+            }
+          ]
+        },
+        "description": "Return recent sync job history for a data source from Airbyte.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Assistant Schemas",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/assistants/{{assistant_id}}/schemas",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "assistants",
+            "{{assistant_id}}",
+            "schemas"
+          ]
+        },
+        "description": "Get schemas for an assistant's configuration.Returns graph-specific config schemas with x_oap_ui_config metadatafor Open Agent Platform.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Chat File",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/file/{{file_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "file",
+            "{{file_id}}"
+          ],
+          "query": [
+            {
+              "key": "download",
+              "value": false,
+              "required": false
+            }
+          ]
+        },
+        "description": "Serve a previously uploaded or agent-generated file.Checks in-memory cache first; falls back to MinIO if the servicerestarted since the file was uploaded.XLSX/XLS files are converted to CSV text so that the frontend's CsvContentcomponent can render them as a table without any extra parsing logic \u2014unless ``?download=1`` is set, in which case the original bytes andfilename are served with ``Content-Disposition: attachment`` so thebrowser downloads the real .xlsx file instead.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Chat File Text",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/file/{{file_id}}/text",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat",
+            "file",
+            "{{file_id}}",
+            "text"
+          ]
+        },
+        "description": "Extract and return plain text from a document file (docx, pdf, pptx, etc.).",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Search Providers",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/web-search/search-providers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "web-search",
+            "search-providers"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Content Providers",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/web-search/content-providers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "web-search",
+            "content-providers"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Test Content Provider",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/web-search/content-providers/test",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "web-search",
+            "content-providers",
+            "test"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Crawl Url",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/web-search/content-providers/crawl",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "web-search",
+            "content-providers",
+            "crawl"
+          ]
+        },
+        "description": "Crawl a single URL with the built-in web crawler and return the result.",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Reset Default Content Provider",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/web-search/content-providers/reset-default",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "web-search",
+            "content-providers",
+            "reset-default"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Activate Content Provider",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/web-search/content-providers/{{provider_id}}/activate",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "web-search",
+            "content-providers",
+            "{{provider_id}}",
+            "activate"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Deactivate Content Provider",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/web-search/content-providers/{{provider_id}}/deactivate",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "web-search",
+            "content-providers",
+            "{{provider_id}}",
+            "deactivate"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Providers",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/providers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "providers"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Provider",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/providers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "providers"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"provider_type\": \"abc123def456\",\n  \"base_url\": \"https://example.com/api/endpoint\",\n  \"api_key\": \"sk_live_abc123xyz789\",\n  \"clear_api_key\": false,\n  \"default_model\": \"gpt-4\",\n  \"config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Available Models",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/providers/available-models",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "providers",
+            "available-models"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Provider",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/providers/{{provider_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "providers",
+            "{{provider_id}}"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"provider_type\": \"abc123def456\",\n  \"base_url\": \"https://example.com/api/endpoint\",\n  \"api_key\": \"sk_live_abc123xyz789\",\n  \"clear_api_key\": false,\n  \"default_model\": \"gpt-4\",\n  \"config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Provider",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/providers/{{provider_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "providers",
+            "{{provider_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Reorder Providers",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/providers/order",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "providers",
+            "order"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ordered_config_ids\": \"abc123def456\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Default Model",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/providers/{{config_id}}/default-model",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "providers",
+            "{{config_id}}",
+            "default-model"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model\": \"gpt-4\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create User Provider",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/user-providers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "user-providers"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"provider_type\": \"abc123def456\",\n  \"api_key\": \"sk_live_abc123xyz789\",\n  \"api_base\": \"sample text\",\n  \"api_version\": \"sample text\",\n  \"default_model\": \"gpt-4\",\n  \"custom_config\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update User Provider",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/user-providers/{{provider_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "user-providers",
+            "{{provider_id}}"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"api_key\": \"sk_live_abc123xyz789\",\n  \"api_base\": \"sample text\",\n  \"api_version\": \"sample text\",\n  \"default_model\": \"gpt-4\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete User Provider",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/user-providers/{{provider_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "user-providers",
+            "{{provider_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Well Known Providers",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/providers/well-known",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "providers",
+            "well-known"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Test Provider Connection",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/providers/test-connection",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "providers",
+            "test-connection"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"provider_type\": \"abc123def456\",\n  \"base_url\": \"https://example.com/api/endpoint\",\n  \"api_key\": \"sk_live_abc123xyz789\",\n  \"provider_id\": \"abc123def456\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Provider Models",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/providers/{{provider_id}}/models",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "providers",
+            "{{provider_id}}",
+            "models"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Sync Provider Models",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/providers/{{provider_id}}/sync-models",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "providers",
+            "{{provider_id}}",
+            "sync-models"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Pull Ollama Model",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/ollama/pull",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "ollama",
+            "pull"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model\": \"gpt-4\",\n  \"provider_id\": \"builtin\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Vllm Models",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/vllm/models",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "vllm",
+            "models"
+          ],
+          "query": [
+            {
+              "key": "provider_id",
+              "value": null,
+              "required": true
+            }
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Builtin Ollama Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/ollama/status",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "ollama",
+            "status"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Builtin Ollama Models",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/ollama/models",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "ollama",
+            "models"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Builtin Ollama Model",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/admin/ollama/models/{{model_name}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "ollama",
+            "models",
+            "{{model_name}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Mail Configs",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mail-configs",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mail-configs"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Mail Config",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mail-configs",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mail-configs"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"host\": \"smtp.example.com\",\n  \"port\": 587,\n  \"username\": \"Sample Name\",\n  \"password\": \"SecurePass123!\",\n  \"from_email\": \"user@example.com\",\n  \"from_name\": \"Sample Name\",\n  \"security\": \"ssl\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Mail Config",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mail-configs/{{config_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mail-configs",
+            "{{config_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Mail Config",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mail-configs/{{config_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mail-configs",
+            "{{config_id}}"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"host\": \"smtp.example.com\",\n  \"port\": 587,\n  \"username\": \"Sample Name\",\n  \"password\": \"SecurePass123!\",\n  \"from_email\": \"user@example.com\",\n  \"from_name\": \"Sample Name\",\n  \"security\": \"/api/v1/resource\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Mail Config",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mail-configs/{{config_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mail-configs",
+            "{{config_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Test Mail Config",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mail-configs/{{config_id}}/test",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mail-configs",
+            "{{config_id}}",
+            "test"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"to_email\": \"user@example.com\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Send Mail With Config",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mail-configs/{{config_id}}/send",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mail-configs",
+            "{{config_id}}",
+            "send"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"to\": [\n    \"item1\",\n    \"item2\"\n  ],\n  \"subject\": \"sample text\",\n  \"body\": \"This is sample content text for the request.\",\n  \"cc\": [\n    \"item1\",\n    \"item2\"\n  ],\n  \"bcc\": [\n    \"item1\",\n    \"item2\"\n  ],\n  \"is_html\": false,\n  \"reply_to\": \"sample text\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Providers",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mcp-providers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mcp-providers"
+          ],
+          "query": [
+            {
+              "key": "include_inactive",
+              "value": false,
+              "required": false
+            }
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Provider",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mcp-providers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mcp-providers"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Provider",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mcp-providers/{{provider_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mcp-providers",
+            "{{provider_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Provider",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mcp-providers/{{provider_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mcp-providers",
+            "{{provider_id}}"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Provider",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mcp-providers/{{provider_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mcp-providers",
+            "{{provider_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Sync Provider Tools",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mcp-providers/{{provider_id}}/sync",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mcp-providers",
+            "{{provider_id}}",
+            "sync"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Tools",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mcp-tools",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mcp-tools"
+          ],
+          "query": [
+            {
+              "key": "include_inactive",
+              "value": false,
+              "required": false
+            }
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Available Tools",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mcp-tools/available",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mcp-tools",
+            "available"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Categories",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mcp-tools/categories",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mcp-tools",
+            "categories"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Tools By Category",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mcp-tools/categories/{{category}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mcp-tools",
+            "categories",
+            "{{category}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Tool",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mcp-tools/{{tool_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mcp-tools",
+            "{{tool_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Tool",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mcp-tools/{{tool_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mcp-tools",
+            "{{tool_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Tools By Provider",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mcp-tools/provider/{{provider_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mcp-tools",
+            "provider",
+            "{{provider_id}}"
+          ],
+          "query": [
+            {
+              "key": "include_inactive",
+              "value": false,
+              "required": false
+            }
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Sync All Tools",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mcp-tools/sync",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mcp-tools",
+            "sync"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Sync Provider Tools",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mcp-tools/provider/{{provider_id}}/sync",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mcp-tools",
+            "provider",
+            "{{provider_id}}",
+            "sync"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Agent Tools",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/assistants/{{agent_id}}/tools",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "assistants",
+            "{{agent_id}}",
+            "tools"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Add Tools To Agent",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/assistants/{{agent_id}}/tools",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "assistants",
+            "{{agent_id}}",
+            "tools"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Add Tool To Agent",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/assistants/{{agent_id}}/tools/{{tool_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "assistants",
+            "{{agent_id}}",
+            "tools",
+            "{{tool_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Remove Tool From Agent",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/assistants/{{agent_id}}/tools/{{tool_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "assistants",
+            "{{agent_id}}",
+            "tools",
+            "{{tool_id}}"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Reorder Agent Tools",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/assistants/{{agent_id}}/tools/reorder",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "assistants",
+            "{{agent_id}}",
+            "tools",
+            "reorder"
+          ]
+        },
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

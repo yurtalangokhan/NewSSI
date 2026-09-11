@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import { ConnectorCredentialPairStatus } from "@/app/admin/connector/[ccPairId]/types";
 import { toast } from "@/hooks/useToast";
 
@@ -7,7 +8,7 @@ export async function setCCPairStatus(
   onUpdate?: () => void
 ) {
   try {
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `/api/manage/admin/cc-pair/${ccPairId}/status`,
       {
         method: "PUT",

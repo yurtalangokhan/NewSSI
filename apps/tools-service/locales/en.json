@@ -19,6 +19,10 @@
     "recipient_rejected": "SMTP server rejected one or more recipients.",
     "message_rejected": "SMTP server rejected the message."
   },
+  "knowledge": {
+    "collection_required": "A configured knowledge collection is required.",
+    "rag_service_not_configured": "RAG service is not configured."
+  },
   "common": {
     "error": "Error: {error}"
   },
@@ -195,6 +199,10 @@
       "label": "Mail",
       "description": "SMTP email sending"
     },
+    "knowledge": {
+      "label": "Knowledge",
+      "description": "Knowledge retrieval"
+    },
     "web_search": {
       "label": "Web",
       "description": "Web search and webpage content fetching"
@@ -299,6 +307,16 @@
       "service_restart": {
         "name": "Restart Service",
         "description": "Restart a service (docker container or systemd service)."
+      }
+    },
+    "knowledge_retrieval": {
+      "database_search": {
+        "name": "Search Documents",
+        "description": "Retrieve document context from configured knowledge collections."
+      },
+      "graph_search": {
+        "name": "Search Knowledge Graph",
+        "description": "Retrieve graph context from configured knowledge collections."
       }
     },
     "utilities": {

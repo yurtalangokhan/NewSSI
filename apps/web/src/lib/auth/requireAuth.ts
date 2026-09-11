@@ -3,10 +3,10 @@ import {
   AuthTypeMetadata,
   getAuthTypeMetadataSS,
   getCurrentUserSS,
-  getCurrentUserPermissionsSS,
+  getCurrentUserAccessSS,
 } from "@/lib/userSS";
 import { getLoginPath } from "@/lib/auth/loginRoute";
-import { isAdminFromPermissions } from "@/lib/auth/roles";
+import { canAccessAdminPanel } from "@/lib/admin-routes";
 
 /**
  * Result of an authentication check.
@@ -100,8 +100,11 @@ export async function requireAdminAuth(): Promise<AuthCheckResult> {
 
   const { user, authTypeMetadata } = authResult;
 
-  const permissions = await getCurrentUserPermissionsSS();
-  if (!isAdminFromPermissions(permissions)) {
+  // The route registry is the source of truth for admin-area access. A user
+  // may enter when their effective permissions satisfy at least one enabled
+  // admin page; the client layout still protects each individual route.
+  const { permissions } = await getCurrentUserAccessSS();
+  if (!canAccessAdminPanel(permissions)) {
     return {
       user,
       authTypeMetadata,

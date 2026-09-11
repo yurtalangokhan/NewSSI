@@ -165,6 +165,10 @@ export interface SendMessageParams {
   // response excludes the old response (and anything sent after it) from
   // its context, while the old branch stays reachable via history.
   editTargetMessageId?: number | null;
+  // Answers to an ask_user card. The run is parked on an interrupt, and this
+  // is what resumes it — structured rather than text, so the backend never
+  // has to guess which question an answer belonged to (design 4.4).
+  resumePayload?: Record<string, unknown> | null;
   // Reuse this key when retrying the same user-visible chat operation.
   idempotencyKey?: string;
 }
@@ -189,6 +193,7 @@ export async function* sendMessage({
   personaId,
   isRegenerate,
   editTargetMessageId,
+  resumePayload,
   idempotencyKey,
 }: SendMessageParams): AsyncGenerator<PacketType, void, unknown> {
   // Build payload for new send-chat-message API
@@ -217,6 +222,7 @@ export async function* sendMessage({
     // Default to "unknown" for consistency with backend; callers should set explicitly
     origin: origin ?? "unknown",
     additional_context: additionalContext ?? null,
+    resume_payload: resumePayload ?? null,
   };
 
   const body = JSON.stringify(payload);

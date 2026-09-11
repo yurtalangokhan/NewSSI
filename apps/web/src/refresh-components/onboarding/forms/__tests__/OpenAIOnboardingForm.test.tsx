@@ -308,9 +308,11 @@ describe("OpenAIOnboardingForm", () => {
           "/api/admin/llm/test",
           expect.objectContaining({
             method: "POST",
-            headers: { "Content-Type": "application/json" },
           })
         );
+        const headers = new Headers(mockFetch.mock.calls[0]?.[1]?.headers);
+        expect(headers.get("Content-Type")).toBe("application/json");
+        expect(headers.has("Idempotency-Key")).toBe(true);
       });
     });
 
@@ -334,9 +336,11 @@ describe("OpenAIOnboardingForm", () => {
           "/api/admin/llm/provider?is_creation=true",
           expect.objectContaining({
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
           })
         );
+        const headers = new Headers(mockFetch.mock.calls[1]?.[1]?.headers);
+        expect(headers.get("Content-Type")).toBe("application/json");
+        expect(headers.has("Idempotency-Key")).toBe(true);
       });
     });
 

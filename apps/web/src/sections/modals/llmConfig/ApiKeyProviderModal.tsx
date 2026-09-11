@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 import { toast } from "@/hooks/useToast";
@@ -8,7 +10,10 @@ import Modal from "@/refresh-components/Modal";
 import { Button } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
-import { getProviderDisplayName, getProviderIcon } from "@/lib/llmConfig/providers";
+import {
+  getProviderDisplayName,
+  getProviderIcon,
+} from "@/lib/llmConfig/providers";
 import { useTranslation } from "react-i18next";
 
 interface Props {
@@ -38,7 +43,9 @@ export function ApiKeyProviderModal({
   const [apiBase, setApiBase] = useState("");
   const [apiVersion, setApiVersion] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [testStatus, setTestStatus] = useState<"idle" | "testing" | "ok" | "error">("idle");
+  const [testStatus, setTestStatus] = useState<
+    "idle" | "testing" | "ok" | "error"
+  >("idle");
   const [testLatency, setTestLatency] = useState<number | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
   const [defaultModel, setDefaultModel] = useState("");
@@ -73,15 +80,18 @@ export function ApiKeyProviderModal({
     setTestStatus("testing");
     setTestError(null);
     try {
-      const res = await fetch("/api/admin/providers/test-connection", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider_type: providerType,
-          api_key: apiKey.trim(),
-          base_url: apiBase.trim() || undefined,
-        }),
-      });
+      const res = await authenticatedFetch(
+        "/api/admin/providers/test-connection",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provider_type: providerType,
+            api_key: apiKey.trim(),
+            base_url: apiBase.trim() || undefined,
+          }),
+        }
+      );
       const data = await res.json();
       setTestLatency(data.latency_ms ?? null);
       if (data.success) {
@@ -92,7 +102,9 @@ export function ApiKeyProviderModal({
       }
     } catch (e) {
       setTestStatus("error");
-      setTestError(e instanceof Error ? e.message : t("admin.llm.connectionFailed"));
+      setTestError(
+        e instanceof Error ? e.message : t("admin.llm.connectionFailed")
+      );
     }
   };
 
@@ -103,7 +115,7 @@ export function ApiKeyProviderModal({
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/admin/user-providers", {
+      const res = await authenticatedFetch("/api/admin/user-providers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -125,7 +137,8 @@ export function ApiKeyProviderModal({
       onOpenChange(false);
     } catch (e: unknown) {
       toast({
-        message: e instanceof Error ? e.message : t("admin.llm.failedToAddProvider"),
+        message:
+          e instanceof Error ? e.message : t("admin.llm.failedToAddProvider"),
         level: "error",
       });
     } finally {
@@ -149,7 +162,9 @@ export function ApiKeyProviderModal({
                 value={providerType}
                 onValueChange={(v) => setProviderType(v)}
               >
-                <InputSelect.Trigger placeholder={t("admin.llm.selectProvider")} />
+                <InputSelect.Trigger
+                  placeholder={t("admin.llm.selectProvider")}
+                />
                 <InputSelect.Content>
                   {apiKeyProviders.map((p) => {
                     const ProviderIcon = getProviderIcon(p.provider_type);
@@ -185,26 +200,32 @@ export function ApiKeyProviderModal({
                   className="flex-1 rounded border border-input bg-background px-3 py-2 text-sm"
                   placeholder={placeholders.apiKey}
                   value={apiKey}
-                  onChange={(e) => { setApiKey(e.target.value); setTestStatus("idle"); }}
+                  onChange={(e) => {
+                    setApiKey(e.target.value);
+                    setTestStatus("idle");
+                  }}
                 />
                 <Button
                   prominence="secondary"
                   onClick={handleTest}
                   disabled={testStatus === "testing" || !apiKey.trim()}
                 >
-                  {testStatus === "testing" ? t("admin.llm.testing") : t("admin.llm.test")}
+                  {testStatus === "testing"
+                    ? t("admin.llm.testing")
+                    : t("admin.llm.test")}
                 </Button>
               </div>
               {testStatus === "ok" && (
-                <p className="text-sm text-green-600">
+                <Text as="p" className="text-sm text-green-600">
                   {t("admin.llm.connected")}
                   {testLatency !== null ? ` (${testLatency}ms)` : ""}
-                </p>
+                </Text>
               )}
               {testStatus === "error" && (
-                <p className="text-sm text-red-500">
-                  {t("admin.llm.connectionFailed")}: {testError || t("admin.llm.connectionFailed")}
-                </p>
+                <Text as="p" className="text-sm text-red-500">
+                  {t("admin.llm.connectionFailed")}:{" "}
+                  {testError || t("admin.llm.connectionFailed")}
+                </Text>
               )}
             </div>
 
@@ -229,7 +250,6 @@ export function ApiKeyProviderModal({
                     onChange={(e) => setApiVersion(e.target.value)}
                   />
                 </div>
-
               </>
             )}
 
@@ -249,7 +269,11 @@ export function ApiKeyProviderModal({
           <Button prominence="secondary" onClick={() => onOpenChange(false)}>
             {t("modals.cancel")}
           </Button>
-          <Button prominence="primary" onClick={handleSubmit} disabled={submitting}>
+          <Button
+            prominence="primary"
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
             {submitting ? t("admin.llm.adding") : t("admin.llm.addProvider")}
           </Button>
         </Modal.Footer>

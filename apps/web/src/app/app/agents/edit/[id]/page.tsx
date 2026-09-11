@@ -2,9 +2,11 @@
 
 import { use, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import type { Route } from "next";
 import { useAgent } from "@/hooks/useAgents";
 import AgentEditorPage from "@/refresh-pages/AgentEditorPage";
 import * as AppLayouts from "@/layouts/app-layouts";
+import AgentEditorSkeleton from "@/refresh-components/skeletons/AgentEditorSkeleton";
 
 export interface PageProps {
   params: Promise<{ id: string }>;
@@ -34,8 +36,23 @@ export default function Page(props: PageProps) {
     }
   }, [isLoading, agent, router]);
 
-  // Show nothing while redirecting or loading
-  if (isLoading || !agent) return null;
+  // Flows have their own full-screen studio now — this classic editor
+  // never renders one, it only redirects (P4→flow-separation).
+  useEffect(() => {
+    if (agent?.graph_schema === "flow" && agent.agent_definition_id) {
+      router.replace(`/app/flows/${agent.agent_definition_id}` as Route);
+    }
+  }, [agent, router]);
+
+  // Show a skeleton while the agent loads or we're about to redirect
+  if (isLoading || !agent) {
+    return (
+      <AppLayouts.Root>
+        <AgentEditorSkeleton isEditing={true} />
+      </AppLayouts.Root>
+    );
+  }
+  if (agent.graph_schema === "flow") return null;
 
   return (
     <AppLayouts.Root>

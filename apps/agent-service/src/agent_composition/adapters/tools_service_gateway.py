@@ -1,86 +1,77 @@
-"""HTTP-based tool gateway that calls tools-service with trusted context.
-
-Additive adapter. Does not replace the existing MultiServerMCPClient path.
-Use this gateway when tools must be called with authenticated user/tenant
-identity carried in transport headers (the trusted invocation contract).
-"""
+"""MCP tool gateway for tools-service with trusted transport headers."""
 
 from __future__ import annotations
 
-import httpx
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from time import monotonic
+from typing import Any
+
+from mcp import ClientSession
+from mcp.client.streamable_http import streamablehttp_client
 
 from ..domain.errors import ToolInvocationError
-from ..domain.ports import (
-    ToolBinding,
-    ToolDescriptor,
-    ToolGateway,
-    ToolInvocation,
-    ToolResult,
-)
+from ..domain.ports import ToolBinding, ToolDescriptor, ToolGateway, ToolInvocation, ToolResult
 from ..domain.trusted_context import INTERNAL_AUTH_HEADER, build_transport_headers
 
 
-class ToolsServiceToolBinding(ToolBinding):
-    """ToolBinding that calls one tool on tools-service via HTTP POST."""
+def _mcp_endpoint(service_url: str) -> str:
+    base_url = service_url.rstrip("/")
+    return base_url if base_url.endswith("/mcp") else f"{base_url}/mcp"
 
-    def __init__(
-        self,
-        descriptor: ToolDescriptor,
-        service_url: str,
-        internal_token: str,
-    ) -> None:
+
+@asynccontextmanager
+async def _open_mcp_session(
+    url: str, headers: dict[str, str]
+) -> AsyncIterator[ClientSession]:
+    """Open and initialize one Streamable HTTP MCP session."""
+    async with streamablehttp_client(url, headers=headers) as (read, write, _session_id):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            yield session
+
+
+def _content_to_dict(content: Any) -> dict[str, Any]:
+    if hasattr(content, "model_dump"):
+        return content.model_dump(by_alias=True, exclude_none=True)
+    result = dict(vars(content))
+    for name in ("type", "text", "data", "mimeType", "uri"):
+        if hasattr(content, name):
+            result[name] = getattr(content, name)
+    return result
+
+
+class ToolsServiceToolBinding(ToolBinding):
+    """Binding that invokes one tools-service MCP tool."""
+
+    def __init__(self, descriptor: ToolDescriptor, service_url: str, internal_token: str) -> None:
         self.descriptor = descriptor
-        self._service_url = service_url.rstrip("/")
+        self._mcp_url = _mcp_endpoint(service_url)
         self._internal_token = internal_token
 
     async def invoke(self, invocation: ToolInvocation) -> ToolResult:
         headers = build_transport_headers(invocation.trusted_context, self._internal_token)
-        headers["Content-Type"] = "application/json"
+        headers["Authorization"] = f"Bearer {self._internal_token}"
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.post(
-                    f"{self._service_url}/mcp",
-                    json={
-                        "jsonrpc": "2.0",
-                        "method": "tools/call",
-                        "params": {
-                            "name": self.descriptor.key,
-                            "arguments": dict(invocation.model_arguments),
-                        },
-                        "id": 1,
-                    },
-                    headers=headers,
+            async with _open_mcp_session(self._mcp_url, headers) as session:
+                result = await session.call_tool(
+                    self.descriptor.key, dict(invocation.model_arguments)
                 )
-            resp.raise_for_status()
-            data = resp.json()
-            if "error" in data:
-                raise ToolInvocationError(
-                    message=data["error"].get("message", "Tool call failed"),
-                    details={"code": data["error"].get("code")},
-                )
-            result = data.get("result", {})
-            return ToolResult(
-                output=result.get("content", [{"type": "text", "text": ""}]),
-                metadata={"tool": self.descriptor.key},
-            )
-        except httpx.HTTPStatusError as exc:
-            raise ToolInvocationError(
-                message=f"HTTP {exc.response.status_code}: {exc.response.text[:200]}",
-                details={"status": exc.response.status_code},
-            )
+            content = tuple(_content_to_dict(item) for item in result.content)
+            if result.isError:
+                raise ToolInvocationError(message="Tool call failed")
+            return ToolResult(output=content, metadata={"tool": self.descriptor.key})
+        except ToolInvocationError:
+            raise
         except Exception as exc:
             raise ToolInvocationError(
-                message=str(exc),
+                message="Tools service is unavailable",
                 details={"type": type(exc).__name__},
-            )
+            ) from exc
 
 
 class ToolsServiceToolGateway(ToolGateway):
-    """ToolGateway that lists and invokes tools via tools-service HTTP transport.
-
-    Trusted context is read from the invocation's ``trusted_context`` field and
-    sent only in transport headers (never in model_visible arguments).
-    """
+    """Discover and bind tools through tools-service's MCP endpoint."""
 
     def __init__(
         self,
@@ -90,56 +81,60 @@ class ToolsServiceToolGateway(ToolGateway):
         tools_cache_ttl: float = 300.0,
     ) -> None:
         self._service_url = service_url.rstrip("/")
+        self._mcp_url = _mcp_endpoint(service_url)
         self._internal_token = internal_token
         self._tools_cache_ttl = tools_cache_ttl
         self._loaded = False
         self._cached_tools: list[ToolDescriptor] | None = None
-        self._cache_expires_at: float = 0.0
+        self._cache_expires_at = 0.0
 
     async def load(self) -> None:
         self._loaded = True
 
     async def describe(self) -> tuple[ToolDescriptor, ...]:
-        if self._cached_tools is not None:
+        if self._cached_tools is not None and monotonic() < self._cache_expires_at:
             return tuple(self._cached_tools)
-        headers = {INTERNAL_AUTH_HEADER: self._internal_token}
+
+        headers = {
+            "Authorization": f"Bearer {self._internal_token}",
+            INTERNAL_AUTH_HEADER: self._internal_token,
+        }
+        tools: list[Any] = []
+        cursor: str | None = None
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(
-                    f"{self._service_url}/mcp",
-                    headers=headers,
-                )
-            resp.raise_for_status()
-            data = resp.json()
-            tools = data.get("tools", [])
-            self._cached_tools = [
-                ToolDescriptor(
-                    key=t["name"],
-                    description=t.get("description", ""),
-                    required_trusted_bindings=(),
-                )
-                for t in tools
-            ]
-        except Exception:
-            self._cached_tools = []
+            async with _open_mcp_session(self._mcp_url, headers) as session:
+                while True:
+                    result = await session.list_tools(cursor=cursor)
+                    tools.extend(result.tools)
+                    cursor = result.nextCursor
+                    if cursor is None:
+                        break
+        except Exception as exc:
+            raise ToolInvocationError(
+                message="Unable to discover tools-service MCP tools",
+                details={"type": type(exc).__name__},
+            ) from exc
+
+        self._cached_tools = [
+            ToolDescriptor(
+                key=tool.name,
+                description=tool.description or "",
+                input_schema=tool.inputSchema,
+            )
+            for tool in tools
+        ]
+        self._cache_expires_at = monotonic() + self._tools_cache_ttl
         return tuple(self._cached_tools)
 
     async def resolve(self, keys: tuple[str, ...]) -> tuple[ToolBinding, ...]:
-        all_tools = await self.describe()
-        resolved = []
-        for key in keys:
-            for tool in all_tools:
-                if tool.key == key:
-                    resolved.append(
-                        ToolsServiceToolBinding(
-                            descriptor=tool,
-                            service_url=self._service_url,
-                            internal_token=self._internal_token,
-                        )
-                    )
-                    break
-        return tuple(resolved)
+        descriptors = {tool.key: tool for tool in await self.describe()}
+        return tuple(
+            ToolsServiceToolBinding(descriptors[key], self._service_url, self._internal_token)
+            for key in keys
+            if key in descriptors
+        )
 
     async def close(self) -> None:
         self._loaded = False
         self._cached_tools = None
+        self._cache_expires_at = 0.0

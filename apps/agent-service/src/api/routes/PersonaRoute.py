@@ -6,7 +6,7 @@ Endpoints: /api/persona/* (personas/assistants management)
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 
 from api.dependencies import AuthenticatedUser, require_permission, require_user
 from controller import PersonaController, get_persona_controller
@@ -63,9 +63,10 @@ async def update_persona(
     request: PersonaUpsertRequest,
     user: Annotated[AuthenticatedUser, Depends(require_permission("persona:update"))],
 ):
-    return await _get_controller().update_persona(
-        persona_id, request.model_dump(), user_id=user.user_id
-    )
+    payload = request.model_dump()
+    if "connector_bindings" not in request.model_fields_set:
+        payload.pop("connector_bindings", None)
+    return await _get_controller().update_persona(persona_id, payload, user_id=user.user_id)
 
 
 @router.delete("/api/persona/{persona_id}")
@@ -78,6 +79,7 @@ async def delete_persona(
 
 @router.post("/api/admin/persona/upload-image")
 async def upload_persona_image(
+    file: UploadFile = File(...),
     user: AuthenticatedUser = Depends(require_permission("persona:create")),
 ):
-    return await _get_controller().upload_persona_image()
+    return await _get_controller().upload_persona_image(file, user_id=user.user_id)

@@ -185,7 +185,7 @@ refresh_staged_files() {
 
   while IFS= read -r file; do
     [[ -z "$file" ]] && continue
-    [[ -e "$file" ]] && git add -- "$file"
+    [[ -e "$file" ]] && git add -f -- "$file"
   done <<<"$candidates"
 }
 
@@ -244,6 +244,12 @@ run "shell syntax check" bash -n \
   scripts/git-hooks/pre-commit \
   scripts/git-hooks/pre-push \
   scripts/install-git-hooks.sh \
+  scripts/validate-commit.sh \
+  scripts/validate-merge.sh \
+  scripts/validate-push.sh \
+  scripts/validate-spec.sh \
+  scripts/validate-task.sh \
+  scripts/validation/quiet-run.sh \
   scripts/quality/check.sh
 
 ensure_staged_files_can_be_refreshed
@@ -264,11 +270,13 @@ if [[ "$MODE" == "staged" ]]; then
   run "staged whitespace check" git diff --cached --check
 fi
 
-for service in agent-service rag-service user-service tools-service; do
-  if has_changed_path "^apps/$service/(src|tests|alembic|migrations|pyproject.toml|uv.lock|Makefile)"; then
-    run_python_service_checks "$service"
-  fi
-done
+if [[ "$MODE" != "staged" ]]; then
+  for service in agent-service rag-service user-service tools-service; do
+    if has_changed_path "^apps/$service/(src|tests|alembic|migrations|pyproject.toml|uv.lock|Makefile)"; then
+      run_python_service_checks "$service"
+    fi
+  done
+fi
 
 if has_changed_path '^(apps/(agent-service|rag-service|user-service|tools-service)/|packages/i18n-py/|scripts/quality/check_i18n.py)'; then
   run "backend i18n check" python3 scripts/quality/check_i18n.py
@@ -279,7 +287,16 @@ fi
 # Runs on commit and push; pre-existing offenders do not block unless they are part
 # of the current diff (changed-files-only policy).
 if has_changed_path '^(apps/(agent-service|rag-service|user-service|tools-service)/|apps/web/)'; then
-  export QUALITY_FILES="$FILES"
+  # In "all" mode the file list is the whole repository, which exceeds the
+  # kernel's per-variable limit (MAX_ARG_STRLEN, 128 KB) and makes every later
+  # exec fail with E2BIG. The Python side resolves the same list from
+  # QUALITY_MODE, so hand it the mode instead of the list.
+  if [[ "$MODE" == "all" ]]; then
+    export QUALITY_MODE="all"
+    unset QUALITY_FILES
+  else
+    export QUALITY_FILES="$FILES"
+  fi
   run "architecture & code-quality gate" python3 scripts/quality/check_architecture.py --changed
   if [[ "$MODE" == "all" ]]; then
     run "quality score report" python3 scripts/quality/score.py --changed
@@ -289,17 +306,20 @@ if has_changed_path '^(apps/(agent-service|rag-service|user-service|tools-servic
 fi
 
 
-if has_changed_path '^apps/web/(src|tests|package.json|package-lock.json|Makefile|next.config|tsconfig|jest.config|playwright.config)'; then
+if [[ "$MODE" != "staged" ]] && has_changed_path '^apps/web/(src|tests|package.json|package-lock.json|Makefile|next.config|tsconfig|jest.config|playwright.config)'; then
   run "web validate" run_web_checks
 fi
 
-if has_changed_path '^(configs/docker-compose.*\.ya?ml|docker-compose.*\.ya?ml|apps/.*/compose\.ya?ml|apps/.*/Dockerfile|apps/.*/docker/Dockerfile.*|apps/.*/pyproject\.toml|apps/.*/uv\.lock|apps/.*/package(-lock)?\.json|Makefile|scripts/)'; then
+if [[ "$MODE" != "staged" ]] && has_changed_path '^(configs/docker-compose.*\.ya?ml|docker-compose.*\.ya?ml|apps/.*/compose\.ya?ml|apps/.*/Dockerfile|apps/.*/docker/Dockerfile.*|apps/.*/pyproject\.toml|apps/.*/uv\.lock|apps/.*/package(-lock)?\.json|Makefile|scripts/)'; then
   run "docker compose config" make docker-config
 fi
 
 DOCKER_SERVICES="$(changed_docker_services)"
-if [[ -n "$DOCKER_SERVICES" ]] && has_changed_path '^(configs/docker-compose.*\.ya?ml|docker-compose.*\.ya?ml|apps/.*/compose\.ya?ml|apps/.*/Dockerfile|apps/.*/docker/Dockerfile.*|apps/.*/pyproject\.toml|apps/.*/uv\.lock|apps/(agent-service|rag-service|user-service|tools-service)/(src|models|schema|tests|alembic|migrations|Makefile)|Makefile|scripts/)'; then
+if [[ "$MODE" != "staged" ]] && [[ -n "$DOCKER_SERVICES" ]] && has_changed_path '^(configs/docker-compose.*\.ya?ml|docker-compose.*\.ya?ml|apps/.*/compose\.ya?ml|apps/.*/Dockerfile|apps/.*/docker/Dockerfile.*|apps/.*/pyproject\.toml|apps/.*/uv\.lock|apps/(agent-service|rag-service|user-service|tools-service)/(src|models|schema|tests|alembic|migrations|Makefile)|Makefile|scripts/)'; then
   run "docker image build ($DOCKER_SERVICES)" make docker-build-services PYTHON_SERVICES="$DOCKER_SERVICES"
+  if grep -qw 'agent-service' <<<"$DOCKER_SERVICES"; then
+    run "agent-service docker import smoke" make docker-smoke-agent-service
+  fi
 fi
 
 printf '\n%sQuality gate passed.%s %s%d step(s) completed.%s\n' "$GREEN" "$RESET" "$DIM" "$STEP" "$RESET"

@@ -22,17 +22,22 @@ export default function SelectModelModal({
       <Modal.Content width="sm" height="sm">
         <Modal.Header
           icon={SvgServer}
-          title={t("admin.embeddings.selectModelTitle", { modelName: model.model_name })}
+          title={t("admin.embeddings.selectModelTitle", {
+            modelName: model.model_name,
+          })}
           onClose={onCancel}
         />
         <Modal.Body>
           <Text as="p">
             {t("admin.embeddings.selectModelBody1")}{" "}
-            <strong>{model.model_name}</strong>. {t("admin.embeddings.selectModelBody2")}
+            <strong>{model.model_name}</strong>.{" "}
+            {t("admin.embeddings.selectModelBody2")}
           </Text>
         </Modal.Body>
         <Modal.Footer>
-          <Button onClick={onConfirm}>{t("admin.embeddings.confirmButton")}</Button>
+          <Button onClick={onConfirm}>
+            {t("admin.embeddings.confirmButton")}
+          </Button>
           <Button secondary onClick={onCancel}>
             {t("admin.embeddings.cancelButton")}
           </Button>

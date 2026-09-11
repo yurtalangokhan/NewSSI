@@ -1,11 +1,12 @@
 """OpenAI Whisper speech-to-text implementation."""
 
-import logging
 from typing import BinaryIO
 
 from openai import OpenAI
 
-logger = logging.getLogger(__name__)
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class OpenAISTT:

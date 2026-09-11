@@ -122,7 +122,7 @@ describe("OrganizationFlowNode", () => {
     expect(section).toHaveClass("bg-background-neutral-02", "max-h-28");
     expect(screen.getByText("User 1 Example")).toBeInTheDocument();
     expect(screen.queryByText("User 5 Example")).not.toBeInTheDocument();
-    expect(screen.getByText("+2 more")).toBeInTheDocument();
+    expect(screen.getByText("+2 more members")).toBeInTheDocument();
   });
 
   it("provides four directional anchors when rendered on a React Flow canvas", () => {

@@ -1,11 +1,12 @@
 import { USER_SERVICE_URL } from "@/lib/constants";
 import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { getLanguageHeaders } from "@/lib/api/proxy";
+import { getDerivedIncomingIdempotencyHeaders } from "@/lib/api/idempotency";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(request: NextRequest) {
   const payload = await request.json();
-  const headers = {
+  const baseHeaders = {
     "Content-Type": "application/json",
     Cookie: request.headers.get("cookie") || "",
     ...getLanguageHeaders(request),
@@ -23,7 +24,10 @@ export async function PATCH(request: NextRequest) {
       buildServiceUrl(USER_SERVICE_URL, "user", "/api/users/me").toString(),
       {
         method: "PATCH",
-        headers,
+        headers: {
+          ...baseHeaders,
+          ...(await getDerivedIncomingIdempotencyHeaders(request, "profile")),
+        },
         body: JSON.stringify({
           first_name: firstName || null,
           last_name: rest.join(" ") || null,
@@ -68,7 +72,10 @@ export async function PATCH(request: NextRequest) {
     ).toString(),
     {
       method: "PATCH",
-      headers,
+      headers: {
+        ...baseHeaders,
+        ...(await getDerivedIncomingIdempotencyHeaders(request, "settings")),
+      },
       body: JSON.stringify(settingsPayload),
     }
   );

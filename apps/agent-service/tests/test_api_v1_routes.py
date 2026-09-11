@@ -74,6 +74,35 @@ def test_api_v1_health_endpoint_is_public() -> None:
     assert response.json()["status"] == "ok"
 
 
+def test_api_v1_readiness_endpoint_is_public() -> None:
+    response = TestClient(app).get("/api/v1/health/ready")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ready"
+    assert response.json()["service"] == "agent-service"
+
+
+def test_api_v1_readiness_returns_503_when_required_dependency_fails() -> None:
+    from core.observability import DependencyPolicy, DependencyStatus, dependency_registry
+
+    dependency_registry.record(
+        DependencyStatus(
+            name="postgres",
+            policy=DependencyPolicy.REQUIRED,
+            status="failed",
+        )
+    )
+    try:
+        response = TestClient(app).get("/api/v1/health/ready")
+    finally:
+        dependency_registry.record_ok("postgres", policy=DependencyPolicy.REQUIRED)
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "not_ready"
+    assert response.json()["dependencies"]["postgres"]["status"] == "failed"
+    assert response.json()["dependencies"]["postgres"]["required"] is True
+
+
 def test_api_v1_protected_chat_route_requires_auth(monkeypatch) -> None:
     response = _protected_client(monkeypatch).get("/api/v1/chat/get-user-chat-sessions")
 

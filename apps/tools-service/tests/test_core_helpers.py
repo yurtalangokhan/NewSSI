@@ -24,6 +24,7 @@ def test_settings_reads_runtime_values_from_environment(monkeypatch):
     monkeypatch.setenv("POSTGRES_USER", "tools")
     monkeypatch.setenv("POSTGRES_PASSWORD", "secret")
     monkeypatch.setenv("POSTGRES_DB", "tools")
+    monkeypatch.setenv("LOG_LEVEL", "DEBUG")
 
     settings = Settings.from_env()
 
@@ -37,6 +38,7 @@ def test_settings_reads_runtime_values_from_environment(monkeypatch):
         "port": 5432,
         "database": "tools",
     }
+    assert settings.log_level == "DEBUG"
 
 
 def test_settings_raises_clear_error_for_missing_required_env(monkeypatch):

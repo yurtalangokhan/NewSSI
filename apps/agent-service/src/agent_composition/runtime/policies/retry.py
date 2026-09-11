@@ -8,7 +8,6 @@ business fallback responses.
 from __future__ import annotations
 
 import asyncio
-import logging
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from typing import Any, TypeVar
@@ -18,8 +17,9 @@ from agent_composition.domain.ports import (
     RuntimePolicyRequest,
     RuntimePolicyResult,
 )
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 T = TypeVar("T")
 RetryOperation = Coroutine[Any, Any, T] | Callable[[], Coroutine[Any, Any, T]]

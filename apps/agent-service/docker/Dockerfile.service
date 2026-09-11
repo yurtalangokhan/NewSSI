@@ -30,13 +30,16 @@ RUN sed -i \
     && rm -rf /root/.cache/uv /root/.cache/pip
 
 COPY apps/agent-service/src/agents/ ./agents/
+COPY apps/agent-service/src/agent_composition/ ./agent_composition/
 COPY apps/agent-service/src/api/ ./api/
 COPY apps/agent-service/src/client/ ./client/
 COPY apps/agent-service/src/controller/ ./controller/
 COPY apps/agent-service/src/core/ ./core/
 COPY apps/agent-service/src/domain/ ./domain/
+COPY apps/agent-service/src/integrations/ ./integrations/
 COPY apps/agent-service/src/memory/ ./memory/
 COPY apps/agent-service/src/models/ ./models/
+COPY apps/agent-service/src/repository/ ./repository/
 COPY apps/agent-service/src/schema/ ./schema/
 COPY apps/agent-service/src/service/ ./service/
 COPY apps/agent-service/src/app.py .

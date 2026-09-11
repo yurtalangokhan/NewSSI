@@ -21,6 +21,7 @@ import {
 import { SvgTrash, SvgX, SvgEditBig, SvgChevronLeft } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
+import ListSkeleton from "@/refresh-components/skeletons/ListSkeleton";
 
 function dedupeChatHistorySessions(sessions: ChatSession[]): ChatSession[] {
   return mergeChatSessionsByFreshness(sessions);
@@ -241,8 +242,8 @@ export default function ChatHistoryModal({
           {/* Chat List */}
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
-              <div className="flex h-full items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-gray-200 border-t-primary" />
+              <div className="p-4">
+                <ListSkeleton itemCount={6} hasIcon={true} />
               </div>
             ) : allSessions.length === 0 ? (
               <div className="flex h-full items-center justify-center">

@@ -16,13 +16,15 @@ import { SettingsContext } from "@/providers/SettingsProvider";
 import { AuthTypeMetadata } from "@/lib/userSS";
 import { updateUserPersonalization as persistPersonalization } from "@/lib/userSettings";
 import { useTheme } from "next-themes";
-import { isAdminFromPermissions } from "@/lib/auth/roles";
 import {
   hasAnyPermission as hasAnyPermissionValue,
   hasAllPermissions as hasAllPermissionsValue,
   hasPermission as hasPermissionValue,
 } from "@/lib/auth/permissions";
-import { authenticatedFetch } from "@/lib/fetcher";
+import {
+  authenticatedFetch,
+  AUTH_SESSION_REFRESHED_EVENT,
+} from "@/lib/fetcher";
 
 interface UserContextType {
   user: User | null;
@@ -103,6 +105,7 @@ export function UserProvider({
     mergeUserPreferences(user, settings)
   );
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [permissionsError, setPermissionsError] = useState<string | null>(null);
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(
     Boolean(user?.id)
@@ -144,6 +147,7 @@ export function UserProvider({
   const fetchPermissions = useCallback(async () => {
     if (!upToDateUser?.id) {
       setPermissions([]);
+      setIsAdmin(false);
       setPermissionsError(null);
       setIsPermissionsLoading(false);
       return;
@@ -159,12 +163,24 @@ export function UserProvider({
       if (!response.ok) {
         throw new Error("Failed to fetch permissions");
       }
-      const payload = (await response.json()) as { permissions?: string[] };
+      const payload = (await response.json()) as {
+        permissions?: string[];
+        is_admin?: boolean;
+      };
       setPermissions(payload.permissions ?? []);
+      // `is_admin` is resolved server-side from the user's actual admin-tier
+      // composite role (system-admin / enterprise-admin) - NOT derived here
+      // from permission overlap. End users are legitimately granted plenty
+      // of read-only permissions for ordinary app features, and several
+      // admin pages are gated on those same permission strings, so deriving
+      // "isAdmin" from overlap on the client is what previously let end
+      // users into the admin panel.
+      setIsAdmin(payload.is_admin ?? false);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to fetch permissions";
       setPermissions([]);
+      setIsAdmin(false);
       setPermissionsError(message);
     } finally {
       setIsPermissionsLoading(false);
@@ -174,6 +190,47 @@ export function UserProvider({
   useEffect(() => {
     fetchPermissions();
   }, [fetchPermissions]);
+
+  useEffect(() => {
+    const handleSessionRefreshed = () => {
+      fetchPermissions();
+    };
+    window.addEventListener(
+      AUTH_SESSION_REFRESHED_EVENT,
+      handleSessionRefreshed
+    );
+    return () => {
+      window.removeEventListener(
+        AUTH_SESSION_REFRESHED_EVENT,
+        handleSessionRefreshed
+      );
+    };
+  }, [fetchPermissions]);
+
+  useEffect(() => {
+    if (!upToDateUser?.id) return;
+
+    const checkSession = async () => {
+      if (document.visibilityState === "visible") {
+        try {
+          const currentUser = await getCurrentUser();
+          if (currentUser) {
+            setUpToDateUser(currentUser);
+          }
+        } catch {
+          // ignore
+        }
+      }
+    };
+
+    const interval = setInterval(checkSession, 4 * 60 * 1000);
+    document.addEventListener("visibilitychange", checkSession);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", checkSession);
+    };
+  }, [upToDateUser?.id]);
 
   const hasPermission = useCallback(
     (permission: string) => hasPermissionValue(permissions, permission),
@@ -235,7 +292,7 @@ export function UserProvider({
         return prevUser;
       });
 
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `/api/temperature-override-enabled?temperature_override_enabled=${enabled}`,
         {
           method: "PATCH",
@@ -270,7 +327,7 @@ export function UserProvider({
         return prevUser;
       });
 
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `/api/shortcut-enabled?shortcut_enabled=${enabled}`,
         {
           method: "PATCH",
@@ -292,7 +349,7 @@ export function UserProvider({
 
   const updateUserAutoScroll = async (autoScroll: boolean) => {
     try {
-      const response = await fetch("/api/auto-scroll", {
+      const response = await authenticatedFetch("/api/auto-scroll", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -363,7 +420,7 @@ export function UserProvider({
     });
 
     try {
-      const response = await fetch(`/api/user/pinned-assistants`, {
+      const response = await authenticatedFetch(`/api/user/pinned-assistants`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -414,7 +471,7 @@ export function UserProvider({
         return prevUser;
       });
 
-      const response = await fetch(`/api/user/theme-preference`, {
+      const response = await authenticatedFetch(`/api/user/theme-preference`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -447,7 +504,7 @@ export function UserProvider({
         return prevUser;
       });
 
-      const response = await fetch(`/api/user/chat-background`, {
+      const response = await authenticatedFetch(`/api/user/chat-background`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -486,7 +543,7 @@ export function UserProvider({
         return prevUser;
       });
 
-      const response = await fetch(`/api/user/default-model`, {
+      const response = await authenticatedFetch(`/api/user/default-model`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -524,7 +581,7 @@ export function UserProvider({
         return prevUser;
       });
 
-      const response = await fetch("/api/user/default-app-mode", {
+      const response = await authenticatedFetch("/api/user/default-app-mode", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -562,7 +619,7 @@ export function UserProvider({
         updateUserDefaultAppMode,
         updateUserPinnedAssistants,
         toggleAgentPinnedStatus,
-        isAdmin: isAdminFromPermissions(permissions),
+        isAdmin,
         isCurator: false,
         permissions,
         permissionsError,

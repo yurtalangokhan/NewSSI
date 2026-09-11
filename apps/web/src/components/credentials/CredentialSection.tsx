@@ -33,7 +33,7 @@ import {
   getConnectorOauthRedirectUrl,
   useOAuthDetails,
 } from "@/lib/connectors/oauth";
-import { Spinner } from "@/components/Spinner";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import { CreateStdOAuthCredential } from "@/components/credentials/actions/CreateStdOAuthCredential";
 import { Card } from "../ui/card";
 import { isTypedFileField, TypedFile } from "@/lib/connectors/fileTypes";
@@ -294,7 +294,9 @@ export default function CredentialSection({
             />
             <Modal.Body>
               {oauthDetailsLoading ? (
-                <Spinner />
+                <div className="py-6">
+                  <FormSkeleton fieldCount={3} hasSubmitButton={false} />
+                </div>
               ) : (
                 <>
                   {oauthDetails && oauthDetails.oauth_enabled ? (

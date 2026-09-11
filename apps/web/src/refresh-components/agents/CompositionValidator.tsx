@@ -9,11 +9,7 @@ import { useEffect } from "react";
 import { Card } from "@/refresh-components/cards";
 import Text from "@/refresh-components/texts/Text";
 import * as GeneralLayouts from "@/layouts/general-layouts";
-import {
-  SvgAlertTriangle,
-  SvgCheckCircle,
-  SvgInfo,
-} from "@opal/icons";
+import { SvgAlertTriangle, SvgCheckCircle, SvgInfo } from "@opal/icons";
 import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import { useCompositionValidation } from "@/hooks/useCompositionValidation";
 import { useTranslation } from "react-i18next";
@@ -58,7 +54,11 @@ export default function CompositionValidator({
       {/* Validation Status */}
       {isValidating ? (
         <Card className="p-4 border border-neutral-200 dark:border-neutral-700">
-          <GeneralLayouts.Section flexDirection="row" alignItems="center" gap={1}>
+          <GeneralLayouts.Section
+            flexDirection="row"
+            alignItems="center"
+            gap={1}
+          >
             <SimpleLoader />
             <Text mainUiMuted text03>
               {t("agentEditor.validatingComposition")}
@@ -67,7 +67,11 @@ export default function CompositionValidator({
         </Card>
       ) : isValid ? (
         <Card className="bg-green-50 dark:bg-green-950 border border-green-300 dark:border-green-700 p-4">
-          <GeneralLayouts.Section flexDirection="row" alignItems="center" gap={1}>
+          <GeneralLayouts.Section
+            flexDirection="row"
+            alignItems="center"
+            gap={1}
+          >
             <SvgCheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
             <GeneralLayouts.Section gap={0.25}>
               <Text mainUiAction text03>
@@ -83,23 +87,31 @@ export default function CompositionValidator({
         </Card>
       ) : (
         <Card className="bg-red-50 dark:bg-red-950 border border-red-300 dark:border-red-700 p-4">
-          <GeneralLayouts.Section flexDirection="row" alignItems="start" gap={1}>
+          <GeneralLayouts.Section
+            flexDirection="row"
+            alignItems="start"
+            gap={1}
+          >
             <SvgAlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
             <GeneralLayouts.Section gap={0.5}>
-              <Text mainUiAction text03 className="text-red-700 dark:text-red-300">
+              <Text
+                mainUiAction
+                text03
+                className="text-red-700 dark:text-red-300"
+              >
                 {t("agentEditor.compositionInvalid")}
               </Text>
               {errors.length > 0 && (
                 <GeneralLayouts.Section gap={0.25}>
                   {errors.map((error, idx) => (
-                  <Text
-                    key={idx}
-                    mainUiMuted
-                    text04
-                    className="text-red-700 dark:text-red-300"
-                  >
-                    • {error}
-                  </Text>
+                    <Text
+                      key={idx}
+                      mainUiMuted
+                      text04
+                      className="text-red-700 dark:text-red-300"
+                    >
+                      • {error}
+                    </Text>
                   ))}
                 </GeneralLayouts.Section>
               )}
@@ -111,10 +123,18 @@ export default function CompositionValidator({
       {/* Warnings */}
       {warnings.length > 0 && (
         <Card className="bg-amber-50 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 p-4">
-          <GeneralLayouts.Section flexDirection="row" alignItems="start" gap={1}>
+          <GeneralLayouts.Section
+            flexDirection="row"
+            alignItems="start"
+            gap={1}
+          >
             <SvgInfo className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
             <GeneralLayouts.Section gap={0.5}>
-              <Text mainUiAction text03 className="text-amber-700 dark:text-amber-300">
+              <Text
+                mainUiAction
+                text03
+                className="text-amber-700 dark:text-amber-300"
+              >
                 {t("agentEditor.warningsFound")}
               </Text>
               <GeneralLayouts.Section gap={0.25}>
@@ -137,7 +157,11 @@ export default function CompositionValidator({
       {/* Depth Info Card */}
       {depth > 0 && (
         <Card className="p-3 border border-neutral-200 dark:border-neutral-700">
-          <GeneralLayouts.Section flexDirection="row" alignItems="center" gap={1}>
+          <GeneralLayouts.Section
+            flexDirection="row"
+            alignItems="center"
+            gap={1}
+          >
             <SvgInfo className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <Text mainUiMuted text04>
               {t("agentEditor.hierarchyDepth", { depth })}

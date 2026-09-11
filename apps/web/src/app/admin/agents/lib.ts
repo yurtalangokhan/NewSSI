@@ -41,6 +41,10 @@ interface PersonaUpsertRequest {
   max_iterations: number;
   mcp_tools: string[];
   mcp_tool_configs: Record<string, unknown>;
+  connector_bindings: Array<{
+    datasource_id: string;
+    operations: string[];
+  }>;
   // Hierarchy nodes (folders, spaces, channels) for scoped search
   hierarchy_node_ids: number[];
   // Individual documents for scoped search
@@ -95,6 +99,10 @@ export interface PersonaUpsertParameters {
   mcp_tools?: string[];
   // MCP tool-specific configuration references. Secrets are never included here.
   mcp_tool_configs?: Record<string, unknown>;
+  connector_bindings?: Array<{
+    datasource_id: string;
+    operations: string[];
+  }>;
   // RAG collection config
   rag_config?: {
     document_processing: string[];
@@ -141,6 +149,7 @@ function buildPersonaUpsertRequest({
   max_iterations,
   mcp_tools,
   mcp_tool_configs,
+  connector_bindings,
   rag_config,
   long_term_memory,
 }: PersonaUpsertParameters): PersonaUpsertRequest {
@@ -182,6 +191,7 @@ function buildPersonaUpsertRequest({
     max_iterations: max_iterations ?? 3,
     mcp_tools: mcp_tools ?? [],
     mcp_tool_configs: mcp_tool_configs ?? {},
+    connector_bindings: connector_bindings ?? [],
     rag_config: rag_config ?? null,
     long_term_memory: long_term_memory ?? false,
   };
@@ -208,7 +218,7 @@ export async function uploadFile(file: File): Promise<string | null> {
 export async function createPersona(
   personaUpsertParams: PersonaUpsertParameters
 ): Promise<Response | null> {
-  const createPersonaResponse = await fetch("/api/persona", {
+  const createPersonaResponse = await authenticatedFetch("/api/persona", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -224,7 +234,7 @@ export async function updatePersona(
   id: number,
   personaUpsertParams: PersonaUpsertParameters
 ): Promise<Response | null> {
-  const updatePersonaResponse = await fetch(`/api/persona/${id}`, {
+  const updatePersonaResponse = await authenticatedFetch(`/api/persona/${id}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -237,7 +247,7 @@ export async function updatePersona(
 }
 
 export function deletePersona(personaId: number) {
-  return fetch(`/api/persona/${personaId}`, {
+  return authenticatedFetch(`/api/persona/${personaId}`, {
     method: "DELETE",
     credentials: "include",
   });
@@ -291,16 +301,19 @@ export async function togglePersonaFeatured(
   personaId: number,
   featured: boolean
 ) {
-  const response = await fetch(`/api/admin/persona/${personaId}/featured`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      featured: !featured,
-    }),
-    credentials: "include",
-  });
+  const response = await authenticatedFetch(
+    `/api/admin/persona/${personaId}/featured`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        featured: !featured,
+      }),
+      credentials: "include",
+    }
+  );
   return response;
 }
 
@@ -308,15 +321,18 @@ export async function togglePersonaVisibility(
   personaId: number,
   isVisible: boolean
 ) {
-  const response = await fetch(`/api/admin/persona/${personaId}/visible`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      is_visible: !isVisible,
-    }),
-    credentials: "include",
-  });
+  const response = await authenticatedFetch(
+    `/api/admin/persona/${personaId}/visible`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        is_visible: !isVisible,
+      }),
+      credentials: "include",
+    }
+  );
   return response;
 }

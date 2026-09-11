@@ -3,7 +3,7 @@
 import { use } from "react";
 import BackButton from "@/refresh-components/buttons/BackButton";
 import { ErrorCallout } from "@/components/ErrorCallout";
-import { ThreeDotsLoader } from "@/components/Loading";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import { InstantSSRAutoRefresh } from "@/components/SSRAutoRefresh";
 import SlackChannelConfigsTable from "./SlackChannelConfigsTable";
 import { useSlackBot, useSlackChannelConfigsByBot } from "./hooks";
@@ -35,8 +35,8 @@ function SlackBotEditPage({
 
   if (isSlackBotLoading || isSlackChannelConfigsLoading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <ThreeDotsLoader />
+      <div className="flex flex-col gap-6 p-6">
+        <FormSkeleton fieldCount={4} />
       </div>
     );
   }
@@ -49,7 +49,10 @@ function SlackBotEditPage({
     return (
       <ErrorCallout
         errorTitle={t("admin.bots.somethingWentWrong")}
-        errorMsg={t("admin.bots.failedToFetchBot", { id: unwrappedParams["bot-id"], errorMsg })}
+        errorMsg={t("admin.bots.failedToFetchBot", {
+          id: unwrappedParams["bot-id"],
+          errorMsg,
+        })}
       />
     );
   }
@@ -62,7 +65,10 @@ function SlackBotEditPage({
     return (
       <ErrorCallout
         errorTitle={t("admin.bots.somethingWentWrong")}
-        errorMsg={t("admin.bots.failedToFetchBot", { id: unwrappedParams["bot-id"], errorMsg })}
+        errorMsg={t("admin.bots.failedToFetchBot", {
+          id: unwrappedParams["bot-id"],
+          errorMsg,
+        })}
       />
     );
   }

@@ -70,8 +70,12 @@ export function IndexAttemptsTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>{t("admin.connector.indexAttempts.columns.timeStarted")}</TableHead>
-            <TableHead>{t("admin.connector.indexAttempts.columns.status")}</TableHead>
+            <TableHead>
+              {t("admin.connector.indexAttempts.columns.timeStarted")}
+            </TableHead>
+            <TableHead>
+              {t("admin.connector.indexAttempts.columns.status")}
+            </TableHead>
             <TableHead className="whitespace-nowrap">
               {t("admin.connector.indexAttempts.columns.newDocs")}
             </TableHead>
@@ -86,13 +90,17 @@ export function IndexAttemptsTable({
                 </span>
               </SimpleTooltip>
             </TableHead>
-            <TableHead>{t("admin.connector.indexAttempts.columns.errorMessage")}</TableHead>
+            <TableHead>
+              {t("admin.connector.indexAttempts.columns.errorMessage")}
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {indexAttempts.map((indexAttempt) => {
             const rawDocsPerMinute = getDocsProcessedPerMinute(indexAttempt);
-            const docsPerMinute = rawDocsPerMinute ? Number(rawDocsPerMinute.toFixed(2)) : null;
+            const docsPerMinute = rawDocsPerMinute
+              ? Number(rawDocsPerMinute.toFixed(2))
+              : null;
             const isReindexInProgress =
               indexAttempt.status === "in_progress" ||
               indexAttempt.status === "not_started";

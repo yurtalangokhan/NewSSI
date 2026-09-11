@@ -58,6 +58,53 @@ class UserRoleRepository(BaseRepository):
                     )
                 )
 
+    async def replace_roles(
+        self,
+        user_id: uuid.UUID,
+        role_names: list[str],
+        primary_role: str | None = None,
+    ) -> int:
+        """Make `role_names` the user's COMPLETE set of role assignments.
+
+        Unlike `assign_roles` (additive - it pairs with `remove_role` for the
+        multi-role API), this revokes every assignment not in `role_names` and
+        returns how many were revoked.
+
+        Used by the single-role setter, where `users.role` and the Keycloak
+        realm role are authoritative. Leaving a stale extra assignment behind
+        keeps granting that role's permissions even though nothing in the UI
+        shows it: a user demoted to "enduser" who silently kept a former
+        "system-admin" assignment still resolves to full admin access, because
+        permission resolution unions across every assigned role.
+        """
+        async with self._session() as session:
+            if role_names:
+                stale = delete(UserRoleModel).where(
+                    UserRoleModel.user_id == user_id,
+                    UserRoleModel.role_name.notin_(role_names),
+                )
+            else:
+                stale = delete(UserRoleModel).where(UserRoleModel.user_id == user_id)
+            revoked = (await session.execute(stale)).rowcount or 0
+
+            for role_name in role_names:
+                is_primary = role_name == primary_role
+                existing = await session.get(
+                    UserRoleModel,
+                    {"user_id": user_id, "role_name": role_name},
+                )
+                if existing:
+                    existing.is_primary = is_primary
+                    continue
+                session.add(
+                    UserRoleModel(
+                        user_id=user_id,
+                        role_name=role_name,
+                        is_primary=is_primary,
+                    )
+                )
+            return revoked
+
     async def remove_role(self, user_id: uuid.UUID, role_name: str) -> bool:
         async with self._session() as session:
             result = await session.execute(

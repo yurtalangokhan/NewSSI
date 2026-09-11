@@ -81,7 +81,7 @@ const Page = async (props: {
         <div
           className={cn(
             "flex w-full flex-col justify-start",
-            (cloud || oidc) ? "" : "gap-6"
+            cloud || oidc ? "" : "gap-6"
           )}
         >
           <div className="w-full">
@@ -89,7 +89,10 @@ const Page = async (props: {
           </div>
           {(cloud || oidc) && authUrl && (
             <div className="w-full justify-center mt-6">
-              <SignInButton authorizeUrl={authUrl} authType={cloud ? AuthType.CLOUD : AuthType.OIDC} />
+              <SignInButton
+                authorizeUrl={authUrl}
+                authType={cloud ? AuthType.CLOUD : AuthType.OIDC}
+              />
               <SignupOrDivider />
             </div>
           )}

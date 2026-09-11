@@ -5,7 +5,7 @@ import CardSection from "@/components/admin/CardSection";
 import Button from "@/refresh-components/buttons/Button";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
-import { ThreeDotsLoader } from "@/components/Loading";
+import ListSkeleton from "@/refresh-components/skeletons/ListSkeleton";
 import { toast } from "@/hooks/useToast";
 import { searchDocuments, type SearchResult } from "@/lib/langconnect";
 import { SvgSearch } from "@opal/icons";
@@ -208,8 +208,8 @@ export default function SearchPanel({ collectionId }: SearchPanelProps) {
 
       {/* Results */}
       {isSearching && (
-        <CardSection className="flex items-center justify-center py-8">
-          <ThreeDotsLoader />
+        <CardSection className="py-4">
+          <ListSkeleton itemCount={4} hasIcon={false} />
         </CardSection>
       )}
 

@@ -87,6 +87,7 @@ describe("authenticatedFetch", () => {
     fetchMock()
       .mockResolvedValueOnce(response(401))
       .mockResolvedValueOnce(response(401))
+      .mockResolvedValueOnce(response(401))
       // /api/auth/type
       .mockResolvedValueOnce(jsonResponse({ externalKeycloak: true }));
 
@@ -118,6 +119,7 @@ describe("authenticatedFetch", () => {
     fetchMock()
       .mockResolvedValueOnce(response(401))
       .mockResolvedValueOnce(response(400))
+      .mockResolvedValueOnce(response(401))
       .mockResolvedValueOnce(jsonResponse({ externalKeycloak: true }));
 
     await expect(authenticatedFetch("/api/me")).rejects.toBeInstanceOf(
@@ -132,6 +134,7 @@ describe("authenticatedFetch", () => {
     fetchMock()
       .mockResolvedValueOnce(response(401))
       .mockResolvedValueOnce(response(400))
+      .mockResolvedValueOnce(response(401))
       .mockResolvedValueOnce(jsonResponse({ externalKeycloak: true }));
 
     await expect(authenticatedFetch("/api/me")).rejects.toBeInstanceOf(
@@ -147,6 +150,7 @@ describe("authenticatedFetch", () => {
     fetchMock()
       .mockResolvedValueOnce(response(401))
       .mockResolvedValueOnce(response(400))
+      .mockResolvedValueOnce(response(401))
       .mockResolvedValueOnce(jsonResponse({ externalKeycloak: true }));
 
     await expect(authenticatedFetch("/api/me")).rejects.toBeInstanceOf(
@@ -155,13 +159,14 @@ describe("authenticatedFetch", () => {
 
     fetchMock()
       .mockResolvedValueOnce(response(401))
+      .mockResolvedValueOnce(response(401))
       .mockResolvedValueOnce(jsonResponse({ externalKeycloak: true }));
 
     await expect(authenticatedFetch("/api/me")).rejects.toBeInstanceOf(
       RedirectError
     );
 
-    expect(fetchMock()).toHaveBeenCalledTimes(5);
+    expect(fetchMock()).toHaveBeenCalledTimes(7);
     expect(fetchMock()).toHaveBeenNthCalledWith(1, "/api/me", {
       credentials: "include",
     });
@@ -169,10 +174,13 @@ describe("authenticatedFetch", () => {
       method: "POST",
       credentials: "include",
     });
-    expect(fetchMock()).toHaveBeenNthCalledWith(4, "/api/me", {
+    expect(fetchMock()).toHaveBeenNthCalledWith(5, "/api/me", {
       credentials: "include",
     });
-    expect(fetchMock()).toHaveBeenNthCalledWith(5, "/api/auth/type", {
+    expect(fetchMock()).toHaveBeenNthCalledWith(6, "/api/me", {
+      credentials: "include",
+    });
+    expect(fetchMock()).toHaveBeenNthCalledWith(7, "/api/auth/type", {
       credentials: "include",
       cache: "no-store",
     });
@@ -182,6 +190,7 @@ describe("authenticatedFetch", () => {
     fetchMock()
       .mockResolvedValueOnce(response(401))
       .mockResolvedValueOnce(response(400))
+      .mockResolvedValueOnce(response(401))
       .mockResolvedValueOnce(jsonResponse({ externalKeycloak: true }));
 
     await expect(authenticatedFetch("/api/me")).rejects.toBeInstanceOf(
@@ -198,10 +207,48 @@ describe("authenticatedFetch", () => {
     const result = await authenticatedFetch("/api/me");
 
     expect(result.status).toBe(200);
-    expect(fetchMock()).toHaveBeenNthCalledWith(5, "/api/auth/refresh", {
+    expect(fetchMock()).toHaveBeenNthCalledWith(6, "/api/auth/refresh", {
       method: "POST",
       credentials: "include",
     });
+  });
+
+  it("recovers when another request rotates cookies during a failed refresh", async () => {
+    const refreshListener = jest.fn();
+    window.addEventListener("auth:session-refreshed", refreshListener);
+    fetchMock()
+      .mockResolvedValueOnce(response(401))
+      .mockResolvedValueOnce(response(401))
+      .mockResolvedValueOnce(response(200));
+
+    const result = await authenticatedFetch("/api/me");
+
+    expect(result.status).toBe(200);
+    expect(fetchMock()).toHaveBeenCalledTimes(3);
+    expect(fetchMock()).toHaveBeenNthCalledWith(3, "/api/me", {
+      credentials: "include",
+    });
+    expect(refreshListener).toHaveBeenCalledTimes(1);
+    window.removeEventListener("auth:session-refreshed", refreshListener);
+  });
+
+  it("recovers when another request rotates cookies during a failed refresh", async () => {
+    const refreshListener = jest.fn();
+    window.addEventListener("auth:session-refreshed", refreshListener);
+    fetchMock()
+      .mockResolvedValueOnce(response(401))
+      .mockResolvedValueOnce(response(401))
+      .mockResolvedValueOnce(response(200));
+
+    const result = await authenticatedFetch("/api/me");
+
+    expect(result.status).toBe(200);
+    expect(fetchMock()).toHaveBeenCalledTimes(3);
+    expect(fetchMock()).toHaveBeenNthCalledWith(3, "/api/me", {
+      credentials: "include",
+    });
+    expect(refreshListener).toHaveBeenCalledTimes(1);
+    window.removeEventListener("auth:session-refreshed", refreshListener);
   });
 
   it("returns auth errors without redirecting when redirectOnAuthError is disabled", async () => {
@@ -212,10 +259,28 @@ describe("authenticatedFetch", () => {
     });
 
     expect(result.status).toBe(401);
-    expect(fetchMock()).toHaveBeenCalledTimes(1);
-    expect(fetchMock()).toHaveBeenCalledWith("/api/me", {
+    expect(fetchMock()).toHaveBeenCalledTimes(2);
+    expect(fetchMock()).toHaveBeenNthCalledWith(1, "/api/me", {
       credentials: "include",
     });
+    expect(fetchMock()).toHaveBeenNthCalledWith(2, "/api/auth/refresh", {
+      method: "POST",
+      credentials: "include",
+    });
+  });
+
+  it("refreshes token and succeeds when redirectOnAuthError is disabled", async () => {
+    fetchMock()
+      .mockResolvedValueOnce(response(401))
+      .mockResolvedValueOnce(response(200))
+      .mockResolvedValueOnce(response(200));
+
+    const result = await authenticatedFetch("/api/me", {
+      redirectOnAuthError: false,
+    });
+
+    expect(result.status).toBe(200);
+    expect(fetchMock()).toHaveBeenCalledTimes(3);
   });
 
   it("redirects to login when the retried request is still unauthorized", async () => {
@@ -278,7 +343,7 @@ describe("authenticatedFetch", () => {
     expect(new Headers(init?.headers).has("Idempotency-Key")).toBe(false);
   });
 
-  it("reuses the same Idempotency-Key when retrying after token refresh", async () => {
+  it("uses a fresh Idempotency-Key when retrying after token refresh", async () => {
     fetchMock()
       .mockResolvedValueOnce(response(401))
       .mockResolvedValueOnce(response(200))
@@ -293,7 +358,8 @@ describe("authenticatedFetch", () => {
       "Idempotency-Key"
     );
     expect(firstKey).toBeTruthy();
-    expect(retriedKey).toBe(firstKey);
+    expect(retriedKey).toBeTruthy();
+    expect(retriedKey).not.toBe(firstKey);
   });
 });
 

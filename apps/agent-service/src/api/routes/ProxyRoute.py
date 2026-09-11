@@ -9,16 +9,15 @@ Endpoints:
   GET /rag/collections — list RAG collections from langconnect-api
 """
 
-import logging
-
 from fastapi import APIRouter, Body, Depends, Query
 
 from api.dependencies import require_permission, require_user
 from controller import ProxyController, get_proxy_controller
 from core import settings
 from core.env import env
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/proxy", tags=["proxy"], dependencies=[Depends(require_user)])
 

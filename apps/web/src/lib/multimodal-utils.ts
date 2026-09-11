@@ -50,7 +50,7 @@ export const ALL_ACCEPTED_MIMES = new Set([
   ...Array.from(ACCEPTED_PLAIN_TEXT_MIMES),
 ]);
 
-/** Human-readable file accept string for <input type="file"> */
+/** Human-readable accept string for file input controls. */
 export const CHAT_FILE_INPUT_ACCEPT = [
   // Images (including rare JPEG variants)
   "image/jpeg",
@@ -96,7 +96,10 @@ export function mimeTypeToChatFileType(mime: string): ChatFileType {
 
 /** Generate a UUID that works in both secure (HTTPS) and non-secure contexts. */
 export function generateUUID(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID();
   }
   // Fallback for HTTP (non-secure) contexts
@@ -127,7 +130,9 @@ export async function fileToBase64(file: File): Promise<string> {
  * array of the send-chat-message payload. The backend decodes `data` and
  * extracts content using LangChain loaders — no separate upload is needed.
  */
-export async function fileToFileDescriptor(file: File): Promise<FileDescriptor> {
+export async function fileToFileDescriptor(
+  file: File
+): Promise<FileDescriptor> {
   const mime = file.type || "application/octet-stream";
   const chatFileType = mimeTypeToChatFileType(mime);
   const fileId = generateUUID();

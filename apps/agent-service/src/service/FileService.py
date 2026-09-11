@@ -11,7 +11,6 @@ from __future__ import annotations
 import base64
 import csv
 import io
-import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -19,7 +18,9 @@ from typing import Any
 from langchain_core.documents.base import Blob
 from PIL import Image, ImageOps
 
-logger = logging.getLogger(__name__)
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # MIME → ChatFileType mapping

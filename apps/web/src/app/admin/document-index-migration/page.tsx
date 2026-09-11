@@ -10,9 +10,10 @@ const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.INDEX_MIGRATION]!;
 import Card from "@/refresh-components/cards/Card";
 import { Content, ContentAction } from "@opal/layouts";
 import Text from "@/refresh-components/texts/Text";
+import Skeleton from "@/refresh-components/skeletons/Skeleton";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import Button from "@/refresh-components/buttons/Button";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 import { useTranslation } from "react-i18next";
 
 interface MigrationStatus {
@@ -41,9 +42,10 @@ function MigrationStatusSection() {
     return (
       <Card>
         <Text headingH3>{t("admin.indexMigration.migrationStatus")}</Text>
-        <Text mainUiBody text03>
-          {t("admin.indexMigration.loading")}
-        </Text>
+        <div className="flex flex-col gap-2 mt-2">
+          <Skeleton className="h-4 w-48 rounded-08" />
+          <Skeleton className="h-6 w-full rounded-08" />
+        </div>
       </Card>
     );
   }
@@ -142,7 +144,7 @@ function RetrievalSourceSection() {
   async function handleUpdate() {
     setUpdating(true);
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         "/api/admin/opensearch-migration/retrieval",
         {
           method: "PUT",
@@ -166,9 +168,10 @@ function RetrievalSourceSection() {
     return (
       <Card>
         <Text headingH3>{t("admin.indexMigration.retrievalSource")}</Text>
-        <Text mainUiBody text03>
-          {t("admin.indexMigration.loading")}
-        </Text>
+        <div className="flex flex-col gap-2 mt-2">
+          <Skeleton className="h-4 w-64 rounded-08" />
+          <Skeleton className="h-10 w-full rounded-08" />
+        </div>
       </Card>
     );
   }

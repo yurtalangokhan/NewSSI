@@ -186,3 +186,20 @@ class WebSearchProgressTracker:
         cloned = WebSearchProgressTracker()
         cloned._fetch_urls_by_call_id = dict(self._fetch_urls_by_call_id)
         return cloned
+
+
+def replay_packets_for_call(
+    tool_name: str, args: Any, call_id: str | None, result: str
+) -> list[dict[str, Any]] | None:
+    """The exact search_tool_* / open_url_* packet run a live stream emitted
+    for one web tool call, rebuilt from that call's args and raw result.
+
+    Used at write time to store a replayable copy on the flow timeline blob,
+    and at read time to recover the widget for runs recorded before that blob
+    kept one. Returns None for tools this tracker does not translate.
+    """
+    tracker = WebSearchProgressTracker()
+    start = tracker.on_tool_call(tool_name, args, call_id)
+    if start is None:
+        return None
+    return [*start, *(tracker.on_tool_result(tool_name, result, call_id) or [])]

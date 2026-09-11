@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import { FederatedConnectorConfig } from "@/lib/types";
 
 export interface DocumentSetCreationRequest {
@@ -19,7 +20,7 @@ export const createDocumentSet = async ({
   groups,
   federated_connectors,
 }: DocumentSetCreationRequest) => {
-  return fetch("/api/manage/admin/document-set", {
+  return authenticatedFetch("/api/manage/admin/document-set", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -55,7 +56,7 @@ export const updateDocumentSet = async ({
   groups,
   federated_connectors,
 }: DocumentSetUpdateRequest) => {
-  return fetch("/api/manage/admin/document-set", {
+  return authenticatedFetch("/api/manage/admin/document-set", {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -73,7 +74,7 @@ export const updateDocumentSet = async ({
 };
 
 export const deleteDocumentSet = async (id: number) => {
-  return fetch(`/api/manage/admin/document-set/${id}`, {
+  return authenticatedFetch(`/api/manage/admin/document-set/${id}`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",

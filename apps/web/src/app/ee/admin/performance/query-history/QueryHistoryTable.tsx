@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import Text from "@/refresh-components/texts/Text";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
-import { ThreeDotsLoader } from "@/components/Loading";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import { ChatSessionMinimal } from "@/app/ee/admin/performance/usage/types";
 import { timestampToReadableDate } from "@/lib/dateUtils";
 import { Dispatch, SetStateAction, useCallback, useState } from "react";
@@ -78,7 +78,9 @@ function QueryHistoryTableRow({
         <FeedbackBadge feedback={chatSessionMinimal.feedback_type} />
       </TableCell>
       <TableCell>{chatSessionMinimal.user_email || "-"}</TableCell>
-      <TableCell>{chatSessionMinimal.assistant_name || t("queryHistoryTable.unknown")}</TableCell>
+      <TableCell>
+        {chatSessionMinimal.assistant_name || t("queryHistoryTable.unknown")}
+      </TableCell>
       <TableCell>
         {timestampToReadableDate(chatSessionMinimal.time_created)}
       </TableCell>
@@ -137,11 +139,22 @@ function SelectFeedbackType({
 
 function ExportBadge({ status }: { status: TaskStatus }) {
   const { t } = useTranslation();
-  if (status === "SUCCESS") return <Badge variant="success">{t("queryHistoryTable.exportSuccess")}</Badge>;
+  if (status === "SUCCESS")
+    return (
+      <Badge variant="success">{t("queryHistoryTable.exportSuccess")}</Badge>
+    );
   else if (status === "FAILURE")
-    return <Badge variant="destructive">{t("queryHistoryTable.exportFailure")}</Badge>;
+    return (
+      <Badge variant="destructive">
+        {t("queryHistoryTable.exportFailure")}
+      </Badge>
+    );
   else if (status === "PENDING" || status === "STARTED")
-    return <Badge variant="in_progress">{t("queryHistoryTable.exportPending")}</Badge>;
+    return (
+      <Badge variant="in_progress">
+        {t("queryHistoryTable.exportPending")}
+      </Badge>
+    );
   else return <></>;
 }
 
@@ -350,11 +363,18 @@ export function QueryHistoryTable() {
           </TableHeader>
           {isLoading ? (
             <TableBody>
-              <TableRow>
-                <TableCell colSpan={6} className="text-center">
-                  <ThreeDotsLoader />
-                </TableCell>
-              </TableRow>
+              <TableSkeleton
+                standalone={false}
+                rowCount={6}
+                columns={[
+                  { type: "text", width: "w-48" },
+                  { type: "text", width: "w-48" },
+                  { type: "badge", width: "w-20" },
+                  { type: "avatar", width: "w-28" },
+                  { type: "text", width: "w-24" },
+                  { type: "text", width: "w-24" },
+                ]}
+              />
             </TableBody>
           ) : (
             <TableBody>

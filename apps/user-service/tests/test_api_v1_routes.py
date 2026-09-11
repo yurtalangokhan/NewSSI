@@ -39,6 +39,7 @@ def test_user_service_exposes_only_api_v1_routes_without_legacy_aliases() -> Non
             "/resources/{resource_type}"
         ),
         "/api/v1/system-settings/keycloak",
+        "/api/v1/internal/audit-logs",
         "/api/v1/internal/users/{target_id}/permissions",
         "/api/v1/internal/users/{target_id}/effective-permissions",
         "/api/v1/internal/users/{target_id}/roles",
@@ -82,6 +83,70 @@ def test_api_v1_health_endpoint_is_public() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "healthy", "service": "user-service"}
+
+
+def test_api_v1_readiness_endpoint_is_public(monkeypatch) -> None:
+    import src.core.database.engine as db_engine_module
+
+    class FakeConn:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def execute(self, statement):
+            return None
+
+    class FakeEngine:
+        def connect(self):
+            return FakeConn()
+
+    monkeypatch.setattr(db_engine_module, "get_db_engine", lambda: FakeEngine())
+
+    response = TestClient(create_app()).get("/api/v1/health/ready")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ready"
+    assert response.json()["service"] == "user-service"
+
+
+def test_api_v1_readiness_returns_503_when_required_dependency_fails(monkeypatch) -> None:
+    import src.core.database.engine as db_engine_module
+    from src.core.observability import DependencyPolicy, DependencyStatus, dependency_registry
+
+    class FakeConn:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def execute(self, statement):
+            return None
+
+    class FakeEngine:
+        def connect(self):
+            return FakeConn()
+
+    monkeypatch.setattr(db_engine_module, "get_db_engine", lambda: FakeEngine())
+
+    dependency_registry.record(
+        DependencyStatus(
+            name="keycloak",
+            policy=DependencyPolicy.REQUIRED,
+            status="failed",
+        )
+    )
+    try:
+        response = TestClient(create_app()).get("/api/v1/health/ready")
+    finally:
+        dependency_registry.record_ok("keycloak", policy=DependencyPolicy.REQUIRED)
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "not_ready"
+    assert response.json()["dependencies"]["keycloak"]["status"] == "failed"
+    assert response.json()["dependencies"]["keycloak"]["required"] is True
 
 
 def test_api_v1_auth_type_endpoint_is_public() -> None:

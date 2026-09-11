@@ -1,6 +1,7 @@
 import { USER_SERVICE_URL } from "@/lib/constants";
 import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { getLanguageHeaders } from "@/lib/api/proxy";
+import { getIncomingIdempotencyHeaders } from "@/lib/api/idempotency";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(request: NextRequest) {
@@ -18,6 +19,7 @@ export async function PATCH(request: NextRequest) {
         "Content-Type": "application/json",
         Cookie: request.headers.get("cookie") || "",
         ...getLanguageHeaders(request),
+        ...getIncomingIdempotencyHeaders(request),
         ...(request.headers.get("authorization")
           ? { Authorization: request.headers.get("authorization") || "" }
           : {}),

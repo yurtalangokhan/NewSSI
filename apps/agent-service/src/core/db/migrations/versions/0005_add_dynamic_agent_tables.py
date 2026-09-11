@@ -25,14 +25,14 @@ Backward-compatible strategy
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 from alembic import op
 
 revision: str = "0005"
-down_revision: Union[str, None] = "0004"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "0004"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -69,42 +69,35 @@ def upgrade() -> None:
     # Add new columns in case the table existed with the OLD schema.
     # ADD COLUMN IF NOT EXISTS is idempotent.
     new_columns = [
-        ("graph_schema",       "VARCHAR(50) NOT NULL DEFAULT 'zero_shot'"),
-        ("brain_type",         "VARCHAR(50) NOT NULL DEFAULT 'llm'"),
-        ("memory_type",        "VARCHAR(50) NOT NULL DEFAULT 'none'"),
-        ("system_prompt",      "TEXT"),
-        ("model",              "VARCHAR(100)"),
-        ("mcp_tools",          "JSONB NOT NULL DEFAULT '[]'"),
-        ("sub_agents",         "JSONB NOT NULL DEFAULT '[]'"),
-        ("supervisor_prompt",  "TEXT"),
-        ("stages",             "JSONB NOT NULL DEFAULT '[]'"),
-        ("pipeline_prompt",    "TEXT"),
-        ("reflection_prompt",  "TEXT"),
-        ("max_iterations",     "INTEGER NOT NULL DEFAULT 3"),
-        ("tags",               "JSONB NOT NULL DEFAULT '[]'"),
+        ("graph_schema", "VARCHAR(50) NOT NULL DEFAULT 'zero_shot'"),
+        ("brain_type", "VARCHAR(50) NOT NULL DEFAULT 'llm'"),
+        ("memory_type", "VARCHAR(50) NOT NULL DEFAULT 'none'"),
+        ("system_prompt", "TEXT"),
+        ("model", "VARCHAR(100)"),
+        ("mcp_tools", "JSONB NOT NULL DEFAULT '[]'"),
+        ("sub_agents", "JSONB NOT NULL DEFAULT '[]'"),
+        ("supervisor_prompt", "TEXT"),
+        ("stages", "JSONB NOT NULL DEFAULT '[]'"),
+        ("pipeline_prompt", "TEXT"),
+        ("reflection_prompt", "TEXT"),
+        ("max_iterations", "INTEGER NOT NULL DEFAULT 3"),
+        ("tags", "JSONB NOT NULL DEFAULT '[]'"),
     ]
     for col_name, col_def in new_columns:
-        op.execute(
-            f"ALTER TABLE agent_definitions ADD COLUMN IF NOT EXISTS {col_name} {col_def}"
-        )
+        op.execute(f"ALTER TABLE agent_definitions ADD COLUMN IF NOT EXISTS {col_name} {col_def}")
 
     # Indexes (use CREATE INDEX IF NOT EXISTS - safe to re-run)
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_agent_definitions_type "
-        "ON agent_definitions (agent_type)"
+        "CREATE INDEX IF NOT EXISTS ix_agent_definitions_type ON agent_definitions (agent_type)"
     )
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_agent_definitions_graph_schema "
         "ON agent_definitions (graph_schema)"
     )
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_agent_definitions_active "
-        "ON agent_definitions (is_active)"
+        "CREATE INDEX IF NOT EXISTS ix_agent_definitions_active ON agent_definitions (is_active)"
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_agent_definitions_name "
-        "ON agent_definitions (name)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_agent_definitions_name ON agent_definitions (name)")
 
     # -------------------------------------------------------------------------
     # agent_instances
@@ -126,10 +119,7 @@ def upgrade() -> None:
         "CREATE INDEX IF NOT EXISTS ix_agent_instances_definition "
         "ON agent_instances (definition_id)"
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_agent_instances_user "
-        "ON agent_instances (user_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_agent_instances_user ON agent_instances (user_id)")
 
     # -------------------------------------------------------------------------
     # agent_sub_agents
@@ -146,10 +136,7 @@ def upgrade() -> None:
             created_at  TIMESTAMP NOT NULL DEFAULT NOW()
         )
     """)
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_sub_agents_manager "
-        "ON agent_sub_agents (manager_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_sub_agents_manager ON agent_sub_agents (manager_id)")
 
     # -------------------------------------------------------------------------
     # agent_pipeline_stages

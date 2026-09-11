@@ -43,11 +43,16 @@ describe("billing actions", () => {
         "/api/admin/billing/create-checkout-session",
         expect.objectContaining({
           method: "POST",
-          headers: { "Content-Type": "application/json" },
         })
       );
 
       const callArgs = fetchSpy.mock.calls[0];
+      expect(new Headers(callArgs[1].headers).get("Content-Type")).toBe(
+        "application/json"
+      );
+      expect(new Headers(callArgs[1].headers).has("Idempotency-Key")).toBe(
+        true
+      );
       const requestBody = JSON.parse(callArgs[1].body);
       expect(requestBody).toEqual({
         billing_period: "monthly",
@@ -139,9 +144,13 @@ describe("billing actions", () => {
 
       const result = await refreshLicenseCache();
 
-      expect(fetchSpy).toHaveBeenCalledWith("/api/license/refresh", {
-        method: "POST",
-      });
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/license/refresh",
+        expect.objectContaining({ method: "POST" })
+      );
+      expect(
+        new Headers(fetchSpy.mock.calls[0][1].headers).has("Idempotency-Key")
+      ).toBe(true);
 
       expect(result).toEqual({ success: true, message: "Cache refreshed" });
     });

@@ -19,7 +19,9 @@ export default function AlreadyPickedModal({
       <Modal.Content width="sm" height="sm">
         <Modal.Header
           icon={SvgCheck}
-          title={t("admin.embeddings.alreadyChosenTitle", { modelName: model.model_name })}
+          title={t("admin.embeddings.alreadyChosenTitle", {
+            modelName: model.model_name,
+          })}
           description={t("admin.embeddings.alreadyChosenDescription")}
           onClose={onClose}
         />

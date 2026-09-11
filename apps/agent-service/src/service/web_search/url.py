@@ -1,12 +1,13 @@
 import ipaddress
-import logging
 import socket
 from typing import Any
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import requests
 
-logger = logging.getLogger(__name__)
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 # Hostnames that should always be blocked
 BLOCKED_HOSTNAMES = {

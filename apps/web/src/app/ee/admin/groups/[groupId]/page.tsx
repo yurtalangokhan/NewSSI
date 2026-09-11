@@ -3,7 +3,7 @@
 import { use } from "react";
 import { GroupDisplay } from "./GroupDisplay";
 import { useSpecificUserGroup } from "./hook";
-import { ThreeDotsLoader } from "@/components/Loading";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import { useConnectorStatus } from "@/lib/hooks";
 import useUsers from "@/hooks/useUsers";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
@@ -33,10 +33,8 @@ function Main({ groupId }: { groupId: string }) {
 
   if (userGroupIsLoading || userIsLoading || isCCPairsLoading) {
     return (
-      <div className="h-full">
-        <div className="my-auto">
-          <ThreeDotsLoader />
-        </div>
+      <div className="p-6">
+        <FormSkeleton fieldCount={4} />
       </div>
     );
   }

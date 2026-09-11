@@ -9,6 +9,7 @@ import {
   CollapsibleTrigger,
 } from "@/refresh-components/Collapsible";
 import { SvgChevronDown, SvgBubbleText } from "@opal/icons";
+import Text from "@/refresh-components/texts/Text";
 
 interface ThinkingCardProps {
   content: string;
@@ -89,7 +90,9 @@ export default function ThinkingCard({
                 "italic"
               )}
             >
-              <p className="whitespace-pre-wrap break-words m-0">{content}</p>
+              <Text as="p" className="whitespace-pre-wrap break-words m-0">
+                {content}
+              </Text>
             </div>
           </div>
         </CollapsibleContent>

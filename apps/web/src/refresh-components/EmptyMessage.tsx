@@ -38,12 +38,14 @@ export interface EmptyMessageProps {
   icon?: React.FunctionComponent<IconProps>;
   title: string;
   description?: string;
+  children?: React.ReactNode;
 }
 
 export default function EmptyMessage({
   icon: Icon = SvgEmpty,
   title,
   description,
+  children,
 }: EmptyMessageProps) {
   return (
     <Card variant="tertiary">
@@ -59,6 +61,7 @@ export default function EmptyMessage({
           {description}
         </Text>
       )}
+      {children}
     </Card>
   );
 }

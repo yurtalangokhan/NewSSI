@@ -49,7 +49,7 @@ class _FakeAssistantService:
 
 @pytest.mark.asyncio
 async def test_message_generator_reports_provider_connection_failure(monkeypatch):
-    from service import agent_message_stream
+    from service import AgentStreamService as agent_message_stream
 
     async def fake_handle_input(_user_input, _agent, _user_id=None):
         return {"input": {"messages": []}, "config": {}}, uuid4()
@@ -83,7 +83,7 @@ async def test_message_generator_reports_recursion_limit_exceeded(monkeypatch):
     """A deep-research turn doing many sequential search/fetch rounds can hit
     LangGraph's step budget — the client must get a clear error frame, not a
     silently dropped connection."""
-    from service import agent_message_stream
+    from service import AgentStreamService as agent_message_stream
 
     async def fake_handle_input(_user_input, _agent, _user_id=None):
         return {"input": {"messages": []}, "config": {}}, uuid4()

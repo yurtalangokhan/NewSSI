@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 export interface CreateSessionRequest {
   task: string;
   available_sources?: string[];
@@ -156,7 +157,7 @@ export type BuildEvent = ACPEvent;
 export async function createSession(
   request: CreateSessionRequest
 ): Promise<CreateSessionResponse> {
-  const response = await fetch("/api/build/sessions", {
+  const response = await authenticatedFetch("/api/build/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
@@ -168,9 +169,12 @@ export async function createSession(
 }
 
 export async function deleteSession(sessionId: string): Promise<void> {
-  const response = await fetch(`/api/build/sessions/${sessionId}`, {
-    method: "DELETE",
-  });
+  const response = await authenticatedFetch(
+    `/api/build/sessions/${sessionId}`,
+    {
+      method: "DELETE",
+    }
+  );
   if (!response.ok) {
     throw new Error(`Failed to delete session: ${response.statusText}`);
   }
@@ -185,14 +189,17 @@ export async function executeTask(
   onComplete: () => void
 ): Promise<void> {
   try {
-    const response = await fetch(`/api/build/sessions/${sessionId}/execute`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "text/event-stream",
-      },
-      body: JSON.stringify({ task, context }),
-    });
+    const response = await authenticatedFetch(
+      `/api/build/sessions/${sessionId}/execute`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify({ task, context }),
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -250,14 +257,17 @@ export async function sendMessage(
   onComplete: () => void
 ): Promise<void> {
   try {
-    const response = await fetch(`/api/build/sessions/${sessionId}/messages`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "text/event-stream",
-      },
-      body: JSON.stringify({ content: message }),
-    });
+    const response = await authenticatedFetch(
+      `/api/build/sessions/${sessionId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify({ content: message }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();

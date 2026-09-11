@@ -173,9 +173,21 @@ export function getTimeFilterDate(filter: TimeFilter): Date | null {
 export function formatDurationSeconds(seconds: number): string {
   const totalSeconds = Math.ceil(seconds);
   if (totalSeconds < 60) {
-    return `${totalSeconds}s`;
+    return i18n.t("duration.seconds", {
+      value: totalSeconds,
+      defaultValue: "{{value}}s",
+    });
   }
   const mins = Math.floor(totalSeconds / 60);
   const secs = totalSeconds % 60;
-  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+  return secs > 0
+    ? i18n.t("duration.minutesSeconds", {
+        minutes: mins,
+        seconds: secs,
+        defaultValue: "{{minutes}}m {{seconds}}s",
+      })
+    : i18n.t("duration.minutes", {
+        minutes: mins,
+        defaultValue: "{{minutes}}m",
+      });
 }

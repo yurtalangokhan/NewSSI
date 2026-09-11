@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useState, useMemo } from "react";
 import { useSWRConfig } from "swr";
 import { toast } from "@/hooks/useToast";
@@ -14,7 +16,7 @@ import {
   useApiKeyProviders,
   useWellKnownLangChainProviders,
 } from "@/hooks/useProviders";
-import { ThreeDotsLoader } from "@/components/Loading";
+import LLMConfigurationSkeleton from "@/refresh-components/skeletons/LLMConfigurationSkeleton";
 import { Content, ContentAction } from "@opal/layouts";
 import { Button } from "@opal/components";
 import { Hoverable } from "@opal/core";
@@ -344,9 +346,12 @@ function ApiKeyProviderCard({ provider, onDeleted }: ApiKeyProviderCardProps) {
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/admin/user-providers/${provider.id}`, {
-        method: "DELETE",
-      });
+      const res = await authenticatedFetch(
+        `/api/admin/user-providers/${provider.id}`,
+        {
+          method: "DELETE",
+        }
+      );
       if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
       toast({ message: t("admin.llm.providerDeletedSuccess") });
       deleteModal.toggle(false);
@@ -491,7 +496,55 @@ export default function LLMConfigurationPage() {
   );
 
   if (!availableModels) {
-    return <ThreeDotsLoader />;
+    return (
+      <SettingsLayouts.Root>
+        <SettingsLayouts.Header
+          icon={route.icon}
+          title={
+            route.titleKey
+              ? t(route.titleKey, { defaultValue: route.title })
+              : route.title
+          }
+          description={
+            route.descriptionKey
+              ? t(route.descriptionKey, { defaultValue: route.description })
+              : route.description
+          }
+          separator
+        />
+        <SettingsLayouts.Body>
+          <AdminOverviewPanel
+            icon={route.icon}
+            title={t("admin.llm.workspaceTitle", {
+              defaultValue: "Model provider workspace",
+            })}
+            description={t("admin.llm.workspaceDescription", {
+              defaultValue:
+                "Manage built-in, local, and cloud model providers, then choose the default model users start from.",
+            })}
+            metrics={[
+              {
+                label: t("admin.llm.builtInProvidersTitle"),
+                value: "",
+                isLoading: true,
+              },
+              {
+                label: t("admin.llm.localProvidersTitle"),
+                value: "",
+                isLoading: true,
+              },
+              {
+                label: t("admin.llm.cloudProvidersTitle"),
+                value: "",
+                isLoading: true,
+              },
+            ]}
+            isLoading={true}
+          />
+          <LLMConfigurationSkeleton />
+        </SettingsLayouts.Body>
+      </SettingsLayouts.Root>
+    );
   }
 
   // Default model/provider comes from user settings. This value is shared
@@ -562,6 +615,11 @@ export default function LLMConfigurationPage() {
             ? t(route.titleKey, { defaultValue: route.title })
             : route.title
         }
+        description={
+          route.descriptionKey
+            ? t(route.descriptionKey, { defaultValue: route.description })
+            : route.description
+        }
         separator
       />
 
@@ -589,15 +647,6 @@ export default function LLMConfigurationPage() {
               label: t("admin.llm.cloudProvidersTitle"),
               value: String(apiKeyProviders.length),
               tone: apiKeyProviders.length > 0 ? "success" : "neutral",
-            },
-          ]}
-          actions={[
-            {
-              label: t("admin.navigation.routes.webSearch.sidebar", {
-                defaultValue: "Web Search",
-              }),
-              href: ADMIN_PATHS.WEB_SEARCH,
-              primary: true,
             },
           ]}
         />

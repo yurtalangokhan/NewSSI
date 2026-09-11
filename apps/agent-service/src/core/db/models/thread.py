@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.db.models.base import Base
+from core.run_kinds import DEFAULT_RUN_KIND
 
 
 class ThreadModel(Base):
@@ -36,6 +37,12 @@ class ThreadModel(Base):
         String,
         nullable=False,
         default="idle",
+    )
+    run_kind: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default=DEFAULT_RUN_KIND.value,
+        server_default=text(f"'{DEFAULT_RUN_KIND.value}'"),
     )
     project_id: Mapped[int | None] = mapped_column(
         Integer,

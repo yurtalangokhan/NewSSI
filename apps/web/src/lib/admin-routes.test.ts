@@ -1,6 +1,8 @@
 import {
   ADMIN_PATHS,
   ADMIN_ROUTE_CONFIG,
+  canAccessAdminPanel,
+  getFirstAccessibleAdminPath,
   getAdminRouteConfigForPathname,
   sidebarItem,
 } from "./admin-routes";
@@ -8,6 +10,31 @@ import { hasAllPermissions } from "@/lib/auth/permissions";
 import i18n from "@/i18n/config";
 
 describe("admin route permissions", () => {
+  it("grants admin-panel entry when an enabled route is accessible", () => {
+    expect(ADMIN_ROUTE_CONFIG[ADMIN_PATHS.AGENTS]?.enabled).not.toBe(false);
+    expect(
+      hasAllPermissions(
+        ["agent:list"],
+        ADMIN_ROUTE_CONFIG[ADMIN_PATHS.AGENTS]?.requiredPermissions
+      )
+    ).toBe(true);
+    expect(canAccessAdminPanel(["agent:list"])).toBe(true);
+    expect(canAccessAdminPanel(["user:list"])).toBe(true);
+  });
+
+  it("denies admin-panel entry without permissions for an enabled route", () => {
+    expect(canAccessAdminPanel(["chat:send"])).toBe(false);
+    expect(canAccessAdminPanel([])).toBe(false);
+  });
+
+  it("supports wildcard admin-panel access", () => {
+    expect(canAccessAdminPanel(["*"])).toBe(true);
+  });
+
+  it("selects an admin landing page the user can access", () => {
+    expect(getFirstAccessibleAdminPath(["user:list"])).toBe(ADMIN_PATHS.GROUPS);
+  });
+
   it("requires role and permission list access for the roles page", () => {
     expect(ADMIN_ROUTE_CONFIG[ADMIN_PATHS.ROLES]?.requiredPermissions).toEqual([
       "role:list",

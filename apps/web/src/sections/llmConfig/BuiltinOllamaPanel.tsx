@@ -111,9 +111,34 @@ export function BuiltinOllamaPanelView({
         )}
 
         {isLoading ? (
-          <div className="flex items-center gap-2 py-2">
-            <SvgRefreshCw className="h-4 w-4 animate-spin text-text-03" />
-            <Text text03>{t("loadingModels")}</Text>
+          <div className="flex flex-col gap-1.5 py-1">
+            {[
+              { nameWidth: "w-48", tags: ["w-14"] },
+              { nameWidth: "w-36", tags: ["w-14"] },
+              { nameWidth: "w-40", tags: ["w-12", "w-16"] },
+              { nameWidth: "w-44", tags: ["w-16"] },
+            ].map((row, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-2 rounded-md px-2 py-2 border border-transparent"
+              >
+                <div
+                  className={`h-4 ${row.nameWidth} rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse shrink-0`}
+                />
+                <div className="flex items-center gap-1">
+                  {row.tags.map((tagW, tagI) => (
+                    <div
+                      key={tagI}
+                      className={`h-4 ${tagW} rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse opacity-80`}
+                    />
+                  ))}
+                </div>
+                <div className="flex-1" />
+                <div className="h-3.5 w-20 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse opacity-70 mr-2" />
+                <div className="h-3.5 w-12 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse opacity-70 mr-1" />
+                <div className="h-7 w-7 rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse shrink-0" />
+              </div>
+            ))}
           </div>
         ) : models.length > 0 ? (
           <div className="flex w-full flex-col gap-1">

@@ -2,6 +2,7 @@
 
 import os
 import sys
+from dataclasses import dataclass
 from uuid import uuid4
 
 import pytest
@@ -18,6 +19,79 @@ class TestAgentService:
         from domain.agents.service import AgentService
 
         assert AgentService is not None
+
+
+@dataclass
+class _FakeDefinitionForPreview:
+    model: str | None = None
+    mcp_tools: list | None = None
+    memory_type: str | None = None
+    system_prompt: str | None = None
+
+
+class TestBuildAgentPreviewText:
+    """build_agent_preview_text() summarizes an agent's model/tools/memory/prompt for hover previews."""
+
+    def test_includes_model_tool_count_and_memory_state(self):
+        from domain.agents.service import build_agent_preview_text
+
+        d = _FakeDefinitionForPreview(
+            model="gpt-4o",
+            mcp_tools=["file_read", "git_status"],
+            memory_type="long_term",
+        )
+
+        text = build_agent_preview_text(d)
+
+        assert "gpt-4o" in text
+        assert "Tools: 2" in text
+        assert "Memory: on" in text
+
+    def test_reports_memory_off_when_memory_type_is_none_or_missing(self):
+        from domain.agents.service import build_agent_preview_text
+
+        d = _FakeDefinitionForPreview(model="gpt-4o", mcp_tools=[], memory_type="none")
+
+        text = build_agent_preview_text(d)
+
+        assert "Memory: off" in text
+
+    def test_appends_truncated_system_prompt(self):
+        from domain.agents.service import build_agent_preview_text
+
+        d = _FakeDefinitionForPreview(system_prompt="x" * 300)
+
+        text = build_agent_preview_text(d)
+
+        prompt_line = text.splitlines()[1]
+        assert len(prompt_line) <= 160
+        assert prompt_line.endswith("...")
+
+    def test_omits_prompt_line_when_system_prompt_is_empty(self):
+        from domain.agents.service import build_agent_preview_text
+
+        d = _FakeDefinitionForPreview(system_prompt=None)
+
+        text = build_agent_preview_text(d)
+
+        assert "\n" not in text
+
+    def test_tolerates_objects_missing_the_preview_fields(self):
+        """Some callers (e.g. minimal test doubles simulating a partial
+        agent definition) may not define model/mcp_tools/memory_type/
+        system_prompt at all — the summary must degrade gracefully rather
+        than raising AttributeError."""
+        from types import SimpleNamespace
+
+        from domain.agents.service import build_agent_preview_text
+
+        d = SimpleNamespace(id="c-1", name="Classic Agent", graph_schema="react")
+
+        text = build_agent_preview_text(d)
+
+        assert "Model: default" in text
+        assert "Tools: 0" in text
+        assert "Memory: off" in text
 
 
 class FakeAgentDefinitionRepository:

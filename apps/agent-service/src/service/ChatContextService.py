@@ -12,12 +12,12 @@ to unit-test without HTTP concerns.
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from core.db.repositories.project_repo import ProjectRepository
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def resolve_project_instructions(

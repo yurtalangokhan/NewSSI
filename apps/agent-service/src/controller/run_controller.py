@@ -17,7 +17,7 @@ class RunController(BaseController):
     def __init__(self):
         self._service = RunService()
 
-    async def event_generator(
+    def event_generator(
         self,
         agent: Any,
         input_messages: list[Any],
@@ -27,6 +27,13 @@ class RunController(BaseController):
         stream_mode: list[str],
         user_id: str | None = None,
     ) -> AsyncGenerator[str, None]:
+        """Return the SSE async generator.
+
+        Intentionally NOT async: callers pass the generator straight into
+        StreamingResponse. An ``async def`` wrapper would return a coroutine
+        instead of an async generator, which StreamingResponse cannot iterate
+        (surfaces as an empty 200 response).
+        """
         if not thread_id or not run_id:
             self._raise_bad_request("run.thread_and_run_id_required")
         try:

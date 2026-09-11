@@ -20,11 +20,11 @@ _CURRENT_DATE = datetime.now().strftime("%B %d, %Y")
 _DOCUMENT_ADDENDUM = f"""
 ---Knowledge Base Access---
 Today's date is {_CURRENT_DATE}.
-You have access to **Database_Search**, which performs vector similarity search over
+You have access to **database_search**, which performs vector similarity search over
 ingested document collections.
 
 Search rules:
-  • ALWAYS call Database_Search before answering any factual question.
+  • ALWAYS call database_search before answering any factual question.
   • Issue multiple searches for complex questions — decompose into focused sub-queries.
   • Do NOT use external web tools for questions that can be answered from the configured knowledge base.
     Only use external web tools if the user explicitly asks for web/current information or the knowledge base is insufficient after searching it first.
@@ -35,7 +35,7 @@ Search rules:
   • If the retrieved data is insufficient, say so clearly. Do NOT fabricate information.
   • Only use information from the knowledge base. Do not use outside sources.
   • Do NOT answer with generic capability statements (e.g., "I can search the internet").
-  • If the user asks what you know / what information you have, summarize ONLY what was retrieved via Database_Search in this turn.
+  • If the user asks what you know / what information you have, summarize ONLY what was retrieved via database_search in this turn.
   • Do NOT claim internet/web access unless an external web tool was actually invoked in this same turn.
 
 NOTE: THE USER CANNOT SEE THE RAW TOOL RESPONSE — synthesise the results into natural language.
@@ -44,7 +44,7 @@ NOTE: THE USER CANNOT SEE THE RAW TOOL RESPONSE — synthesise the results into 
 _GRAPH_ADDENDUM = f"""
 ---Knowledge Graph Access---
 Today's date is {_CURRENT_DATE}.
-You have access to **Graph_Search**, which searches only the configured Neo4j
+You have access to **graph_search**, which searches only the configured Neo4j
 knowledge graph:
   1. BM25 graph search on entity names / labels
   2. Relationship type search for graph relations
@@ -52,11 +52,11 @@ knowledge graph:
 
 Each call returns graph evidence such as Relationship Matches, RRF-Ranked
 Entities, and Knowledge Graph Context. Use only the evidence returned by
-Graph_Search when building your answer.
+graph_search when building your answer.
 
 Multi-Step Search Strategy:
 ALWAYS search before answering any factual question.  You may — and SHOULD —
-call Graph_Search **multiple times** when a question is complex:
+call graph_search **multiple times** when a question is complex:
 
   1. Decompose – Break a complex question into 2-5 focused sub-queries,
      each targeting a single entity, concept, or relationship.
@@ -73,9 +73,9 @@ Citation Rules:
   • Do not list more than 5 source IDs; use "+more" for additional.
   • Do not include information where supporting evidence is not provided.
   • ONLY USE LINKS RETURNED BY THE TOOLS.
-  • Do NOT fall back to external web tools unless the user explicitly asks for current/web information or Graph_Search is insufficient after at least one search.
+  • Do NOT fall back to external web tools unless the user explicitly asks for current/web information or graph_search is insufficient after at least one search.
   • Do NOT answer with generic capability statements (e.g., "I can search the internet").
-  • If asked what you know, summarize only evidence returned by Graph_Search in this turn.
+  • If asked what you know, summarize only evidence returned by graph_search in this turn.
 
 Formatting:
   • Translate ALL graph relationships into fluent natural language.
@@ -90,17 +90,17 @@ _HYBRID_ADDENDUM = f"""
 Today's date is {_CURRENT_DATE}.
 You have two retrieval tools available:
 
-  • **Database_Search** – Vector similarity search over document collections.
+  • **database_search** – Vector similarity search over document collections.
     Use for broad document retrieval and keyword-based questions.
 
-  • **Graph_Search** – Neo4j knowledge graph search for entities,
+  • **graph_search** – Neo4j knowledge graph search for entities,
     relationships, and graph context.
     Use for entity relationships, concept graphs, and multi-hop reasoning.
 
 Search strategy:
   1. Decompose complex questions into focused sub-queries.
-  2. Use Database_Search for document-level retrieval.
-  3. Use Graph_Search for entity relationships discovered in step 2.
+  2. Use database_search for document-level retrieval.
+  3. Use graph_search for entity relationships discovered in step 2.
   4. Synthesise results from BOTH sources into a single coherent answer.
   5. When sources conflict, note the discrepancy and search for additional evidence.
   6. Do NOT use external web tools unless the user explicitly asks for web/current information or both configured knowledge tools are insufficient after searching them.
@@ -111,7 +111,7 @@ Citation Rules:
   • ONLY USE LINKS RETURNED BY THE TOOLS.
   • Do NOT fabricate information.
   • Do NOT answer with generic capability statements (e.g., "I can search the internet").
-  • If asked what you know, summarize only information retrieved by Database_Search / Graph_Search in this turn.
+  • If asked what you know, summarize only information retrieved by database_search / graph_search in this turn.
   • Do NOT claim internet/web access unless a web tool was actually invoked in this same turn.
 
 NOTE: THE USER CANNOT SEE THE RAW TOOL RESPONSE — synthesise the results into natural language.

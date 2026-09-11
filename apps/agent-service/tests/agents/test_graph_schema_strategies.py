@@ -18,9 +18,16 @@ class TestStrategyRegistry:
         assert registry1 is registry2
 
     def test_all_schema_types_have_strategies(self):
-        """Every GraphSchemaType should have a registered strategy."""
+        """Every GraphSchemaType should have a registered strategy.
+
+        FLOW is the exception by design: a flow-backed definition is compiled
+        from its flow_spec by FlowGraphBuilder (agents/graphs/flow_builder.py),
+        not by a per-schema strategy, so it never reaches this registry.
+        """
         registry = get_registry()
         for schema_type in GraphSchemaType:
+            if schema_type is GraphSchemaType.FLOW:
+                continue
             strategy_class = registry.get(schema_type)
             assert strategy_class is not None, f"No strategy registered for {schema_type}"
 

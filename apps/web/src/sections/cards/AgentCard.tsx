@@ -24,6 +24,7 @@ import { useUser } from "@/providers/UserProvider";
 import {
   SvgActions,
   SvgBarChart,
+  SvgWorkflow,
   SvgBubbleText,
   SvgEdit,
   SvgPin,
@@ -54,6 +55,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
   const { pinnedAgents, togglePinnedAgent } = usePinnedAgents();
   const { refresh: refreshAgents } = useAgents();
   const isDynamicAgent = !!agent.external_id || !!agent.is_dynamic;
+  const isFlowAgent = agent.graph_schema === "flow";
   const routeAgentId = agent.external_id ?? agent.id;
   const pinned = useMemo(
     () =>
@@ -73,37 +75,48 @@ export default function AgentCard({ agent }: AgentCardProps) {
     return resolveAgentOwnerEmail(agent.owner?.email, t);
   }, [agent.owner?.email, agent.owner?.id, user?.email, user?.id, t]);
   const canEdit = isOwnedByUser || isAdmin;
+  const [isHovered, setIsHovered] = useState(false);
   const shareAgentModal = useCreateModal();
   const agentViewerModal = useCreateModal();
   const shouldLoadAgentDetail =
-    shareAgentModal.isOpen || agentViewerModal.isOpen;
-  const { agent: fullAgent, refresh: refreshAgent } = useAgent(
-    shouldLoadAgentDetail ? agent.external_id ?? agent.id : null
-  );
-  const agentForViewer = useMemo<FullPersona>(
-    () =>
-      fullAgent ?? {
-        ...agent,
-        users: [],
-        groups: [],
-        document_sets: [],
-        hierarchy_nodes: [],
-        user_file_ids: [],
-        starter_messages: null,
-        system_prompt: "",
-        replace_base_system_prompt: false,
-        task_prompt: "",
-        datetime_aware: true,
-        mcp_tools: [],
-        rag_config: {
-          document_processing: [],
-          knowledge_graph: [],
-        },
-        attached_documents: [],
-        search_start_date: null,
+    shareAgentModal.isOpen || agentViewerModal.isOpen || isHovered;
+  const {
+    agent: fullAgent,
+    isLoading: isAgentLoading,
+    refresh: refreshAgent,
+  } = useAgent(shouldLoadAgentDetail ? agent.external_id ?? agent.id : null);
+  const agentForViewer = useMemo<FullPersona>(() => {
+    const base = fullAgent ?? {
+      ...agent,
+      users: [],
+      groups: [],
+      document_sets: [],
+      hierarchy_nodes: [],
+      user_file_ids: [],
+      starter_messages: null,
+      system_prompt: "",
+      replace_base_system_prompt: false,
+      task_prompt: "",
+      datetime_aware: true,
+      mcp_tools: [],
+      rag_config: {
+        document_processing: [],
+        knowledge_graph: [],
       },
-    [fullAgent, agent]
-  );
+      attached_documents: [],
+      search_start_date: null,
+    };
+    if (base.owner?.id && user?.id && base.owner.id === user.id && user.email) {
+      return {
+        ...base,
+        owner: {
+          ...base.owner,
+          email: user.email,
+        },
+      };
+    }
+    return base;
+  }, [fullAgent, agent, user]);
 
   const handleStartChat = useCallback(() => {
     route({ agentId: routeAgentId });
@@ -195,7 +208,10 @@ export default function AgentCard({ agent }: AgentCardProps) {
       </shareAgentModal.Provider>
 
       <agentViewerModal.Provider>
-        <AgentViewerModal agent={agentForViewer} />
+        <AgentViewerModal
+          agent={agentForViewer}
+          isLoading={shouldLoadAgentDetail && (isAgentLoading || !fullAgent)}
+        />
       </agentViewerModal.Provider>
 
       <deleteModal.Provider>
@@ -220,6 +236,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
 
       <Interactive.Base
         onClick={() => agentViewerModal.toggle(true)}
+        onMouseEnter={() => setIsHovered(true)}
         group="group/AgentCard"
         variant="none"
       >
@@ -271,7 +288,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
                       className="hidden group-hover/AgentCard:flex"
                     />
                   )}
-                  {isOwnedByUser && !isDynamicAgent && (
+                  {isOwnedByUser && (
                     <IconButton
                       icon={SvgShare}
                       tertiary
@@ -281,26 +298,24 @@ export default function AgentCard({ agent }: AgentCardProps) {
                       className="hidden group-hover/AgentCard:flex"
                     />
                   )}
-                  {!isDynamicAgent && (
-                    <IconButton
-                      icon={pinned ? SvgPinned : SvgPin}
-                      tertiary
-                      onClick={noProp(() => togglePinnedAgent(agent, !pinned))}
-                      tooltip={
-                        pinned
-                          ? t("agentsPage.unpinFromSidebarTooltip")
-                          : t("agentsPage.pinToSidebarTooltip")
-                      }
-                      aria-label={
-                        pinned
-                          ? t("agentsPage.unpinFromSidebarTooltip")
-                          : t("agentsPage.pinToSidebarTooltip")
-                      }
-                      className={cn(
-                        !pinned && "hidden group-hover/AgentCard:flex"
-                      )}
-                    />
-                  )}
+                  <IconButton
+                    icon={pinned ? SvgPinned : SvgPin}
+                    tertiary
+                    onClick={noProp(() => togglePinnedAgent(agent, !pinned))}
+                    tooltip={
+                      pinned
+                        ? t("agentsPage.unpinFromSidebarTooltip")
+                        : t("agentsPage.pinToSidebarTooltip")
+                    }
+                    aria-label={
+                      pinned
+                        ? t("agentsPage.unpinFromSidebarTooltip")
+                        : t("agentsPage.pinToSidebarTooltip")
+                    }
+                    className={cn(
+                      !pinned && "hidden group-hover/AgentCard:flex"
+                    )}
+                  />
                 </>
               }
             />
@@ -323,11 +338,13 @@ export default function AgentCard({ agent }: AgentCardProps) {
                 prominence="muted"
               />
               <Content
-                icon={SvgActions}
+                icon={isFlowAgent ? SvgWorkflow : SvgActions}
                 title={
-                  actionCount > 0
-                    ? t("agentsPage.actionsCount", { count: actionCount })
-                    : t("agentsPage.noActions")
+                  isFlowAgent
+                    ? t("agentsPage.flowAgent", "Flow Agent")
+                    : actionCount > 0
+                      ? t("agentsPage.actionsCount", { count: actionCount })
+                      : t("agentsPage.noActions")
                 }
                 sizePreset="secondary"
                 variant="body"

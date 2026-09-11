@@ -33,12 +33,18 @@ describe("getCurrentUser", () => {
   });
 
   it("returns null on unauthorized responses without starting auth redirects", async () => {
-    fetchMock().mockResolvedValueOnce(response(401));
+    fetchMock()
+      .mockResolvedValueOnce(response(401))
+      .mockResolvedValueOnce(response(401));
 
     await expect(getCurrentUser()).resolves.toBeNull();
 
-    expect(fetchMock()).toHaveBeenCalledTimes(1);
-    expect(fetchMock()).toHaveBeenCalledWith("/api/me", {
+    expect(fetchMock()).toHaveBeenCalledTimes(2);
+    expect(fetchMock()).toHaveBeenNthCalledWith(1, "/api/me", {
+      credentials: "include",
+    });
+    expect(fetchMock()).toHaveBeenNthCalledWith(2, "/api/auth/refresh", {
+      method: "POST",
       credentials: "include",
     });
   });

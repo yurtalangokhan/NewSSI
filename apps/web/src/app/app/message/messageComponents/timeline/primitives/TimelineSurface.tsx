@@ -11,6 +11,7 @@ export interface TimelineSurfaceProps {
   roundedTop?: boolean;
   roundedBottom?: boolean;
   background?: TimelineSurfaceBackground;
+  "data-testid"?: string;
 }
 
 /**
@@ -24,6 +25,7 @@ export function TimelineSurface({
   roundedTop = false,
   roundedBottom = false,
   background = "tint",
+  "data-testid": testId,
 }: TimelineSurfaceProps) {
   const { hasBackground } = useAppBackground();
 
@@ -46,6 +48,7 @@ export function TimelineSurface({
 
   return (
     <div
+      data-testid={testId}
       className={cn(
         "transition-colors duration-200",
         baseBackground,

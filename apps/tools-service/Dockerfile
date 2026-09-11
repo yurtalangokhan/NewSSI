@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
     unzip \
+    unixodbc \
+    tdsodbc \
     default-jdk \
     && curl -fsSL https://get.docker.com | sh \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
@@ -24,13 +26,16 @@ COPY apps/tools-service/src/ src/
 COPY apps/tools-service/locales/ locales/
 COPY packages/i18n-py/ packages/i18n-py/
 COPY packages/error-contract-py/ packages/error-contract-py/
+COPY packages/idempotency-py/ packages/idempotency-py/
 
 # Install Python dependencies using uv
 RUN uv pip install --system --no-cache \
-    fastmcp httpx asyncpg pymupdf ddgs \
+    fastmcp httpx asyncpg asyncssh aioboto3 pymongo wcmatch \
+    aiomysql aioodbc aiokafka oracledb pymupdf ddgs \
     pytest flake8 pylint \
     ./packages/i18n-py \
     ./packages/error-contract-py \
+    ./packages/idempotency-py \
     && rm -rf /root/.cache/uv /root/.cache/pip
 
 # Create workspace directory with proper permissions

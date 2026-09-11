@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import Text from "@/refresh-components/texts/Text";
+import ListSkeleton from "@/refresh-components/skeletons/ListSkeleton";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.SYSTEM_INFO]!;
 
@@ -26,6 +27,7 @@ const Page = () => {
   const { t } = useTranslation();
   const [web_version, setWebVersion] = useState<string | null>(null);
   const [backend_version, setBackendVersion] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchVersions = async () => {
@@ -38,6 +40,8 @@ const Page = () => {
         setBackendVersion(backend);
       } catch (e) {
         console.log(`Version info fetch failed for system info page - ${e}`);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchVersions();
@@ -48,20 +52,29 @@ const Page = () => {
       <SettingsLayouts.Header
         icon={route.icon}
         title={t(route.titleKey || "", { defaultValue: route.title })}
+        description={
+          route.descriptionKey
+            ? t(route.descriptionKey, { defaultValue: route.description })
+            : route.description
+        }
         separator
       />
 
       <SettingsLayouts.Body>
-        <div className="rounded-08 border border-border-01 bg-background-neutral-00 px-4">
-          <VersionRow
-            label={t("admin.systemInfo.backendVersion")}
-            value={backend_version}
-          />
-          <VersionRow
-            label={t("admin.systemInfo.webVersion")}
-            value={web_version}
-          />
-        </div>
+        {isLoading ? (
+          <ListSkeleton itemCount={2} hasIcon={false} />
+        ) : (
+          <div className="rounded-08 border border-border-01 bg-background-neutral-00 px-4">
+            <VersionRow
+              label={t("admin.systemInfo.backendVersion")}
+              value={backend_version}
+            />
+            <VersionRow
+              label={t("admin.systemInfo.webVersion")}
+              value={web_version}
+            />
+          </div>
+        )}
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>
   );

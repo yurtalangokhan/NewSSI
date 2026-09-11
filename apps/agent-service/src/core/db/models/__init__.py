@@ -18,6 +18,7 @@ Tables managed here
 - ``sync_schedules``             — Cron-based sync schedule definitions
 - ``datasource_airbyte_mapping`` — Local → Airbyte ID mapping with job watermark
 - ``persona``                   — Custom agent/persona configurations
+- ``agent_definitions``         — Dynamic agent composition definitions
 
 .. note::
    LangGraph checkpoint / store tables are **not** managed here — they
@@ -26,47 +27,52 @@ Tables managed here
    Chat sessions are now managed via Thread-based storage in the LangGraph store.
 """
 
+from core.db.models.agent import AgentModel
+from core.db.models.agent_definition import AgentDefinitionModel
 from core.db.models.agent_group import AgentGroupModel
 from core.db.models.agent_tools import AgentToolsModel
 from core.db.models.airbyte_mapping import AirbyteMappingModel
 from core.db.models.assistant import AssistantModel
 from core.db.models.base import Base
-from core.db.models.collection import PgCollection, PgEmbedding
+from core.db.models.collection import PgCollection
 from core.db.models.document import DocumentModel
 from core.db.models.mail_config import MailConfigModel
+from core.db.models.mcp_oauth_session import MCPOAuthSessionModel
 from core.db.models.mcp_provider import MCPProviderModel
+from core.db.models.mcp_provider_auth import MCPProviderAuthModel
 from core.db.models.mcp_tool import MCPToolModel
 from core.db.models.persona import PersonaModel
 from core.db.models.project import ProjectModel
 from core.db.models.provider import ProviderModel, UserProviderConfigModel
 from core.db.models.schedule import SyncScheduleModel
 from core.db.models.thread import ThreadModel
-from core.db.models.user_memory import UserMemoryModel
 
 
 def register_external_models() -> None:
     """Import ORM models that live outside ``core.db.models`` for Alembic."""
-    import agents.storage.models  # noqa: F401
+    return None
 
 
 __all__ = [
+    "AgentModel",
     "Base",
     "AssistantModel",
     "ThreadModel",
     "PgCollection",
-    "PgEmbedding",
     "SyncScheduleModel",
     "AirbyteMappingModel",
     "PersonaModel",
     "ProjectModel",
     "MCPProviderModel",
+    "MCPProviderAuthModel",
+    "MCPOAuthSessionModel",
     "MCPToolModel",
     "MailConfigModel",
     "AgentToolsModel",
+    "AgentDefinitionModel",
     "AgentGroupModel",
     "DocumentModel",
     "ProviderModel",
     "UserProviderConfigModel",
-    "UserMemoryModel",
     "register_external_models",
 ]

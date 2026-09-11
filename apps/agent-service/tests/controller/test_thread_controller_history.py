@@ -10,8 +10,9 @@ from controller.thread_controller import ThreadController
 
 
 class _FakeCheckpointTuple:
-    def __init__(self, checkpoint_id, messages, parent_checkpoint_id=None):
+    def __init__(self, checkpoint_id, messages, parent_checkpoint_id=None, checkpoint_ns=""):
         self.checkpoint = {"id": checkpoint_id, "channel_values": {"messages": messages}}
+        self.config = {"configurable": {"thread_id": "thread-1", "checkpoint_ns": checkpoint_ns}}
         self.parent_config = (
             {"configurable": {"checkpoint_id": parent_checkpoint_id}}
             if parent_checkpoint_id is not None
@@ -22,8 +23,10 @@ class _FakeCheckpointTuple:
 class _FakeSaver:
     def __init__(self, tuples):
         self._tuples = tuples
+        self.last_config = None
 
     async def alist(self, config):
+        self.last_config = config
         for t in self._tuples:
             yield t
 
@@ -60,6 +63,39 @@ async def test_get_thread_state_history_returns_every_checkpoint_with_parent_lin
     assert by_id["branch-a"]["parent_checkpoint_id"] == "root"
     assert by_id["branch-b"]["parent_checkpoint_id"] == "root"
     assert [m["content"] for m in by_id["branch-a"]["messages"]] == ["soru", "cevap 1"]
+
+
+@pytest.mark.asyncio
+async def test_get_thread_state_history_excludes_subgraph_namespace_checkpoints(
+    monkeypatch,
+):
+    """A FlowAgent turn also writes checkpoints under a subgraph namespace
+    (an embedded agent-execution node). Those must never reach
+    reconstruct_message_tree — they are not branches of the conversation."""
+    from langchain_core.messages import AIMessage, HumanMessage
+
+    fake_saver = _FakeSaver(
+        [
+            _FakeCheckpointTuple("root", [HumanMessage(content="soru")]),
+            _FakeCheckpointTuple(
+                "tip",
+                [HumanMessage(content="soru"), AIMessage(content="cevap")],
+                parent_checkpoint_id="root",
+            ),
+            _FakeCheckpointTuple(
+                "subgraph-cp",
+                [HumanMessage(content="alt görev"), AIMessage(content="alt cevap")],
+                checkpoint_ns="ReActAgent-abc123:0",
+            ),
+        ]
+    )
+    monkeypatch.setattr("controller.thread_controller.get_checkpointer", lambda: fake_saver)
+
+    controller = ThreadController()
+    history = await controller.get_thread_state_history("thread-1")
+
+    assert fake_saver.last_config["configurable"]["checkpoint_ns"] == ""
+    assert {c["checkpoint_id"] for c in history} == {"root", "tip"}
 
 
 @pytest.mark.asyncio

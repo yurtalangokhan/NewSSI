@@ -33,6 +33,21 @@ export interface FullChatState {
   regenerate?: (modelOverRide: LlmDescriptor) => Promise<void>;
   overriddenModel?: string;
   researchType?: string | null;
+  /** A FlowAgent run paused at a HumanInput node: send the picked action back.
+   *  Implemented as an ordinary send — the backend sees the thread is parked
+   *  at an interrupt and resumes it with that text (AgentHelpers), so the
+   *  decision is also recorded in the transcript. */
+  onHumanDecision?: (decision: string) => void;
+  /** An ask_user card was answered: resume the parked run with the
+   *  selections, keyed by question header. Sent as a structured resume
+   *  payload rather than text, so nothing has to guess later which
+   *  question a given answer belonged to. */
+  onClarificationAnswer?: (answer: {
+    answered: true;
+    answers: Record<string, string[]>;
+  }) => void;
+  /** True while a send is in flight, so the buttons can lock. */
+  isStreaming?: boolean;
 }
 
 export interface RendererResult {

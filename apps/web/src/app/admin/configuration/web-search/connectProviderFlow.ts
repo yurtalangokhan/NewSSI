@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 export type ProviderTestPayload = {
   provider_type: string;
   api_key: string | null;
@@ -111,7 +112,7 @@ export async function connectProviderFlow({
         config,
       };
 
-      const testResponse = await fetch(testUrl, {
+      const testResponse = await authenticatedFetch(testUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(testPayload),
@@ -141,7 +142,7 @@ export async function connectProviderFlow({
       activate: true,
     };
 
-    const upsertResponse = await fetch(upsertUrl, {
+    const upsertResponse = await authenticatedFetch(upsertUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(upsertPayload),

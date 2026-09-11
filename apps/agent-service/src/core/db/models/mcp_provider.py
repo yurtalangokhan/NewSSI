@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Index, String, Text, text
+from sqlalchemy import BigInteger, Boolean, DateTime, Index, Sequence, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,6 +39,30 @@ class MCPProviderModel(Base):
         default="streamable_http",
     )
     config: Mapped[dict | None] = mapped_column(JSONB, nullable=True, default=dict)
+    # Matches migration 0042: a dedicated sequence (not SERIAL) supplies the
+    # value, so metadata-created schemas and ORM inserts get one too.
+    int_id: Mapped[int] = mapped_column(
+        BigInteger,
+        Sequence("mcp_provider_int_id_seq", start=1000),
+        nullable=False,
+        unique=True,
+    )
+    auth_type: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="NONE",
+        server_default=text("'NONE'"),
+    )
+    auth_performer: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    server_status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="CREATED",
+        server_default=text("'CREATED'"),
+    )
+    auth_template: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    owner_email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    oauth_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

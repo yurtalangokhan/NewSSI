@@ -56,26 +56,56 @@ import { useTranslation } from "react-i18next";
 function StatusBadge({ status }: { status?: SyncStatus }) {
   const { t } = useTranslation();
   if (!status || status === "idle")
-    return <Badge variant="secondary">{t("admin.indexingStatus.sync.idle")}</Badge>;
+    return (
+      <Badge variant="secondary">{t("admin.indexingStatus.sync.idle")}</Badge>
+    );
   if (status === "syncing" || status === "starting")
-    return <Badge variant="in_progress">{t("admin.indexingStatus.sync.syncing")}</Badge>;
+    return (
+      <Badge variant="in_progress">
+        {t("admin.indexingStatus.sync.syncing")}
+      </Badge>
+    );
   if (status === "completed")
-    return <Badge variant="success">{t("admin.indexingStatus.sync.completed")}</Badge>;
+    return (
+      <Badge variant="success">
+        {t("admin.indexingStatus.sync.completed")}
+      </Badge>
+    );
   if (status === "error")
-    return <Badge variant="destructive">{t("admin.indexingStatus.sync.error")}</Badge>;
+    return (
+      <Badge variant="destructive">
+        {t("admin.indexingStatus.sync.error")}
+      </Badge>
+    );
   return <Badge variant="secondary">{status}</Badge>;
 }
 
 function SyncHistoryStatusBadge({ status }: { status: SyncAttempt["status"] }) {
   const { t } = useTranslation();
   if (status === "succeeded")
-    return <Badge variant="success">{t("admin.indexingStatus.sync.succeeded")}</Badge>;
+    return (
+      <Badge variant="success">
+        {t("admin.indexingStatus.sync.succeeded")}
+      </Badge>
+    );
   if (status === "failed")
-    return <Badge variant="destructive">{t("admin.indexingStatus.sync.failed")}</Badge>;
+    return (
+      <Badge variant="destructive">
+        {t("admin.indexingStatus.sync.failed")}
+      </Badge>
+    );
   if (status === "cancelled")
-    return <Badge variant="secondary">{t("admin.indexingStatus.sync.cancelled")}</Badge>;
+    return (
+      <Badge variant="secondary">
+        {t("admin.indexingStatus.sync.cancelled")}
+      </Badge>
+    );
   if (status === "running")
-    return <Badge variant="in_progress">{t("admin.indexingStatus.sync.running")}</Badge>;
+    return (
+      <Badge variant="in_progress">
+        {t("admin.indexingStatus.sync.running")}
+      </Badge>
+    );
   if (status === "pending" || status === "incomplete")
     return (
       <Badge variant="in_progress">
@@ -135,16 +165,72 @@ interface PresetOption {
 }
 
 const SCHEDULE_PRESETS: PresetOption[] = [
-  { value: "every_5_min", label: "admin.indexingStatus.manage.presets.every_5_min", description: "admin.indexingStatus.manage.presets.descriptions.highFrequency", cron: "0 */5 * * * ?" },
-  { value: "every_15_min", label: "admin.indexingStatus.manage.presets.every_15_min", description: "admin.indexingStatus.manage.presets.descriptions.moderateFrequency", cron: "0 */15 * * * ?" },
-  { value: "every_30_min", label: "admin.indexingStatus.manage.presets.every_30_min", description: "admin.indexingStatus.manage.presets.descriptions.standard", cron: "0 */30 * * * ?" },
-  { value: "hourly", label: "admin.indexingStatus.manage.presets.hourly", description: "admin.indexingStatus.manage.presets.descriptions.everyHour", cron: "0 0 * * * ?" },
-  { value: "every_6_hours", label: "admin.indexingStatus.manage.presets.every_6_hours", description: "admin.indexingStatus.manage.presets.descriptions.fourTimesDay", cron: "0 0 */6 * * ?" },
-  { value: "every_12_hours", label: "admin.indexingStatus.manage.presets.every_12_hours", description: "admin.indexingStatus.manage.presets.descriptions.twiceDay", cron: "0 0 */12 * * ?" },
-  { value: "daily", label: "admin.indexingStatus.manage.presets.daily", description: "admin.indexingStatus.manage.presets.descriptions.everyDayMidnight", cron: "0 0 0 * * ?" },
-  { value: "weekly", label: "admin.indexingStatus.manage.presets.weekly", description: "admin.indexingStatus.manage.presets.descriptions.everyMondayMidnight", cron: "0 0 0 * * 1" },
-  { value: "monthly", label: "admin.indexingStatus.manage.presets.monthly", description: "admin.indexingStatus.manage.presets.descriptions.firstOfMonth", cron: "0 0 0 1 * ?" },
-  { value: "custom", label: "admin.indexingStatus.manage.presets.custom", description: "admin.indexingStatus.manage.presets.descriptions.enterCron", cron: "" },
+  {
+    value: "every_5_min",
+    label: "admin.indexingStatus.manage.presets.every_5_min",
+    description:
+      "admin.indexingStatus.manage.presets.descriptions.highFrequency",
+    cron: "0 */5 * * * ?",
+  },
+  {
+    value: "every_15_min",
+    label: "admin.indexingStatus.manage.presets.every_15_min",
+    description:
+      "admin.indexingStatus.manage.presets.descriptions.moderateFrequency",
+    cron: "0 */15 * * * ?",
+  },
+  {
+    value: "every_30_min",
+    label: "admin.indexingStatus.manage.presets.every_30_min",
+    description: "admin.indexingStatus.manage.presets.descriptions.standard",
+    cron: "0 */30 * * * ?",
+  },
+  {
+    value: "hourly",
+    label: "admin.indexingStatus.manage.presets.hourly",
+    description: "admin.indexingStatus.manage.presets.descriptions.everyHour",
+    cron: "0 0 * * * ?",
+  },
+  {
+    value: "every_6_hours",
+    label: "admin.indexingStatus.manage.presets.every_6_hours",
+    description:
+      "admin.indexingStatus.manage.presets.descriptions.fourTimesDay",
+    cron: "0 0 */6 * * ?",
+  },
+  {
+    value: "every_12_hours",
+    label: "admin.indexingStatus.manage.presets.every_12_hours",
+    description: "admin.indexingStatus.manage.presets.descriptions.twiceDay",
+    cron: "0 0 */12 * * ?",
+  },
+  {
+    value: "daily",
+    label: "admin.indexingStatus.manage.presets.daily",
+    description:
+      "admin.indexingStatus.manage.presets.descriptions.everyDayMidnight",
+    cron: "0 0 0 * * ?",
+  },
+  {
+    value: "weekly",
+    label: "admin.indexingStatus.manage.presets.weekly",
+    description:
+      "admin.indexingStatus.manage.presets.descriptions.everyMondayMidnight",
+    cron: "0 0 0 * * 1",
+  },
+  {
+    value: "monthly",
+    label: "admin.indexingStatus.manage.presets.monthly",
+    description:
+      "admin.indexingStatus.manage.presets.descriptions.firstOfMonth",
+    cron: "0 0 0 1 * ?",
+  },
+  {
+    value: "custom",
+    label: "admin.indexingStatus.manage.presets.custom",
+    description: "admin.indexingStatus.manage.presets.descriptions.enterCron",
+    cron: "",
+  },
 ];
 
 const DAYS_OF_WEEK = [
@@ -233,7 +319,10 @@ function ManageDialog({
   // ── schedule
   const { schedule } = useDatasourceSchedule(open ? datasource.id : null);
   // ── history
-  const { attempts, isLoading: historyLoading } = useDatasourceSyncHistory(datasource.id, open && tab === "history");
+  const { attempts, isLoading: historyLoading } = useDatasourceSyncHistory(
+    datasource.id,
+    open && tab === "history"
+  );
   const [schedEnabled, setSchedEnabled] = useState(false);
   const [preset, setPreset] = useState("daily");
   const [cron, setCron] = useState("0 0 0 * * ?");
@@ -318,7 +407,9 @@ function ManageDialog({
       onOpenChange(false);
     } catch (e: unknown) {
       toast.error(
-        e instanceof Error ? e.message : t("admin.indexingStatus.manage.failedToUpdate")
+        e instanceof Error
+          ? e.message
+          : t("admin.indexingStatus.manage.failedToUpdate")
       );
     } finally {
       setSavingGeneral(false);
@@ -328,7 +419,13 @@ function ManageDialog({
   const handleSaveSchedule = useCallback(async () => {
     setSavingSchedule(true);
     try {
-      const input = { cron_expression: cron, preset, enabled: schedEnabled, update_graph_rag: updateGraphRag, timezone };
+      const input = {
+        cron_expression: cron,
+        preset,
+        enabled: schedEnabled,
+        update_graph_rag: updateGraphRag,
+        timezone,
+      };
       if (schedule) await updateSchedule(datasource.id, input);
       else await createSchedule(datasource.id, input);
       toast.success(t("admin.indexingStatus.manage.scheduleSaved"));
@@ -343,7 +440,18 @@ function ManageDialog({
     } finally {
       setSavingSchedule(false);
     }
-  }, [cron, preset, schedEnabled, updateGraphRag, timezone, schedule, datasource.id, onSaved, onOpenChange, t]);
+  }, [
+    cron,
+    preset,
+    schedEnabled,
+    updateGraphRag,
+    timezone,
+    schedule,
+    datasource.id,
+    onSaved,
+    onOpenChange,
+    t,
+  ]);
 
   const handleDeleteSchedule = useCallback(async () => {
     setDeletingSchedule(true);
@@ -363,7 +471,8 @@ function ManageDialog({
     }
   }, [datasource.id, onSaved, onOpenChange, t]);
 
-  const displayStreams = availableStreams.length > 0 ? availableStreams : datasource.streams ?? [];
+  const displayStreams =
+    availableStreams.length > 0 ? availableStreams : datasource.streams ?? [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -377,29 +486,33 @@ function ManageDialog({
 
         {/* Tab bar */}
         <div className="flex gap-1 border-b border-border shrink-0">
-          {(["general", "schedule", "history"] as ManageTab[]).map((tabName) => (
-            <button
-              key={tabName}
-              onClick={() => setTab(tabName)}
-              className={`px-4 py-2 text-sm font-medium capitalize transition-colors ${
-                tab === tabName
-                  ? "border-b-2 border-blue-500 text-text-05"
-                  : "text-text-03 hover:text-text-05"
-              }`}
-            >
-              {tabName === "schedule" ? (
-                <span className="flex items-center gap-1.5">
-                  <SvgClock className="h-3.5 w-3.5" />
-                  {t("admin.indexingStatus.manage.tabs.schedule")}
-                  {schedule && (
-                    <span className="ml-1 inline-flex h-1.5 w-1.5 rounded-full bg-blue-500" />
-                  )}
-                </span>
-              ) : tabName === "history"
-                ? t("admin.indexingStatus.manage.tabs.history")
-                : t("admin.indexingStatus.manage.tabs.general")}
-            </button>
-          ))}
+          {(["general", "schedule", "history"] as ManageTab[]).map(
+            (tabName) => (
+              <button
+                key={tabName}
+                onClick={() => setTab(tabName)}
+                className={`px-4 py-2 text-sm font-medium capitalize transition-colors ${
+                  tab === tabName
+                    ? "border-b-2 border-blue-500 text-text-05"
+                    : "text-text-03 hover:text-text-05"
+                }`}
+              >
+                {tabName === "schedule" ? (
+                  <span className="flex items-center gap-1.5">
+                    <SvgClock className="h-3.5 w-3.5" />
+                    {t("admin.indexingStatus.manage.tabs.schedule")}
+                    {schedule && (
+                      <span className="ml-1 inline-flex h-1.5 w-1.5 rounded-full bg-blue-500" />
+                    )}
+                  </span>
+                ) : tabName === "history" ? (
+                  t("admin.indexingStatus.manage.tabs.history")
+                ) : (
+                  t("admin.indexingStatus.manage.tabs.general")
+                )}
+              </button>
+            )
+          )}
         </div>
 
         {/* ── Tab: General ── */}
@@ -409,14 +522,22 @@ function ManageDialog({
               <Text as="p" secondaryBody className="font-medium">
                 {t("admin.indexingStatus.columns.name")}
               </Text>
-              <InputTypeIn type="text" value={name} onChange={(e) => setName(e.target.value)} />
+              <InputTypeIn
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Text as="p" secondaryBody className="font-medium">
                   {t("admin.indexingStatus.manage.streams")}
                 </Text>
-                <ButtonRefresh size="md" onClick={handleDiscoverStreams} disabled={loadingStreams}>
+                <ButtonRefresh
+                  size="md"
+                  onClick={handleDiscoverStreams}
+                  disabled={loadingStreams}
+                >
                   {loadingStreams
                     ? t("admin.indexingStatus.manage.discovering")
                     : t("admin.indexingStatus.manage.discoverStreams")}
@@ -425,14 +546,21 @@ function ManageDialog({
               {displayStreams.length > 0 ? (
                 <div className="space-y-1 max-h-52 overflow-y-auto rounded border border-border p-3">
                   {displayStreams.map((s) => (
-                    <label key={s} className="flex items-center gap-2 cursor-pointer py-0.5">
+                    <label
+                      key={s}
+                      className="flex items-center gap-2 cursor-pointer py-0.5"
+                    >
                       <Checkbox
                         checked={streams.includes(s)}
                         onCheckedChange={(checked) =>
-                          setStreams((prev) => checked ? [...prev, s] : prev.filter((x) => x !== s))
+                          setStreams((prev) =>
+                            checked ? [...prev, s] : prev.filter((x) => x !== s)
+                          )
                         }
                       />
-                      <Text as="span" secondaryBody>{s}</Text>
+                      <Text as="span" secondaryBody>
+                        {s}
+                      </Text>
                     </label>
                   ))}
                 </div>
@@ -448,14 +576,15 @@ function ManageDialog({
         {/* ── Tab: Schedule ── */}
         {tab === "schedule" && (
           <div className="flex-1 overflow-y-auto space-y-5 py-4">
-
             {/* Frequency preset */}
             <div className="space-y-1.5">
               <Text as="p" secondaryBody text04 className="font-medium">
                 {t("admin.indexingStatus.manage.frequency")}
               </Text>
               <Select value={preset} onValueChange={setPreset}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {SCHEDULE_PRESETS.map((p) => (
                     <SelectItem key={p.value} value={p.value}>
@@ -476,29 +605,42 @@ function ManageDialog({
               <div className="rounded-lg border border-border p-3 space-y-3">
                 {/* Custom sub-tabs */}
                 <div className="flex gap-1 rounded-md bg-background-tint-02 p-0.5">
-                  {(["expression", "weekly", "time"] as CustomMode[]).map((m) => (
-                    <button
-                      key={m}
-                      onClick={() => setCustomMode(m)}
-                      className={`flex-1 py-1 text-xs font-medium rounded transition-colors capitalize ${
-                        customMode === m
-                          ? "bg-background text-text-05 shadow-sm"
-                          : "text-text-03 hover:text-text-05"
-                      }`}
-                    >
-                      {m === "expression"
-                        ? t("admin.indexingStatus.manage.customModes.expression")
-                        : m === "weekly"
-                          ? t("admin.indexingStatus.manage.customModes.weekly")
-                          : t("admin.indexingStatus.manage.customModes.dailyTime")}
-                    </button>
-                  ))}
+                  {(["expression", "weekly", "time"] as CustomMode[]).map(
+                    (m) => (
+                      <button
+                        key={m}
+                        onClick={() => setCustomMode(m)}
+                        className={`flex-1 py-1 text-xs font-medium rounded transition-colors capitalize ${
+                          customMode === m
+                            ? "bg-background text-text-05 shadow-sm"
+                            : "text-text-03 hover:text-text-05"
+                        }`}
+                      >
+                        {m === "expression"
+                          ? t(
+                              "admin.indexingStatus.manage.customModes.expression"
+                            )
+                          : m === "weekly"
+                            ? t(
+                                "admin.indexingStatus.manage.customModes.weekly"
+                              )
+                            : t(
+                                "admin.indexingStatus.manage.customModes.dailyTime"
+                              )}
+                      </button>
+                    )
+                  )}
                 </div>
 
                 {/* Expression */}
                 {customMode === "expression" && (
                   <div className="space-y-2">
-                    <Text as="p" secondaryBody text04 className="text-xs font-medium">
+                    <Text
+                      as="p"
+                      secondaryBody
+                      text04
+                      className="text-xs font-medium"
+                    >
                       {t("admin.indexingStatus.manage.cronExpression")}
                     </Text>
                     <InputTypeIn
@@ -517,7 +659,12 @@ function ManageDialog({
                 {/* Weekly day picker */}
                 {customMode === "weekly" && (
                   <div className="space-y-3">
-                    <Text as="p" secondaryBody text04 className="text-xs font-medium">
+                    <Text
+                      as="p"
+                      secondaryBody
+                      text04
+                      className="text-xs font-medium"
+                    >
                       {t("admin.indexingStatus.manage.daysOfWeek")}
                     </Text>
                     <div className="flex gap-1.5 flex-wrap">
@@ -540,11 +687,21 @@ function ManageDialog({
                         <Text as="p" secondaryBody text03 className="text-xs">
                           {t("admin.indexingStatus.manage.hour")}
                         </Text>
-                        <Select value={selectedHour} onValueChange={(v) => { setSelectedHour(v); setTimeout(buildWeeklyCron, 0); }}>
-                          <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                        <Select
+                          value={selectedHour}
+                          onValueChange={(v) => {
+                            setSelectedHour(v);
+                            setTimeout(buildWeeklyCron, 0);
+                          }}
+                        >
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
                           <SelectContent>
                             {Array.from({ length: 24 }, (_, i) => (
-                              <SelectItem key={i} value={String(i)}>{String(i).padStart(2, "0")}</SelectItem>
+                              <SelectItem key={i} value={String(i)}>
+                                {String(i).padStart(2, "0")}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -554,12 +711,24 @@ function ManageDialog({
                         <Text as="p" secondaryBody text03 className="text-xs">
                           {t("admin.indexingStatus.manage.minute")}
                         </Text>
-                        <Select value={selectedMinute} onValueChange={(v) => { setSelectedMinute(v); setTimeout(buildWeeklyCron, 0); }}>
-                          <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                        <Select
+                          value={selectedMinute}
+                          onValueChange={(v) => {
+                            setSelectedMinute(v);
+                            setTimeout(buildWeeklyCron, 0);
+                          }}
+                        >
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
                           <SelectContent>
-                            {[0,5,10,15,20,25,30,35,40,45,50,55].map((m) => (
-                              <SelectItem key={m} value={String(m)}>{String(m).padStart(2, "0")}</SelectItem>
-                            ))}
+                            {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(
+                              (m) => (
+                                <SelectItem key={m} value={String(m)}>
+                                  {String(m).padStart(2, "0")}
+                                </SelectItem>
+                              )
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
@@ -573,7 +742,12 @@ function ManageDialog({
                 {/* Daily at time */}
                 {customMode === "time" && (
                   <div className="space-y-3">
-                    <Text as="p" secondaryBody text04 className="text-xs font-medium">
+                    <Text
+                      as="p"
+                      secondaryBody
+                      text04
+                      className="text-xs font-medium"
+                    >
                       {t("admin.indexingStatus.manage.runDailyAt")}
                     </Text>
                     <div className="flex gap-3 items-end">
@@ -581,11 +755,21 @@ function ManageDialog({
                         <Text as="p" secondaryBody text03 className="text-xs">
                           {t("admin.indexingStatus.manage.hour")}
                         </Text>
-                        <Select value={selectedHour} onValueChange={(v) => { setSelectedHour(v); setTimeout(buildTimeCron, 0); }}>
-                          <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                        <Select
+                          value={selectedHour}
+                          onValueChange={(v) => {
+                            setSelectedHour(v);
+                            setTimeout(buildTimeCron, 0);
+                          }}
+                        >
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
                           <SelectContent>
                             {Array.from({ length: 24 }, (_, i) => (
-                              <SelectItem key={i} value={String(i)}>{String(i).padStart(2, "0")}</SelectItem>
+                              <SelectItem key={i} value={String(i)}>
+                                {String(i).padStart(2, "0")}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -595,12 +779,24 @@ function ManageDialog({
                         <Text as="p" secondaryBody text03 className="text-xs">
                           {t("admin.indexingStatus.manage.minute")}
                         </Text>
-                        <Select value={selectedMinute} onValueChange={(v) => { setSelectedMinute(v); setTimeout(buildTimeCron, 0); }}>
-                          <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                        <Select
+                          value={selectedMinute}
+                          onValueChange={(v) => {
+                            setSelectedMinute(v);
+                            setTimeout(buildTimeCron, 0);
+                          }}
+                        >
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
                           <SelectContent>
-                            {[0,5,10,15,20,25,30,35,40,45,50,55].map((m) => (
-                              <SelectItem key={m} value={String(m)}>{String(m).padStart(2, "0")}</SelectItem>
-                            ))}
+                            {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(
+                              (m) => (
+                                <SelectItem key={m} value={String(m)}>
+                                  {String(m).padStart(2, "0")}
+                                </SelectItem>
+                              )
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
@@ -630,7 +826,10 @@ function ManageDialog({
               <div className="flex items-center gap-2">
                 <SvgClock className="h-3.5 w-3.5 shrink-0 text-text-03" />
                 <Text as="span" secondaryBody text03 className="text-sm">
-                  {t("admin.indexingStatus.manage.cronLabel")}: <code className="bg-background-tint-02 px-1.5 py-0.5 rounded text-xs">{cron}</code>
+                  {t("admin.indexingStatus.manage.cronLabel")}:{" "}
+                  <code className="bg-background-tint-02 px-1.5 py-0.5 rounded text-xs">
+                    {cron}
+                  </code>
                   {cron && <> → {describeCron(cron, t)}</>}
                 </Text>
               </div>
@@ -642,10 +841,14 @@ function ManageDialog({
                 {t("admin.indexingStatus.manage.timezone")}
               </Text>
               <Select value={timezone} onValueChange={setTimezone}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {TIMEZONES.map((tz) => (
-                    <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                    <SelectItem key={tz} value={tz}>
+                      {tz}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -662,7 +865,10 @@ function ManageDialog({
                 </Text>
               </div>
               <label className="flex items-center cursor-pointer">
-                <Checkbox checked={updateGraphRag} onCheckedChange={(v) => setUpdateGraphRag(!!v)} />
+                <Checkbox
+                  checked={updateGraphRag}
+                  onCheckedChange={(v) => setUpdateGraphRag(!!v)}
+                />
               </label>
             </div>
 
@@ -677,14 +883,18 @@ function ManageDialog({
                 </Text>
               </div>
               <label className="flex items-center cursor-pointer">
-                <Checkbox checked={schedEnabled} onCheckedChange={(v) => setSchedEnabled(!!v)} />
+                <Checkbox
+                  checked={schedEnabled}
+                  onCheckedChange={(v) => setSchedEnabled(!!v)}
+                />
               </label>
             </div>
 
             {/* Next run info */}
             {schedule?.next_run_at && (
               <Text as="p" secondaryBody text03 className="text-xs">
-                {t("admin.indexingStatus.manage.nextRun")}: {new Date(schedule.next_run_at).toLocaleString()}
+                {t("admin.indexingStatus.manage.nextRun")}:{" "}
+                {new Date(schedule.next_run_at).toLocaleString()}
               </Text>
             )}
           </div>
@@ -699,7 +909,12 @@ function ManageDialog({
               </Text>
             )}
             {!historyLoading && attempts.length === 0 && (
-              <Text as="p" secondaryBody textLight05 className="text-center py-8">
+              <Text
+                as="p"
+                secondaryBody
+                textLight05
+                className="text-center py-8"
+              >
                 {t("admin.indexingStatus.manage.noSyncHistory")}
               </Text>
             )}
@@ -707,10 +922,18 @@ function ManageDialog({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t("admin.indexingStatus.manage.history.time")}</TableHead>
-                    <TableHead>{t("admin.indexingStatus.columns.status")}</TableHead>
-                    <TableHead>{t("admin.indexingStatus.manage.history.records")}</TableHead>
-                    <TableHead>{t("admin.indexingStatus.manage.history.duration")}</TableHead>
+                    <TableHead>
+                      {t("admin.indexingStatus.manage.history.time")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.indexingStatus.columns.status")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.indexingStatus.manage.history.records")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.indexingStatus.manage.history.duration")}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -737,13 +960,17 @@ function ManageDialog({
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
-                        {attempt.records_synced != null ? attempt.records_synced.toLocaleString() : "-"}
+                        {attempt.records_synced != null
+                          ? attempt.records_synced.toLocaleString()
+                          : "-"}
                       </TableCell>
                       <TableCell className="text-sm">
                         {attempt.duration_seconds != null
                           ? attempt.duration_seconds >= 60
                             ? t("admin.indexingStatus.sync.duration_m_s", {
-                                minutes: Math.floor(attempt.duration_seconds / 60),
+                                minutes: Math.floor(
+                                  attempt.duration_seconds / 60
+                                ),
                                 seconds: attempt.duration_seconds % 60,
                               })
                             : t("admin.indexingStatus.sync.duration_s", {
@@ -783,8 +1010,14 @@ function ManageDialog({
             {tab !== "history" && (
               <ButtonRefresh
                 primary
-                onClick={tab === "general" ? handleSaveGeneral : handleSaveSchedule}
-                disabled={tab === "general" ? savingGeneral : (savingSchedule || !cron.trim())}
+                onClick={
+                  tab === "general" ? handleSaveGeneral : handleSaveSchedule
+                }
+                disabled={
+                  tab === "general"
+                    ? savingGeneral
+                    : savingSchedule || !cron.trim()
+                }
               >
                 {tab === "general"
                   ? savingGeneral
@@ -834,7 +1067,11 @@ function SummaryRow({
       <TableCell>
         <div className="text-xl flex items-center truncate ellipsis gap-x-2 font-semibold">
           <div className="cursor-pointer">
-            {isOpen ? <FiChevronDown size={20} /> : <FiChevronRight size={20} />}
+            {isOpen ? (
+              <FiChevronDown size={20} />
+            ) : (
+              <FiChevronRight size={20} />
+            )}
           </div>
           <span className="h-5 w-5 rounded bg-background-tint-02 flex items-center justify-center text-xs font-bold text-text-02 shrink-0">
             {displayName[0]}
@@ -852,15 +1089,20 @@ function SummaryRow({
         <div className="text-sm text-neutral-500 dark:text-neutral-300">
           {t("admin.indexingStatus.table.currentlySyncing")}
         </div>
-        <p className="flex text-xl mx-auto font-semibold items-center text-lg mt-1">
+        <Text
+          as="p"
+          className="flex text-xl mx-auto font-semibold items-center text-lg mt-1"
+        >
           {activeSyncing}/{datasources.length}
-        </p>
+        </Text>
       </TableCell>
       <TableCell>
         <div className="text-sm text-neutral-500 dark:text-neutral-300">
           {t("admin.indexingStatus.table.totalDocsIndexed")}
         </div>
-        <div className="text-xl font-semibold">{totalDocs.toLocaleString()}</div>
+        <div className="text-xl font-semibold">
+          {totalDocs.toLocaleString()}
+        </div>
       </TableCell>
       <TableCell />
     </TableRow>
@@ -924,9 +1166,12 @@ function DatasourceRow({
     <>
       <TableRow className="border border-border dark:border-neutral-700 hover:bg-accent-background w-full relative">
         <TableCell>
-          <p className="max-w-[200px] xl:max-w-[400px] inline-block ellipsis truncate">
+          <Text
+            as="p"
+            className="max-w-[200px] xl:max-w-[400px] inline-block ellipsis truncate"
+          >
             {datasource.name}
-          </p>
+          </Text>
         </TableCell>
         <TableCell>{timeAgo(datasource.last_synced_at) || "-"}</TableCell>
         <TableCell>
@@ -953,7 +1198,9 @@ function DatasourceRow({
                 {isActive ? "…" : "↺"}
               </Button>
             </SimpleTooltip>
-            <SimpleTooltip tooltip={t("admin.indexingStatus.table.manageConnector")}>
+            <SimpleTooltip
+              tooltip={t("admin.indexingStatus.table.manageConnector")}
+            >
               <Button
                 icon={SvgSettings}
                 prominence="tertiary"
@@ -1024,10 +1271,18 @@ export function AirbyteDatasourceTable({
       {/* invisible header row to set column widths */}
       <TableHeader>
         <TableRow className="invisible border-none">
-          <TableCell className="w-[35%]">{t("admin.indexingStatus.columns.name")}</TableCell>
-          <TableCell className="w-[15%]">{t("admin.indexingStatus.columns.lastSynced")}</TableCell>
-          <TableCell className="w-[20%]">{t("admin.indexingStatus.columns.status")}</TableCell>
-          <TableCell className="w-[15%]">{t("admin.indexingStatus.columns.totalDocs")}</TableCell>
+          <TableCell className="w-[35%]">
+            {t("admin.indexingStatus.columns.name")}
+          </TableCell>
+          <TableCell className="w-[15%]">
+            {t("admin.indexingStatus.columns.lastSynced")}
+          </TableCell>
+          <TableCell className="w-[20%]">
+            {t("admin.indexingStatus.columns.status")}
+          </TableCell>
+          <TableCell className="w-[15%]">
+            {t("admin.indexingStatus.columns.totalDocs")}
+          </TableCell>
           <TableCell className="w-[15%]" />
         </TableRow>
       </TableHeader>
@@ -1049,14 +1304,26 @@ export function AirbyteDatasourceTable({
             {toggledGroups[group.connector_type] && (
               <>
                 <TableRow className="border border-border dark:border-neutral-700">
-                  <TableHead>{t("admin.indexingStatus.columns.name")}</TableHead>
-                  <TableHead>{t("admin.indexingStatus.columns.lastSynced")}</TableHead>
-                  <TableHead>{t("admin.indexingStatus.columns.status")}</TableHead>
-                  <TableHead>{t("admin.indexingStatus.columns.totalDocs")}</TableHead>
+                  <TableHead>
+                    {t("admin.indexingStatus.columns.name")}
+                  </TableHead>
+                  <TableHead>
+                    {t("admin.indexingStatus.columns.lastSynced")}
+                  </TableHead>
+                  <TableHead>
+                    {t("admin.indexingStatus.columns.status")}
+                  </TableHead>
+                  <TableHead>
+                    {t("admin.indexingStatus.columns.totalDocs")}
+                  </TableHead>
                   <TableHead />
                 </TableRow>
                 {group.datasources.map((ds) => (
-                  <DatasourceRow key={ds.id} datasource={ds} onMutate={onMutate} />
+                  <DatasourceRow
+                    key={ds.id}
+                    datasource={ds}
+                    onMutate={onMutate}
+                  />
                 ))}
               </>
             )}

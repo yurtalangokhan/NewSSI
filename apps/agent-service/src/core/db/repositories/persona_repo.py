@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from datetime import UTC, datetime
 from typing import Any
 
@@ -10,8 +9,9 @@ from sqlalchemy import delete, select, update
 
 from core.db.models.persona import PersonaModel
 from core.db.repositories.base import BaseRepository
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class PersonaRepository(BaseRepository):
@@ -35,9 +35,12 @@ class PersonaRepository(BaseRepository):
             "user_id": row.user_id,
             "is_builtin": row.is_builtin,
             "builtin_key": row.builtin_key,
+            "uploaded_image_id": row.uploaded_image_id,
+            "icon_name": row.icon_name,
             "base_agent": row.base_agent,
             "mcp_tools": row.mcp_tools,
             "mcp_tool_configs": row.mcp_tool_configs or {},
+            "connector_bindings": row.connector_bindings or [],
             "rag_config": row.rag_config,
             "long_term_memory": bool(row.long_term_memory),
             "time_created": row.time_created.isoformat() if row.time_created else None,
@@ -146,9 +149,12 @@ class PersonaRepository(BaseRepository):
             "llm_model_version_override",
             "starter_messages",
             "labels",
+            "uploaded_image_id",
+            "icon_name",
             "base_agent",
             "mcp_tools",
             "mcp_tool_configs",
+            "connector_bindings",
             "rag_config",
             "long_term_memory",
         }

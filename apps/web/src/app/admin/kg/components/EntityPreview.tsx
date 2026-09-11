@@ -56,13 +56,23 @@ export default function EntityPreview({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
-          <Text as="p" mainUiAction text04 className="text-sm font-semibold truncate">
+          <Text
+            as="p"
+            mainUiAction
+            text04
+            className="text-sm font-semibold truncate"
+          >
             {node.name}
           </Text>
           <span className="inline-flex shrink-0 items-center rounded-full border border-theme-primary-03 bg-theme-primary-01 px-2 py-0.5 text-[11px] text-theme-primary-07 font-medium">
             {node.label}
           </span>
-          <Text as="span" mainContentMuted text03 className="text-xs shrink-0 hidden sm:inline">
+          <Text
+            as="span"
+            mainContentMuted
+            text03
+            className="text-xs shrink-0 hidden sm:inline"
+          >
             ID: {node.id.slice(0, 12)}…
           </Text>
         </div>
@@ -79,11 +89,18 @@ export default function EntityPreview({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {/* Properties */}
         <div className="flex flex-col gap-1.5">
-          <Text as="p" mainContentMuted text03 className="text-xs font-medium uppercase tracking-wide">
+          <Text
+            as="p"
+            mainContentMuted
+            text03
+            className="text-xs font-medium uppercase tracking-wide"
+          >
             {t("entityPreview.properties", { count: propEntries.length })}
           </Text>
           {propEntries.length === 0 ? (
-            <Text as="p" mainContentMuted text03 className="text-xs">{t("entityPreview.noProperties")}</Text>
+            <Text as="p" mainContentMuted text03 className="text-xs">
+              {t("entityPreview.noProperties")}
+            </Text>
           ) : (
             <div className="max-h-44 overflow-y-auto flex flex-col gap-0.5 pr-1">
               {propEntries.map(([key, value]) => (
@@ -91,7 +108,9 @@ export default function EntityPreview({
                   key={key}
                   className="grid grid-cols-[90px_1fr] gap-1 rounded-04 px-2 py-1 text-xs even:bg-background-neutral-01"
                 >
-                  <span className="font-medium text-text-03 truncate">{key}</span>
+                  <span className="font-medium text-text-03 truncate">
+                    {key}
+                  </span>
                   <span className="break-words text-text-04">
                     {formatPropertyValue(value)}
                   </span>
@@ -103,11 +122,18 @@ export default function EntityPreview({
 
         {/* Outgoing */}
         <div className="flex flex-col gap-1.5">
-          <Text as="p" mainContentMuted text03 className="text-xs font-medium uppercase tracking-wide">
+          <Text
+            as="p"
+            mainContentMuted
+            text03
+            className="text-xs font-medium uppercase tracking-wide"
+          >
             {t("entityPreview.outgoing", { count: outgoing.length })}
           </Text>
           {outgoing.length === 0 ? (
-            <Text as="p" mainContentMuted text03 className="text-xs">{t("entityPreview.noOutgoing")}</Text>
+            <Text as="p" mainContentMuted text03 className="text-xs">
+              {t("entityPreview.noOutgoing")}
+            </Text>
           ) : (
             <div className="max-h-44 overflow-y-auto flex flex-col gap-1 pr-1">
               {outgoing.map((edge, i) => {
@@ -139,11 +165,18 @@ export default function EntityPreview({
 
         {/* Incoming */}
         <div className="flex flex-col gap-1.5">
-          <Text as="p" mainContentMuted text03 className="text-xs font-medium uppercase tracking-wide">
+          <Text
+            as="p"
+            mainContentMuted
+            text03
+            className="text-xs font-medium uppercase tracking-wide"
+          >
             {t("entityPreview.incoming", { count: incoming.length })}
           </Text>
           {incoming.length === 0 ? (
-            <Text as="p" mainContentMuted text03 className="text-xs">{t("entityPreview.noIncoming")}</Text>
+            <Text as="p" mainContentMuted text03 className="text-xs">
+              {t("entityPreview.noIncoming")}
+            </Text>
           ) : (
             <div className="max-h-44 overflow-y-auto flex flex-col gap-1 pr-1">
               {incoming.map((edge, i) => {

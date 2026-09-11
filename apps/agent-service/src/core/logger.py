@@ -168,6 +168,11 @@ class LoggerFactory:
         if not cls._initialized:
             cls.configure()
 
+        if logging.getLogger().handlers:
+            logger.setLevel(cls._log_level)
+            logger.propagate = True
+            return logger
+
         if logger.handlers:
             return logger
 

@@ -151,6 +151,12 @@ STEP_TURN_RULES: dict[str, StepTurnRule] = {
     "long_term_memory_recall": StepTurnRule(new_turn=True),
     "long_term_memory_save": StepTurnRule(new_turn=True),
     "custom_step_start": StepTurnRule(new_turn=True),
+    # An ask_user question and the answer that locked it are ONE card.
+    "user_clarification": StepTurnRule(new_turn=True),
+    "user_clarification_answered": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset({"user_clarification"}),
+    ),
 }
 
 

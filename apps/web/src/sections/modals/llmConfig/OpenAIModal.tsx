@@ -91,7 +91,10 @@ export function OpenAIModal({
                 <Form className={LLM_FORM_CLASS_NAME}>
                   <DisplayNameField disabled={!!existingLlmProvider} />
 
-                  <PasswordInputTypeInField name="api_key" label={t("llmConfig.longTermApiKey")} />
+                  <PasswordInputTypeInField
+                    name="api_key"
+                    label={t("llmConfig.longTermApiKey")}
+                  />
 
                   <DisplayModels
                     modelConfigurations={modelConfigurations}

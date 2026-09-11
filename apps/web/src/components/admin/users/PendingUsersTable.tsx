@@ -9,12 +9,12 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import CenteredPageSelector from "@/components/admin/users/CenteredPageSelector";
-import { ThreeDotsLoader } from "@/components/Loading";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import { InvitedUserSnapshot } from "@/lib/types";
 import { TableHeader } from "@/components/ui/table";
 import Button from "@/refresh-components/buttons/Button";
 import { ErrorCallout } from "@/components/ErrorCallout";
-import { FetchError } from "@/lib/fetcher";
+import { FetchError, authenticatedFetch } from "@/lib/fetcher";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
 import { SvgCheck } from "@opal/icons";
 import Text from "@/refresh-components/texts/Text";
@@ -51,16 +51,25 @@ function PendingUsersTable({ users, mutate, error, isLoading, q }: Props) {
     currentPageNum * USERS_PER_PAGE
   );
 
+  if (isLoading) {
+    return (
+      <TableSkeleton
+        rowCount={4}
+        columns={[
+          { type: "text", width: "w-48", headerWidth: "w-20" },
+          { type: "badge", width: "w-24", headerWidth: "w-16" },
+          { type: "actions", width: "w-24", headerWidth: "w-16" },
+        ]}
+      />
+    );
+  }
+
   if (!users.length) {
     return (
       <Text as="p" mainUiMuted text03>
         {t("admin.users.pendingEmptyState")}
       </Text>
     );
-  }
-
-  if (isLoading) {
-    return <ThreeDotsLoader />;
   }
 
   if (error) {
@@ -75,7 +84,7 @@ function PendingUsersTable({ users, mutate, error, isLoading, q }: Props) {
   const handleAcceptRequest = async (email: string) => {
     const normalizedEmail = email.toLowerCase();
     try {
-      await fetch("/api/tenants/users/invite/approve", {
+      await authenticatedFetch("/api/tenants/users/invite/approve", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

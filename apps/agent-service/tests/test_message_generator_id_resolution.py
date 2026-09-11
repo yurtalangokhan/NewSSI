@@ -78,7 +78,7 @@ async def _run(
     message: str = "hello",
     controller: type = _FakeChatControllerForIds,
 ) -> list[dict]:
-    from service import agent_message_stream
+    from service import AgentStreamService as agent_message_stream
 
     monkeypatch.setattr(
         agent_message_stream.AssistantAgentService,
@@ -121,7 +121,7 @@ async def test_skips_id_resolution_without_a_thread_id(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_id_resolution_failure_does_not_break_the_stream(monkeypatch):
-    from service import agent_message_stream
+    from service import AgentStreamService as agent_message_stream
 
     class _BoomChatController:
         def __init__(self, **kwargs):

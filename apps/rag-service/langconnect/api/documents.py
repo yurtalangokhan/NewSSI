@@ -1,4 +1,3 @@
-import logging
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -24,6 +23,7 @@ from langconnect.models.documents import (
     UploadJobStartResponse,
     UploadProgress,
 )
+from langconnect.observability import get_logger
 from langconnect.services import document_upload_service, process_document
 from langconnect.services.build_lock import (
     ensure_collection_mutable,
@@ -34,7 +34,7 @@ from langconnect.services.collections import Collection
 # Create a TypeAdapter that enforces “list of dict”
 _metadata_adapter = TypeAdapter(list[dict[str, Any]])
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(tags=["documents"])
 

@@ -15,6 +15,19 @@ from .keycloak_service import get_keycloak_service
 _settings = get_settings()
 
 
+def _coerce_positive_int(raw: Any, fallback: int | None) -> int | None:
+    """Return `raw` as a positive int, or `fallback` when it is unusable.
+
+    Keycloak omits `refresh_expires_in` for offline tokens and reports `0`
+    when the refresh token does not expire, so both cases fall back.
+    """
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return fallback
+    return value if value > 0 else fallback
+
+
 class AuthService:
     def __init__(self):
         self.user_repo = UserRepository()
@@ -144,13 +157,19 @@ class AuthService:
         access_token = token_data.get("access_token", "")
         refresh_token = token_data.get("refresh_token", "")
         id_token = token_data.get("id_token")
-        expires_in = int(token_data.get("expires_in", 3600))
+        expires_in = _coerce_positive_int(token_data.get("expires_in"), 3600)
+        # Keycloak reports the refresh token's own lifetime (SSO session idle,
+        # or the offline-session lifespan). It is what the refresh_token cookie
+        # should live for - a cookie that outlives the token it carries just
+        # produces refresh attempts that Keycloak is guaranteed to reject.
+        refresh_expires_in = _coerce_positive_int(token_data.get("refresh_expires_in"), None)
 
         payload: dict[str, Any] = {
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": token_data.get("token_type", "Bearer"),
             "expires_in": expires_in,
+            "refresh_expires_in": refresh_expires_in,
             "user": {
                 "id": str(user.id),
                 "email": user.email,
@@ -270,26 +289,26 @@ class AuthService:
         """Refresh tokens via Keycloak's refresh_token grant."""
         token_data = await self.keycloak.refresh_token_grant(refresh_token)
 
-        id_token = token_data.get("id_token", "")
-        if not id_token:
+        claims = self._extract_claims(token_data.get("id_token"))
+        if claims is None:
+            claims = self._extract_claims(token_data.get("access_token"))
+
+        if claims is None:
             raise ValueError(t("auth.refresh_no_id_token"))
 
-        from jose import jwt
-
-        claims = jwt.get_unverified_claims(id_token)
-        keycloak_id = claims.get("sub", "")
+        user_email = str(claims.get("email") or "")
+        keycloak_id = str(claims.get("sub") or "")
         if not keycloak_id:
             raise ValueError(t("auth.refresh_no_subject_in_token"))
 
-        user_email = claims.get("email", "")
-        user_username = claims.get("preferred_username", "")
+        user_username = str(claims.get("preferred_username") or "")
         first_name = (claims.get("given_name") or "").strip() or None
         last_name = (claims.get("family_name") or "").strip() or None
 
         user = await self.user_repo.upsert_by_keycloak_id(
             keycloak_id,
             email=user_email,
-            username=user_username,
+            username=(user_username or keycloak_id),
             first_name=first_name,
             last_name=last_name,
             groups=self._extract_groups_from_claims(claims),
@@ -299,6 +318,16 @@ class AuthService:
         )
 
         return await self._build_oidc_login_response(user, token_data)
+
+    @staticmethod
+    def _extract_claims(token: str | None) -> dict[str, Any] | None:
+        if not token:
+            return None
+        try:
+            claims = jwt.get_unverified_claims(token)
+        except JWTError:
+            return None
+        return claims if isinstance(claims, dict) else None
 
     async def validate_token(self, token: str) -> dict[str, Any] | None:
         # 1. Try local HS256 decode (legacy user-service tokens)

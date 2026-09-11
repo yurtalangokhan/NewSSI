@@ -37,6 +37,12 @@ class TestUserRoute:
         # Should not get 422 (validation error) for missing params
         assert response.status_code != 422
 
+    def test_role_distribution_requires_auth(self, client):
+        """role-distribution is a static path, must resolve before /{target_id}
+        and must require the same auth as the rest of the /users list routes."""
+        response = client.get("/users/role-distribution")
+        assert response.status_code == 401
+
     def test_set_user_password_requires_body(self, client):
         """set_user_password should accept password in body."""
         test_id = str(uuid.uuid4())

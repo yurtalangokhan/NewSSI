@@ -2,14 +2,14 @@ import { requireAdminAuth, requireAuth } from "./requireAuth";
 import {
   type AuthTypeMetadata,
   getAuthTypeMetadataSS,
-  getCurrentUserPermissionsSS,
+  getCurrentUserAccessSS,
   getCurrentUserSS,
 } from "@/lib/userSS";
 import { AuthType } from "@/lib/constants";
 
 jest.mock("@/lib/userSS", () => ({
   getAuthTypeMetadataSS: jest.fn(),
-  getCurrentUserPermissionsSS: jest.fn(),
+  getCurrentUserAccessSS: jest.fn(),
   getCurrentUserSS: jest.fn(),
 }));
 
@@ -27,7 +27,9 @@ const authTypeMetadata: AuthTypeMetadata = {
 describe("requireAuth", () => {
   beforeEach(() => {
     jest.mocked(getAuthTypeMetadataSS).mockResolvedValue(authTypeMetadata);
-    jest.mocked(getCurrentUserPermissionsSS).mockResolvedValue([]);
+    jest
+      .mocked(getCurrentUserAccessSS)
+      .mockResolvedValue({ permissions: [], isAdmin: false });
     jest.mocked(getCurrentUserSS).mockResolvedValue(null);
   });
 
@@ -42,7 +44,7 @@ describe("requireAuth", () => {
     });
   });
 
-  it("does not reject authenticated users by hardcoded admin role when permissions grant admin access", async () => {
+  it("admits users who can access at least one enabled admin route", async () => {
     const user = {
       id: "user-1",
       role: "enduser",
@@ -50,7 +52,10 @@ describe("requireAuth", () => {
       is_verified: true,
     };
     jest.mocked(getCurrentUserSS).mockResolvedValue(user as never);
-    jest.mocked(getCurrentUserPermissionsSS).mockResolvedValue(["role:list"]);
+    jest.mocked(getCurrentUserAccessSS).mockResolvedValue({
+      permissions: ["agent:list"],
+      isAdmin: false,
+    });
 
     const result = await requireAdminAuth();
 
@@ -58,7 +63,7 @@ describe("requireAuth", () => {
     expect(result).not.toHaveProperty("redirect");
   });
 
-  it("redirects authenticated users without admin permissions", async () => {
+  it("admits authenticated users with wildcard access", async () => {
     const user = {
       id: "user-1",
       role: "system-admin",
@@ -66,7 +71,29 @@ describe("requireAuth", () => {
       is_verified: true,
     };
     jest.mocked(getCurrentUserSS).mockResolvedValue(user as never);
-    jest.mocked(getCurrentUserPermissionsSS).mockResolvedValue(["chat:send"]);
+    jest.mocked(getCurrentUserAccessSS).mockResolvedValue({
+      permissions: ["*"],
+      isAdmin: true,
+    });
+
+    const result = await requireAdminAuth();
+
+    expect(result).toMatchObject({ user });
+    expect(result).not.toHaveProperty("redirect");
+  });
+
+  it("redirects authenticated users without admin access", async () => {
+    const user = {
+      id: "user-1",
+      role: "enduser",
+      is_superuser: false,
+      is_verified: true,
+    };
+    jest.mocked(getCurrentUserSS).mockResolvedValue(user as never);
+    jest.mocked(getCurrentUserAccessSS).mockResolvedValue({
+      permissions: ["chat:send"],
+      isAdmin: false,
+    });
 
     await expect(requireAdminAuth()).resolves.toMatchObject({
       user,

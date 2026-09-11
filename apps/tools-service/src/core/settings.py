@@ -39,6 +39,7 @@ class Settings:
     postgres_password: str
     postgres_db: str
     user_service_url: str
+    agent_service_url: str
     rag_service_api_url: str
     redis_host: str
     redis_port: int
@@ -58,6 +59,8 @@ class Settings:
     user_permission_cache_ttl_seconds: float
     valid_api_keys: str
     workspace_dir: str
+    log_level: str
+    connector_postgres_endpoints: str = "{}"
 
     @classmethod
     def required_env_names(cls) -> tuple[str, ...]:
@@ -83,6 +86,8 @@ class Settings:
             postgres_password=postgres_password,
             postgres_db=postgres_db,
             user_service_url=user_service_url,
+            agent_service_url=optional_env("AGENT_SERVICE_URL").rstrip("/"),
+            connector_postgres_endpoints=optional_env("CONNECTOR_POSTGRES_ENDPOINTS", "{}"),
             rag_service_api_url=optional_env("RAG_SERVICE_API_URL"),
             redis_host=optional_env("REDIS_HOST", "localhost"),
             redis_port=int(optional_env("REDIS_PORT", "6379")),
@@ -93,7 +98,7 @@ class Settings:
             in {"1", "true", "yes", "on"},
             idempotency_enforce_required_keys=optional_env(
                 "IDEMPOTENCY_ENFORCE_REQUIRED_KEYS",
-                "false",
+                "true",
             ).lower()
             in {"1", "true", "yes", "on"},
             idempotency_lock_ttl=int(optional_env("IDEMPOTENCY_LOCK_TTL", "10")),
@@ -113,6 +118,7 @@ class Settings:
             ),
             valid_api_keys=optional_env("VALID_API_KEYS"),
             workspace_dir=optional_env("WORKSPACE_DIR", "/workspace"),
+            log_level=optional_env("LOG_LEVEL", "INFO"),
         )
 
     @property

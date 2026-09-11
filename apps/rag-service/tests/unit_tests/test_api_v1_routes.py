@@ -46,6 +46,41 @@ async def test_api_v1_health_is_public() -> None:
     assert response.json() == {"status": "ok"}
 
 
+async def test_api_v1_readiness_is_public() -> None:
+    async with get_async_test_client() as client:
+        response = await client.get("/api/v1/health/ready")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ready"
+    assert response.json()["service"] == "rag-service"
+
+
+async def test_api_v1_readiness_returns_503_when_required_dependency_fails() -> None:
+    from langconnect.observability import (
+        DependencyPolicy,
+        DependencyStatus,
+        dependency_registry,
+    )
+
+    dependency_registry.record(
+        DependencyStatus(
+            name="postgres",
+            policy=DependencyPolicy.REQUIRED,
+            status="failed",
+        )
+    )
+    try:
+        async with get_async_test_client() as client:
+            response = await client.get("/api/v1/health/ready")
+    finally:
+        dependency_registry.record_ok("postgres", policy=DependencyPolicy.REQUIRED)
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "not_ready"
+    assert response.json()["dependencies"]["postgres"]["status"] == "failed"
+    assert response.json()["dependencies"]["postgres"]["required"] is True
+
+
 async def test_api_v1_collections_requires_auth() -> None:
     async with get_async_test_client() as client:
         response = await client.get("/api/v1/collections")

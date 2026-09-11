@@ -183,6 +183,65 @@ async def test_refresh_access_token_uses_keycloak_without_local_session_lookup()
 
 
 @pytest.mark.asyncio
+async def test_refresh_access_token_falls_back_to_access_token_claims_when_id_token_missing():
+    auth_service = AuthService()
+    keycloak_id = "sp-keycloak-id"
+    access_token = jwt.encode(
+        {
+            "sub": keycloak_id,
+            "email": "user@example.com",
+            "preferred_username": "fallback-user",
+            "given_name": "Test",
+            "family_name": "User",
+            "groups": ["engineering"],
+        },
+        "unused",
+        algorithm="HS256",
+    )
+    auth_service.keycloak = SimpleNamespace(
+        is_enabled=lambda: True,
+        is_external_keycloak=lambda: False,
+        refresh_token_grant=AsyncMock(
+            return_value={
+                "access_token": access_token,
+                "refresh_token": "sp-refresh-token",
+                "expires_in": 300,
+            },
+        ),
+    )
+    user = SimpleNamespace(
+        id=uuid.uuid4(),
+        email="user@example.com",
+        username="fallback-user",
+        first_name="Test",
+        last_name="User",
+        role="enduser",
+        groups=["engineering"],
+        is_active=True,
+        is_verified=True,
+    )
+    auth_service.user_repo.upsert_by_keycloak_id = AsyncMock(return_value=user)
+
+    result = await auth_service.refresh_access_token("sp-refresh-token")
+
+    assert result["access_token"] == access_token
+    assert result["refresh_token"] == "sp-refresh-token"
+    assert result["expires_in"] == 300
+    auth_service.keycloak.refresh_token_grant.assert_awaited_once_with("sp-refresh-token")
+    auth_service.user_repo.upsert_by_keycloak_id.assert_awaited_once_with(
+        keycloak_id,
+        email="user@example.com",
+        username="fallback-user",
+        first_name="Test",
+        last_name="User",
+        groups=["engineering"],
+        is_active=True,
+        is_verified=True,
+        is_external_keycloak_user=False,
+    )
+
+
+@pytest.mark.asyncio
 async def test_refresh_access_token_does_not_fallback_to_local_session_when_keycloak_fails():
     auth_service = AuthService()
     auth_service.keycloak = SimpleNamespace(
@@ -559,6 +618,24 @@ async def test_refresh_access_token_rejects_when_keycloak_refresh_fails():
         await auth_service.refresh_access_token("local-refresh-token")
 
     auth_service.keycloak.refresh_token_grant.assert_awaited_once_with("local-refresh-token")
+
+
+@pytest.mark.asyncio
+async def test_refresh_access_token_rejects_when_refresh_response_has_no_subject():
+    auth_service = AuthService()
+    auth_service.keycloak = SimpleNamespace(
+        is_enabled=lambda: True,
+        is_external_keycloak=lambda: False,
+        refresh_token_grant=AsyncMock(
+            return_value={
+                "access_token": jwt.encode({"iss": "x"}, "unused", algorithm="HS256"),
+                "refresh_token": "sp-refresh-token",
+            }
+        ),
+    )
+
+    with pytest.raises(ValueError, match="subject"):
+        await auth_service.refresh_access_token("local-refresh-token")
 
 
 def test_extract_groups_from_claims_supports_group_and_groups_claims():

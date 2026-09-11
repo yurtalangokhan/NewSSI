@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import { Route } from "next";
 import { usePostHog } from "posthog-js/react";
 import { Notification, NotificationType } from "@/interfaces/settings";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 import Text from "@/refresh-components/texts/Text";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import { SvgSparkle, SvgRefreshCw, SvgX } from "@opal/icons";
 import { IconProps } from "@opal/types";
 import { Button } from "@opal/components";
-import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
+import ListSkeleton from "@/refresh-components/skeletons/ListSkeleton";
 import { Section } from "@/layouts/general-layouts";
 import Separator from "@/refresh-components/Separator";
 import { useTranslation } from "react-i18next";
@@ -89,7 +89,7 @@ export default function NotificationsPopover({
   ) => {
     e?.stopPropagation(); // Prevent triggering the LineItem onClick
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `/api/notifications/${notificationId}/dismiss`,
         {
           method: "POST",
@@ -114,10 +114,8 @@ export default function NotificationsPopover({
 
       <Section>
         {isLoading ? (
-          <div className="h-48">
-            <Section>
-              <SimpleLoader />
-            </Section>
+          <div className="w-full p-2">
+            <ListSkeleton itemCount={3} hasIcon={true} />
           </div>
         ) : !notifications || notifications.length === 0 ? (
           <div className="h-48">

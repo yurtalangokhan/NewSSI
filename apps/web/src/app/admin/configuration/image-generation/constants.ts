@@ -88,7 +88,8 @@ export const IMAGE_PROVIDER_GROUPS: ProviderGroup[] = [
         title: "Gemini 2.5 Flash Image",
         description:
           "Gemini 2.5 Flash Image (Nano Banana) model is designed for speed and efficiency.",
-        descriptionKey: "admin.imageGeneration.providers.vertex_ai.gemini_2_5_flash",
+        descriptionKey:
+          "admin.imageGeneration.providers.vertex_ai.gemini_2_5_flash",
       },
       {
         image_provider_id: "gemini-3-pro-image-preview",
@@ -97,7 +98,8 @@ export const IMAGE_PROVIDER_GROUPS: ProviderGroup[] = [
         title: "Gemini 3 Pro Image Preview",
         description:
           "Gemini 3 Pro Image Preview (Nano Banana Pro) is designed for professional asset production.",
-        descriptionKey: "admin.imageGeneration.providers.vertex_ai.gemini_3_pro",
+        descriptionKey:
+          "admin.imageGeneration.providers.vertex_ai.gemini_3_pro",
       },
     ],
   },

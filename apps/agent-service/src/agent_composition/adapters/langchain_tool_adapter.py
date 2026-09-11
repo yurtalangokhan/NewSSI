@@ -1,13 +1,11 @@
-"""LangChain tool adapter for ToolBinding.
-
-Allows ToolsServiceToolGateway to be used in existing LangGraph infrastructure
-by wrapping ToolBinding instances as LangChain-compatible tool objects.
-"""
+"""Convert domain tool bindings into real LangChain tools."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
+
+from langchain_core.tools import StructuredTool
 
 from agent_composition.domain.errors import ToolInvocationError
 from agent_composition.domain.ports import ToolBinding, ToolInvocation
@@ -15,18 +13,19 @@ from agent_composition.domain.trusted_context import TrustedToolContext
 
 
 class TrustedContextProvider:
-    """Callable that returns TrustedToolContext for the current request.
-
-    Implementations can extract context from LangGraph config, thread-local storage,
-    or any other request-scoped source.
-    """
-
     def __call__(self) -> TrustedToolContext | None:
         raise NotImplementedError
 
 
+def _thaw_schema(value: Any) -> Any:
+    if isinstance(value, dict) or hasattr(value, "items"):
+        return {key: _thaw_schema(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_thaw_schema(item) for item in value]
+    return value
+
+
 def _format_output(output: Any) -> str:
-    """Format ToolResult output for LangChain tool return."""
     if isinstance(output, (list, tuple)):
         text_parts = []
         for item in output:
@@ -48,24 +47,15 @@ def _make_async_invoke(
     binding: ToolBinding,
     context_provider: TrustedContextProvider | None,
 ) -> Callable[..., Any]:
-    """Create an async function that wraps ToolBinding.invoke()."""
-
     async def async_invoke(*args: Any, **kwargs: Any) -> str:
         if args and kwargs:
             raise ValueError("Cannot use both positional and keyword arguments")
         model_arguments = args[0] if args else kwargs
-
-        context = None
-        if context_provider is not None:
-            context = context_provider()
-
-        invocation = ToolInvocation(
-            model_arguments=model_arguments,
-            trusted_context=context,
-        )
-
+        context = context_provider() if context_provider is not None else None
         try:
-            result = await binding.invoke(invocation)
+            result = await binding.invoke(
+                ToolInvocation(model_arguments=model_arguments, trusted_context=context)
+            )
             return _format_output(result.output)
         except ToolInvocationError as exc:
             return f"Tool invocation failed: {exc.message}"
@@ -74,60 +64,43 @@ def _make_async_invoke(
 
 
 def _make_sync_stub() -> Callable[..., str]:
-    """Create a sync stub that raises NotImplementedError."""
-
     def sync_func(*args: Any, **kwargs: Any) -> str:
         raise NotImplementedError("Tool created from ToolBinding only supports async invocation")
 
     return sync_func
 
 
-class LangChainToolAdapter:
-    """Wraps a ToolBinding as a LangChain-compatible tool for use in LangGraph.
-
-    This adapter allows ToolsServiceToolGateway (which uses the ToolBinding port)
-    to be used in existing LangGraph agents that expect LangChain Tool objects.
-
-    The TrustedToolContext is obtained from the context_provider at invocation time,
-    allowing server-side identity and bindings to be injected without exposing them
-    to the LLM.
-    """
+class LangChainToolAdapter(StructuredTool):
+    """A StructuredTool backed by a domain ToolBinding."""
 
     def __init__(
         self,
         binding: ToolBinding,
         context_provider: TrustedContextProvider | None = None,
     ) -> None:
-        self.binding = binding
-        self.context_provider = context_provider
-        self._async_invoke = _make_async_invoke(binding, context_provider)
-        self._sync_func = _make_sync_stub()
         descriptor = binding.descriptor
-        self.name = descriptor.key
-        self.description = descriptor.description
+        super().__init__(
+            name=descriptor.key,
+            description=descriptor.description,
+            func=_make_sync_stub(),
+            coroutine=_make_async_invoke(binding, context_provider),
+            args_schema=_thaw_schema(descriptor.input_schema)
+            or {"type": "object", "properties": {}},
+        )
 
-    def invoke(self, input: Any, config: Any = None) -> str:
-        raise NotImplementedError("Tool created from ToolBinding only supports async invocation")
+    def _run(self, *args: Any, config: Any = None, **kwargs: Any) -> str:
+        return self.func(*args, **kwargs)
 
-    async def ainvoke(self, input: Any, config: Any = None) -> str:
-        return await self._async_invoke(input)
-
-    def _run(self, *args: Any, **kwargs: Any) -> str:
-        raise NotImplementedError("Tool created from ToolBinding only supports async invocation")
-
-    async def _arun(self, *args: Any, **kwargs: Any) -> str:
-        return await self._async_invoke(*args, **kwargs)
-
-    @property
-    def args_schema(self) -> type:
-        return dict
+    async def _arun(self, *args: Any, config: Any = None, **kwargs: Any) -> str:
+        if self.coroutine is None:
+            raise NotImplementedError("Tool created from ToolBinding only supports async invocation")
+        return await self.coroutine(*args, **kwargs)
 
 
 def tool_binding_to_langchain_tool(
     binding: ToolBinding,
     context_provider: TrustedContextProvider | None = None,
 ) -> LangChainToolAdapter:
-    """Convert a ToolBinding to a LangChain-compatible tool."""
     return LangChainToolAdapter(binding=binding, context_provider=context_provider)
 
 
@@ -135,5 +108,4 @@ def tool_bindings_to_langchain_tools(
     bindings: tuple[ToolBinding, ...],
     context_provider: TrustedContextProvider | None = None,
 ) -> list[LangChainToolAdapter]:
-    """Convert a sequence of ToolBindings to LangChain tools."""
     return [tool_binding_to_langchain_tool(binding, context_provider) for binding in bindings]

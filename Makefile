@@ -1,4 +1,4 @@
-.PHONY: env-check env-init env-test third-party-up ollama-models prod-up stack-up docker-config docker-build-services docker-build-apps docker-verify hooks-install validate-services validate quality-staged quality-push quality-all architecture-check quality-score
+.PHONY: env-check env-init env-test third-party-up ollama-models prod-up stack-up docker-config docker-build-services docker-build-apps docker-smoke-agent-service docker-verify hooks-install validate-services validate quality-staged quality-push quality-all architecture-check quality-score
 
 PYTHON_SERVICES ?= agent-service user-service rag-service tools-service
 APP_SERVICES ?= $(PYTHON_SERVICES) web
@@ -39,6 +39,9 @@ docker-build-services:
 docker-build-apps:
 	APP_IMAGE_TAG=$(APP_IMAGE_TAG) docker compose --env-file configs/.env -f configs/docker-compose-dev.yml build $(APP_SERVICES)
 
+docker-smoke-agent-service:
+	docker run --rm --entrypoint python agentic-ai-platform/agent-service:$(APP_IMAGE_TAG) -c "import app"
+
 docker-verify: docker-config docker-build-apps
 
 hooks-install:
@@ -53,10 +56,10 @@ validate-services:
 validate: quality-all docker-verify
 
 quality-staged:
-	bash scripts/quality/check.sh staged
+	bash scripts/validate-commit.sh
 
 quality-push:
-	bash scripts/quality/check.sh push
+	bash scripts/validate-push.sh
 
 quality-all:
 	bash scripts/quality/check.sh all

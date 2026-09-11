@@ -5,13 +5,13 @@ Holds business logic for Airbyte sync schedule management.
 
 from __future__ import annotations
 
-import logging
 from datetime import datetime
 from typing import Any
 
 from croniter import croniter
 
 from core.db import DatasourceRepository
+from core.logger import get_logger
 from models.schedules import (
     PRESET_CRON_MAP,
     SchedulePreset,
@@ -25,7 +25,7 @@ from repository.airbyte_mapping_repository import AirbyteMappingDB
 from service.AirbyteApiClientService import get_airbyte_client
 from service.SyncQueueService import get_sync_queue
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ScheduleService:

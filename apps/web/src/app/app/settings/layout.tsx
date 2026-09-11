@@ -40,6 +40,12 @@ export default function Layout({ children }: LayoutProps) {
               >
                 {t("settingsLayout.chatPreferencesTab")}
               </SidebarTab>
+              <SidebarTab
+                href="/app/settings/email"
+                transient={pathname === "/app/settings/email"}
+              >
+                {t("settingsLayout.emailTab")}
+              </SidebarTab>
             </div>
 
             {/* Right: Tab Content */}

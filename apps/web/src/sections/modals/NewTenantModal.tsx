@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useState } from "react";
 import Modal, { BasicModalFooter } from "@/refresh-components/Modal";
 import Button from "@/refresh-components/buttons/Button";
@@ -38,13 +40,16 @@ export default function NewTenantModal({
     try {
       if (isInvite) {
         // Accept the invitation through the API
-        const response = await fetch("/api/tenants/users/invite/accept", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ tenant_id: tenantInfo.tenant_id }),
-        });
+        const response = await authenticatedFetch(
+          "/api/tenants/users/invite/accept",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ tenant_id: tenantInfo.tenant_id }),
+          }
+        );
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -80,13 +85,16 @@ export default function NewTenantModal({
 
     try {
       // Deny the invitation through the API
-      const response = await fetch("/api/tenants/users/invite/deny", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ tenant_id: tenantInfo.tenant_id }),
-      });
+      const response = await authenticatedFetch(
+        "/api/tenants/users/invite/deny",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ tenant_id: tenantInfo.tenant_id }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -109,8 +117,14 @@ export default function NewTenantModal({
   }
 
   const title = isInvite
-    ? t("newTenantModal.inviteTitle", { count: tenantInfo.number_of_users, domain: APP_DOMAIN })
-    : t("newTenantModal.joinApprovedTitle", { count: tenantInfo.number_of_users, domain: APP_DOMAIN });
+    ? t("newTenantModal.inviteTitle", {
+        count: tenantInfo.number_of_users,
+        domain: APP_DOMAIN,
+      })
+    : t("newTenantModal.joinApprovedTitle", {
+        count: tenantInfo.number_of_users,
+        domain: APP_DOMAIN,
+      });
 
   const description = isInvite
     ? t("newTenantModal.inviteDescription", { domain: APP_DOMAIN })

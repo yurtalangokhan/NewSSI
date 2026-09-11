@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 export interface SlackBotCreationRequest {
   name: string;
   enabled: boolean;
@@ -22,7 +23,7 @@ const buildRequestBodyFromCreationRequest = (
 export const createSlackBot = async (
   creationRequest: SlackBotCreationRequest
 ) => {
-  return fetch("/api/manage/admin/slack-app/bots", {
+  return authenticatedFetch("/api/manage/admin/slack-app/bots", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -35,7 +36,7 @@ export const updateSlackBot = async (
   id: number,
   creationRequest: SlackBotCreationRequest
 ) => {
-  return fetch(`/api/manage/admin/slack-app/bots/${id}`, {
+  return authenticatedFetch(`/api/manage/admin/slack-app/bots/${id}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -45,7 +46,7 @@ export const updateSlackBot = async (
 };
 
 export const deleteSlackBot = async (id: number) => {
-  return fetch(`/api/manage/admin/slack-app/bots/${id}`, {
+  return authenticatedFetch(`/api/manage/admin/slack-app/bots/${id}`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",

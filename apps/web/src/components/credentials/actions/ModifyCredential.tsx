@@ -110,7 +110,9 @@ function CredentialSelectionTable({
                   </td>
                   <td className="p-2">{credential.id}</td>
                   <td className="p-2">
-                    <p>{credential.name ?? t("untitledFallback")}</p>
+                    <Text as="p">
+                      {credential.name ?? t("untitledFallback")}
+                    </Text>
                   </td>
                   <td className="p-2">
                     {new Date(credential.time_created).toLocaleString()}
@@ -144,7 +146,10 @@ function CredentialSelectionTable({
       </table>
 
       {allCredentials.length == 0 && (
-        <p className="mt-4"> {t("noCredentialsMessage")}</p>
+        <Text as="p" className="mt-4">
+          {" "}
+          {t("noCredentialsMessage")}
+        </Text>
       )}
     </div>
   );
@@ -268,7 +273,7 @@ export default function ModifyCredential({
               >
                 <div className="flex gap-x-2 items-center w-full border-none">
                   <NewChatIcon className="text-white" />
-                  <p>{t("createButton")}</p>
+                  <Text as="p">{t("createButton")}</Text>
                 </div>
               </Button>
             ) : (
@@ -294,7 +299,7 @@ export default function ModifyCredential({
             >
               <div className="flex gap-x-2 items-center w-full border-none">
                 <SwapIcon className="text-white" />
-                <p>{t("selectButton")}</p>
+                <Text as="p">{t("selectButton")}</Text>
               </div>
             </Button>
           </div>

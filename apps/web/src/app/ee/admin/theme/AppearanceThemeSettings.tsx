@@ -246,7 +246,9 @@ export const AppearanceThemeSettings = forwardRef<
           </FormField>
 
           <FormField state="idle">
-            <FormField.Label>{t("appearanceTheme.logoDisplayStyle")}</FormField.Label>
+            <FormField.Label>
+              {t("appearanceTheme.logoDisplayStyle")}
+            </FormField.Label>
             <FormField.Control>
               <Tabs
                 value={values.logo_display_style}
@@ -299,7 +301,9 @@ export const AppearanceThemeSettings = forwardRef<
         </div>
 
         <FormField state="idle">
-          <FormField.Label>{t("appearanceTheme.applicationLogo")}</FormField.Label>
+          <FormField.Label>
+            {t("appearanceTheme.applicationLogo")}
+          </FormField.Label>
           <FormField.Control>
             <InputImage
               src={getLogoSrc()}
@@ -332,13 +336,16 @@ export const AppearanceThemeSettings = forwardRef<
         logoDisplayStyle={values.logo_display_style}
         applicationDisplayName={values.application_name ?? ""}
         chat_footer_content={
-          values.custom_lower_disclaimer_content || t("appearanceTheme.chatFooterPlaceholder")
+          values.custom_lower_disclaimer_content ||
+          t("appearanceTheme.chatFooterPlaceholder")
         }
         chat_header_content={
-          values.custom_header_content || t("appearanceTheme.chatHeaderPlaceholder")
+          values.custom_header_content ||
+          t("appearanceTheme.chatHeaderPlaceholder")
         }
         greeting_message={
-          values.custom_greeting_message || t("appearanceTheme.welcomePlaceholder")
+          values.custom_greeting_message ||
+          t("appearanceTheme.welcomePlaceholder")
         }
         logoSrc={getLogoSrc()}
         highlightTarget={highlightTarget}
@@ -447,7 +454,9 @@ export const AppearanceThemeSettings = forwardRef<
       <div className="flex flex-col gap-4 p-4 bg-background-tint-00 rounded-16">
         <FormField state="idle" className="gap-0">
           <div className="flex justify-between items-center">
-            <FormField.Label>{t("appearanceTheme.showFirstVisitNotice")}</FormField.Label>
+            <FormField.Label>
+              {t("appearanceTheme.showFirstVisitNotice")}
+            </FormField.Label>
             <FormField.Control>
               <Switch
                 aria-label={t("appearanceTheme.showFirstVisitNotice")}
@@ -527,7 +536,9 @@ export const AppearanceThemeSettings = forwardRef<
 
             <FormField state="idle" className="gap-0">
               <div className="flex justify-between items-center">
-                <FormField.Label>{t("appearanceTheme.requireConsentToNotice")}</FormField.Label>
+                <FormField.Label>
+                  {t("appearanceTheme.requireConsentToNotice")}
+                </FormField.Label>
                 <FormField.Control>
                   <Switch
                     aria-label={t("appearanceTheme.requireConsentToNotice")}

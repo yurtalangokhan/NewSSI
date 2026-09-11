@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useState, useEffect } from "react";
 import Button from "@/refresh-components/buttons/Button";
 import {
@@ -31,6 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import { ListFieldInput } from "@/refresh-components/inputs/ListFieldInput";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import Separator from "@/refresh-components/Separator";
 import { SvgSettings } from "@opal/icons";
@@ -66,7 +69,7 @@ async function validateCredentials(
   credentials: CredentialForm
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `/api/federated/sources/federated_${source}/credentials/validate`,
       {
         method: "POST",
@@ -102,7 +105,7 @@ async function createFederatedConnector(
   config?: ConfigForm
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await fetch("/api/federated", {
+    const response = await authenticatedFetch("/api/federated", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -137,7 +140,7 @@ async function updateFederatedConnector(
   config?: ConfigForm
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await fetch(`/api/federated/${id}`, {
+    const response = await authenticatedFetch(`/api/federated/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -169,7 +172,7 @@ async function deleteFederatedConnector(
   id: number
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await fetch(`/api/federated/${id}`, {
+    const response = await authenticatedFetch(`/api/federated/${id}`, {
       method: "DELETE",
     });
 
@@ -317,18 +320,8 @@ export function FederatedConnectorForm({
   // Show loading state at the top level if schema is loading
   if (isLoadingSchema) {
     return (
-      <div className="mx-auto w-[800px]">
-        <div className="flex flex-col items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-4" />
-          <div className="text-center">
-            <Text as="p" className="text-lg font-medium text-gray-700 mb-2">
-              {t("federatedForm.loadingCredentialSchema")}
-            </Text>
-            <Text as="p" className="text-sm text-gray-500">
-              {t("federatedForm.retrievingRequiredFields")}
-            </Text>
-          </div>
-        </div>
+      <div className="mx-auto w-[800px] p-6">
+        <FormSkeleton fieldCount={4} />
       </div>
     );
   }

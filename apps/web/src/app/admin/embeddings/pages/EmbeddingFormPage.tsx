@@ -12,10 +12,10 @@ import {
   EmbeddingProvider,
   HostedEmbeddingModel,
 } from "@/components/embedding/interfaces";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import useSWR from "swr";
-import { ThreeDotsLoader } from "@/components/Loading";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import AdvancedEmbeddingFormPage from "./AdvancedEmbeddingFormPage";
 import {
   AdvancedSearchConfiguration,
@@ -88,7 +88,7 @@ export default function EmbeddingForm() {
   };
 
   async function updateSearchSettings(searchSettings: SavedSearchSettings) {
-    const response = await fetch(
+    const response = await authenticatedFetch(
       "/api/search-settings/update-inference-settings",
       {
         method: "POST",
@@ -430,7 +430,11 @@ export default function EmbeddingForm() {
   }, [needsReIndex, switchoverType, isOverallFormValid, combinedFormErrors]);
 
   if (!selectedProvider) {
-    return <ThreeDotsLoader />;
+    return (
+      <div className="p-6">
+        <FormSkeleton fieldCount={4} />
+      </div>
+    );
   }
   if (currentEmbeddingModelError || !currentEmbeddingModel) {
     return (
@@ -481,7 +485,7 @@ export default function EmbeddingForm() {
 
     searchSettings.index_name = null;
 
-    const response = await fetch(
+    const response = await authenticatedFetch(
       "/api/search-settings/set-new-search-settings",
       {
         method: "POST",

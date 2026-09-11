@@ -21,7 +21,14 @@ export const NewSlackBotForm = () => {
 
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header icon={SvgSlack} title={t("admin.bots.newBotPageTitle")} separator />
+      <SettingsLayouts.Header
+        icon={SvgSlack}
+        title={t("admin.bots.newBotPageTitle")}
+        description={t("admin.bots.newBotPageDescription", {
+          defaultValue: "Connect a new Slack Bot application to ATLAS.",
+        })}
+        separator
+      />
       <SettingsLayouts.Body>
         <CardSection>
           <div className="p-4">

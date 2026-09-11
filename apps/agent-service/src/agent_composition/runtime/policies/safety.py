@@ -13,7 +13,6 @@ raises on moderation failure.
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -22,8 +21,9 @@ from agent_composition.domain.ports import (
     RuntimePolicyRequest,
     RuntimePolicyResult,
 )
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass(frozen=True)

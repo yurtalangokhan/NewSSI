@@ -11,17 +11,17 @@ Two consumers:
   one-shot navigation per URL.
 """
 
-import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 
 from playwright.sync_api import BrowserContext, Playwright, sync_playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
+from core.logger import get_logger
 from models.web_search import RenderedPage
 from service.web_search.url import SSRFException, validate_outbound_http_url
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 WEB_CONNECTOR_OAUTH_CLIENT_ID: str | None = None
 WEB_CONNECTOR_OAUTH_CLIENT_SECRET: str | None = None

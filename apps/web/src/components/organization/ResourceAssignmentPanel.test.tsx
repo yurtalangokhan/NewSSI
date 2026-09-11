@@ -113,7 +113,7 @@ describe("ResourceAssignmentPanel", () => {
     expect(
       screen.getByRole("checkbox", { name: "Select Support agent" })
     ).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByText("1 selected")).toBeInTheDocument();
+    expect(screen.getByText("1 item selected")).toBeInTheDocument();
   });
 
   it("treats access as a binary assignment without permission-level controls", () => {

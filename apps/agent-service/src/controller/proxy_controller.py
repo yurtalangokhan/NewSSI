@@ -136,9 +136,9 @@ class ProxyController(BaseController):
                 ]
             }
         except Exception as e:
-            import logging
+            from core.logger import get_logger
 
-            logger = logging.getLogger(__name__)
+            logger = get_logger(__name__)
             logger.error(f"Error fetching builtin MCP tools: {e}")
             return {"tools": [], "error": str(e)}
 

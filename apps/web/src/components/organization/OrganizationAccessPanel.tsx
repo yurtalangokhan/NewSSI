@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { authenticatedFetch } from "@/lib/fetcher";
+
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import useSWR from "swr";
 
@@ -36,6 +38,7 @@ interface OrganizationAccessPanelProps {
   editable: boolean;
   resourceType?: ResourceType;
   onSaveComplete?: () => void | Promise<void>;
+  onLoadingChange?: (resourceType: ResourceType, loading: boolean) => void;
 }
 
 interface ScopedPermissionsResponse {
@@ -95,6 +98,7 @@ function ScopedResourcePanel({
   resourcesError,
   onRetryResources,
   onSaveComplete,
+  onLoadingChange,
 }: {
   organizationId: string;
   targetType: TargetType;
@@ -107,6 +111,7 @@ function ScopedResourcePanel({
   resourcesError?: string;
   onRetryResources?: () => void;
   onSaveComplete?: () => void | Promise<void>;
+  onLoadingChange?: (loading: boolean) => void;
 }) {
   const { t } = useTranslation();
   const endpoint = `/api/user-service/permissions/organizations/${organizationId}/targets/${targetType}/${targetId}/resources/${resourceType}`;
@@ -120,7 +125,7 @@ function ScopedResourcePanel({
   );
 
   async function save(permissions: DirectResourcePermission[]) {
-    const response = await fetch(endpoint, {
+    const response = await authenticatedFetch(endpoint, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ permissions }),
@@ -150,13 +155,22 @@ function ScopedResourcePanel({
       )
     : resourcesError;
 
+  const isPanelLoading = isLoading || resourcesLoading;
+
+  useEffect(() => {
+    onLoadingChange?.(isPanelLoading);
+    return () => {
+      onLoadingChange?.(false);
+    };
+  }, [isPanelLoading, onLoadingChange]);
+
   return (
     <ResourceAssignmentPanel
       title={title}
       resources={resources}
       permissions={data?.permissions ?? []}
       editable={editable && !loadError}
-      isLoading={isLoading || resourcesLoading}
+      isLoading={isPanelLoading}
       error={loadError}
       onRetry={() => {
         void mutate();
@@ -173,6 +187,7 @@ interface ResourceWorkspaceProps {
   targetId: string;
   editable: boolean;
   onSaveComplete?: () => void | Promise<void>;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 function AgentAccessWorkspace(props: ResourceWorkspaceProps) {
@@ -189,6 +204,7 @@ function AgentAccessWorkspace(props: ResourceWorkspaceProps) {
       {...props}
       resourceType="agent"
       title={t("admin.organizations.access.agents")}
+      onLoadingChange={props.onLoadingChange}
       resources={resources}
       resourcesLoading={isLoading}
       resourcesError={
@@ -219,6 +235,7 @@ function CollectionAccessWorkspace(props: ResourceWorkspaceProps) {
       {...props}
       resourceType="rag_collection"
       title={t("admin.organizations.access.collections")}
+      onLoadingChange={props.onLoadingChange}
       resources={resources}
       resourcesLoading={isLoading}
       resourcesError={
@@ -242,6 +259,7 @@ export function OrganizationAccessPanel({
   editable,
   resourceType,
   onSaveComplete,
+  onLoadingChange,
 }: OrganizationAccessPanelProps) {
   const { t } = useTranslation();
   const [targetType, setTargetType] = useState<TargetType>("organization");
@@ -319,6 +337,11 @@ export function OrganizationAccessPanel({
               targetType={targetType}
               targetId={targetId}
               editable={editable}
+              onLoadingChange={
+                resourceType === "agent"
+                  ? (loading) => onLoadingChange?.("agent", loading)
+                  : undefined
+              }
               onSaveComplete={onSaveComplete}
             />
           )}
@@ -328,6 +351,11 @@ export function OrganizationAccessPanel({
               targetType={targetType}
               targetId={targetId}
               editable={editable}
+              onLoadingChange={
+                resourceType === "rag_collection"
+                  ? (loading) => onLoadingChange?.("rag_collection", loading)
+                  : undefined
+              }
               onSaveComplete={onSaveComplete}
             />
           )}

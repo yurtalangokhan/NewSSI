@@ -10,7 +10,7 @@ import InputTextArea from "@/refresh-components/inputs/InputTextArea";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import Switch from "@/refresh-components/inputs/Switch";
 import Text from "@/refresh-components/texts/Text";
-import { ThreeDotsLoader } from "@/components/Loading";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import { SvgArrowLeft } from "@opal/icons";
 import { toast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,8 @@ import { BuiltInTool } from "@/lib/tools/interfaces";
 import {
   getBuiltInTools,
   executeBuiltInTool,
+  executeMcpServerTool,
+  refreshMCPServerTools,
   ToolExecuteResponse,
 } from "@/lib/tools/mcpService";
 import {
@@ -89,9 +91,10 @@ function getSendEmailPlaygroundSchema(mailConfigs: MailConfig[]) {
 
 function getPlaygroundSchema(
   tool: ToolWithCategory | null,
-  mailConfigs: MailConfig[]
+  mailConfigs: MailConfig[],
+  isMcpMode = false
 ) {
-  if (tool?.name === "send_email") {
+  if (!isMcpMode && tool?.name === "send_email") {
     return getSendEmailPlaygroundSchema(mailConfigs);
   }
   return normalizeSchema(tool?.input_schema);
@@ -570,8 +573,9 @@ function ResponseViewer({
   const { t } = useTranslation();
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <ThreeDotsLoader />
+      <div className="py-4 w-full flex flex-col gap-2">
+        <div className="h-4 w-1/3 rounded bg-background-tint-02 animate-pulse" />
+        <div className="h-20 w-full rounded-08 bg-background-neutral-01 animate-pulse" />
       </div>
     );
   }
@@ -618,6 +622,10 @@ export default function ToolsPlaygroundPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toolName = searchParams.get("tool") || "";
+  const serverIdParam = searchParams.get("server");
+  const serverName = searchParams.get("serverName") || "";
+  const isMcpMode = !!serverIdParam;
+  const mcpServerId = serverIdParam ? Number(serverIdParam) : null;
   const { mailConfigs, isLoading: isMailConfigsLoading } = useMailConfigs();
 
   const [tools, setTools] = useState<BuiltInTool[]>([]);
@@ -633,6 +641,19 @@ export default function ToolsPlaygroundPage() {
     async function loadTools() {
       setIsLoading(true);
       try {
+        if (isMcpMode && mcpServerId != null) {
+          const snaps = await refreshMCPServerTools(mcpServerId, "db");
+          setTools(
+            snaps.map((s) => ({
+              // the raw name is what the server is actually called with
+              name: s.display_name || s.name,
+              description: s.description,
+              input_schema: s.input_schema ?? {},
+            }))
+          );
+          setError(null);
+          return;
+        }
         const response = await getBuiltInTools();
         if (response.error) {
           setError(response.error);
@@ -653,7 +674,7 @@ export default function ToolsPlaygroundPage() {
     }
 
     loadTools();
-  }, [i18n.language]);
+  }, [i18n.language, isMcpMode, mcpServerId]);
 
   const toolsWithCategory = useMemo(
     () => tools.map((tool) => parseToolCategory(tool)),
@@ -690,8 +711,8 @@ export default function ToolsPlaygroundPage() {
   );
 
   const selectedSchema = useMemo(
-    () => getPlaygroundSchema(selectedTool, mailConfigs),
-    [selectedTool, mailConfigs]
+    () => getPlaygroundSchema(selectedTool, mailConfigs, isMcpMode),
+    [selectedTool, mailConfigs, isMcpMode]
   );
 
   const handleSelectTool = useCallback(
@@ -700,9 +721,14 @@ export default function ToolsPlaygroundPage() {
       setRunError(null);
       setInputValues({});
       setFieldErrors({});
-      router.push(`/tools/playground?tool=${encodeURIComponent(tool.name)}`);
+      const params = new URLSearchParams({ tool: tool.name });
+      if (isMcpMode && serverIdParam) {
+        params.set("server", serverIdParam);
+        if (serverName) params.set("serverName", serverName);
+      }
+      router.push(`/tools/playground?${params.toString()}`);
     },
-    [router]
+    [router, isMcpMode, serverIdParam, serverName]
   );
 
   const handleInputChange = useCallback((values: Record<string, any>) => {
@@ -736,10 +762,14 @@ export default function ToolsPlaygroundPage() {
     setRunError(null);
 
     try {
-      const result: ToolExecuteResponse = await executeBuiltInTool(
-        selectedTool.name,
-        inputValues
-      );
+      const result: ToolExecuteResponse =
+        isMcpMode && mcpServerId != null
+          ? await executeMcpServerTool(
+              mcpServerId,
+              selectedTool.name,
+              inputValues
+            )
+          : await executeBuiltInTool(selectedTool.name, inputValues);
       if (result.error) {
         setRunError(result.error);
       } else {
@@ -754,12 +784,16 @@ export default function ToolsPlaygroundPage() {
     } finally {
       setIsRunning(false);
     }
-  }, [inputValues, selectedSchema, selectedTool, t]);
+  }, [inputValues, selectedSchema, selectedTool, t, isMcpMode, mcpServerId]);
 
   const pageTitle = selectedTool
-    ? t("toolPlayground.toolPlaygroundTitle", {
-        name: _.startCase(selectedTool.name),
-      })
+    ? isMcpMode
+      ? `${serverName || t("admin.mcp.serverFallback")} — ${_.startCase(
+          selectedTool.name
+        )}`
+      : t("toolPlayground.toolPlaygroundTitle", {
+          name: _.startCase(selectedTool.name),
+        })
     : t("toolPlayground.toolsPlayground");
 
   return (
@@ -831,8 +865,9 @@ export default function ToolsPlaygroundPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-14">
-          <ThreeDotsLoader />
+        <div className="grid gap-6 lg:grid-cols-[minmax(360px,1fr)_minmax(420px,560px)]">
+          <FormSkeleton fieldCount={4} />
+          <div className="h-96 rounded-08 border border-border-01 bg-background-neutral-01 animate-pulse" />
         </div>
       ) : error ? (
         <div className="rounded-lg border border-status-error-03 bg-status-error-01 p-4 text-status-error-06">

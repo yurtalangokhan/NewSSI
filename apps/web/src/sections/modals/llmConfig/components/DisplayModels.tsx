@@ -6,6 +6,7 @@ import Button from "@/refresh-components/buttons/Button";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import Switch from "@/refresh-components/inputs/Switch";
 import Text from "@/refresh-components/texts/Text";
+import Skeleton from "@/refresh-components/skeletons/Skeleton";
 import { cn } from "@/lib/utils";
 import { FieldLabel } from "@/components/Field";
 import { Section } from "@/layouts/general-layouts";
@@ -39,10 +40,7 @@ function DisplayModelHeader({ alternativeText }: { alternativeText?: string }) {
     <div>
       <FieldLabel
         label={t("llmConfig.availableModels")}
-        subtext={
-          alternativeText ??
-          t("llmConfig.selectModelsSubtext")
-        }
+        subtext={alternativeText ?? t("llmConfig.selectModelsSubtext")}
         name="_available-models"
       />
     </div>
@@ -71,8 +69,10 @@ export function DisplayModels<T extends BaseLLMFormValues>({
     return (
       <div>
         <DisplayModelHeader />
-        <div className="mt-2 flex items-center p-3 border border-border-01 rounded-lg bg-background-neutral-00">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-border-03 border-t-action-link-05" />
+        <div className="mt-2 flex flex-col gap-2 p-3 border border-border-01 rounded-lg bg-background-neutral-00">
+          <Skeleton className="h-6 w-full rounded-08" />
+          <Skeleton className="h-6 w-full rounded-08" />
+          <Skeleton className="h-6 w-3/4 rounded-08" />
         </div>
       </div>
     );
@@ -152,7 +152,9 @@ export function DisplayModels<T extends BaseLLMFormValues>({
     return (
       <div>
         <DisplayModelHeader
-          alternativeText={noModelConfigurationsMessage ?? t("llmConfig.noModelsFound")}
+          alternativeText={
+            noModelConfigurationsMessage ?? t("llmConfig.noModelsFound")
+          }
         />
       </div>
     );
@@ -375,7 +377,9 @@ export function DisplayModels<T extends BaseLLMFormValues>({
                           isDefault ? "text-text-inverse" : "text-text-03"
                         )}
                       >
-                        {isDefault ? t("llmConfig.default") : t("llmConfig.setAsDefaultModel")}
+                        {isDefault
+                          ? t("llmConfig.default")
+                          : t("llmConfig.setAsDefaultModel")}
                       </Text>
                     </Button>
                   </div>

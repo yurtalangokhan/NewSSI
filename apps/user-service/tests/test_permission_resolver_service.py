@@ -1,6 +1,6 @@
 import uuid
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -47,6 +47,38 @@ async def test_resolver_unions_permissions_across_multiple_user_roles(monkeypatc
 
 
 @pytest.mark.asyncio
+async def test_resolver_reads_normalized_role_access_without_legacy_jsonb_columns(monkeypatch):
+    import src.service.permission_resolver_service as resolver_module
+
+    user_id = uuid.uuid4()
+    resolver = PermissionResolverService(cache_ttl_seconds=0)
+    resolver.user_role_repo = SimpleNamespace(
+        list_user_roles=AsyncMock(return_value=[{"name": "enduser", "is_primary": True}])
+    )
+    resolver.user_repo = SimpleNamespace(get_by_id=AsyncMock())
+    resolver.role_repo = SimpleNamespace(
+        get_access_by_names=AsyncMock(
+            return_value={
+                "enduser": {
+                    "permissions": [],
+                    "role_ids": ["agent-workspace-user"],
+                }
+            }
+        )
+    )
+    coarse_service = SimpleNamespace(
+        get_aggregated_permissions=AsyncMock(return_value=["agent:list", "project:read"])
+    )
+    monkeypatch.setattr(resolver_module, "get_role_service", lambda: coarse_service)
+
+    permissions = await resolver.resolve_effective_permissions(user_id)
+
+    assert permissions == ["agent:list", "project:read"]
+    resolver.role_repo.get_access_by_names.assert_awaited_once_with(["enduser"])
+    coarse_service.get_aggregated_permissions.assert_awaited_once_with(["agent-workspace-user"])
+
+
+@pytest.mark.asyncio
 async def test_resolver_falls_back_to_users_role_until_user_roles_are_backfilled():
     user_id = uuid.uuid4()
     resolver = PermissionResolverService(cache_ttl_seconds=0)
@@ -85,3 +117,31 @@ async def test_resolver_preserves_wildcard_access():
     )
 
     assert await resolver.resolve_effective_permissions(user_id) == ["*"]
+
+
+@pytest.mark.asyncio
+async def test_system_admin_without_explicit_wildcard_uses_bundle_permissions():
+    user_id = uuid.uuid4()
+    resolver = PermissionResolverService(cache_ttl_seconds=0)
+    resolver.user_role_repo = SimpleNamespace(
+        list_user_roles=AsyncMock(return_value=[{"name": "system-admin", "is_primary": True}])
+    )
+    resolver.user_repo = SimpleNamespace(get_by_id=AsyncMock())
+    resolver.role_repo = SimpleNamespace(
+        get_access_by_names=AsyncMock(
+            return_value={
+                "system-admin": {
+                    "permissions": [],
+                    "role_ids": ["access-admin"],
+                }
+            }
+        )
+    )
+
+    with patch("src.service.permission_resolver_service.get_role_service") as get_role_service:
+        get_role_service.return_value.get_aggregated_permissions = AsyncMock(
+            return_value=["system.settings:read", "user:list"]
+        )
+        permissions = await resolver.resolve_effective_permissions(user_id)
+
+    assert permissions == ["system.settings:read", "user:list"]

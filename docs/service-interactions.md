@@ -27,6 +27,24 @@ Kong API Gateway (port 8000)
 
 ---
 
+## Connector tools in chat
+
+The agent editor selects saved datasource instances and permitted read
+operations. Agent-service persists these references on the persona and carries
+the selected persona ID to tools-service through trusted MCP context.
+
+Tools-service resolves each invocation through the internal Kong route
+`/internal/agent-service/api/v1/internal/connector-tools/resolve`. Agent-service
+rechecks the caller's agent access and current saved assignment before resolving
+the Airbyte source configuration. Tools-service then executes the bounded read
+against the configured source. The model receives data and sanitized errors;
+it does not receive connection credentials.
+
+For the configured Airbyte 0.50.x `NONE` secret persistence mode, agent-service
+uses a read-only Airbyte config database connection when the API masks secrets.
+The credential response is never stored in the idempotency replay cache.
+Ingestion and RAG retrieval remain separate from these live reads.
+
 ## Authentication flow
 
 ### External user (browser → Kong)
@@ -175,8 +193,8 @@ Services classify mutating endpoints into these policy categories:
 - `excluded`: the middleware ignores the request.
 - `optional_replay`: a key is optional, but a supplied key enables replay and
   conflict detection.
-- `required_replay`: a key is required when
-  `IDEMPOTENCY_ENFORCE_REQUIRED_KEYS=true`; successful deterministic responses
+- `required_replay`: a key is required by default
+  (`IDEMPOTENCY_ENFORCE_REQUIRED_KEYS=true`); successful deterministic responses
   can be replayed.
 - `domain_required`: a key is always required because duplicate side effects are
   risky.

@@ -15,6 +15,8 @@ import { FiChevronDown, FiChevronRight } from "react-icons/fi";
 import Text from "@/refresh-components/texts/Text";
 import { useTranslation } from "react-i18next";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
+import { ConnectorStaggeredSkeleton } from "./ConnectorRowSkeleton";
+import EmptyMessage from "@/refresh-components/EmptyMessage";
 
 export default function Status() {
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.INDEXING_STATUS]!;
@@ -62,6 +64,16 @@ export default function Status() {
     return Object.values(byType);
   }, [datasources, search]);
 
+  const totalIndexedDocuments = useMemo(
+    () =>
+      (datasources ?? []).reduce((sum, d) => sum + (d.document_count ?? 0), 0),
+    [datasources]
+  );
+  const erroredSourcesCount = useMemo(
+    () => (datasources ?? []).filter((d) => d.sync_status === "error").length,
+    [datasources]
+  );
+
   const handleToggle = useCallback((key: string) => {
     setToggledGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
@@ -85,6 +97,11 @@ export default function Status() {
             ? t(route.titleKey, { defaultValue: route.title })
             : route.title
         }
+        description={
+          route.descriptionKey
+            ? t(route.descriptionKey, { defaultValue: route.description })
+            : route.description
+        }
         rightChildren={
           <Button href="/admin/add-connector">
             {t("admin.indexingStatus.addConnector")}
@@ -102,13 +119,14 @@ export default function Status() {
             defaultValue:
               "Monitor connected sources, expand by connector type, and jump straight into adding the next data source.",
           })}
+          isLoading={isLoading}
           metrics={[
             {
               label: t("admin.indexingStatus.connectedSourcesLabel", {
                 defaultValue: "Connected sources",
               }),
               value: isLoading ? "..." : String(datasources?.length ?? 0),
-              tone: (datasources?.length ?? 0) > 0 ? "success" : "warning",
+              tone: (datasources?.length ?? 0) > 0 ? "success" : "neutral",
             },
             {
               label: t("admin.indexingStatus.connectorTypesLabel", {
@@ -117,64 +135,90 @@ export default function Status() {
               value: isLoading ? "..." : String(groups.length),
             },
             {
-              label: t("admin.indexingStatus.viewModeLabel", {
-                defaultValue: "View mode",
+              label: t("admin.indexingStatus.totalDocumentsLabel", {
+                defaultValue: "Total indexed documents",
               }),
-              value: t("admin.indexingStatus.groupedByType", {
-                defaultValue: "Grouped by type",
-              }),
+              value: isLoading ? "..." : String(totalIndexedDocuments),
             },
-          ]}
-          actions={[
             {
-              label: t("admin.documentProcessing.title", {
-                defaultValue: "Document Processing",
+              label: t("admin.indexingStatus.erroredSourcesLabel", {
+                defaultValue: "Sync errors",
               }),
-              href: ADMIN_PATHS.DOCUMENT_PROCESSING,
-              primary: true,
+              value: isLoading ? "..." : String(erroredSourcesCount),
+              tone: erroredSourcesCount > 0 ? "warning" : "neutral",
             },
           ]}
         />
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1 max-w-sm">
-            <InputTypeIn
-              type="search"
-              placeholder={t("admin.indexingStatus.searchPlaceholder")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+        {!isLoading && (datasources?.length ?? 0) > 0 && (
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 max-w-sm">
+              <InputTypeIn
+                type="search"
+                placeholder={t("admin.indexingStatus.searchPlaceholder")}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <button
+              onClick={expandAll}
+              className="flex items-center gap-1 text-sm text-link hover:underline"
+            >
+              <FiChevronDown size={16} />
+              <Text as="span" secondaryBody>
+                {t("admin.indexingStatus.expandAll")}
+              </Text>
+            </button>
+            <button
+              onClick={collapseAll}
+              className="flex items-center gap-1 text-sm text-link hover:underline"
+            >
+              <FiChevronRight size={16} />
+              <Text as="span" secondaryBody>
+                {t("admin.indexingStatus.collapseAll")}
+              </Text>
+            </button>
           </div>
-          <button
-            onClick={expandAll}
-            className="flex items-center gap-1 text-sm text-link hover:underline"
-          >
-            <FiChevronDown size={16} />
-            <Text as="span" secondaryBody>
-              {t("admin.indexingStatus.expandAll")}
-            </Text>
-          </button>
-          <button
-            onClick={collapseAll}
-            className="flex items-center gap-1 text-sm text-link hover:underline"
-          >
-            <FiChevronRight size={16} />
-            <Text as="span" secondaryBody>
-              {t("admin.indexingStatus.collapseAll")}
-            </Text>
-          </button>
-        </div>
+        )}
 
         {isLoading && (
-          <Text as="p" secondaryBody className="text-center py-8">
-            {t("admin.indexingStatus.loading")}
-          </Text>
+          <div className="w-full mt-2">
+            <ConnectorStaggeredSkeleton standalone={true} rowCount={4} />
+          </div>
         )}
 
-        {!isLoading && groups.length === 0 && (
-          <Text as="p" secondaryBody className="text-center py-8">
-            {t("admin.indexingStatus.noDataSources")}{" "}
-          </Text>
+        {!isLoading && (datasources?.length ?? 0) === 0 && (
+          <EmptyMessage
+            icon={route.icon}
+            title={t("admin.indexingStatus.noDataSources")}
+            description={t("admin.indexingStatus.noDataSourcesDescription", {
+              defaultValue:
+                "Ajanlarınız için belge indekslemeye başlamak üzere yeni bir veri kaynağı bağlayın.",
+            })}
+          >
+            <div>
+              <Button href="/admin/add-connector" secondary size="md">
+                {t("admin.indexingStatus.addConnector")}
+              </Button>
+            </div>
+          </EmptyMessage>
         )}
+
+        {!isLoading &&
+          (datasources?.length ?? 0) > 0 &&
+          groups.length === 0 && (
+            <EmptyMessage
+              title={t("admin.indexingStatus.noMatchingDataSources", {
+                defaultValue: "Eşleşen veri kaynağı bulunamadı",
+              })}
+              description={t(
+                "admin.indexingStatus.noMatchingDataSourcesDescription",
+                {
+                  defaultValue:
+                    "Farklı bir arama terimi veya bağlayıcı türü deneyin.",
+                }
+              )}
+            />
+          )}
 
         {!isLoading && groups.length > 0 && (
           <AirbyteDatasourceTable

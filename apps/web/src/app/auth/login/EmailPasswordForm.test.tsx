@@ -272,16 +272,17 @@ describe("Email/Password Signup Workflow", () => {
         "/api/auth/register",
         expect.objectContaining({
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
         })
       );
     });
 
     // Verify signup request body
     const signupCallArgs = fetchSpy.mock.calls[0];
-    const signupBody = JSON.parse(signupCallArgs[1].body);
+    const signupInit = signupCallArgs[1] as RequestInit;
+    const signupHeaders = new Headers(signupInit.headers);
+    expect(signupHeaders.get("Content-Type")).toBe("application/json");
+    expect(signupHeaders.has("Idempotency-Key")).toBe(true);
+    const signupBody = JSON.parse(signupInit.body as string);
     expect(signupBody).toEqual({
       email: "newuser@example.com",
       username: "newuser",

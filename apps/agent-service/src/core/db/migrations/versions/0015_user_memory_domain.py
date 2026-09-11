@@ -9,17 +9,17 @@ Three operations in one migration:
 2. Migrate existing JSONB data from ``user_settings.memories`` into ``user_memory``.
 3. Add toggle columns to ``user_settings`` and ``persona``; drop ``memories`` JSONB.
 """
+
 from __future__ import annotations
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 from alembic import op
-import sqlalchemy as sa
 
 revision: str = "0015"
-down_revision: Union[str, None] = "0014"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "0014"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -126,9 +126,7 @@ def downgrade() -> None:
     )
 
     # Drop the new columns
-    op.execute(
-        "ALTER TABLE user_settings DROP COLUMN IF EXISTS long_term_memory_enabled"
-    )
+    op.execute("ALTER TABLE user_settings DROP COLUMN IF EXISTS long_term_memory_enabled")
     op.execute("ALTER TABLE persona DROP COLUMN IF EXISTS long_term_memory")
 
     # Drop the user_memory table

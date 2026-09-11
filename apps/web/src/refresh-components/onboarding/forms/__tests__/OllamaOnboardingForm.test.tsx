@@ -110,9 +110,7 @@ describe("OllamaOnboardingForm", () => {
     test("renders description", () => {
       render(<OllamaOnboardingForm {...defaultProps} />);
 
-      expect(
-        screen.getByText(descriptionText)
-      ).toBeInTheDocument();
+      expect(screen.getByText(descriptionText)).toBeInTheDocument();
     });
 
     test("renders tabs for self-hosted and cloud", () => {

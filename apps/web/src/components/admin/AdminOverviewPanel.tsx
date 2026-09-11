@@ -1,20 +1,30 @@
 "use client";
 
-import Button from "@/refresh-components/buttons/Button";
+import { useEffect, useState } from "react";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
 import type { IconFunctionComponent } from "@opal/types";
+import AdminOverviewPanelSkeleton from "@/refresh-components/skeletons/AdminOverviewPanelSkeleton";
+
+const CAROUSEL_INTERVAL_MS = 3000;
+
+export interface AdminOverviewMetricValue {
+  value: string;
+  tone?: "neutral" | "success" | "warning";
+}
 
 export interface AdminOverviewMetric {
   label: string;
   value: string;
   tone?: "neutral" | "success" | "warning";
-}
-
-export interface AdminOverviewAction {
-  label: string;
-  href: string;
-  primary?: boolean;
+  isLoading?: boolean;
+  /**
+   * When provided with more than one entry, the tile ignores `value`/`tone`
+   * and auto-rotates through these instead, with small dot indicators
+   * showing position. A single-entry (or absent) array falls back to the
+   * plain `value`/`tone` behavior.
+   */
+  values?: AdminOverviewMetricValue[];
 }
 
 export interface AdminOverviewPanelProps {
@@ -22,11 +32,17 @@ export interface AdminOverviewPanelProps {
   description: string;
   icon: IconFunctionComponent;
   metrics?: AdminOverviewMetric[];
-  actions?: AdminOverviewAction[];
   className?: string;
+  isLoading?: boolean;
 }
 
-function metricToneClass(tone: AdminOverviewMetric["tone"]) {
+function metricToneClass(
+  tone: AdminOverviewMetric["tone"],
+  isMetricLoading?: boolean
+) {
+  if (isMetricLoading) {
+    return "border-border-01 bg-background-neutral-01";
+  }
   if (tone === "success") {
     return "border-status-success-02 bg-status-success-00";
   }
@@ -46,14 +62,95 @@ function metricValueToneClass(tone: AdminOverviewMetric["tone"]) {
   return "text-text-05";
 }
 
+function MetricTile({ metric }: { metric: AdminOverviewMetric }) {
+  const carouselValues =
+    metric.values && metric.values.length > 1 ? metric.values : null;
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (!carouselValues) return;
+    setIndex(0);
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % carouselValues.length);
+    }, CAROUSEL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [carouselValues]);
+
+  const current = carouselValues ? carouselValues[index]! : metric;
+  const isMetricLoading = carouselValues
+    ? !!metric.isLoading
+    : metric.isLoading || metric.value === "..." || metric.value === "";
+
+  return (
+    <div
+      className={cn(
+        "min-w-[160px] flex-1 rounded-08 border px-3 py-2.5",
+        metricToneClass(current.tone, isMetricLoading)
+      )}
+    >
+      <Text as="p" figureSmallLabel text04>
+        {metric.label}
+      </Text>
+      {isMetricLoading ? (
+        <div className="mt-2 h-6 w-16 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+      ) : (
+        <Text
+          key={carouselValues ? index : undefined}
+          as="p"
+          headingH3
+          text05
+          className={cn(
+            "mt-0.5",
+            metricValueToneClass(current.tone),
+            carouselValues && "animate-fadeIn"
+          )}
+        >
+          {current.value}
+        </Text>
+      )}
+      {carouselValues && (
+        <div className="mt-1.5 flex items-center gap-1">
+          {carouselValues.map((_, i) => (
+            <span
+              key={i}
+              className={cn(
+                "h-1 w-1 rounded-full",
+                i === index ? "bg-text-04" : "bg-border-02"
+              )}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminOverviewPanel({
   title,
   description,
   icon: Icon,
   metrics = [],
-  actions = [],
   className,
+  isLoading = false,
 }: AdminOverviewPanelProps) {
+  const isAnyMetricLoading =
+    metrics.length > 0 &&
+    metrics.some((m) =>
+      m.values && m.values.length > 1
+        ? !!m.isLoading
+        : m.isLoading || m.value === "..." || m.value === ""
+    );
+  const showSkeleton = isLoading || isAnyMetricLoading;
+
+  if (showSkeleton) {
+    return (
+      <AdminOverviewPanelSkeleton
+        metricsCount={metrics.length > 0 ? metrics.length : 3}
+        className={className}
+      />
+    );
+  }
+
   return (
     <section
       className={cn(
@@ -75,45 +172,15 @@ export default function AdminOverviewPanel({
             </Text>
           </div>
         </div>
-
-        {actions.length > 0 && (
-          <div className="flex shrink-0 flex-wrap gap-2">
-            {actions.map((action) => (
-              <Button
-                key={action.href}
-                href={action.href}
-                primary={action.primary}
-                secondary={!action.primary}
-              >
-                {action.label}
-              </Button>
-            ))}
-          </div>
-        )}
       </div>
 
       {metrics.length > 0 && (
-        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 flex flex-wrap gap-2">
           {metrics.map((metric) => (
-            <div
+            <MetricTile
               key={`${metric.label}-${metric.value}`}
-              className={cn(
-                "rounded-08 border px-3 py-2",
-                metricToneClass(metric.tone)
-              )}
-            >
-              <Text as="p" figureSmallLabel text04>
-                {metric.label}
-              </Text>
-              <Text
-                as="p"
-                headingH3
-                text05
-                className={cn("mt-0.5", metricValueToneClass(metric.tone))}
-              >
-                {metric.value}
-              </Text>
-            </div>
+              metric={metric}
+            />
           ))}
         </div>
       )}

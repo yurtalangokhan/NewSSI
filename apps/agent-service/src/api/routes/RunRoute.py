@@ -23,6 +23,7 @@ from api.dependencies import require_permission, require_user
 from controller import RunController, get_run_controller
 from core.logger import get_logger
 from models.threads import ThreadHistoryRequest, ThreadState
+from service.AgentHelpers import _looks_like_agent_definition_id
 from service.AuthService import extract_user_id_from_token
 from service.message_conversion import convert_input_messages
 from service.StoreService import get_assistant_from_store
@@ -112,14 +113,33 @@ async def stream_run(
     if stored_assistant:
         assistant_config = stored_assistant.get("config", {}) or {}
 
-    user_ltm_enabled = False
-    agent_ltm_enabled = bool(assistant_config.get("long_term_memory", False))
+    # The user's personalization settings are the master switch for memory
+    # (see service.memory_flags). An assistant "participates" when it opts in
+    # via config/memory_type or when it is a builtin/default assistant (not a
+    # dynamic AgentDefinition), in which case the user setting alone drives it.
+    user_recall_enabled = False
+    user_extract_enabled = True
     if user_id:
         try:
             user_settings = await get_user_settings(user_id)
-            user_ltm_enabled = bool(user_settings.get("long_term_memory_enabled", False))
+            user_recall_enabled = bool(user_settings.get("long_term_memory_enabled", False))
+            user_extract_enabled = bool(user_settings.get("extract_memory", True))
         except Exception as exc:
             logger.debug("stream_run: failed to load user LTM settings for %s: %s", user_id, exc)
+
+    agent_participates = (
+        bool(assistant_config.get("long_term_memory", False))
+        or assistant_config.get("memory_type") == "long_term"
+        or not _looks_like_agent_definition_id(assistant_id)
+    )
+
+    from service.memory_flags import resolve_memory_flags
+
+    long_term_memory, extract_memory = resolve_memory_flags(
+        user_recall_enabled=user_recall_enabled,
+        user_extract_enabled=user_extract_enabled,
+        agent_participates=agent_participates,
+    )
 
     resolved_config: dict[str, Any] = dict(assistant_config)
     resolved_config.update(
@@ -127,7 +147,8 @@ async def stream_run(
             "thread_id": thread_id,
             "user_id": user_id,
             "model": request_obj.model or assistant_config.get("model") or "ollama",
-            "long_term_memory": user_ltm_enabled and agent_ltm_enabled,
+            "long_term_memory": long_term_memory,
+            "extract_memory": extract_memory,
         }
     )
     try:

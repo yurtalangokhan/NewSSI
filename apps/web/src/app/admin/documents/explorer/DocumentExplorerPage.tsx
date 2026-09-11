@@ -27,6 +27,11 @@ export default function DocumentExplorerPage({
       <SettingsLayouts.Header
         icon={route.icon}
         title={t(route.titleKey || "", { defaultValue: route.title })}
+        description={
+          route.descriptionKey
+            ? t(route.descriptionKey, { defaultValue: route.description })
+            : route.description
+        }
         separator
       />
 
@@ -64,21 +69,6 @@ export default function DocumentExplorerPage({
                 : t("admin.documentExplorer.openSearch", {
                     defaultValue: "Open search",
                   }),
-            },
-          ]}
-          actions={[
-            {
-              label: t("admin.navigation.routes.documentSets.sidebar", {
-                defaultValue: "Document Sets",
-              }),
-              href: ADMIN_PATHS.DOCUMENT_SETS,
-            },
-            {
-              label: t("admin.navigation.routes.documentFeedback.sidebar", {
-                defaultValue: "Feedback",
-              }),
-              href: ADMIN_PATHS.DOCUMENT_FEEDBACK,
-              primary: true,
             },
           ]}
         />

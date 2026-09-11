@@ -1,3 +1,4 @@
+import Skeleton from "@/refresh-components/skeletons/Skeleton";
 import { FC } from "react";
 import { StandardAnswerCategoryResponse } from "./getStandardAnswerCategoriesIfEE";
 import { Label } from "@/components/Field";
@@ -32,7 +33,12 @@ export const StandardAnswerCategoryDropdownField: FC<
   }
 
   if (standardAnswerCategoryResponse.categories == null) {
-    return <LoadingAnimation />;
+    return (
+      <div>
+        <Label>{t("standardAnswerCategories.label")}</Label>
+        <Skeleton className="h-10 w-64 rounded-08 mt-1" />
+      </div>
+    );
   }
 
   return (

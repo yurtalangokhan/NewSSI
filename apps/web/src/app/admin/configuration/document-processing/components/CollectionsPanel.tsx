@@ -6,7 +6,6 @@ import Button from "@/refresh-components/buttons/Button";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import Text from "@/refresh-components/texts/Text";
-import { ThreeDotsLoader } from "@/components/Loading";
 import { toast } from "@/hooks/useToast";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
 import {
@@ -200,7 +199,7 @@ export default function CollectionsPanel({
       </Text>
 
       {isLoading ? (
-        <ThreeDotsLoader />
+        <div className="h-10 w-full rounded-08 border border-border-01 bg-background-neutral-01 animate-pulse" />
       ) : (
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">

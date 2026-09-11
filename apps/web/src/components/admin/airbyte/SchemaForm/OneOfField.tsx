@@ -4,6 +4,7 @@ import { JSONSchemaProperty } from "./types";
 import {
   detectDiscriminatorKey,
   getDiscriminatorValue,
+  materializeSchemaDefaults,
   resolveSchema,
 } from "./utils";
 import {
@@ -76,7 +77,12 @@ export default function OneOfField({
         }
       });
     }
-    onChange(newValue);
+    onChange(
+      materializeSchemaDefaults(variant, newValue, rootSchema) as Record<
+        string,
+        unknown
+      >
+    );
   };
 
   return (
@@ -104,12 +110,7 @@ export default function OneOfField({
                 <SchemaForm
                   key={key}
                   schema={propSchema}
-                  value={
-                    (value?.[key] ?? propSchema.default) as Record<
-                      string,
-                      unknown
-                    >
-                  }
+                  value={value?.[key] as Record<string, unknown>}
                   onChange={(v) => onChange({ ...(value ?? {}), [key]: v })}
                   rootSchema={rootSchema}
                   fieldKey={key}

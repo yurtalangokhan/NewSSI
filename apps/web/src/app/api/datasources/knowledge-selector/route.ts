@@ -6,10 +6,14 @@ const LANGCONNECT_URL = getRagServiceUrl();
 
 export async function GET(request: NextRequest) {
   try {
-    const response = await proxyToBackend(request, "/datasources/knowledge-selector", {
-      backendUrl: LANGCONNECT_URL,
-      backendService: "rag",
-    });
+    const response = await proxyToBackend(
+      request,
+      "/datasources/knowledge-selector",
+      {
+        backendUrl: LANGCONNECT_URL,
+        backendService: "rag",
+      }
+    );
     response.headers.set("Cache-Control", "no-store");
     return response;
   } catch (error) {

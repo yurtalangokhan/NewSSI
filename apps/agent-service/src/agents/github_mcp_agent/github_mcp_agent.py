@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from contextvars import ContextVar
 from datetime import datetime
 
@@ -20,8 +19,9 @@ from agent_composition.domain.ports import ToolGateway
 from agent_composition.domain.trusted_context import TrustedToolContext
 from agents.lazy_agent import LazyLoadingAgent
 from core import get_model, settings
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 current_date = datetime.now().strftime("%B %d, %Y")
 prompt = f"""

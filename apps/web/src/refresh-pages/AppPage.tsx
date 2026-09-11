@@ -290,7 +290,10 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
   const isInitialLoad = useRef(true);
 
-  const { agents, isLoading: isLoadingAgents } = useAgents();
+  // Unpublished flows have no graph to run, so the agent switcher must
+  // never offer one — chatReadyAgents drops them, `agents` (unfiltered)
+  // stays available for anything that needs the full list.
+  const { chatReadyAgents: agents, isLoading: isLoadingAgents } = useAgents();
 
   // Also fetch federated connectors for the sources list
   const { data: federatedConnectorsData } = useFederatedConnectors();

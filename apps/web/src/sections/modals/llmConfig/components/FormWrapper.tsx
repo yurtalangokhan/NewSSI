@@ -100,7 +100,8 @@ export function ProviderFormEntrypointWrapper({
       await mutate(LLM_PROVIDERS_ADMIN_URL);
       toast.success(t("llmConfig.setAsDefaultSuccess"));
     } catch (e) {
-      const message = e instanceof Error ? e.message : t("llmConfig.unknownError");
+      const message =
+        e instanceof Error ? e.message : t("llmConfig.unknownError");
       toast.error(t("llmConfig.setAsDefaultError", { error: message }));
     }
   }
@@ -115,7 +116,9 @@ export function ProviderFormEntrypointWrapper({
     wellKnownLLMProvider,
   };
 
-  const defaultTitle = `${existingLlmProvider ? t("llmConfig.configure") : t("llmConfig.setup")} ${
+  const defaultTitle = `${
+    existingLlmProvider ? t("llmConfig.configure") : t("llmConfig.setup")
+  } ${
     existingLlmProvider?.name ? `"${existingLlmProvider.name}"` : providerName
   }`;
 

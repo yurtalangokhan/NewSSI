@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import { toast } from "@/hooks/useToast";
 import React, { useState, useEffect } from "react";
 import { useSWRConfig } from "swr";
@@ -26,6 +27,7 @@ import { buildSimilarCredentialInfoURL } from "@/app/admin/connector/[ccPairId]/
 import { FiFile, FiCheck, FiLink, FiAlertTriangle } from "react-icons/fi";
 import { cn, truncateString } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 type GoogleDriveCredentialJsonTypes = "authorized_user" | "service_account";
 
@@ -69,7 +71,7 @@ export const DriveJsonUpload = ({ onSuccess }: { onSuccess?: () => void }) => {
       }
 
       if (credentialFileType === "authorized_user") {
-        const response = await fetch(
+        const response = await authenticatedFetch(
           "/api/manage/admin/connector/google-drive/app-credential",
           {
             method: "PUT",
@@ -87,12 +89,14 @@ export const DriveJsonUpload = ({ onSuccess }: { onSuccess?: () => void }) => {
           }
         } else {
           const errorMsg = await response.text();
-          toast.error(t("googleCredentials.failedUploadAppCredentials", { errorMsg }));
+          toast.error(
+            t("googleCredentials.failedUploadAppCredentials", { errorMsg })
+          );
         }
       }
 
       if (credentialFileType === "service_account") {
-        const response = await fetch(
+        const response = await authenticatedFetch(
           "/api/manage/admin/connector/google-drive/service-account-key",
           {
             method: "PUT",
@@ -187,8 +191,10 @@ export const DriveJsonUpload = ({ onSuccess }: { onSuccess?: () => void }) => {
               )}
               <span className="text-sm text-text-500">
                 {isUploading
-                  ? t("googleCredentials.uploading", { fileName: truncateString(fileName || "file", 50) })
-                    : isDragging
+                  ? t("googleCredentials.uploading", {
+                      fileName: truncateString(fileName || "file", 50),
+                    })
+                  : isDragging
                     ? t("googleCredentials.dropJsonHere")
                     : truncateString(
                         fileName || t("googleCredentials.selectOrDragJson"),
@@ -233,7 +239,9 @@ export const DriveJsonUploadSection = ({
   isAdmin,
   onSuccess,
   existingAuthCredential,
-}: DriveJsonUploadSectionProps) => {  const { t } = useTranslation();  const { mutate } = useSWRConfig();
+}: DriveJsonUploadSectionProps) => {
+  const { t } = useTranslation();
+  const { mutate } = useSWRConfig();
   const router = useRouter();
   const [localServiceAccountData, setLocalServiceAccountData] = useState(
     serviceAccountCredentialData
@@ -260,9 +268,9 @@ export const DriveJsonUploadSection = ({
       <div>
         <div className="flex items-start py-3 px-4 bg-yellow-50/30 dark:bg-yellow-900/5 rounded">
           <FiAlertTriangle className="text-yellow-500 h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-          <p className="text-sm">
+          <Text as="p" className="text-sm">
             {t("googleCredentials.curatorsCannotSetupDrive")}
-          </p>
+          </Text>
         </div>
       </div>
     );
@@ -270,9 +278,9 @@ export const DriveJsonUploadSection = ({
 
   return (
     <div>
-      <p className="text-sm mb-3">
+      <Text as="p" className="text-sm mb-3">
         {t("googleCredentials.connectDriveDesc")}
-      </p>
+      </Text>
       <div className="mb-4">
         <a
           className="text-primary hover:text-primary/80 flex items-center gap-1 text-sm"
@@ -324,7 +332,7 @@ export const DriveJsonUploadSection = ({
                       ? "/api/manage/admin/connector/google-drive/service-account-key"
                       : "/api/manage/admin/connector/google-drive/app-credential";
 
-                  const response = await fetch(endpoint, {
+                  const response = await authenticatedFetch(endpoint, {
                     method: "DELETE",
                   });
 
@@ -362,7 +370,11 @@ export const DriveJsonUploadSection = ({
                     handleSuccess();
                   } else {
                     const errorMsg = await response.text();
-                    toast.error(t("googleCredentials.failedDeleteCredentials", { errorMsg }));
+                    toast.error(
+                      t("googleCredentials.failedDeleteCredentials", {
+                        errorMsg,
+                      })
+                    );
                   }
                 }}
               >
@@ -461,10 +473,15 @@ export const DriveAuthSection = ({
           <div className="py-3 px-4 bg-blue-50/30 dark:bg-blue-900/5 rounded mb-4 flex items-start">
             <FiCheck className="text-blue-500 h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
-              <span className="font-medium block">{t("googleCredentials.authenticationComplete")}</span>
-              <p className="text-sm mt-1 text-text-500 dark:text-text-400 break-words">
+              <span className="font-medium block">
+                {t("googleCredentials.authenticationComplete")}
+              </span>
+              <Text
+                as="p"
+                className="text-sm mt-1 text-text-500 dark:text-text-400 break-words"
+              >
                 {t("googleCredentials.driveAuthenticatedDesc")}
-              </p>
+              </Text>
             </div>
           </div>
           <Button
@@ -478,7 +495,7 @@ export const DriveAuthSection = ({
               );
             }}
           >
-          {t("googleCredentials.revokeAccess")}
+            {t("googleCredentials.revokeAccess")}
           </Button>
         </div>
       </div>
@@ -492,13 +509,15 @@ export const DriveAuthSection = ({
   ) {
     return (
       <div>
-        <SectionHeader>{t("googleCredentials.driveAuthentication")}</SectionHeader>
+        <SectionHeader>
+          {t("googleCredentials.driveAuthentication")}
+        </SectionHeader>
         <div className="mt-4">
           <div className="flex items-start py-3 px-4 bg-yellow-50/30 dark:bg-yellow-900/5 rounded">
             <FiAlertTriangle className="text-yellow-500 h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-            <p className="text-sm">
+            <Text as="p" className="text-sm">
               {t("googleCredentials.completeStep1Drive")}
-            </p>
+            </Text>
           </div>
         </div>
       </div>
@@ -521,7 +540,7 @@ export const DriveAuthSection = ({
             onSubmit={async (values, formikHelpers) => {
               formikHelpers.setSubmitting(true);
               try {
-                const response = await fetch(
+                const response = await authenticatedFetch(
                   "/api/manage/admin/connector/google-drive/service-account-credential",
                   {
                     method: "PUT",
@@ -535,19 +554,21 @@ export const DriveAuthSection = ({
                 );
 
                 if (response.ok) {
-                  toast.success(
-                    t("googleCredentials.createdServiceAccount")
-                  );
+                  toast.success(t("googleCredentials.createdServiceAccount"));
                   refreshCredentials();
                 } else {
                   const errorMsg = await response.text();
                   toast.error(
-                    t("googleCredentials.failedCreateServiceAccount", { errorMsg })
+                    t("googleCredentials.failedCreateServiceAccount", {
+                      errorMsg,
+                    })
                   );
                 }
               } catch (error) {
                 toast.error(
-                  t("googleCredentials.failedCreateServiceAccount", { errorMsg: error })
+                  t("googleCredentials.failedCreateServiceAccount", {
+                    errorMsg: error,
+                  })
                 );
               } finally {
                 formikHelpers.setSubmitting(false);
@@ -563,7 +584,9 @@ export const DriveAuthSection = ({
                 />
                 <div className="flex">
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? t("googleCredentials.creating") : t("googleCredentials.createCredential")}
+                    {isSubmitting
+                      ? t("googleCredentials.creating")
+                      : t("googleCredentials.createCredential")}
                   </Button>
                 </div>
               </Form>
@@ -578,9 +601,9 @@ export const DriveAuthSection = ({
     return (
       <div>
         <div className="bg-background-50/30 dark:bg-background-900/20 rounded mb-4">
-          <p className="text-sm">
+          <Text as="p" className="text-sm">
             {t("googleCredentials.driveOAuthDesc")}
-          </p>
+          </Text>
         </div>
         <Button
           disabled={isAuthenticating}
@@ -604,9 +627,7 @@ export const DriveAuthSection = ({
                 setIsAuthenticating(false);
               }
             } catch (error) {
-              toast.error(
-                t("googleCredentials.failedAuthDrive", { error })
-              );
+              toast.error(t("googleCredentials.failedAuthDrive", { error }));
               setIsAuthenticating(false);
             }
           }}

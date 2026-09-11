@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import re
 import unicodedata
 from typing import Any
@@ -21,8 +20,9 @@ from langconnect.database.neo4j.queries.search import (
 )
 from langconnect.database.neo4j.repositories.base import Neo4jRepository
 from langconnect.models.graph import GraphData, GraphEdge, GraphNode
+from langconnect.observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _RELATIONSHIP_ALIASES: tuple[tuple[str, tuple[str, ...]], ...] = (
     (

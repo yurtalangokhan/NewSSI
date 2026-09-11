@@ -46,6 +46,79 @@ function toggleNumber(values: number[], value: number, enabled: boolean) {
     : values.filter((item) => item !== value);
 }
 
+export function AgentAccessGroupsSkeleton() {
+  return (
+    <div
+      className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 w-full"
+      data-testid="admin-agents-access-groups-skeleton"
+    >
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="h-6 w-32 rounded-06 bg-background-neutral-03 animate-pulse" />
+          <div className="h-8 w-20 rounded-08 bg-background-neutral-02 animate-pulse" />
+        </div>
+
+        <div className="h-10 w-full rounded-08 border border-border-01 bg-background-neutral-00 flex items-center px-3 gap-2">
+          <div className="h-4 w-4 rounded-full bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+          <div className="h-4 w-40 rounded bg-background-tint-04 animate-pulse" />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} variant="secondary">
+              <div className="space-y-2 py-1">
+                <div className="h-4 w-3/4 rounded bg-background-neutral-03 animate-pulse" />
+                <div className="h-3 w-1/2 rounded bg-background-neutral-02 animate-pulse" />
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      <Card>
+        <div className="flex flex-col gap-5 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
+            <div className="space-y-2">
+              <div className="h-4 w-24 rounded bg-background-neutral-03 animate-pulse" />
+              <div className="h-10 w-full rounded-08 bg-background-neutral-02 animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 w-24 rounded bg-background-neutral-03 animate-pulse" />
+              <div className="h-16 w-full rounded-08 bg-background-neutral-02 animate-pulse" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 w-full">
+            <div className="space-y-3 rounded-08 border border-border-01 p-3">
+              <div className="h-4 w-28 rounded bg-background-neutral-03 animate-pulse" />
+              <div className="h-9 w-full rounded-08 bg-background-neutral-02 animate-pulse" />
+              <div className="space-y-2 pt-1">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-8 w-full rounded-06 bg-background-neutral-02/60 animate-pulse"
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="space-y-3 rounded-08 border border-border-01 p-3">
+              <div className="h-4 w-28 rounded bg-background-neutral-03 animate-pulse" />
+              <div className="h-9 w-full rounded-08 bg-background-neutral-02 animate-pulse" />
+              <div className="space-y-2 pt-1">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-8 w-full rounded-06 bg-background-neutral-02/60 animate-pulse"
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 export default function AgentAccessGroupsTab({
   agents,
 }: AgentAccessGroupsTabProps) {
@@ -68,10 +141,11 @@ export default function AgentAccessGroupsTab({
     isLoading: isGroupsLoading,
   } = useSWR<AgentGroup[]>(AGENT_GROUPS_API_PATH, errorHandlingFetcher);
 
-  const { data: usersResponse } = useSWR<UsersResponse>(
-    "/api/user-service/users/?limit=1000",
-    errorHandlingFetcher
-  );
+  const { data: usersResponse, isLoading: isUsersLoading } =
+    useSWR<UsersResponse>(
+      "/api/user-service/users/?limit=1000",
+      errorHandlingFetcher
+    );
 
   const users = useMemo(
     () => usersResponse?.items ?? usersResponse?.users ?? [],
@@ -218,6 +292,10 @@ export default function AgentAccessGroupsTab({
       persona_ids: [],
     };
     setDraft(updater(base));
+  }
+
+  if (isGroupsLoading) {
+    return <AgentAccessGroupsSkeleton />;
   }
 
   return (

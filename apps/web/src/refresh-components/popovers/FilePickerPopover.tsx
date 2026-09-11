@@ -182,7 +182,11 @@ function FilePickerPopoverContents({
   // All recent files button
   if (shouldShowMoreFilesButton) {
     items.push(
-      <LineItem key="more-files" icon={SvgMoreHorizontal} onClick={openRecentFilesModal}>
+      <LineItem
+        key="more-files"
+        icon={SvgMoreHorizontal}
+        onClick={openRecentFilesModal}
+      >
         {t("app.filePicker.allRecentFilesButton")}
       </LineItem>
     );

@@ -115,7 +115,11 @@ export default function OpenApiPageContent() {
           }
 
           toast.success(
-            `${selectedTool.name} ${t("openApiPage.authSaved", { action: selectedTool.oauth_config_id ? t("openApiPage.updated") : t("openApiPage.saved") })}`
+            `${selectedTool.name} ${t("openApiPage.authSaved", {
+              action: selectedTool.oauth_config_id
+                ? t("openApiPage.updated")
+                : t("openApiPage.saved"),
+            })}`
           );
         } else if (values.authMethod === "custom-header") {
           const customHeaders = values.headers

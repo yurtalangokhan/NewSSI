@@ -1,7 +1,7 @@
 "use client";
 
 import { notFound } from "next/navigation";
-import { ThreeDotsLoader } from "@/components/Loading";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { ErrorCallout } from "@/components/ErrorCallout";
@@ -20,7 +20,6 @@ import { toast } from "@/hooks/useToast";
 import { useState } from "react";
 import { DeleteButton } from "@/components/DeleteButton";
 import Modal from "@/refresh-components/Modal";
-import { Spinner } from "@/components/Spinner";
 import { deleteApiKey, regenerateApiKey } from "@/app/admin/api-key/lib";
 import OnyxApiKeyForm from "@/app/admin/api-key/OnyxApiKeyForm";
 import {
@@ -60,7 +59,25 @@ function Main() {
   };
 
   if (isLoading) {
-    return <ThreeDotsLoader />;
+    return (
+      <div className="flex flex-col gap-4">
+        <AdminOverviewPanel
+          icon={route.icon}
+          title={t("admin.apiKey.workspaceTitle")}
+          description={t("admin.apiKey.workspaceDescription")}
+          isLoading={true}
+        />
+        <TableSkeleton
+          rowCount={4}
+          columns={[
+            { type: "icon-text", width: "w-40", headerWidth: "w-20" },
+            { type: "badge", width: "w-24", headerWidth: "w-16" },
+            { type: "text", width: "w-32", headerWidth: "w-24" },
+            { type: "actions", width: "w-16", headerWidth: "w-16" },
+          ]}
+        />
+      </div>
+    );
   }
 
   if (!apiKeys || error) {
@@ -98,17 +115,6 @@ function Main() {
             ? t("admin.apiKey.available")
             : t("admin.apiKey.requiresPlan"),
           tone: canCreateKeys ? "success" : "warning",
-        },
-      ]}
-      actions={[
-        {
-          label: t("admin.navigation.routes.roles.sidebar"),
-          href: ADMIN_PATHS.ROLES,
-        },
-        {
-          label: t("admin.navigation.routes.tokenRateLimits.sidebar"),
-          href: ADMIN_PATHS.TOKEN_RATE_LIMITS,
-          primary: true,
         },
       ]}
     />
@@ -178,8 +184,6 @@ function Main() {
           </Modal.Body>
         </Modal.Content>
       </Modal>
-
-      {keyIsGenerating && <Spinner />}
 
       {overviewSection}
 
@@ -287,6 +291,11 @@ export default function Page() {
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         title={t(route.titleKey || "", { defaultValue: route.title })}
+        description={
+          t(route.descriptionKey ?? "", {
+            defaultValue: route.description ?? "",
+          }) || undefined
+        }
         icon={route.icon}
         separator
       />

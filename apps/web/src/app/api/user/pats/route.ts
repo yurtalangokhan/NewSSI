@@ -1,3 +1,4 @@
+import { proxyToBackend } from "@/lib/api/proxy";
 import { USER_SERVICE_URL } from "@/lib/constants";
 import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { getLanguageHeaders } from "@/lib/api/proxy";
@@ -29,27 +30,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Cookie: request.headers.get("cookie") || "",
-    ...getLanguageHeaders(request),
-  };
-  const auth = request.headers.get("authorization");
-  if (auth) headers["Authorization"] = auth;
-
-  const response = await fetch(
-    buildServiceUrl(
-      USER_SERVICE_URL,
-      "user",
-      "/api/users/me/api-keys/"
-    ).toString(),
-    {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    }
-  );
-  const data = await response.json();
-  return NextResponse.json(data, { status: response.status });
+  return proxyToBackend(request, "/api/users/me/api-keys/", {
+    backendUrl: USER_SERVICE_URL,
+    backendService: "user",
+    method: "POST",
+    withCredentials: true,
+  });
 }

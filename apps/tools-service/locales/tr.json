@@ -19,6 +19,10 @@
     "recipient_rejected": "SMTP sunucusu alıcılardan birini veya daha fazlasını reddetti.",
     "message_rejected": "SMTP sunucusu mesajı reddetti."
   },
+  "knowledge": {
+    "collection_required": "Yapılandırılmış bir bilgi koleksiyonu gereklidir.",
+    "rag_service_not_configured": "RAG servisi yapılandırılmamış."
+  },
   "common": {
     "error": "Hata: {error}"
   },
@@ -195,6 +199,10 @@
       "label": "E-posta",
       "description": "SMTP e-posta gönderimi"
     },
+    "knowledge": {
+      "label": "Bilgi",
+      "description": "Bilgi erişimi"
+    },
     "web_search": {
       "label": "Web",
       "description": "Web araması ve web sayfası içeriği alma"
@@ -299,6 +307,16 @@
       "service_restart": {
         "name": "Servisi Yeniden Başlat",
         "description": "Bir servisi yeniden başlatın (docker konteyneri veya systemd servisi)."
+      }
+    },
+    "knowledge_retrieval": {
+      "database_search": {
+        "name": "Belgelerde Ara",
+        "description": "Yapılandırılmış bilgi koleksiyonlarından belge bağlamı alın."
+      },
+      "graph_search": {
+        "name": "Bilgi Grafiğinde Ara",
+        "description": "Yapılandırılmış bilgi koleksiyonlarından grafik bağlamı alın."
       }
     },
     "utilities": {

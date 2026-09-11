@@ -9,7 +9,7 @@ import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import { Section } from "@/layouts/general-layouts";
 import { ContentAction } from "@opal/layouts";
 import { formatDurationSeconds } from "@/lib/time";
-import { noProp } from "@/lib/utils";
+import { cn, noProp } from "@/lib/utils";
 import MemoriesModal from "@/refresh-components/modals/MemoriesModal";
 import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
 import { useTranslation } from "react-i18next";
@@ -107,6 +107,7 @@ export interface CompletedHeaderProps {
   memoryOperation?: "add" | "update" | null;
   memoryId?: number | null;
   memoryIndex?: number | null;
+  hasStageSections?: boolean;
 }
 
 /** Header when completed - handles both collapsed and expanded states */
@@ -122,8 +123,11 @@ export const CompletedHeader = React.memo(function CompletedHeader({
   memoryOperation = null,
   memoryId = null,
   memoryIndex = null,
+  hasStageSections = false,
 }: CompletedHeaderProps) {
   const { t } = useTranslation();
+  const canToggle = collapsible && (totalSteps > 0 || hasStageSections);
+
   if (isMemoryOnly) {
     return (
       <div className="flex w-full justify-between">
@@ -135,18 +139,41 @@ export const CompletedHeader = React.memo(function CompletedHeader({
             memoryIndex={memoryIndex}
           />
         </div>
-        {collapsible && totalSteps > 0 && isExpanded && (
-          <Button
-            prominence="tertiary"
-            size="md"
-            onClick={noProp(onToggle)}
-            rightIcon={isExpanded ? SvgFold : SvgExpand}
-            aria-label={t("timeline.expandTimeline")}
-            aria-expanded={isExpanded}
-          >
-            {`${totalSteps} ${totalSteps === 1 ? t("timeline.stepSingular") : t("timeline.stepPlural")}`}
-          </Button>
-        )}
+        {canToggle &&
+          isExpanded &&
+          (totalSteps > 0 ? (
+            <Button
+              prominence="tertiary"
+              size="md"
+              onClick={noProp(onToggle)}
+              rightIcon={isExpanded ? SvgFold : SvgExpand}
+              aria-label={
+                isExpanded
+                  ? t("timeline.collapseTimeline")
+                  : t("timeline.expandTimeline")
+              }
+              aria-expanded={isExpanded}
+            >
+              {`${totalSteps} ${
+                totalSteps === 1
+                  ? t("timeline.stepSingular")
+                  : t("timeline.stepPlural")
+              }`}
+            </Button>
+          ) : (
+            <Button
+              prominence="tertiary"
+              size="md"
+              onClick={noProp(onToggle)}
+              icon={isExpanded ? SvgFold : SvgExpand}
+              aria-label={
+                isExpanded
+                  ? t("timeline.collapseTimeline")
+                  : t("timeline.expandTimeline")
+              }
+              aria-expanded={isExpanded}
+            />
+          ))}
       </div>
     );
   }
@@ -166,9 +193,12 @@ export const CompletedHeader = React.memo(function CompletedHeader({
 
   return (
     <div
-      role="button"
-      onClick={onToggle}
-      className="flex items-center justify-between w-full"
+      role={canToggle ? "button" : undefined}
+      onClick={canToggle ? onToggle : undefined}
+      className={cn(
+        "flex items-center justify-between w-full",
+        canToggle ? "cursor-pointer" : "cursor-default"
+      )}
     >
       <div className="flex items-center gap-2 px-[var(--timeline-header-text-padding-x)] py-[var(--timeline-header-text-padding-y)]">
         <Text as="p" mainUiAction text03>
@@ -184,18 +214,40 @@ export const CompletedHeader = React.memo(function CompletedHeader({
         )}
       </div>
 
-      {collapsible && totalSteps > 0 && (
-        <Button
-          prominence="tertiary"
-          size="md"
-          onClick={noProp(onToggle)}
-          rightIcon={isExpanded ? SvgFold : SvgExpand}
-          aria-label={t("timeline.expandTimeline")}
-          aria-expanded={isExpanded}
-        >
-          {`${totalSteps} ${totalSteps === 1 ? t("timeline.stepSingular") : t("timeline.stepPlural")}`}
-        </Button>
-      )}
+      {canToggle &&
+        (totalSteps > 0 ? (
+          <Button
+            prominence="tertiary"
+            size="md"
+            onClick={noProp(onToggle)}
+            rightIcon={isExpanded ? SvgFold : SvgExpand}
+            aria-label={
+              isExpanded
+                ? t("timeline.collapseTimeline")
+                : t("timeline.expandTimeline")
+            }
+            aria-expanded={isExpanded}
+          >
+            {`${totalSteps} ${
+              totalSteps === 1
+                ? t("timeline.stepSingular")
+                : t("timeline.stepPlural")
+            }`}
+          </Button>
+        ) : (
+          <Button
+            prominence="tertiary"
+            size="md"
+            onClick={noProp(onToggle)}
+            icon={isExpanded ? SvgFold : SvgExpand}
+            aria-label={
+              isExpanded
+                ? t("timeline.collapseTimeline")
+                : t("timeline.expandTimeline")
+            }
+            aria-expanded={isExpanded}
+          />
+        ))}
     </div>
   );
 });

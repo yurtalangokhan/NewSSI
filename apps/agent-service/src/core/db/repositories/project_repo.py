@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -13,8 +12,9 @@ from sqlalchemy.dialects.postgresql import JSONB
 from core.db.models.project import ProjectModel
 from core.db.models.thread import ThreadModel
 from core.db.repositories.base import BaseRepository
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _parse_thread_id(thread_id: str) -> UUID | None:

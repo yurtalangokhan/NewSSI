@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
 import { LlmDescriptor, LlmManager } from "@/lib/hooks";
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
-import { structureValue } from "@/lib/llmConfig/utils";
+import { structureValue, isEmbeddingModel } from "@/lib/llmConfig/utils";
 import {
   getProviderIcon,
   AGGREGATOR_PROVIDERS,
@@ -15,7 +15,6 @@ import { useUser } from "@/providers/UserProvider";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
-import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import {
   Accordion,
   AccordionContent,
@@ -33,8 +32,29 @@ import { OpenButton } from "@opal/components";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
 import AgentAvailabilityBadge from "@/refresh-components/agents/AgentAvailabilityBadge";
 import { isAgentAvailableForSelection } from "@/lib/agentAvailability";
+import { isFlowAgent } from "@/lib/flows/flowAgent";
 import { LLMOption, LLMOptionGroup } from "./interfaces";
 import { useTranslation } from "react-i18next";
+
+/**
+ * Whether the model picker's selection marker means anything for the agent
+ * currently in the composer.
+ *
+ * It does not for a flow agent: a flow resolves its model from its own
+ * LLMModel node(s) in the published spec (agent-service's
+ * `flow_builder._resolve_model`), and a flow graph reads only `access_token`
+ * out of the request's `configurable` — never `configurable["model"]`. With
+ * no `llm_model_version_override` to fall back on either, `useLlmManager`
+ * lands on the user's personal default, so the picker used to tick a model
+ * the agent cannot possibly run — and, since the flow names its own, the
+ * wrong one. Nothing is ticked instead; the list stays clickable, which is
+ * how the user switches away to a plain-model chat.
+ */
+export function modelSelectionAppliesToAgent(
+  agent?: MinimalPersonaSnapshot
+): boolean {
+  return !agent || !isFlowAgent(agent);
+}
 
 function AvailabilityFlag({
   available,
@@ -103,8 +123,9 @@ export function buildLlmOptions(
     llmProvider.model_configurations
       .filter(
         (modelConfiguration) =>
-          modelConfiguration.is_visible ||
-          modelConfiguration.name === currentModelName
+          !isEmbeddingModel(modelConfiguration) &&
+          (modelConfiguration.is_visible ||
+            modelConfiguration.name === currentModelName)
       )
       .forEach((modelConfiguration) => {
         // Deduplicate by provider instance id + model name.
@@ -410,8 +431,11 @@ export default function LLMPopover({
     setOpen(false);
   };
 
+  const modelSelectionApplies = modelSelectionAppliesToAgent(selectedAgent);
+
   const renderModelItem = (option: LLMOption) => {
     const isSelected =
+      modelSelectionApplies &&
       option.modelName === llmManager.currentLlm.modelName &&
       (option.providerId && llmManager.currentLlm.providerId
         ? option.providerId === llmManager.currentLlm.providerId
@@ -559,11 +583,19 @@ export default function LLMPopover({
             )}
             {isLoadingProviders
               ? [
-                  <div key="loading" className="flex items-center gap-2 py-3">
-                    <SimpleLoader />
-                    <Text secondaryBody text03>
-                      {t("app.llmPopover.loadingModels")}
-                    </Text>
+                  <div
+                    key="loading"
+                    className="flex flex-col gap-1.5 py-2 px-1 w-full"
+                  >
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-2 p-1.5 rounded-08 bg-background-neutral-01"
+                      >
+                        <div className="h-4 w-4 rounded-full bg-background-tint-02 animate-pulse shrink-0" />
+                        <div className="h-3.5 w-28 rounded bg-background-tint-02 animate-pulse" />
+                      </div>
+                    ))}
                   </div>,
                 ]
               : groupedOptions.length === 0

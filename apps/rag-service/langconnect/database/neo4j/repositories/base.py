@@ -7,7 +7,6 @@ in exactly one place.
 
 from __future__ import annotations
 
-import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import date, datetime, time, timedelta
@@ -29,8 +28,9 @@ from neo4j.time import (
 
 from langconnect.database.neo4j.connection import get_neo4j_driver
 from langconnect.models.graph import GraphEdge, GraphNode
+from langconnect.observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class Neo4jRepository:

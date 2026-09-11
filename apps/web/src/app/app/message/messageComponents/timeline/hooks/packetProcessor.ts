@@ -282,6 +282,16 @@ const FINAL_ANSWER_PACKET_TYPES_SET = new Set<PacketType>([
   PacketType.DOCUMENT_GENERATION_START,
   PacketType.DOCUMENT_GENERATION_PROGRESS,
   PacketType.GENERATED_FILE,
+  // A paused run is the other way a turn produces visible output without ever
+  // streaming answer text: the model stopped to ask. Nothing more arrives
+  // until a person answers, so the display area must not keep waiting for a
+  // `message_start` that is never coming — leave these out and a pause that
+  // followed any reasoning or tool step is filtered away, and the run reads as
+  // silently finished. (A reload used to paper over it, because history
+  // reconstruction synthesises a `message_start` for trailing steps.)
+  PacketType.HUMAN_INPUT,
+  PacketType.USER_CLARIFICATION,
+  PacketType.USER_CLARIFICATION_ANSWERED,
 ]);
 
 // ============================================================================
@@ -491,10 +501,19 @@ function processPacket(state: ProcessorState, packet: Packet): void {
   // Anything else means the stream is producing again.
   state.streamSilentSeconds = null;
 
-  if (
-    packet.obj.type === "graph_stage_start" ||
-    packet.obj.type === "graph_stage_end"
-  ) {
+  // graph-stage packets and FlowAgent per-stage timeline packets are consumed
+  // by the stage-grouping layer (buildStageGroups) straight off the raw packet
+  // list, and flow_version is run-level metadata GraphStageStrip reads the same
+  // way — none of them are their own timeline step here.
+  const stageOnlyPacketTypes: readonly PacketType[] = [
+    PacketType.GRAPH_STAGE_START,
+    PacketType.GRAPH_STAGE_END,
+    PacketType.FLOW_STAGE_START,
+    PacketType.FLOW_STAGE_END,
+    PacketType.FLOW_STAGE_OUTPUT_DELTA,
+    PacketType.FLOW_VERSION,
+  ];
+  if (stageOnlyPacketTypes.includes(packet.obj.type as PacketType)) {
     return;
   }
 

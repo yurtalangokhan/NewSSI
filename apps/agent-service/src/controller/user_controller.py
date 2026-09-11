@@ -2,20 +2,29 @@
 
 import base64
 import json
-import logging
 import secrets
-from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import HTTPException, UploadFile
 
 from controller.base import BaseController
 from controller.session_controller import SessionController, get_session_controller
+from controller.user_helpers import (
+    chat_session_activity_time,
+    file_chat_type,
+    normalize_owner_ids,
+    now_iso,
+    serialize_admin_provider,
+    serialize_chat_session,
+    thread_belongs_to_owner_ids,
+    thread_project_id,
+)
 from core.db.repositories.project_repo import ProjectRepository
 from core.env import env
+from core.logger import get_logger
 from service.StoreService import list_chat_sessions_by_activity_from_store
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class UserController(BaseController):
@@ -47,22 +56,6 @@ class UserController(BaseController):
 
         return None
 
-    @staticmethod
-    def _now_iso() -> str:
-        return datetime.now(UTC).isoformat()
-
-    @staticmethod
-    def _file_chat_type(content_type: str | None, filename: str) -> str:
-        mime = (content_type or "").lower()
-        lower_name = filename.lower()
-        if mime.startswith("image/"):
-            return "image"
-        if mime in {"text/csv", "application/csv"} or lower_name.endswith(".csv"):
-            return "csv"
-        if mime.startswith("text/") or lower_name.endswith((".txt", ".md")):
-            return "plain_text"
-        return "document"
-
     async def _resolve_or_raise_user_id(self, user_id: str | None) -> str:
         effective_user_id = await self.resolve_projects_user_id(user_id)
         if not effective_user_id:
@@ -77,46 +70,6 @@ class UserController(BaseController):
 
     def _file_payloads(self, user_id: str) -> dict[str, dict[str, str]]:
         return self._file_payloads_by_user.setdefault(user_id, {})
-
-    @staticmethod
-    def _thread_project_id(thread: dict[str, Any]) -> int | None:
-        project_id = thread.get("project_id")
-        if project_id is None:
-            metadata = thread.get("metadata", {}) or {}
-            project_id = metadata.get("project_id")
-        if project_id is None:
-            return None
-        try:
-            return int(project_id)
-        except (TypeError, ValueError):
-            return None
-
-    @staticmethod
-    def _normalize_owner_ids(user_id: str, owner_ids: list[str] | None = None) -> list[str]:
-        normalized: list[str] = []
-        for candidate in [user_id, *(owner_ids or [])]:
-            if not candidate:
-                continue
-            candidate_id = str(candidate)
-            if candidate_id not in normalized:
-                normalized.append(candidate_id)
-        return normalized
-
-    def _thread_belongs_to_owner_ids(
-        self,
-        thread: dict[str, Any],
-        owner_ids: list[str],
-    ) -> bool:
-        metadata = thread.get("metadata", {}) or {}
-        owner = metadata.get("user_id")
-        if owner and str(owner) in owner_ids:
-            return True
-
-        legacy_owner_ids = metadata.get("legacy_user_ids") or []
-        if isinstance(legacy_owner_ids, list):
-            return any(str(candidate) in owner_ids for candidate in legacy_owner_ids)
-
-        return False
 
     async def _list_project_threads_for_owner_ids(
         self,
@@ -140,46 +93,20 @@ class UserController(BaseController):
             matching_threads.extend(
                 thread
                 for thread in batch
-                if self._thread_project_id(thread) is not None
-                and self._thread_belongs_to_owner_ids(thread, owner_ids)
+                if thread_project_id(thread) is not None
+                and thread_belongs_to_owner_ids(thread, owner_ids)
             )
 
             if len(batch) < batch_size:
                 break
 
             last_thread = batch[-1]
-            before_activity = self._chat_session_activity_time(last_thread)
+            before_activity = chat_session_activity_time(last_thread)
             before_id = last_thread.get("thread_id") or ""
             if not before_activity or not before_id:
                 break
 
         return matching_threads
-
-    @staticmethod
-    def _serialize_chat_session(thread: dict[str, Any]) -> dict[str, Any]:
-        metadata = thread.get("metadata", {}) or {}
-        session_name = metadata.get("name") or "New Chat"
-        return {
-            "id": thread.get("thread_id", ""),
-            "name": session_name,
-            "description": session_name,
-            "persona_id": metadata.get("persona_id", 0),
-            "time_created": thread.get("created_at"),
-            "time_updated": thread.get("updated_at"),
-            "last_message_at": thread.get("last_message_at"),
-            "last_accessed_at": thread.get("last_accessed_at"),
-            "shared_status": "private",
-            "project_id": UserController._thread_project_id(thread),
-            "current_alternate_model": metadata.get("current_alternate_model", ""),
-            "current_temperature_override": metadata.get("current_temperature_override"),
-        }
-
-    @staticmethod
-    def _chat_session_activity_time(session: dict[str, Any]) -> str:
-        """Return the backwards-compatible product activity time for a session."""
-        if "last_message_at" in session:
-            return session.get("last_message_at") or session.get("time_created") or ""
-        return session.get("time_updated") or session.get("time_created") or ""
 
     async def get_recent_files(self, user_id: str | None) -> list[Any]:
         effective_user_id = await self._resolve_or_raise_user_id(user_id)
@@ -190,7 +117,7 @@ class UserController(BaseController):
         from core.db.repositories.document_repo import DocumentRepository
 
         docs = await DocumentRepository().list_by_user(effective_user_id, limit=50)
-        now = self._now_iso()
+        now = now_iso()
         hydrated = []
         for doc in docs:
             hydrated.append(
@@ -223,7 +150,7 @@ class UserController(BaseController):
         owner_ids: list[str] | None = None,
     ) -> dict[str, Any]:
         effective_user_id = await self._resolve_or_raise_user_id(user_id)
-        effective_owner_ids = self._normalize_owner_ids(effective_user_id, owner_ids)
+        effective_owner_ids = normalize_owner_ids(effective_user_id, owner_ids)
 
         if project_id is not None:
             project = await self._project_repo.get_for_user_ids(effective_owner_ids, project_id)
@@ -240,7 +167,7 @@ class UserController(BaseController):
                 raise HTTPException(status_code=400, detail="Invalid temp_id_map")
 
         uploaded: list[dict[str, Any]] = []
-        now = self._now_iso()
+        now = now_iso()
         recent = self._recent_files(effective_user_id)
 
         for upload in files:
@@ -250,7 +177,7 @@ class UserController(BaseController):
             raw = await upload.read()
             encoded = base64.b64encode(raw).decode("ascii")
             temp_id = temp_id_map.get(file_name)
-            chat_file_type = self._file_chat_type(content_type, file_name)
+            chat_file_type = file_chat_type(content_type, file_name)
             file_obj = {
                 "id": file_id,
                 "name": file_name,
@@ -330,7 +257,7 @@ class UserController(BaseController):
     ) -> list[dict[str, Any]]:
         effective_user_id = await self._resolve_or_raise_user_id(user_id)
         project = await self._project_repo.get_for_user_ids(
-            self._normalize_owner_ids(effective_user_id, owner_ids),
+            normalize_owner_ids(effective_user_id, owner_ids),
             project_id,
         )
         if not project:
@@ -347,7 +274,7 @@ class UserController(BaseController):
     ) -> dict[str, bool]:
         effective_user_id = await self._resolve_or_raise_user_id(user_id)
         project = await self._project_repo.get_for_user_ids(
-            self._normalize_owner_ids(effective_user_id, owner_ids),
+            normalize_owner_ids(effective_user_id, owner_ids),
             project_id,
         )
         if not project:
@@ -371,10 +298,10 @@ class UserController(BaseController):
                     "project_id": project_id,
                     "user_id": doc["user_id"],
                     "file_id": doc["file_id"],
-                    "created_at": doc["created_at"] or self._now_iso(),
+                    "created_at": doc["created_at"] or now_iso(),
                     "status": "COMPLETED",
                     "file_type": doc["mime_type"],
-                    "last_accessed_at": doc["created_at"] or self._now_iso(),
+                    "last_accessed_at": doc["created_at"] or now_iso(),
                     "chat_file_type": doc["chat_file_type"],
                     "token_count": 0,
                     "chunk_count": 0,
@@ -431,10 +358,10 @@ class UserController(BaseController):
             "project_id": doc["project_id"],
             "user_id": doc["user_id"],
             "file_id": doc["file_id"],
-            "created_at": doc["created_at"] or self._now_iso(),
+            "created_at": doc["created_at"] or now_iso(),
             "status": "COMPLETED",
             "file_type": doc["mime_type"],
-            "last_accessed_at": doc["created_at"] or self._now_iso(),
+            "last_accessed_at": doc["created_at"] or now_iso(),
             "chat_file_type": doc["chat_file_type"],
             "token_count": 0,
             "chunk_count": 0,
@@ -465,10 +392,10 @@ class UserController(BaseController):
                             "project_id": doc["project_id"],
                             "user_id": doc["user_id"],
                             "file_id": doc["file_id"],
-                            "created_at": doc["created_at"] or self._now_iso(),
+                            "created_at": doc["created_at"] or now_iso(),
                             "status": "COMPLETED",
                             "file_type": doc["mime_type"],
-                            "last_accessed_at": doc["created_at"] or self._now_iso(),
+                            "last_accessed_at": doc["created_at"] or now_iso(),
                             "chat_file_type": doc["chat_file_type"],
                             "token_count": 0,
                             "chunk_count": 0,
@@ -529,26 +456,24 @@ class UserController(BaseController):
         user_id: str,
         owner_ids: list[str] | None = None,
     ) -> list[Any]:
-        effective_owner_ids = self._normalize_owner_ids(user_id, owner_ids)
+        effective_owner_ids = normalize_owner_ids(user_id, owner_ids)
         projects = await self._project_repo.list_by_user_ids(effective_owner_ids)
         project_ids = {project["id"] for project in projects}
         threads = await self._list_project_threads_for_owner_ids(effective_owner_ids)
 
         sessions_by_project: dict[int, list[dict[str, Any]]] = {}
         for thread in threads:
-            project_id = self._thread_project_id(thread)
+            project_id = thread_project_id(thread)
             if project_id is None or project_id not in project_ids:
                 continue
-            sessions_by_project.setdefault(project_id, []).append(
-                self._serialize_chat_session(thread)
-            )
+            sessions_by_project.setdefault(project_id, []).append(serialize_chat_session(thread))
 
         for project in projects:
             project_id = project["id"]
             project_sessions = sessions_by_project.get(project_id, [])
             project_sessions.sort(
                 key=lambda session: (
-                    self._chat_session_activity_time(session),
+                    chat_session_activity_time(session),
                     session.get("id") or "",
                 ),
                 reverse=True,
@@ -571,20 +496,20 @@ class UserController(BaseController):
         project_id: int,
         owner_ids: list[str] | None = None,
     ) -> dict[str, Any]:
-        effective_owner_ids = self._normalize_owner_ids(user_id, owner_ids)
+        effective_owner_ids = normalize_owner_ids(user_id, owner_ids)
         project = await self._project_repo.get_for_user_ids(effective_owner_ids, project_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
 
         threads = await self._list_project_threads_for_owner_ids(effective_owner_ids)
         chat_sessions = [
-            self._serialize_chat_session(thread)
+            serialize_chat_session(thread)
             for thread in threads
-            if self._thread_project_id(thread) == project_id
+            if thread_project_id(thread) == project_id
         ]
         chat_sessions.sort(
             key=lambda session: (
-                self._chat_session_activity_time(session),
+                chat_session_activity_time(session),
                 session.get("id") or "",
             ),
             reverse=True,
@@ -603,7 +528,7 @@ class UserController(BaseController):
         if not cleaned_name:
             raise HTTPException(status_code=400, detail="Project name is required")
         project = await self._project_repo.rename_for_user_ids(
-            user_ids=self._normalize_owner_ids(user_id, owner_ids),
+            user_ids=normalize_owner_ids(user_id, owner_ids),
             project_id=project_id,
             name=cleaned_name,
         )
@@ -619,7 +544,7 @@ class UserController(BaseController):
         owner_ids: list[str] | None = None,
     ) -> dict[str, bool]:
         deleted = await self._project_repo.delete_for_user_ids(
-            user_ids=self._normalize_owner_ids(user_id, owner_ids),
+            user_ids=normalize_owner_ids(user_id, owner_ids),
             project_id=project_id,
         )
         if not deleted:
@@ -632,7 +557,7 @@ class UserController(BaseController):
         cache = self._project_files(user_id, project_id)
         cache_ids = {f.get("id") for f in cache}
 
-        now = self._now_iso()
+        now = now_iso()
         merged = list(cache)
 
         for doc in await DocumentRepository().list_by_project(project_id):
@@ -681,7 +606,7 @@ class UserController(BaseController):
         owner_ids: list[str] | None = None,
     ) -> dict[str, str | None]:
         project = await self._project_repo.get_for_user_ids(
-            self._normalize_owner_ids(user_id, owner_ids),
+            normalize_owner_ids(user_id, owner_ids),
             project_id,
         )
         if not project:
@@ -696,7 +621,7 @@ class UserController(BaseController):
         owner_ids: list[str] | None = None,
     ) -> dict[str, str | None]:
         project = await self._project_repo.upsert_instructions_for_user_ids(
-            user_ids=self._normalize_owner_ids(user_id, owner_ids),
+            user_ids=normalize_owner_ids(user_id, owner_ids),
             project_id=project_id,
             instructions=instructions,
         )
@@ -783,7 +708,7 @@ class UserController(BaseController):
     ) -> dict[str, bool]:
         moved = await self._project_repo.move_chat_session_to_project_for_user_ids(
             primary_user_id=user_id,
-            owner_ids=self._normalize_owner_ids(user_id, owner_ids),
+            owner_ids=normalize_owner_ids(user_id, owner_ids),
             project_id=project_id,
             chat_session_id=chat_session_id,
         )
@@ -800,7 +725,7 @@ class UserController(BaseController):
     ) -> dict[str, bool]:
         removed = await self._project_repo.remove_chat_session_from_project_for_user_ids(
             primary_user_id=user_id,
-            owner_ids=self._normalize_owner_ids(user_id, owner_ids),
+            owner_ids=normalize_owner_ids(user_id, owner_ids),
             chat_session_id=chat_session_id,
         )
         if not removed:
@@ -811,26 +736,7 @@ class UserController(BaseController):
         llm_provider = await self.get_llm_provider()
         providers = llm_provider.get("providers", [])
 
-        admin_providers = []
-        for provider in providers:
-            admin_providers.append(
-                {
-                    "id": provider.get("id"),
-                    "name": provider.get("name"),
-                    "provider": provider.get("provider"),
-                    "provider_display_name": provider.get("provider_display_name"),
-                    "api_key": None,
-                    "api_base": None,
-                    "api_version": None,
-                    "custom_config": {},
-                    "is_public": True,
-                    "is_auto_mode": False,
-                    "groups": [],
-                    "personas": [],
-                    "deployment_name": None,
-                    "model_configurations": provider.get("model_configurations", []),
-                }
-            )
+        admin_providers = [serialize_admin_provider(p) for p in providers]
 
         default_model = env.DEFAULT_MODEL or llm_provider.get("default_text")
         return {

@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/accordion";
 import Separator from "@/refresh-components/Separator";
 import { CheckboxField } from "@/refresh-components/form/LabeledCheckboxField";
+import Text from "@/refresh-components/texts/Text";
 
 export interface SlackChannelConfigFormFieldsProps {
   isUpdate: boolean;
@@ -168,18 +169,18 @@ export function SlackChannelConfigFormFields({
             <Badge variant="agent" className="bg-blue-100 text-blue-800">
               {t("slackChannelConfigs.defaultConfigBadge")}
             </Badge>
-            <p className="mt-2 text-sm">
+            <Text as="p" className="mt-2 text-sm">
               {t("slackChannelConfigs.defaultConfigDesc")}
-            </p>
+            </Text>
             <div className="mt-4 p-4 bg-background rounded-md border border-neutral-300">
               <CheckboxField
                 name="disabled"
                 label={t("slackChannelConfigs.disableDefaultConfig")}
                 labelClassName="text-text"
               />
-              <p className="mt-2 text-sm italic">
+              <Text as="p" className="mt-2 text-sm italic">
                 {t("slackChannelConfigs.disableDefaultWarning")}
-              </p>
+              </Text>
             </div>
           </>
         )}
@@ -293,9 +294,9 @@ export function SlackChannelConfigFormFields({
 
                     {viewUnselectableSets && unselectableSets.length > 0 && (
                       <div className="mt-4">
-                        <p className="text-sm text-text-dark/80">
+                        <Text as="p" className="text-sm text-text-dark/80">
                           {t("slackChannelConfigs.autoSyncDocs")}
-                        </p>
+                        </Text>
                         <div className="mb-3 mt-2 flex gap-2 flex-wrap text-sm">
                           {unselectableSets.map((documentSet) => (
                             <DocumentSetCard
@@ -360,9 +361,9 @@ export function SlackChannelConfigFormFields({
             />
             {viewSyncEnabledAgents && syncEnabledAgents.length > 0 && (
               <div className="mt-4">
-                <p className="text-sm text-text-dark/80">
+                <Text as="p" className="text-sm text-text-dark/80">
                   {t("slackChannelConfigs.unselectableAgents")}
-                </p>
+                </Text>
                 <div className="mb-3 mt-2 flex gap-2 flex-wrap text-sm">
                   {syncEnabledAgents.map((persona: MinimalPersonaSnapshot) => (
                     <button
@@ -557,13 +558,13 @@ export function SlackChannelConfigFormFields({
                 <Label className="text-text mb-2 font-semibold">
                   {t("slackChannelConfigs.privacyAlert")}
                 </Label>
-                <p className="text-sm text-text-darker mb-4">
+                <Text as="p" className="text-sm text-text-darker mb-4">
                   {t("slackChannelConfigs.privacyAlertDesc")}
-                </p>
+                </Text>
                 <div className="space-y-2">
-                  <h4 className="text-sm text-text font-medium">
+                  <Text as="h4" className="text-sm text-text font-medium">
                     {t("slackChannelConfigs.relevantConnectors")}
-                  </h4>
+                  </Text>
                   <div className="max-h-40 overflow-y-auto border-t border-text-subtle flex-col gap-y-2">
                     {memoizedPrivateConnectors.map((ccpairinfo: any) => (
                       <Link

@@ -4,7 +4,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Formik, Form, useFormikContext } from "formik";
 import useSWR from "swr";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 import { getErrorMsg } from "@/lib/fetchUtils";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import * as InputLayouts from "@/layouts/input-layouts";
@@ -242,11 +242,14 @@ function ChatPreferencesForm() {
       try {
         await mutateDefaultAgent(
           async () => {
-            const response = await fetch("/api/admin/default-assistant", {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ tool_ids: newToolIds }),
-            });
+            const response = await authenticatedFetch(
+              "/api/admin/default-assistant",
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ tool_ids: newToolIds }),
+              }
+            );
             if (!response.ok) {
               const errorMsg = (await getErrorMsg(response)) ?? "Unknown error";
               throw new Error(errorMsg);
@@ -295,7 +298,7 @@ function ChatPreferencesForm() {
       const newSettings = { ...currentSettings, ...updates };
 
       try {
-        const response = await fetch("/api/admin/settings", {
+        const response = await authenticatedFetch("/api/admin/settings", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(newSettings),
@@ -751,13 +754,16 @@ function ChatPreferencesForm() {
               prominence="primary"
               onClick={async () => {
                 try {
-                  const response = await fetch("/api/admin/default-assistant", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      system_prompt: systemPromptValue,
-                    }),
-                  });
+                  const response = await authenticatedFetch(
+                    "/api/admin/default-assistant",
+                    {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        system_prompt: systemPromptValue,
+                      }),
+                    }
+                  );
                   if (!response.ok) {
                     const errorMsg =
                       (await getErrorMsg(response)) ?? "Unknown error";

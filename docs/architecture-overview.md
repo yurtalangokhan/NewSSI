@@ -190,7 +190,43 @@ perceptrons, tool gateway, graph schema, runtime policies) through the
 `agent_composition` package — `AgentFactory` → `AgentComposer` → `ComposedAgent`
 — rather than monolithic agent modules. Built-in agents are recipes; LangGraph
 Studio graphs are exposed from `src/agents/studio_graphs.py`. See
-[docs/agent-composition.md](agent-composition.md) for the full runtime
-reference and the list of legacy modules removed in ASC-7.
+[agent composition](../apps/agent-service/docs/agent-composition.md) for the
+full runtime reference and the list of legacy modules removed in ASC-7.
 
 ```
+
+### Visual Flow Canvas Execution Architecture
+
+```mermaid
+flowchart LR
+  Canvas["Flow Canvas (Web) - vendored Langflow editor"]
+  DraftAPI["PUT /agent-definitions/{id}/flow/draft"]
+  Validator["domain/flows/validator - structural checks"]
+  DraftRow[("agent_flow_versions - draft row")]
+  PublishAPI["POST /agent-definitions/{id}/flow/publish"]
+  PublishedRow[("agent_flow_versions - published row")]
+  FlowAgent["FlowAgent (agents/flow_agent.py)"]
+  Builder["flow_builder.py - FlowSpec -> LangGraph graph"]
+  Registry["domain/flows/registry + resolvers - component templates"]
+  ChatRun["Production chat run"]
+  PlaygroundAPI["POST .../flow/playground/runs/stream"]
+  Audit["domain/flows/audit -> user-service audit_logs"]
+
+  Canvas --> DraftAPI --> Validator --> DraftRow
+  DraftRow --> PublishAPI --> PublishedRow
+  DraftRow --> PlaygroundAPI --> FlowAgent
+  PublishedRow --> ChatRun --> FlowAgent
+  FlowAgent --> Builder --> Registry
+  DraftAPI -.-> Audit
+  PublishAPI -.-> Audit
+  PlaygroundAPI -.-> Audit
+```
+
+- Drafts are mutable and never touch what production runs; publishing promotes
+  a validated draft to an immutable `agent_flow_versions` row (rollback creates
+  a new version from an older one rather than mutating history).
+- The playground executes the current draft (or an unsaved inline spec) via a
+  separate `run_kind="playground"` thread namespace, isolated from production
+  chat runs but sharing the same `FlowAgent` compilation path.
+- Every draft save, publish, rollback, and playground run emits a `flow:*`
+  audit event to user-service's shared `audit_logs` table (P3 Task 19).

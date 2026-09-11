@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import TextViewModal from "@/sections/modals/TextViewModal";
 import { MinimalOnyxDocument } from "@/lib/search/interfaces";
 import { useTranslation } from "react-i18next";
+import { chatFileDownloadUrl } from "@/lib/chat/svc";
 
 export interface ExpandableContentWrapperProps {
   fileDescriptor: FileDescriptor;
@@ -52,7 +53,10 @@ export default function ExpandableContentWrapper({
 
   const downloadFile = () => {
     const a = document.createElement("a");
-    a.href = `api/chat/file/${fileDescriptor.id}`;
+    // Same endpoint the CSV table view reads, which serves an XLSX transcoded
+    // to CSV — the download needs the original bytes, and an absolute path so
+    // it does not resolve against the current route.
+    a.href = chatFileDownloadUrl(fileDescriptor.id);
     a.download = fileDescriptor.name || t("filePreview.defaultDownloadName");
     a.setAttribute(
       "download",

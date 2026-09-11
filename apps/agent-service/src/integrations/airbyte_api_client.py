@@ -12,7 +12,6 @@ retry, and timeout handling.
 from __future__ import annotations
 
 import asyncio
-import logging as _stdlib_logging
 from typing import Any
 
 import httpx
@@ -21,7 +20,7 @@ from core.env import env
 from core.logger import get_logger
 
 logger = get_logger(__name__)
-logger_stdlib = _stdlib_logging.getLogger(__name__)
+logger_stdlib = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Custom exception

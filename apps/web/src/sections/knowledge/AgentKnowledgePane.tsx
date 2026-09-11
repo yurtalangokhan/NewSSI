@@ -14,7 +14,7 @@ import Separator from "@/refresh-components/Separator";
 import Switch from "@/refresh-components/inputs/Switch";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
-import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import Spacer from "@/refresh-components/Spacer";
 import { Disabled } from "@/refresh-components/Disabled";
 import {
@@ -39,7 +39,9 @@ export interface AgentKnowledgePaneProps {
   onDocumentCollectionIdsChange: (ids: string[]) => void;
   ragGraphCollectionIds: string[];
   onGraphCollectionIdsChange: (ids: string[]) => void;
-  onCollectionDisplayNamesChange?: (displayNames: Record<string, string>) => void;
+  onCollectionDisplayNamesChange?: (
+    displayNames: Record<string, string>
+  ) => void;
 }
 
 // ============================================================================
@@ -51,10 +53,10 @@ function SyncStatusDot({ status }: { status: string }) {
     status === "idle"
       ? "bg-green-500"
       : status === "syncing" || status === "starting"
-      ? "bg-yellow-500"
-      : status === "error"
-      ? "bg-red-500"
-      : "bg-gray-400";
+        ? "bg-yellow-500"
+        : status === "error"
+          ? "bg-red-500"
+          : "bg-gray-400";
 
   return (
     <span
@@ -168,13 +170,22 @@ function KnowledgeTable<T>({
   ariaLabelPrefix,
 }: KnowledgeTableProps<T>) {
   const { t } = useTranslation();
-  const resolvedSearchPlaceholder = searchPlaceholder ?? t("agentKnowledge.searchPlaceholder");
-  const resolvedEmptyMessage = emptyMessage ?? t("agentKnowledge.noItemsAvailable");
+  const resolvedSearchPlaceholder =
+    searchPlaceholder ?? t("agentKnowledge.searchPlaceholder");
+  const resolvedEmptyMessage =
+    emptyMessage ?? t("agentKnowledge.noItemsAvailable");
   if (isLoading) {
     return (
-      <GeneralLayouts.Section height="auto" padding={1}>
-        <SimpleLoader />
-      </GeneralLayouts.Section>
+      <div className="w-full p-2">
+        <TableSkeleton
+          rowCount={4}
+          columns={[
+            { type: "icon-text", width: "w-48", headerWidth: "w-24" },
+            { type: "badge", width: "w-20", headerWidth: "w-16" },
+            { type: "actions", width: "w-16", headerWidth: "w-16" },
+          ]}
+        />
+      </div>
     );
   }
 

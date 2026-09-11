@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ContentComponentProps } from "./ExpandableContentWrapper";
-import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import { SvgAlertCircle } from "@opal/icons";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
@@ -112,9 +112,15 @@ const CsvContent: React.FC<ContentComponentProps> = ({
 
   if (isLoading || isFetching) {
     return (
-      <div className="flex items-center justify-center h-[300px]">
-        <SimpleLoader />
-      </div>
+      <TableSkeleton
+        rowCount={4}
+        columns={[
+          { type: "text", width: "w-24" },
+          { type: "text", width: "w-32" },
+          { type: "text", width: "w-28" },
+          { type: "text", width: "w-20" },
+        ]}
+      />
     );
   }
 

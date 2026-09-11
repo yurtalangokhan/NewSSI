@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useState, useCallback } from "react";
 import CardSection from "@/components/admin/CardSection";
 import Button from "@/refresh-components/buttons/Button";
@@ -125,9 +127,14 @@ export default function WebCrawlPanel({
     async (id: string, url: string) => {
       const trimmed = url.trim();
       if (!trimmed) return;
-      patchEntry(id, { crawling: true, error: null, validationError: null, result: null });
+      patchEntry(id, {
+        crawling: true,
+        error: null,
+        validationError: null,
+        result: null,
+      });
       try {
-        const res = await fetch(
+        const res = await authenticatedFetch(
           "/api/admin/web-search/content-providers/crawl",
           {
             method: "POST",
@@ -187,9 +194,11 @@ export default function WebCrawlPanel({
           (result.title || url.replace(/[^a-zA-Z0-9]/g, "_")) + ".txt";
         const blob = new Blob([result.editedContent], { type: "text/plain" });
         const file = new File([blob], fileName, { type: "text/plain" });
-        const res = await uploadDocuments(collectionId, [file], [
-          { source: url, title: result.title || url },
-        ]);
+        const res = await uploadDocuments(
+          collectionId,
+          [file],
+          [{ source: url, title: result.title || url }]
+        );
         toast.success(
           res.message ||
             t("admin.documentProcessing.webCrawl.addedSuccess", {
@@ -198,7 +207,13 @@ export default function WebCrawlPanel({
         );
         if (res.warnings) toast.warning(res.warnings);
         // Clear result and URL so the preview card collapses
-        patchEntry(id, { adding: false, result: null, url: "", error: null, validationError: null });
+        patchEntry(id, {
+          adding: false,
+          result: null,
+          url: "",
+          error: null,
+          validationError: null,
+        });
         onDocumentAdded();
       } catch (e) {
         toast.error(
@@ -265,7 +280,11 @@ export default function WebCrawlPanel({
                 )}
               </div>
               {entry.validationError && (
-                <Text as="p" mainContentMuted className="text-status-error-05 text-xs px-1">
+                <Text
+                  as="p"
+                  mainContentMuted
+                  className="text-status-error-05 text-xs px-1"
+                >
                   {entry.validationError}
                 </Text>
               )}
@@ -347,11 +366,7 @@ export default function WebCrawlPanel({
                       leftIcon={entry.adding ? SpinningLoader : SvgUploadCloud}
                       disabled={entry.adding}
                       onClick={() =>
-                        void addToCollection(
-                          entry.id,
-                          entry.url,
-                          entry.result!
-                        )
+                        void addToCollection(entry.id, entry.url, entry.result!)
                       }
                       className="w-full md:w-auto"
                     >

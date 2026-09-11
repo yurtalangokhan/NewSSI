@@ -8,14 +8,14 @@ updated as the background task runs.
 """
 
 import hashlib
-import logging
 from typing import Any
 
 from langconnect.models.documents import FileUploadDTO, UploadProgress, UploadStatus
+from langconnect.observability import get_logger
 from langconnect.services import process_document
 from langconnect.services.collections import Collection
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 UPLOAD_EMBED_BATCH_SIZE = 16
 

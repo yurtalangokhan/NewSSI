@@ -92,6 +92,9 @@ describe("useTimelineUIState", () => {
     expect(result.current.uiState).toBe(TimelineUIState.COMPLETED_EXPANDED);
   });
   test("shows Done step for reasoning step once display content arrives", () => {
+    // `PacketType` is a string enum, but `Packet.obj` is the raw-literal
+    // `ObjTypes` union — enum members are not assignable to their raw
+    // literals, so this fixture spells the literals out like the tests above.
     const packets: Packet[] = [
       {
         placement: { turn_index: 0, tab_index: 0 },

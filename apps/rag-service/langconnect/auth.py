@@ -144,6 +144,7 @@ def decode_keycloak_token(token: str) -> dict[str, Any]:
                 "verify_aud": bool(audiences),
                 "verify_iss": True,
                 "verify_exp": True,
+                "verify_iat": False,
             },
         )
         return claims

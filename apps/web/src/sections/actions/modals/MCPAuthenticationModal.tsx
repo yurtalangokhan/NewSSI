@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import useSWR, { KeyedMutator } from "swr";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 import Modal from "@/refresh-components/Modal";
 import { FormField } from "@/refresh-components/form/FormField";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
@@ -267,19 +267,22 @@ export default function MCPAuthenticationModal({
 
       // Step 3: For OAuth, initiate the OAuth flow
       if (authType === MCPAuthenticationType.OAUTH) {
-        const oauthResponse = await fetch("/api/admin/mcp/oauth/connect", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            server_id: mcpServer.id.toString(),
-            oauth_client_id: values.oauth_client_id,
-            oauth_client_secret: values.oauth_client_secret,
-            return_path: `/admin/actions/mcp/?server_id=${mcpServer.id}&trigger_fetch=true`,
-            include_resource_param: true,
-          }),
-        });
+        const oauthResponse = await authenticatedFetch(
+          "/api/admin/mcp/oauth/connect",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              server_id: mcpServer.id.toString(),
+              oauth_client_id: values.oauth_client_id,
+              oauth_client_secret: values.oauth_client_secret,
+              return_path: `/admin/actions/mcp/?server_id=${mcpServer.id}&trigger_fetch=true`,
+              include_resource_param: true,
+            }),
+          }
+        );
 
         if (!oauthResponse.ok) {
           const error = await oauthResponse.json();
@@ -422,7 +425,7 @@ export default function MCPAuthenticationModal({
                               value={MCPAuthenticationType.API_TOKEN}
                               description="Use per-user individual API key or organization-wide shared API key."
                             >
-                                {t("admin.mcpAuth.oauthPassThrough")}
+                              {t("admin.mcpAuth.oauthPassThrough")}
                             </InputSelect.Item>
                             <InputSelect.Item
                               value={MCPAuthenticationType.NONE}
@@ -526,7 +529,7 @@ export default function MCPAuthenticationModal({
                             secondaryBody
                             className="whitespace-nowrap"
                           >
-                            {t("admin.mcpAuth.use")} {" "}
+                            {t("admin.mcpAuth.use")}{" "}
                             <span className="font-secondary-action">
                               {t("admin.mcpAuth.redirectUri")}
                             </span>
@@ -627,7 +630,9 @@ export default function MCPAuthenticationModal({
                   {values.auth_type === MCPAuthenticationType.NONE && (
                     <Message
                       text={t("admin.mcpAuth.noAuthenticationText")}
-                      description={t("admin.mcpAuth.noAuthenticationDescription")}
+                      description={t(
+                        "admin.mcpAuth.noAuthenticationDescription"
+                      )}
                       default
                       medium
                       static

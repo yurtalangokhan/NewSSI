@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import logging
-
 from langconnect.database.neo4j.queries.visualization import (
     ALL_COLLECTION_EDGES,
     ALL_LABEL_COUNTS,
@@ -35,8 +33,9 @@ from langconnect.models.graph import (
     GraphNode,
     GraphStats,
 )
+from langconnect.observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class VisualizationRepository(Neo4jRepository):

@@ -1,5 +1,4 @@
 import html
-import logging
 import secrets
 from html.parser import HTMLParser
 from typing import Any
@@ -8,7 +7,9 @@ from urllib.parse import parse_qs, urljoin, urlparse
 import httpx
 from i18n import t
 
-logger = logging.getLogger(__name__)
+from src.core.observability import get_logger
+
+logger = get_logger(__name__)
 
 
 class _KeycloakLoginFormParser(HTMLParser):

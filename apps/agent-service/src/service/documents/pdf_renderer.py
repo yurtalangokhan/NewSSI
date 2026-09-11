@@ -14,10 +14,10 @@ to whichever registered TTF bucket is closest).
 from __future__ import annotations
 
 import io
-import logging
 import re
 from typing import Any
 
+from core.logger import get_logger
 from service.documents import header_footer
 from service.documents.blocks import (
     Block,
@@ -51,7 +51,7 @@ from service.documents.pdf_fonts import resolve_font_family
 from service.documents.pdf_header_footer import needs_deferred_page_count, resolve_segment
 from service.documents.themes import EffectiveStyle, resolve_effective_style
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _IMAGE_TARGET_WIDTH_PT = 420
 _LIST_INDENT_STEP_PT = 14

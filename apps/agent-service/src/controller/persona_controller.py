@@ -1,226 +1,49 @@
 """Controller for persona endpoints."""
 
-import logging
-import re
+import asyncio
 import uuid
 from typing import Any
 
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, UploadFile
 from i18n import t
 
+from api.dependencies import extract_auth_token_from_request
 from controller.base import BaseController
+from controller.persona_helpers import (
+    RAG_TOOL_NAMES,
+    _format_tool_display_name,
+    _has_web_search_tool,
+    _is_uuid_owner_id,
+    _parse_mcp_tool_description,
+    _rag_tool_metadata,
+    build_agent_availability,
+    flow_meta_fields,
+)
 from core.env import env
+from core.logger import get_logger
 from core.settings import settings
 from repository.persona_repository import PersonaDB
 from service.AuthService import AuthenticatedUser, get_auth_service, get_primary_user_id
 
 DEFAULT_USER_ID = "dev-user"
-logger = logging.getLogger(__name__)
-
-# database_search/graph_search are synthesized from an agent's RAG config
-# rather than being real MCP tools, so there's no external catalog to pull a
-# name/description from — these come from this service's own locale files
-# (translated per-request via the same X-Language mechanism as everything
-# else, see i18n-py's middleware) instead of tools-service.
-RAG_TOOL_NAMES = ("database_search", "graph_search")
-
-
-def _rag_tool_metadata(tool_name: str) -> dict[str, str]:
-    return {
-        "display_name": t(f"rag_tool.{tool_name}.name"),
-        "description": t(f"rag_tool.{tool_name}.description"),
-    }
-
-
-# tools-service embeds category/category_label/title tags directly into a
-# tool's `description` string so a single field can carry all three pieces
-# of per-request-translated metadata (see
-# apps/tools-service/src/core/registry.py's `_setup_i18n_wrapper`). Callers
-# must strip these before showing the description to a user, and may pull
-# the localized display name out of the title tag.
-_MCP_TOOL_TAG_RE = re.compile(r"\[(?:category|category_label|title):[^\]]*\]")
-_MCP_TOOL_TITLE_TAG_RE = re.compile(r"\[title:([^\]]*)\]")
-
-
-def _parse_mcp_tool_description(raw_description: str) -> tuple[str, str | None]:
-    """Returns (clean_description, localized_title_or_None)."""
-    title_match = _MCP_TOOL_TITLE_TAG_RE.search(raw_description)
-    title = title_match.group(1).strip() if title_match else None
-    clean = _MCP_TOOL_TAG_RE.sub("", raw_description).strip()
-    return clean, title or None
-
-
-def _is_uuid_owner_id(owner_id: str) -> bool:
-    try:
-        uuid.UUID(owner_id)
-    except ValueError:
-        return False
-    return True
-
-
-def _normalize_model_alias(model_name: str | None) -> str | None:
-    """Normalize provider aliases to concrete model names."""
-    if model_name is None:
-        return None
-    normalized = str(model_name).strip()
-    if not normalized:
-        return None
-    lower_name = normalized.lower()
-    if lower_name in {"ollama", "default", "provider", "builtin"}:
-        return env.OLLAMA_MODEL or settings.OLLAMA_MODEL or settings.DEFAULT_MODEL
-    return normalized
-
-
-def build_agent_availability(
-    agent: dict[str, Any],
-    *,
-    available_models: set[str],
-    default_model: str | None,
-    available_mcp_tools: set[str],
-    available_rag_collections: set[str],
-    available_graph_rag_collections: set[str],
-    collection_display_names: dict[str, str] | None = None,
-    memory_available: bool = True,
-) -> dict[str, Any]:
-    """Return component-level availability for an agent snapshot."""
-    checks: list[dict[str, str]] = []
-    raw_selected = agent.get("llm_model_version_override") or agent.get("model")
-    selected_model = _normalize_model_alias(raw_selected) if raw_selected else None
-
-    raw_default = default_model or settings.DEFAULT_MODEL or env.DEFAULT_MODEL
-    effective_default_model = _normalize_model_alias(raw_default) if raw_default else None
-
-    if effective_default_model and effective_default_model not in available_models:
-        ollama_default = env.OLLAMA_MODEL or settings.OLLAMA_MODEL
-        if ollama_default and ollama_default in available_models:
-            effective_default_model = ollama_default
-
-    if selected_model:
-        if selected_model in available_models:
-            checks.append(
-                {
-                    "component": "model",
-                    "status": "ok",
-                    "message": f"Model '{selected_model}' is available.",
-                }
-            )
-        else:
-            checks.append(
-                {
-                    "component": "model",
-                    "status": "error",
-                    "message": f"Model '{selected_model}' is selected but is not available.",
-                }
-            )
-    elif effective_default_model:
-        if effective_default_model in available_models:
-            checks.append(
-                {
-                    "component": "model",
-                    "status": "ok",
-                    "message": f"Using default model '{effective_default_model}'.",
-                }
-            )
-        else:
-            checks.append(
-                {
-                    "component": "model",
-                    "status": "error",
-                    "message": f"Default model '{effective_default_model}' is not available.",
-                }
-            )
-    else:
-        checks.append(
-            {
-                "component": "model",
-                "status": "error",
-                "message": "No default model is configured.",
-            }
-        )
-
-    memory_enabled = agent.get("memory_type") == "long_term" or bool(agent.get("long_term_memory"))
-    if memory_enabled:
-        checks.append(
-            {
-                "component": "memory",
-                "status": "ok" if memory_available else "error",
-                "message": (
-                    "Long-term memory is available."
-                    if memory_available
-                    else "Long-term memory is enabled but memory storage is not available."
-                ),
-            }
-        )
-
-    for tool_name in agent.get("mcp_tools") or []:
-        checks.append(
-            {
-                "component": "mcp_tool",
-                "status": "ok" if tool_name in available_mcp_tools else "error",
-                "message": (
-                    f"MCP tool '{tool_name}' is available."
-                    if tool_name in available_mcp_tools
-                    else f"MCP tool '{tool_name}' is selected but is not available."
-                ),
-            }
-        )
-
-    rag_config = agent.get("rag_config") or {}
-    rag_config_display_names = rag_config.get("display_names") or {}
-    if not isinstance(rag_config_display_names, dict):
-        rag_config_display_names = {}
-    collection_display_names = {
-        **rag_config_display_names,
-        **(collection_display_names or {}),
-    }
-    for collection in rag_config.get("document_processing") or []:
-        display_name = collection_display_names.get(collection, collection)
-        checks.append(
-            {
-                "component": "rag",
-                "status": "ok" if collection in available_rag_collections else "error",
-                "message": (
-                    f"RAG collection '{display_name}' is available."
-                    if collection in available_rag_collections
-                    else f"RAG collection '{display_name}' is selected but is not available."
-                ),
-            }
-        )
-
-    for collection in rag_config.get("knowledge_graph") or []:
-        display_name = collection_display_names.get(collection, collection)
-        checks.append(
-            {
-                "component": "graph_rag",
-                "status": "ok" if collection in available_graph_rag_collections else "error",
-                "message": (
-                    f"Graph RAG collection '{display_name}' is available."
-                    if collection in available_graph_rag_collections
-                    else f"Graph RAG collection '{display_name}' is selected but is not available."
-                ),
-            }
-        )
-
-    if any(check["status"] == "error" for check in checks):
-        status_value = "unavailable"
-    elif any(check["status"] == "warning" for check in checks):
-        status_value = "degraded"
-    else:
-        status_value = "available"
-
-    return {"status": status_value, "checks": checks}
-
-
-def _format_tool_display_name(tool_name: str) -> str:
-    return tool_name.replace("_", " ").replace("-", " ").title()
-
-
-def _has_web_search_tool(tool_names: list[str]) -> bool:
-    return any("web_search" in tool_name or "web-search" in tool_name for tool_name in tool_names)
+CATALOG_AVAILABILITY_TIMEOUT_SECONDS = 5.0
+logger = get_logger(__name__)
 
 
 class PersonaController(BaseController):
     """Owns persona CRUD and persona-related helper endpoints."""
+
+    async def _validate_connector_bindings(
+        self, payload: dict[str, Any], user_id: str
+    ) -> list[dict[str, Any]]:
+        bindings = payload.get("connector_bindings") or []
+        if not bindings:
+            return []
+        from service.ConnectorToolService import get_connector_tool_service
+
+        return await get_connector_tool_service().validate_bindings(
+            bindings, base_agent=payload.get("base_agent"), user_id=user_id
+        )
 
     @property
     def _mail_config_service(self):
@@ -271,12 +94,12 @@ class PersonaController(BaseController):
         user: AuthenticatedUser,
     ) -> str:
         identity = await get_auth_service().resolve_user_identity(
-            request=request, user_id=user.user_id, user=user
+            token=extract_auth_token_from_request(request), user_id=user.user_id, user=user
         )
         return get_primary_user_id(identity, user.user_id) or user.user_id
 
     async def _get_dynamic_definition(self, persona_id: int):
-        from agents.storage.repository import AgentDefinitionRepository
+        from repository.agent_definition_repository import AgentDefinitionRepository
 
         return await AgentDefinitionRepository().get_by_persona_id(persona_id)
 
@@ -351,9 +174,18 @@ class PersonaController(BaseController):
         self,
         payload: dict[str, Any],
         persona: dict[str, Any],
+        definition: Any | None = None,
     ) -> dict[str, Any]:
+        # A PATCH that doesn't resend `graph_schema` (e.g. a plain rename)
+        # must not silently reset an existing flow-backed definition to
+        # "zero_shot" — that severs it from its `flow_spec` (agent_factory.py
+        # only builds a `FlowAgent` when `graph_schema == "flow"`) on the
+        # very next chat request, with no error anywhere in between. Falls
+        # back to the definition's own current value first, "zero_shot"
+        # only when there's no definition yet (a brand-new dynamic agent).
+        existing_graph_schema = definition.graph_schema if definition else None
         return {
-            "graph_schema": payload.get("graph_schema") or "zero_shot",
+            "graph_schema": payload.get("graph_schema") or existing_graph_schema or "zero_shot",
             "brain_type": payload.get("brain_type") or "llm",
             "memory_type": payload.get("memory_type") or "none",
             "system_prompt": payload.get("system_prompt") or None,
@@ -383,14 +215,14 @@ class PersonaController(BaseController):
         if payload.get("base_agent") != "dynamic-agent":
             return
 
-        from agents.storage.repository import AgentDefinitionRepository
         from domain.agents.service import AgentDefinitionService
+        from repository.agent_definition_repository import AgentDefinitionRepository
 
         repo = AgentDefinitionRepository()
         service = AgentDefinitionService(repo)
         persona_id = int(persona["id"])
         definition = await repo.get_by_persona_id(persona_id)
-        dynamic_payload = self._dynamic_payload_from_persona_payload(payload, persona)
+        dynamic_payload = self._dynamic_payload_from_persona_payload(payload, persona, definition)
 
         if definition:
             await service.update_agent_definition(definition.id, dynamic_payload)
@@ -408,6 +240,7 @@ class PersonaController(BaseController):
         self,
         serialized: dict[str, Any],
         definition: Any | None,
+        flow_summaries: dict[Any, Any] | None = None,
     ) -> dict[str, Any]:
         if not definition:
             return serialized
@@ -415,6 +248,12 @@ class PersonaController(BaseController):
         serialized.update(
             {
                 "is_dynamic": True,
+                # (UUID) to call the flow draft/versions/publish endpoints
+                # (FlowVersionsRoute.py) — those take `definition_id`, not
+                # this persona's own numeric `id`. Never exposed before
+                # this task; a flow-backed persona's canvas had no way to
+                # know which definition row to talk to.
+                "agent_definition_id": str(definition.id),
                 "graph_schema": definition.graph_schema,
                 "brain_type": definition.brain_type,
                 "memory_type": definition.memory_type,
@@ -432,6 +271,7 @@ class PersonaController(BaseController):
                 "max_iterations": definition.max_iterations,
             }
         )
+        serialized.update(flow_meta_fields(definition, flow_summaries))
         return serialized
 
     def _resolve_owner_email(
@@ -458,6 +298,7 @@ class PersonaController(BaseController):
     async def _load_owner_emails(
         self,
         personas: list[dict[str, Any]],
+        current_user: AuthenticatedUser | None = None,
     ) -> dict[str, str]:
         owner_ids = list(
             dict.fromkeys(
@@ -468,22 +309,32 @@ class PersonaController(BaseController):
                 and _is_uuid_owner_id(owner_id)
             )
         )[:100]
+        result: dict[str, str] = {}
+        if (
+            current_user
+            and getattr(current_user, "email", None)
+            and getattr(current_user, "user_id", None)
+        ):
+            result[str(current_user.user_id)] = str(current_user.email)
+
         if not owner_ids:
-            return {}
+            return result
 
         try:
             from service.UserServiceClient import get_users_by_ids
 
             users = await get_users_by_ids(owner_ids)
+            result.update(
+                {
+                    str(user["id"]): str(user["email"])
+                    for user in users
+                    if user.get("id") and user.get("email")
+                }
+            )
         except Exception:
             logger.warning("Failed to resolve persona owner emails", exc_info=True)
-            return {}
 
-        return {
-            str(user["id"]): str(user["email"])
-            for user in users
-            if user.get("id") and user.get("email")
-        }
+        return result
 
     def _extract_rag_tool_names(self, rag_config: dict[str, Any] | None) -> list[str]:
         rag = rag_config or {}
@@ -945,6 +796,8 @@ class PersonaController(BaseController):
         rag_payload: dict[str, Any] | None = None,
         local_collection_cache: dict[str, dict[str, Any] | None] | None = None,
         tool_descriptions: dict[str, dict[str, str]] | None = None,
+        dynamic_defs_by_persona_id: dict[int, Any] | None = None,
+        flow_summaries: dict[Any, Any] | None = None,
     ) -> dict[str, Any]:
         label_ids = persona.get("labels") or []
         labels = [
@@ -970,6 +823,24 @@ class PersonaController(BaseController):
         )
         has_retrieval = bool(has_scoped_knowledge or "search" in mcp_tools)
         long_term_memory = bool(persona.get("long_term_memory", False))
+        dynamic_def = (
+            dynamic_defs_by_persona_id.get(int(persona["id"]))
+            if dynamic_defs_by_persona_id and "id" in persona and persona["id"] is not None
+            else None
+        )
+        graph_schema = dynamic_def.graph_schema if dynamic_def else persona.get("graph_schema")
+        agent_definition_id = (
+            str(dynamic_def.id)
+            if dynamic_def
+            else (
+                str(persona["agent_definition_id"]) if persona.get("agent_definition_id") else None
+            )
+        )
+        is_dynamic = (
+            persona.get("base_agent") == "dynamic-agent"
+            or bool(dynamic_def)
+            or bool(persona.get("is_dynamic"))
+        )
         serialized = {
             "id": persona["id"],
             "external_id": persona.get("external_id"),
@@ -982,7 +853,7 @@ class PersonaController(BaseController):
             "display_priority": persona.get("display_priority"),
             "featured": bool(persona.get("featured", False)),
             "builtin_persona": False,
-            "is_dynamic": persona.get("base_agent") == "dynamic-agent",
+            "is_dynamic": is_dynamic,
             "labels": labels,
             "owner": {
                 "id": str(persona.get("user_id") or DEFAULT_USER_ID),
@@ -1004,6 +875,7 @@ class PersonaController(BaseController):
             "llm_model_provider_override": persona.get("llm_model_provider_override"),
             "mcp_tools": mcp_tools,
             "rag_config": rag_config,
+            "connector_bindings": persona.get("connector_bindings") or [],
             "action_count": len(mcp_tools),
             "memory_type": "long_term" if long_term_memory else persona.get("memory_type"),
             "long_term_memory": long_term_memory,
@@ -1016,6 +888,11 @@ class PersonaController(BaseController):
                 "long_term_memory": long_term_memory,
             },
         }
+        if graph_schema:
+            serialized["graph_schema"] = graph_schema
+        if agent_definition_id:
+            serialized["agent_definition_id"] = agent_definition_id
+        serialized.update(flow_meta_fields(dynamic_def, flow_summaries))
         serialized["availability"] = await self._get_agent_availability(
             serialized,
             available_models=available_models,
@@ -1031,10 +908,11 @@ class PersonaController(BaseController):
         persona: dict[str, Any],
         owner_emails: dict[str, str] | None = None,
         *,
+        user: AuthenticatedUser | None = None,
         tool_descriptions: dict[str, dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         if owner_emails is None:
-            owner_emails = await self._load_owner_emails([persona])
+            owner_emails = await self._load_owner_emails([persona], current_user=user)
 
         label_ids = persona.get("labels") or []
         labels = [
@@ -1092,12 +970,18 @@ class PersonaController(BaseController):
             "mcp_tools": mcp_tools,
             "mcp_tool_configs": mcp_tool_configs,
             "rag_config": rag_config,
+            "connector_bindings": persona.get("connector_bindings") or [],
             "long_term_memory": bool(persona.get("long_term_memory", False)),
             "search_start_date": persona.get("search_start_date"),
         }
         if persona.get("base_agent") == "dynamic-agent":
             definition = await self._get_dynamic_definition(int(persona["id"]))
-            self._merge_dynamic_definition(serialized, definition)
+            summaries: dict[Any, Any] = {}
+            if definition is not None and definition.graph_schema == "flow":
+                from repository.flow_version_repository import FlowVersionRepository
+
+                summaries = await FlowVersionRepository().get_summaries([definition.id])
+            self._merge_dynamic_definition(serialized, definition, flow_summaries=summaries)
         serialized["availability"] = await self._get_agent_availability(serialized)
         return serialized
 
@@ -1139,7 +1023,7 @@ class PersonaController(BaseController):
             ):
                 self._raise_not_found("persona.not_found")
 
-        return await self._serialize_custom_persona(persona)
+        return await self._serialize_custom_persona(persona, user=user)
 
     async def get_personas(
         self,
@@ -1182,7 +1066,7 @@ class PersonaController(BaseController):
                     can_manage_all_personas,
                 )
             ]
-            owner_emails = await self._load_owner_emails(visible_personas)
+            owner_emails = await self._load_owner_emails(visible_personas, current_user=user)
             for persona in visible_personas:
                 personas.append(await self._serialize_custom_persona(persona, owner_emails))
         except Exception:
@@ -1202,8 +1086,20 @@ class PersonaController(BaseController):
         # tool metadata fetch also supplies each tool snapshot's description
         # (shown behind the frontend's per-tool info icon), so the name set
         # used for availability is derived from it rather than fetched again.
-        available_models = await self._get_available_model_names()
-        mcp_tool_metadata = await self._get_mcp_tool_metadata()
+        try:
+            available_models, mcp_tool_metadata = await asyncio.wait_for(
+                asyncio.gather(
+                    self._get_available_model_names(),
+                    self._get_mcp_tool_metadata(),
+                ),
+                timeout=CATALOG_AVAILABILITY_TIMEOUT_SECONDS,
+            )
+        except TimeoutError:
+            logger.warning(
+                "Agent catalog availability lookup timed out; returning catalog with "
+                "dependency availability marked unavailable"
+            )
+            available_models, mcp_tool_metadata = set(), {}
         available_mcp_tools = set(mcp_tool_metadata.keys())
         memory_available = self._is_memory_available()
 
@@ -1250,7 +1146,7 @@ class PersonaController(BaseController):
                     can_manage_all_personas,
                 )
             ]
-            owner_emails = await self._load_owner_emails(visible_personas)
+            owner_emails = await self._load_owner_emails(visible_personas, current_user=user)
 
             # RAG collection membership is agent-specific, but the RAG
             # service always returns its *entire* catalog regardless of
@@ -1267,6 +1163,36 @@ class PersonaController(BaseController):
             )
             local_collection_cache: dict[str, dict[str, Any] | None] = {}
 
+            dynamic_defs_by_persona_id: dict[int, Any] = {}
+            try:
+                from repository.agent_definition_repository import AgentDefinitionRepository
+
+                dynamic_defs = await AgentDefinitionRepository().list_all(active_only=False)
+                dynamic_defs_by_persona_id = {
+                    d.persona_id: d for d in dynamic_defs if d.persona_id is not None
+                }
+            except Exception:
+                logger.warning(
+                    "Could not batch-load agent definitions for persona list; "
+                    "per-persona fields may be incomplete",
+                    exc_info=True,
+                )
+
+            flow_summaries: dict[Any, Any] = {}
+            try:
+                from repository.flow_version_repository import FlowVersionRepository
+
+                flow_definition_ids = [
+                    d.id for d in dynamic_defs_by_persona_id.values() if d.graph_schema == "flow"
+                ]
+                flow_summaries = await FlowVersionRepository().get_summaries(flow_definition_ids)
+            except Exception:
+                logger.warning(
+                    "Could not batch-load flow version summaries; flow cards will "
+                    "render without version metadata",
+                    exc_info=True,
+                )
+
             for persona in visible_personas:
                 agents.append(
                     await self._serialize_custom_persona_summary(
@@ -1278,10 +1204,12 @@ class PersonaController(BaseController):
                         rag_payload=rag_payload,
                         local_collection_cache=local_collection_cache,
                         tool_descriptions=mcp_tool_metadata,
+                        dynamic_defs_by_persona_id=dynamic_defs_by_persona_id,
+                        flow_summaries=flow_summaries,
                     )
                 )
         except Exception:
-            pass
+            logger.exception("Failed to assemble custom persona summaries; returning partial list")
 
         return agents
 
@@ -1354,6 +1282,7 @@ class PersonaController(BaseController):
             if request is not None and user is not None:
                 effective_user_id = await self.resolve_owner_user_id(request, user)
             effective_user_id = effective_user_id or DEFAULT_USER_ID
+            connector_bindings = await self._validate_connector_bindings(payload, effective_user_id)
             mcp_tools = payload.get("mcp_tools") or []
             mcp_tool_configs = await self._validate_mcp_tool_configs(
                 user_id=effective_user_id,
@@ -1373,12 +1302,17 @@ class PersonaController(BaseController):
                 llm_model_version_override=payload.get("llm_model_version_override"),
                 starter_messages=payload.get("starter_messages"),
                 labels=payload.get("label_ids", []),
+                uploaded_image_id=payload.get("uploaded_image_id"),
+                icon_name=payload.get("icon_name"),
                 base_agent=payload.get("base_agent"),
                 mcp_tools=mcp_tools,
                 mcp_tool_configs=mcp_tool_configs,
                 rag_config=rag_config,
+                connector_bindings=connector_bindings,
                 long_term_memory=bool(payload.get("long_term_memory", False)),
             )
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except Exception as exc:
@@ -1402,8 +1336,15 @@ class PersonaController(BaseController):
             if existing and existing.get("is_builtin"):
                 raise HTTPException(status_code=403, detail=t("persona.cannot_update_builtin"))
 
+            if "connector_bindings" not in payload:
+                payload = {
+                    **payload,
+                    "connector_bindings": (existing or {}).get("connector_bindings") or [],
+                }
+
             rag_config = payload.get("rag_config")
             effective_user_id = user_id or str((existing or {}).get("user_id") or DEFAULT_USER_ID)
+            connector_bindings = await self._validate_connector_bindings(payload, effective_user_id)
             mcp_tools = payload.get("mcp_tools") or []
             mcp_tool_configs = await self._validate_mcp_tool_configs(
                 user_id=effective_user_id,
@@ -1422,16 +1363,26 @@ class PersonaController(BaseController):
                 llm_model_version_override=payload.get("llm_model_version_override"),
                 starter_messages=payload.get("starter_messages"),
                 labels=payload.get("label_ids", []),
+                # Always both, never one: the picker is a single choice, so
+                # sending only the newly-set field would leave the other one
+                # behind and the old avatar would keep winning.
+                uploaded_image_id=(
+                    None if payload.get("remove_image") else payload.get("uploaded_image_id")
+                ),
+                icon_name=None if payload.get("remove_image") else payload.get("icon_name"),
                 base_agent=payload.get("base_agent"),
                 mcp_tools=mcp_tools,
                 mcp_tool_configs=mcp_tool_configs,
                 rag_config=rag_config,
+                connector_bindings=connector_bindings,
                 long_term_memory=bool(payload.get("long_term_memory", False)),
             )
             if not persona:
                 self._raise_not_found("persona.not_found")
         except HTTPException:
             raise
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except Exception as exc:
@@ -1448,7 +1399,7 @@ class PersonaController(BaseController):
             if persona and persona.get("base_agent") == "dynamic-agent":
                 definition = await self._get_dynamic_definition(persona_id)
                 if definition:
-                    from agents.storage.repository import AgentDefinitionRepository
+                    from repository.agent_definition_repository import AgentDefinitionRepository
 
                     await AgentDefinitionRepository().delete(definition.id)
             await PersonaDB.delete(persona_id)
@@ -1459,8 +1410,66 @@ class PersonaController(BaseController):
 
         return {"success": True}
 
-    async def upload_persona_image(self) -> dict[str, str]:
-        return {"file_id": "mock-image-id"}
+    async def upload_persona_image(
+        self,
+        file: UploadFile,
+        user_id: str | None = None,
+    ) -> dict[str, str]:
+        """Store an avatar image and return the id the frontend renders.
+
+        The returned id is served by ``GET /api/chat/file/{id}`` — the URL
+        `buildImgUrl` builds — so the bytes go into the same in-memory store
+        that endpoint reads, and into MinIO + the ``document`` table so they
+        survive a restart. Mirrors the project-file upload path in
+        user_controller rather than inventing a second storage scheme.
+        """
+        content_type = (file.content_type or "").strip() or "application/octet-stream"
+        if not content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail=t("persona.image_must_be_an_image"))
+
+        raw = await file.read()
+        if not raw:
+            raise HTTPException(status_code=400, detail=t("persona.image_is_empty"))
+
+        file_id = uuid.uuid4().hex
+        filename = file.filename or f"{file_id}.img"
+        effective_user_id = user_id or DEFAULT_USER_ID
+
+        from service.FileService import mime_to_chat_file_type, store_file
+
+        try:
+            store_file(file_id, raw, content_type, filename)
+        except ValueError as exc:
+            # store_file's only ValueError is the upload size limit.
+            raise HTTPException(status_code=413, detail=str(exc)) from exc
+
+        # Durable copy. Best-effort like every other upload path here: a
+        # MinIO outage must not block picking a logo, it only costs the
+        # image its survival across a restart.
+        try:
+            from core.db.repositories.document_repo import DocumentRepository
+            from service.MinioService import upload_file as minio_upload
+
+            object_key = minio_upload(
+                user_id=effective_user_id,
+                file_id=file_id,
+                filename=filename,
+                data=raw,
+                mime_type=content_type,
+            )
+            await DocumentRepository().create(
+                file_id=file_id,
+                user_id=effective_user_id,
+                filename=filename,
+                mime_type=content_type,
+                chat_file_type=mime_to_chat_file_type(content_type),
+                size_bytes=len(raw),
+                minio_object_key=object_key,
+            )
+        except Exception as exc:  # noqa: BLE001 - durability is best-effort
+            logger.warning("MinIO/DB persist failed for persona image %s: %s", file_id, exc)
+
+        return {"file_id": file_id}
 
     async def get_persona_labels(self) -> list[Any]:
         return []

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { ThreeDotsLoader } from "@/components/Loading";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import {
   Table,
   TableBody,
@@ -14,10 +14,11 @@ import {
 import Button from "@/refresh-components/buttons/Button";
 import { Card } from "@/components/ui/card";
 import Text from "@/components/ui/text";
-import { Spinner } from "@/components/Spinner";
 import { SvgDownloadCloud } from "@opal/icons";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { useTranslation } from "react-i18next";
+import useSWR from "swr";
+import { errorHandlingFetcher } from "@/lib/fetcher";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DEBUG]!;
@@ -71,12 +72,19 @@ function Main() {
   };
 
   if (isLoading) {
-    return <ThreeDotsLoader />;
+    return (
+      <TableSkeleton
+        rowCount={5}
+        columns={[
+          { type: "text", width: "w-48", headerWidth: "w-24" },
+          { type: "actions", width: "w-28", headerWidth: "w-20" },
+        ]}
+      />
+    );
   }
 
   return (
     <>
-      {isDownloading && <Spinner />}
       <div className="mb-8">
         <Text className="mb-3">
           <b>{t("admin.debug.logsTitle")}</b> {t("admin.debug.description")}
@@ -120,6 +128,10 @@ function Main() {
 
 export default function Page() {
   const { t } = useTranslation();
+  const { isLoading } = useSWR<string[]>(
+    "/api/admin/long-term-logs",
+    errorHandlingFetcher
+  );
 
   return (
     <SettingsLayouts.Root>
@@ -130,11 +142,17 @@ export default function Page() {
             ? t(route.titleKey, { defaultValue: route.title })
             : route.title
         }
+        description={
+          route.descriptionKey
+            ? t(route.descriptionKey, { defaultValue: route.description })
+            : route.description
+        }
         separator
       />
       <SettingsLayouts.Body>
         <AdminOverviewPanel
           icon={route.icon}
+          isLoading={isLoading}
           title={t("admin.debug.workspaceTitle", {
             defaultValue: "Diagnostics workspace",
           })}
@@ -167,21 +185,6 @@ export default function Page() {
                 defaultValue: "Admin only",
               }),
               tone: "warning",
-            },
-          ]}
-          actions={[
-            {
-              label: t("admin.navigation.routes.systemInfo.sidebar", {
-                defaultValue: "System Information",
-              }),
-              href: ADMIN_PATHS.SYSTEM_INFO,
-            },
-            {
-              label: t("admin.navigation.routes.systemSettings.sidebar", {
-                defaultValue: "System Settings",
-              }),
-              href: ADMIN_PATHS.SYSTEM_SETTINGS,
-              primary: true,
             },
           ]}
         />

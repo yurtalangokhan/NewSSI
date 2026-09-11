@@ -1,0 +1,1410 @@
+{
+  "info": {
+    "name": "RAG Service API",
+    "description": "A REST API for a RAG system using FastAPI and LangChain",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Collections List",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/collections",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "collections"
+          ]
+        },
+        "description": "Lists all available vector collections (name and UUID).",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Collections Create",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/collections",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "collections"
+          ]
+        },
+        "description": "Creates a new vector collection by name with optional metadata.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Collections Get",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/collections/{{collection_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "collections",
+            "{{collection_id}}"
+          ]
+        },
+        "description": "Retrieves details (name and UUID) of a specific vector collection.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Collections Delete",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/collections/{{collection_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "collections",
+            "{{collection_id}}"
+          ]
+        },
+        "description": "Deletes a specific vector collection by name.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Collections Update",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/collections/{{collection_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "collections",
+            "{{collection_id}}"
+          ]
+        },
+        "description": "Updates a specific vector collection's name and/or metadata.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Name\",\n  \"metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Collections Force Delete",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/collections/{{collection_id}}/force",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "collections",
+            "{{collection_id}}",
+            "force"
+          ]
+        },
+        "description": "Deletes a collection while bypassing connector-managed read-only checks.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Knowledge Selector",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/datasources/knowledge-selector",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "datasources",
+            "knowledge-selector"
+          ]
+        },
+        "description": "Return categorised knowledge sources for the agent editor.Returns two lists:- ``document_processing``: all Milvus-backed collections (vector similarity search)- ``knowledge_graph``: collections that have a built knowledge graph in Neo4j",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Documents Create",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/collections/{{collection_id}}/documents",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "collections",
+            "{{collection_id}}",
+            "documents"
+          ]
+        },
+        "description": "Processes and indexes (adds) new document files with optional metadata.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Documents List",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/collections/{{collection_id}}/documents",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "collections",
+            "{{collection_id}}",
+            "documents"
+          ],
+          "query": [
+            {
+              "key": "limit",
+              "value": 10,
+              "required": false
+            },
+            {
+              "key": "offset",
+              "value": 0,
+              "required": false
+            }
+          ]
+        },
+        "description": "Lists documents within a specific collection.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Documents Upload Job Start",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/collections/{{collection_id}}/documents/upload-jobs",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "collections",
+            "{{collection_id}}",
+            "documents",
+            "upload-jobs"
+          ]
+        },
+        "description": "Start an async upload/embedding job and return immediately.Poll /collections/{collection_id}/documents/upload-jobs/status to trackprogress. Progress survives page navigation on the frontend since it istracked server-side, keyed by collection_id.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Documents Upload Job Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/collections/{{collection_id}}/documents/upload-jobs/status",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "collections",
+            "{{collection_id}}",
+            "documents",
+            "upload-jobs",
+            "status"
+          ]
+        },
+        "description": "Get the current upload job progress for a collection.Returns ``null`` when no upload job has ever been started for thiscollection.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Documents List Chunks",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/collections/{{collection_id}}/documents/{{document_id}}/chunks",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "collections",
+            "{{collection_id}}",
+            "documents",
+            "{{document_id}}",
+            "chunks"
+          ],
+          "query": [
+            {
+              "key": "limit",
+              "value": 20,
+              "required": false
+            },
+            {
+              "key": "offset",
+              "value": 0,
+              "required": false
+            }
+          ]
+        },
+        "description": "Lists a page of chunks (plus file-level stats) for a document (file_id).Chunks are paginated \u2014 large files can have thousands of chunks, andfetching them all in one response is heavy on both Milvus and thebrowser. Use `stats.total_chunks` / `has_more` to drive incrementalloading on the client.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Documents Delete",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/collections/{{collection_id}}/documents/{{document_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "collections",
+            "{{collection_id}}",
+            "documents",
+            "{{document_id}}"
+          ]
+        },
+        "description": "Deletes a specific document from a collection by its ID.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Documents Search",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/collections/{{collection_id}}/documents/search",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "collections",
+            "{{collection_id}}",
+            "documents",
+            "search"
+          ]
+        },
+        "description": "Search for documents within a specific collection.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"search term\",\n  \"limit\": 10,\n  \"filter\": \"sample text\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Build Graph",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/build",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "build"
+          ]
+        },
+        "description": "Trigger knowledge graph construction from a vector collection.This runs in the background and returns immediately.Poll /graph/build/{collection_id}/status to track progress.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"collection_id\": \"abc123def456\",\n  \"entity_types\": \"user\",\n  \"relationship_types\": \"user\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Build Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/build/{{collection_id}}/status",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "build",
+            "{{collection_id}}",
+            "status"
+          ]
+        },
+        "description": "Get the current build progress for a collection.Returns ``null`` when no build has ever been started for thiscollection, so the frontend can distinguish \"never built\" from\"pending\".",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Pause Build",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/build/{{collection_id}}/pause",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "build",
+            "{{collection_id}}",
+            "pause"
+          ]
+        },
+        "description": "Pause a currently running graph build.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Resume Build",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/build/{{collection_id}}/resume",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "build",
+            "{{collection_id}}",
+            "resume"
+          ]
+        },
+        "description": "Resume a paused graph build.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Stop Build",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/build/{{collection_id}}/stop",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "build",
+            "{{collection_id}}",
+            "stop"
+          ]
+        },
+        "description": "Request cancellation for a currently running graph build.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Graph Collections",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/collections",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "collections"
+          ]
+        },
+        "description": "Return the list of collection IDs that have a knowledge graph built.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Nodes",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/collections/{{collection_id}}/nodes",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "collections",
+            "{{collection_id}}",
+            "nodes"
+          ],
+          "query": [
+            {
+              "key": "limit",
+              "value": 100,
+              "required": false
+            },
+            {
+              "key": "offset",
+              "value": 0,
+              "required": false
+            }
+          ]
+        },
+        "description": "List nodes in the knowledge graph for a collection.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Edges",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/collections/{{collection_id}}/edges",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "collections",
+            "{{collection_id}}",
+            "edges"
+          ],
+          "query": [
+            {
+              "key": "limit",
+              "value": 200,
+              "required": false
+            },
+            {
+              "key": "offset",
+              "value": 0,
+              "required": false
+            }
+          ]
+        },
+        "description": "List edges (relationships) in the knowledge graph for a collection.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Graph Data",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/collections/{{collection_id}}/data",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "collections",
+            "{{collection_id}}",
+            "data"
+          ],
+          "query": [
+            {
+              "key": "node_limit",
+              "value": 200,
+              "required": false
+            },
+            {
+              "key": "edge_limit",
+              "value": 500,
+              "required": false
+            }
+          ]
+        },
+        "description": "Get full graph data (nodes + edges) for visualization.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Scalable Graph Data",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/collections/{{collection_id}}/data/scalable",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "collections",
+            "{{collection_id}}",
+            "data",
+            "scalable"
+          ],
+          "query": [
+            {
+              "key": "mode",
+              "value": "auto",
+              "required": false
+            },
+            {
+              "key": "node_limit",
+              "value": 500,
+              "required": false
+            },
+            {
+              "key": "edge_limit",
+              "value": 1000,
+              "required": false
+            },
+            {
+              "key": "depth",
+              "value": 1,
+              "required": false
+            }
+          ]
+        },
+        "description": "Scalable graph visualization endpoint.Modes:    - auto: Automatically choose best mode based on graph size    - overview: Clustered supernodes for large graphs    - expand: Drill into a cluster (requires cluster_label)    - neighborhood: Ego graph around a node (requires node_id)    - full: All nodes sorted by importance",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Neighborhood",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/collections/{{collection_id}}/neighborhood",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "collections",
+            "{{collection_id}}",
+            "neighborhood"
+          ],
+          "query": [
+            {
+              "key": "node_id",
+              "value": null,
+              "required": true
+            },
+            {
+              "key": "depth",
+              "value": 1,
+              "required": false
+            },
+            {
+              "key": "limit",
+              "value": 50,
+              "required": false
+            }
+          ]
+        },
+        "description": "Get ego-graph (neighborhood) around a specific node.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Expand Cluster",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/collections/{{collection_id}}/expand",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "collections",
+            "{{collection_id}}",
+            "expand"
+          ],
+          "query": [
+            {
+              "key": "label",
+              "value": null,
+              "required": true
+            },
+            {
+              "key": "node_limit",
+              "value": 200,
+              "required": false
+            },
+            {
+              "key": "edge_limit",
+              "value": 500,
+              "required": false
+            }
+          ]
+        },
+        "description": "Expand a cluster to see individual nodes with the given label.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Graph Stats",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/collections/{{collection_id}}/stats",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "collections",
+            "{{collection_id}}",
+            "stats"
+          ]
+        },
+        "description": "Get statistics about the knowledge graph for a collection.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Labels Paginated",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/collections/{{collection_id}}/stats/labels",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "collections",
+            "{{collection_id}}",
+            "stats",
+            "labels"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": 1,
+              "required": false
+            },
+            {
+              "key": "page_size",
+              "value": 25,
+              "required": false
+            }
+          ]
+        },
+        "description": "Return entity labels with counts (paginated, searchable).",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Relationship Types Paginated",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/collections/{{collection_id}}/stats/relationship-types",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "collections",
+            "{{collection_id}}",
+            "stats",
+            "relationship-types"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": 1,
+              "required": false
+            },
+            {
+              "key": "page_size",
+              "value": 25,
+              "required": false
+            }
+          ]
+        },
+        "description": "Return relationship types with counts (paginated, searchable).",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Search Graph",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/search",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "search"
+          ]
+        },
+        "description": "Hybrid search: combines vector similarity + graph traversal with RRF scoring.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"search term\",\n  \"collection_id\": \"abc123def456\",\n  \"limit\": 20,\n  \"search_type\": \"hybrid\",\n  \"vector_weight\": 0.5,\n  \"graph_weight\": 0.5,\n  \"include_vector_context\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Search Entities",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/collections/{{collection_id}}/search/entities",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "collections",
+            "{{collection_id}}",
+            "search",
+            "entities"
+          ],
+          "query": [
+            {
+              "key": "q",
+              "value": null,
+              "required": true
+            },
+            {
+              "key": "limit",
+              "value": 10,
+              "required": false
+            }
+          ]
+        },
+        "description": "Search entities by name (full-text) in the knowledge graph.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Search Entity Clusters",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/collections/{{collection_id}}/search/entity-clusters",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "collections",
+            "{{collection_id}}",
+            "search",
+            "entity-clusters"
+          ],
+          "query": [
+            {
+              "key": "q",
+              "value": null,
+              "required": true
+            },
+            {
+              "key": "chunk_size",
+              "value": 200,
+              "required": false
+            }
+          ]
+        },
+        "description": "Return ``{label: count}`` or ``{chunk_id: count}`` for clusters that contain entities matching *q*.This is a lightweight endpoint used by the clustered graph explorer tohighlight matching clusters without breaking them apart.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Execute Cypher",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/cypher",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "cypher"
+          ]
+        },
+        "description": "Execute a Cypher query scoped to a collection (read-only recommended).",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"search term\",\n  \"collection_id\": \"abc123def456\",\n  \"parameters\": {\n    \"key\": \"value\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Graph",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/collections/{{collection_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "collections",
+            "{{collection_id}}"
+          ]
+        },
+        "description": "Delete the entire knowledge graph for a collection.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Graph Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/graph/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "graph",
+            "health"
+          ]
+        },
+        "description": "Check Neo4j connectivity."
+      }
+    },
+    {
+      "name": "Retrieve Knowledge",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/retrieval",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "retrieval"
+          ]
+        },
+        "description": "Retrieve vector and/or graph context for an authorized collection.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"search term\",\n  \"collection_id\": \"abc123def456\",\n  \"kind\": \"vector\",\n  \"limit\": 10\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Api Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "health"
+          ]
+        },
+        "description": "Versioned health check endpoint."
+      }
+    },
+    {
+      "name": "Api Readiness Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/health/ready",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "health",
+            "ready"
+          ]
+        },
+        "description": "Readiness endpoint reporting dependency state."
+      }
+    }
+  ]
+}

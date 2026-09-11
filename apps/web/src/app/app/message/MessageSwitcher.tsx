@@ -38,7 +38,11 @@ export default function MessageSwitcher({
         onClick={previous}
         prominence="tertiary"
         disabled={disableForStreaming}
-        tooltip={disableForStreaming ? t("messageSwitcher.waitForCompletion") : t("messageSwitcher.previous")}
+        tooltip={
+          disableForStreaming
+            ? t("messageSwitcher.waitForCompletion")
+            : t("messageSwitcher.previous")
+        }
       />
 
       <div className="flex flex-row items-center justify-center">
@@ -58,7 +62,11 @@ export default function MessageSwitcher({
         onClick={next}
         prominence="tertiary"
         disabled={disableForStreaming}
-        tooltip={disableForStreaming ? t("messageSwitcher.waitForCompletion") : t("messageSwitcher.next")}
+        tooltip={
+          disableForStreaming
+            ? t("messageSwitcher.waitForCompletion")
+            : t("messageSwitcher.next")
+        }
       />
     </div>
   );

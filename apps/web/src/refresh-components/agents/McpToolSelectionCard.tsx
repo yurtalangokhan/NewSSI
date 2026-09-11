@@ -11,8 +11,19 @@ import Truncated from "@/refresh-components/texts/Truncated";
 import { Card } from "@/refresh-components/cards";
 import { Section } from "@/layouts/general-layouts";
 import { cn } from "@/lib/utils";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/refresh-components/Collapsible";
 import { MCPServer, ToolSnapshot } from "@/lib/tools/interfaces";
-import { SvgActions, SvgCheck, SvgSliders, SvgX } from "@opal/icons";
+import {
+  SvgActions,
+  SvgCheck,
+  SvgChevronDown,
+  SvgSliders,
+  SvgX,
+} from "@opal/icons";
 import { useTranslation } from "react-i18next";
 
 export interface SelectableMcpTool {
@@ -30,7 +41,9 @@ export interface ToolSelectionGroup {
   id: string;
   title: string;
   description?: string;
-  tools: SelectableMcpTool[];
+  tools?: SelectableMcpTool[];
+  children?: ToolSelectionGroup[];
+  kind?: "server" | "builtin-root" | "builtin-category";
 }
 
 interface BuildToolSelectionGroupsArgs {
@@ -76,22 +89,26 @@ export function buildToolSelectionGroups({
         id: `mcp-${serverId}`,
         title: server?.name ?? "MCP tools",
         description: server?.description,
+        kind: "server",
         tools: [],
       });
     }
-    mcpGroups.get(serverId)!.tools.push(tool);
+    mcpGroups.get(serverId)!.tools!.push(tool);
   }
 
-  const serviceGroups = Object.keys(serviceToolsByCategory)
+  const serviceGroups: ToolSelectionGroup[] = Object.keys(
+    serviceToolsByCategory
+  )
     .sort((a, b) =>
       (categoryLabelMap[a] ?? a).localeCompare(categoryLabelMap[b] ?? b)
     )
     .map((category) => ({
       id: `service-${category}`,
       title: categoryLabelMap[category] ?? category,
+      kind: "builtin-category" as const,
       tools: serviceToolsByCategory[category] ?? [],
     }))
-    .filter((group) => group.tools.length > 0);
+    .filter((group) => (group.tools ?? []).length > 0);
 
   return [...Array.from(mcpGroups.values()), ...serviceGroups];
 }
@@ -108,14 +125,131 @@ export function buildMcpOnlyToolSelectionGroups({
   });
 }
 
+function collectToolNames(groups: ToolSelectionGroup[]): string[] {
+  return groups.flatMap((group) => [
+    ...(group.tools ?? []).map((tool) => tool.name),
+    ...collectToolNames(group.children ?? []),
+  ]);
+}
+
+function filterGroup(
+  group: ToolSelectionGroup,
+  normalizedQuery: string
+): ToolSelectionGroup | null {
+  if (group.children) {
+    const kids = group.children
+      .map((child) => filterGroup(child, normalizedQuery))
+      .filter((child): child is ToolSelectionGroup => child !== null);
+    return kids.length ? { ...group, children: kids } : null;
+  }
+  const tools = (group.tools ?? []).filter((tool) => {
+    const haystack = `${tool.display_name ?? ""} ${tool.name} ${
+      tool.description ?? ""
+    }`.toLowerCase();
+    return haystack.includes(normalizedQuery);
+  });
+  return tools.length ? { ...group, tools } : null;
+}
+
 export function countSelectedTools(
   groups: ToolSelectionGroup[],
   selectedToolNames: string[]
 ) {
-  const availableNames = new Set(
-    groups.flatMap((group) => group.tools.map((tool) => tool.name))
-  );
+  const availableNames = new Set(collectToolNames(groups));
   return selectedToolNames.filter((name) => availableNames.has(name)).length;
+}
+
+/** Flatten every tool across a (possibly nested) group tree. */
+export function flattenGroupTools(
+  groups: ToolSelectionGroup[]
+): SelectableMcpTool[] {
+  return groups.flatMap((group) => [
+    ...(group.tools ?? []),
+    ...flattenGroupTools(group.children ?? []),
+  ]);
+}
+
+function ToolSelectionGroupTree({
+  groups,
+  depth,
+  forceOpen,
+  selectedSet,
+  setToolSelected,
+}: {
+  groups: ToolSelectionGroup[];
+  depth: number;
+  forceOpen: boolean;
+  selectedSet: Set<string>;
+  setToolSelected: (name: string, selected: boolean) => void;
+}) {
+  return (
+    <div className={cn("flex flex-col gap-1", depth > 0 && "pl-4")}>
+      {groups.map((group) => {
+        const total = collectToolNames([group]).length;
+        return (
+          <Collapsible
+            key={group.id}
+            defaultOpen
+            open={forceOpen ? true : undefined}
+          >
+            <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md px-1 py-1.5 text-left hover:bg-background-neutral-00">
+              <SvgChevronDown className="size-4 shrink-0 stroke-text-03 transition-transform group-data-[state=closed]:-rotate-90" />
+              <Text mainUiBody>{group.title}</Text>
+              <Text secondaryBody text03>
+                ({total})
+              </Text>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              {group.children ? (
+                <ToolSelectionGroupTree
+                  groups={group.children}
+                  depth={depth + 1}
+                  forceOpen={forceOpen}
+                  selectedSet={selectedSet}
+                  setToolSelected={setToolSelected}
+                />
+              ) : (
+                <div className="flex flex-col gap-1 pl-6 pt-1">
+                  {(group.tools ?? []).map((tool) => {
+                    const selectable = isToolSelectable(tool);
+                    const checked = selectedSet.has(tool.name);
+                    return (
+                      <label
+                        key={`${group.id}-${tool.name}`}
+                        className={cn(
+                          "flex cursor-pointer items-start gap-2 rounded-08 border border-border-02 bg-background-neutral-00 px-3 py-2",
+                          !selectable && "cursor-not-allowed opacity-60"
+                        )}
+                      >
+                        <Checkbox
+                          checked={checked}
+                          disabled={!selectable}
+                          onCheckedChange={(nextChecked) =>
+                            setToolSelected(tool.name, nextChecked)
+                          }
+                        />
+                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                          <Truncated secondaryBody>
+                            {tool.display_name || tool.name}
+                          </Truncated>
+                          <Truncated secondaryBody text03>
+                            {tool.description || tool.name}
+                          </Truncated>
+                        </div>
+                        {checked && (
+                          <SvgCheck className="mt-0.5 h-4 w-4 shrink-0 stroke-action-link-05" />
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        );
+      })}
+    </div>
+  );
 }
 
 interface McpToolSelectionCardProps {
@@ -152,16 +286,8 @@ export default function McpToolSelectionCard({
       return groups;
     }
     return groups
-      .map((group) => ({
-        ...group,
-        tools: group.tools.filter((tool) => {
-          const haystack = `${tool.display_name ?? ""} ${tool.name} ${
-            tool.description ?? ""
-          }`.toLowerCase();
-          return haystack.includes(normalizedQuery);
-        }),
-      }))
-      .filter((group) => group.tools.length > 0);
+      .map((group) => filterGroup(group, normalizedQuery))
+      .filter((group): group is ToolSelectionGroup => group !== null);
   }, [groups, query]);
 
   function setToolSelected(toolName: string, selected: boolean) {
@@ -248,51 +374,14 @@ export default function McpToolSelectionCard({
                   )}
                 />
               ) : (
-                <div className="flex max-h-[28rem] flex-col gap-3 overflow-y-auto pr-1">
-                  {filteredGroups.map((group) => (
-                    <Section key={group.id} gap={0.5} alignItems="stretch">
-                      <div className="flex flex-col gap-0.5 px-1">
-                        <Text mainUiBody>{group.title}</Text>
-                        {group.description && (
-                          <Text secondaryBody text03>
-                            {group.description}
-                          </Text>
-                        )}
-                      </div>
-                      {group.tools.map((tool) => {
-                        const selectable = isToolSelectable(tool);
-                        const checked = selectedSet.has(tool.name);
-                        return (
-                          <label
-                            key={`${group.id}-${tool.name}`}
-                            className={cn(
-                              "flex cursor-pointer items-start gap-2 rounded-08 border border-border-02 bg-background-neutral-00 px-3 py-2",
-                              !selectable && "cursor-not-allowed opacity-60"
-                            )}
-                          >
-                            <Checkbox
-                              checked={checked}
-                              disabled={!selectable}
-                              onCheckedChange={(nextChecked) =>
-                                setToolSelected(tool.name, nextChecked)
-                              }
-                            />
-                            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                              <Truncated secondaryBody>
-                                {tool.display_name || tool.name}
-                              </Truncated>
-                              <Truncated secondaryBody text03>
-                                {tool.description || tool.name}
-                              </Truncated>
-                            </div>
-                            {checked && (
-                              <SvgCheck className="mt-0.5 h-4 w-4 shrink-0 stroke-action-link-05" />
-                            )}
-                          </label>
-                        );
-                      })}
-                    </Section>
-                  ))}
+                <div className="flex max-h-[28rem] flex-col gap-1 overflow-y-auto pr-1">
+                  <ToolSelectionGroupTree
+                    groups={filteredGroups}
+                    depth={0}
+                    forceOpen={query.trim().length > 0}
+                    selectedSet={selectedSet}
+                    setToolSelected={setToolSelected}
+                  />
                 </div>
               )}
 
@@ -319,8 +408,10 @@ export default function McpToolSelectionCard({
 export function toSelectableTool(tool: ToolSnapshot): SelectableMcpTool {
   return {
     id: tool.id,
-    name: tool.name,
-    display_name: tool.display_name,
+    // For external MCP tools the selection identity is the server-scoped
+    // qualified name; the raw name is kept only for display.
+    name: tool.qualified_name || tool.name,
+    display_name: tool.display_name || tool.name,
     description: tool.description,
     mcp_server_id: tool.mcp_server_id,
     enabled: tool.enabled,

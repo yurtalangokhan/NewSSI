@@ -4,7 +4,17 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Index, String, Text, text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    Index,
+    Sequence,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -42,6 +52,20 @@ class MCPToolModel(Base):
     )
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     tags: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Matches migration 0042: a dedicated sequence (not SERIAL) supplies the
+    # value, so metadata-created schemas and ORM inserts get one too.
+    int_id: Mapped[int] = mapped_column(
+        BigInteger,
+        Sequence("mcp_tool_int_id_seq", start=1000),
+        nullable=False,
+        unique=True,
+    )
+    enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=text("TRUE"),
+    )
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
@@ -59,6 +83,7 @@ class MCPToolModel(Base):
         Index("idx_mcp_tool_provider_id", "provider_id"),
         Index("idx_mcp_tool_name", "name"),
         Index("idx_mcp_tool_category", "category"),
+        UniqueConstraint("provider_id", "name", name="uq_mcp_tool_provider_name"),
     )
 
     def __repr__(self) -> str:

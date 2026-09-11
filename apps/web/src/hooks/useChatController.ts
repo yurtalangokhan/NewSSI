@@ -40,10 +40,12 @@ import {
 } from "@/app/app/interfaces";
 import { StreamStopReason } from "@/lib/search/interfaces";
 import {
+  flowModelsSupportImageInput,
   getFinalLLM,
   modelSupportsImageInput,
   structureValue,
 } from "@/lib/llmConfig/utils";
+import type { WireFlowSpec } from "@/components/flow-canvas/types/flow";
 import {
   CurrentMessageFIFO,
   updateCurrentMessageFIFO,
@@ -73,7 +75,9 @@ import { ProjectFile, useProjectsContext } from "@/providers/ProjectsContext";
 import { useAppParams } from "@/hooks/appNavigation";
 import { projectFilesToFileDescriptors } from "@/app/app/services/fileUtils";
 import { UserFileStatus } from "@/app/app/projects/projectsService";
-import { authenticatedFetch } from "@/lib/fetcher";
+import { authenticatedFetch, errorHandlingFetcher } from "@/lib/fetcher";
+import { flowApi } from "@/components/flow-canvas/api/flowApi";
+import useSWR from "swr";
 
 const SYSTEM_MESSAGE_ID = -3;
 
@@ -94,6 +98,9 @@ export interface OnSubmitProps {
   regenerationRequest?: RegenerationRequest | null;
   // Additional context injected into the LLM call but not stored/shown in chat.
   additionalContext?: string;
+  // Answers to an ask_user card: resumes the parked run with structured
+  // values instead of text.
+  resumePayload?: Record<string, unknown> | null;
 }
 
 interface RegenerationRequest {
@@ -175,7 +182,6 @@ export default function useChatController({
   const searchParams = useSearchParams();
   const params = useAppParams();
   const { refreshChatSessions, addPendingChatSession } = useChatSessions();
-  const { pinnedAgents, togglePinnedAgent } = usePinnedAgents();
   const { agentPreferences } = useAgentPreferences();
   const { forcedToolIds } = useForcedTools();
   const {
@@ -238,6 +244,27 @@ export default function useChatController({
 
   // Local state that doesn't need to be in the store
   const [_maxTokens, setMaxTokens] = useState<number>(4096);
+
+  // A flow-backed agent resolves its models from the flow spec's nodes, not
+  // from `llm_model_version_override`. Load the published spec so image
+  // uploads can be gated on *every* model the flow could run supporting
+  // vision (see `handleMessageSpecificFileUpload`).
+  const isFlowAgent =
+    liveAgent?.graph_schema === "flow" &&
+    Boolean(liveAgent?.agent_definition_id);
+  const { data: flowSpec } = useSWR<WireFlowSpec>(
+    isFlowAgent ? flowApi.published(liveAgent!.agent_definition_id!) : null,
+    errorHandlingFetcher
+  );
+  const flowAcceptsImages = useMemo(
+    () =>
+      flowModelsSupportImageInput(
+        llmManager.llmProviders || [],
+        flowSpec,
+        getFinalLLM(llmManager.llmProviders || [], null, null)[1]
+      ),
+    [llmManager.llmProviders, flowSpec]
+  );
 
   // Sync store state changes
   useEffect(() => {
@@ -422,6 +449,7 @@ export default function useChatController({
       modelOverride,
       regenerationRequest,
       additionalContext,
+      resumePayload,
     }: OnSubmitProps) => {
       const projectId = params(SEARCH_PARAM_NAMES.PROJECT_ID);
       const parsedProjectIdFromUrl =
@@ -532,18 +560,6 @@ export default function useChatController({
         }
 
         return;
-      }
-
-      // Auto-pin the agent to sidebar when sending a message if not already pinned
-      if (liveAgent) {
-        const isAlreadyPinned = pinnedAgents.some(
-          (agent) => String(agent.id) === String(liveAgent.id)
-        );
-        if (!isAlreadyPinned && typeof liveAgent.id === "number") {
-          togglePinnedAgent(liveAgent, true).catch((err) => {
-            console.error("Failed to auto-pin agent:", err);
-          });
-        }
       }
 
       let currChatSessionId: string;
@@ -877,6 +893,7 @@ export default function useChatController({
           origin: messageOrigin,
           additionalContext: effectiveAdditionalContext || undefined,
           projectId: activeProjectId,
+          resumePayload: resumePayload ?? null,
         });
 
         const delay = (ms: number) => {
@@ -1172,9 +1189,7 @@ export default function useChatController({
       fetchProjects,
       currentProjectDetails?.project?.id,
       currentProjectDetails?.project?.instructions,
-      // For auto-pinning agents
-      pinnedAgents,
-      togglePinnedAgent,
+
       onSubmitComplete,
     ]
   );
@@ -1186,10 +1201,11 @@ export default function useChatController({
         liveAgent || null,
         llmManager.currentLlm
       );
-      const llmAcceptsImages = modelSupportsImageInput(
-        llmManager.llmProviders || [],
-        llmModel
-      );
+      // A flow-backed agent has no single resolved model — accept images only
+      // when every model across its flow supports vision.
+      const llmAcceptsImages = isFlowAgent
+        ? flowAcceptsImages
+        : modelSupportsImageInput(llmManager.llmProviders || [], llmModel);
 
       const imageFiles = acceptedFiles.filter((file) =>
         file.type.startsWith("image/")
@@ -1203,7 +1219,14 @@ export default function useChatController({
       await uploadChatFiles(Array.from(acceptedFiles));
       updateChatStateAction(getCurrentSessionId(), "input");
     },
-    [liveAgent, llmManager, forcedToolIds, uploadChatFiles]
+    [
+      liveAgent,
+      llmManager,
+      forcedToolIds,
+      uploadChatFiles,
+      isFlowAgent,
+      flowAcceptsImages,
+    ]
   );
 
   useEffect(() => {

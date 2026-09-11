@@ -10,6 +10,15 @@ import {
 interface BackendPacket {
   type: string;
   content?: any;
+  // Set on graph_stage_start / graph_stage_end packets (flow-canvas node
+  // execution boundaries streamed to the chat flow preview).
+  stage_name?: string;
+  // Set on flow_stage_* and stage-scoped reasoning/tool packets (FlowAgent
+  // per-stage timeline).
+  stage_key?: string;
+  stage_order?: number;
+  iteration?: number;
+  is_final_stage?: boolean;
 }
 
 function extractMessageContent(content: any): string {
@@ -133,6 +142,16 @@ function mapBackendToFrontend(packet: BackendPacket): any {
         },
       };
 
+    // Flow-canvas node execution boundaries (chat's flow preview panel) —
+    // not rendered in the AgentTimeline, just consumed by the chat-flow
+    // preview store; passed through as-is like reasoning_start/delta below.
+    case "graph_stage_start":
+    case "graph_stage_end":
+      return {
+        placement: defaultPlacement,
+        obj: { type: packet.type, stage_name: packet.stage_name },
+      };
+
     case "reasoning_start":
       return {
         placement: defaultPlacement,
@@ -179,6 +198,9 @@ export async function* handleSSEStream<T extends PacketType>(
   // The frontend packetProcessor classifies an entire group by its *first* packet,
   // so tool packets must have a different turn_index than message/display packets.
   let turnIndex = 0;
+  // The turn an ask_user card was placed on, so the packet that locks it
+  // lands in the same display group instead of opening one of its own.
+  let lastClarificationTurn: number | null = null;
   let sawToolPackets = false;
   let lastToolPacketType: string | null = null;
   // A single AI turn can fire several calls to the same tool at once (e.g.
@@ -266,9 +288,96 @@ export async function* handleSSEStream<T extends PacketType>(
             continue;
           }
 
+          // FlowAgent per-stage timeline markers. They carry no answer-bubble
+          // content and must not perturb the turn/tool bookkeeping below —
+          // the AgentTimeline's stage-grouping layer reads them straight from
+          // placement. `stage_key` etc. ride in placement so packetProcessor
+          // can bucket a stage's reasoning/tool/output packets without
+          // inspecting obj.
+          if (
+            backendPacket.type === "flow_stage_start" ||
+            backendPacket.type === "flow_stage_end" ||
+            backendPacket.type === "flow_stage_output_delta"
+          ) {
+            yield {
+              placement: {
+                turn_index: turnIndex,
+                sub_turn_index: null,
+                stage_key: (backendPacket as any).stage_key,
+                stage_order: (backendPacket as any).stage_order,
+                iteration: (backendPacket as any).iteration,
+                is_final_stage: (backendPacket as any).is_final_stage,
+              },
+              obj: backendPacket,
+            } as T;
+            continue;
+          }
+
+          // A run pausing at a HumanInput node is its own display group: the
+          // prompt + its buttons must not be swallowed by the answer group
+          // that precedes it (findRenderer would hand a mixed group to the
+          // text renderer and the buttons would never appear). Give it a
+          // fresh turn, and leave the next packet on a fresh one too.
+          if (
+            backendPacket.type === "human_input" ||
+            backendPacket.type === "user_clarification"
+          ) {
+            turnIndex++;
+            const humanInputTurn = turnIndex;
+            lastClarificationTurn = humanInputTurn;
+            turnIndex++;
+            sawToolPackets = false;
+            lastToolPacketType = null;
+            sawTokenForCurrentAnswer = false;
+            hasMessageStartForCurrentAnswer = false;
+            yield {
+              placement: { turn_index: humanInputTurn, sub_turn_index: null },
+              obj: backendPacket,
+            } as T;
+            continue;
+          }
+
+          // The lock belongs to the card it locks, not to a turn of its
+          // own: split them and the group reaches the wrong renderer and
+          // the answers never show.
+          if (
+            backendPacket.type === "user_clarification_answered" &&
+            lastClarificationTurn !== null
+          ) {
+            yield {
+              placement: {
+                turn_index: lastClarificationTurn,
+                sub_turn_index: null,
+              },
+              obj: backendPacket,
+            } as T;
+            continue;
+          }
+
+          if (backendPacket.type === "token") {
+            sawTokenForCurrentAnswer = true;
+          }
+
           if (backendPacket.type === "message" && sawTokenForCurrentAnswer) {
             // Token stream already provided this answer incrementally.
             // Skip duplicated full-message payload.
+            continue;
+          }
+
+          // Drop step-start events for internal infrastructure nodes (e.g. "model", "agent", "tools")
+          // so that normal agent iterations never render confusing "[step] model" timeline cards.
+          if (
+            backendPacket.type === "custom_step_start" &&
+            [
+              "model",
+              "agent",
+              "tools",
+              "call_model",
+              "__start__",
+              "__end__",
+              "__interrupt__",
+            ].includes((backendPacket as any).step_name)
+          ) {
             continue;
           }
 
@@ -391,6 +500,19 @@ export async function* handleSSEStream<T extends PacketType>(
           }
 
           const mappedPacket = mapBackendToFrontend(backendPacket);
+
+          // A stage-scoped reasoning/tool packet carries its stage identity so
+          // the timeline nests it under the right numbered stage group. Spread
+          // to a fresh placement — mapBackendToFrontend hands back a shared
+          // object for several packet types.
+          if ((backendPacket as any).stage_key !== undefined) {
+            mappedPacket.placement = {
+              ...mappedPacket.placement,
+              stage_key: (backendPacket as any).stage_key,
+              stage_order: (backendPacket as any).stage_order,
+              iteration: (backendPacket as any).iteration,
+            };
+          }
 
           if (backendPacket.type === "document_generation_start") {
             documentTurnIndex = turnIndex;

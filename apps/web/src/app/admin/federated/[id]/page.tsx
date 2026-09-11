@@ -7,6 +7,7 @@ import { useFederatedConnector } from "./useFederatedConnector";
 import { FederatedConnectorForm } from "@/components/admin/federated/FederatedConnectorForm";
 import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 
 export default function EditFederatedConnectorPage(props: {
   params: Promise<{ id: string }>;
@@ -23,20 +24,8 @@ export default function EditFederatedConnectorPage(props: {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center w-full h-full">
-        <div className="mt-12 w-full max-w-4xl mx-auto">
-          <div className="flex flex-col items-center justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-4" />
-            <div className="text-center">
-              <Text as="p" className="text-lg font-medium text-gray-700 mb-2">
-                {t("federated.loadingConnectorConfiguration")}
-              </Text>
-              <Text as="p" className="text-sm text-gray-500">
-                {t("federated.retrievingConnectorDetails")}
-              </Text>
-            </div>
-          </div>
-        </div>
+      <div className="mx-auto w-full max-w-4xl p-6">
+        <FormSkeleton fieldCount={4} />
       </div>
     );
   }

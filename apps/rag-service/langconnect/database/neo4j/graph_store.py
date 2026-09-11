@@ -8,7 +8,6 @@ import the repositories directly from ``langconnect.database.neo4j.repositories`
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from langconnect.database.neo4j.repositories.entity_repository import EntityRepository
@@ -25,8 +24,9 @@ from langconnect.models.graph import (
     GraphStats,
     PaginatedCounts,
 )
+from langconnect.observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class GraphStore:

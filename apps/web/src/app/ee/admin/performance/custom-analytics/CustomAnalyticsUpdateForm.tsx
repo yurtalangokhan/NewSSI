@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { Label, SubLabel } from "@/components/Field";
 import { toast } from "@/hooks/useToast";
 import { getErrorMsg } from "@/lib/fetchUtils";
@@ -35,7 +37,7 @@ export function CustomAnalyticsUpdateForm() {
         onSubmit={async (e) => {
           e.preventDefault();
 
-          const response = await fetch(
+          const response = await authenticatedFetch(
             "/api/admin/enterprise-settings/custom-analytics-script",
             {
               method: "PUT",

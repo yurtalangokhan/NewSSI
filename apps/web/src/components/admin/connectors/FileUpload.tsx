@@ -1,8 +1,10 @@
+import DropzoneInput from "@/refresh-components/inputs/DropzoneInput";
 import { useFormikContext } from "formik";
 import { FC, useState } from "react";
 import React from "react";
 import Dropzone from "react-dropzone";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 interface FileUploadProps {
   selectedFiles: File[];
@@ -63,13 +65,13 @@ export const FileUpload: FC<FileUploadProps> = ({
                 (dragActive ? " border-accent" : "")
               }
             >
-              <input {...getInputProps()} />
-              <b className="text-text-darker">
+              <DropzoneInput {...getInputProps()} />
+              <Text as="span" className="font-bold text-text-darker">
                 {message ||
                   (multiple
                     ? t("fileUpload.dragAndDropMultiple")
                     : t("fileUpload.dragAndDropSingle"))}
-              </b>
+              </Text>
             </div>
           </section>
         )}
@@ -77,14 +79,16 @@ export const FileUpload: FC<FileUploadProps> = ({
 
       {selectedFiles.length > 0 && (
         <div className="mt-4">
-          <h2 className="text-sm font-bold">
-            {multiple ? t("fileUpload.selectedFiles") : t("fileUpload.selectedFile")}
-          </h2>
+          <Text as="h2" className="text-sm font-bold">
+            {multiple
+              ? t("fileUpload.selectedFiles")
+              : t("fileUpload.selectedFile")}
+          </Text>
           <ul>
             {selectedFiles.map((file) => (
-              <div key={file.name} className="flex">
-                <p className="text-sm mr-2">{file.name}</p>
-              </div>
+              <Text as="li" key={file.name} className="flex text-sm mr-2">
+                {file.name}
+              </Text>
             ))}
           </ul>
         </div>

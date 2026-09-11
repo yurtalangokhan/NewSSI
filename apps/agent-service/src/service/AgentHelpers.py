@@ -32,6 +32,47 @@ __all__ = [
 logger = get_logger(__name__)
 
 
+def _looks_like_agent_definition_id(value: Any) -> bool:
+    """True when ``value`` identifies a dynamic AgentDefinition agent (a UUID
+    or a ``dynamic-`` prefixed id) rather than the default chat assistant.
+
+    These agents must opt into long-term memory explicitly via
+    ``memory_type``; they are never driven by the user setting alone.
+    """
+    if isinstance(value, str) and value.startswith("dynamic-"):
+        return True
+    try:
+        UUID(str(value))
+        return True
+    except (ValueError, TypeError, AttributeError):
+        return False
+
+
+def _agent_participates_in_memory(
+    *,
+    agent_id: Any,
+    persona_data: dict[str, Any] | None,
+    configurable: dict[str, Any],
+) -> bool:
+    """Decide whether this agent may use long-term memory at all.
+
+    * custom (non-builtin) persona  → its own ``long_term_memory`` toggle
+    * ``memory_type`` forwarded      → ``memory_type == "long_term"``
+    * builtin persona / default assistant / plain model chatbot → always
+      (the user's "Depolanan Belleğe Başvur" setting is then the sole driver)
+    * dynamic AgentDefinition agent that did not opt in → never
+    """
+    if persona_data and not persona_data.get("is_builtin"):
+        return bool(persona_data.get("long_term_memory", False))
+    if "memory_type" in configurable:
+        return configurable["memory_type"] == "long_term"
+    if persona_data and persona_data.get("is_builtin"):
+        return True
+    if _looks_like_agent_definition_id(agent_id):
+        return False
+    return True
+
+
 # =============================================================================
 # Graph / config resolution
 # =============================================================================
@@ -49,7 +90,7 @@ async def get_graph_and_config(agent_id: str | int) -> tuple[str, dict]:
     # Dynamic agent tools read rag_config from RunnableConfig.configurable,
     # so expose the definition's runtime settings here.
     try:
-        from agents.storage.repository import AgentDefinitionRepository
+        from repository.agent_definition_repository import AgentDefinitionRepository
 
         definition_uuid = UUID(agent_id)
         definition = await AgentDefinitionRepository().get_by_id(definition_uuid)
@@ -88,7 +129,7 @@ async def get_graph_and_config(agent_id: str | int) -> tuple[str, dict]:
                 rag_config = persona.get("rag_config") or {}
 
                 if base_agent == "dynamic-agent":
-                    from agents.storage.repository import AgentDefinitionRepository
+                    from repository.agent_definition_repository import AgentDefinitionRepository
 
                     definition = await AgentDefinitionRepository().get_by_persona_id(int(agent_id))
                     if definition:
@@ -166,25 +207,29 @@ async def get_configured_agent(agent_id: str | int, agent_config: dict) -> Agent
     merged_config = {**stored_config, **agent_config}
 
     try:
-        from agents.storage.repository import AgentDefinitionRepository
+        from repository.agent_definition_repository import AgentDefinitionRepository
 
         definition_uuid = UUID(graph_id)
         definition = await AgentDefinitionRepository().get_by_id(definition_uuid)
         if definition:
-            from agents.dynamic_agent import (
-                DynamicAgent,
-                cache_agent,
-                get_cached_agent,
-            )
+            from agents.agent_factory import create_agent_for_definition
+
+            # Flow-backed and classic definitions keep their own caches
+            # (agents/flow_agent.py vs agents/dynamic_agent.py) — the schema
+            # is already known here, so look in the right one directly.
+            if definition.graph_schema == "flow":
+                from agents.flow_agent import cache_agent, get_cached_agent
+            else:
+                from agents.dynamic_agent import cache_agent, get_cached_agent
 
             definition_id = str(definition.id)
             cached = get_cached_agent(definition_id)
             if cached is not None:
                 return cached
 
-            dynamic_agent = DynamicAgent(definition.to_config())
-            cache_agent(definition_id, dynamic_agent)
-            return dynamic_agent
+            agent = await create_agent_for_definition(definition)
+            cache_agent(definition_id, agent)
+            return agent
     except (ValueError, AttributeError):
         pass
 
@@ -352,9 +397,16 @@ async def _handle_input(
         configurable.update(agent_cfg)
 
     # ------------------------------------------------------------------
-    # AND-logic: long_term_memory = user toggle AND agent toggle
+    # Memory gate — the user's personalization settings are the master switch:
+    #   long_term_memory = "Depolanan Belleğe Başvur" AND agent participates
+    #   extract_memory   = long_term_memory AND "Belleği Güncelle"
+    #                                       AND agent-level extract label
+    #
+    # An agent "participates" when it is the default assistant / plain model
+    # chatbot (the user setting is then the sole driver), when a custom
+    # persona has its own long_term_memory toggle on, or when a dynamic
+    # AgentDefinition sets memory_type == "long_term".
     # ------------------------------------------------------------------
-    agent_ltm = bool(configurable.get("long_term_memory", False))
     us_data: dict = {}
     persona_data = None
     try:
@@ -366,7 +418,7 @@ async def _handle_input(
 
     if user_input.agent_id and not str(user_input.agent_id).startswith("dynamic-"):
         try:
-            from core.db.repositories.persona_repo import PersonaRepository
+            from repository.persona_repository import PersonaDB
 
             # Prefer the original persona_id passed via agent_config (set by ChatRoute for
             # custom personas) so we read LTM settings from the correct persona rather than
@@ -376,32 +428,34 @@ async def _handle_input(
                 _pid = int(_pid)
             except (ValueError, TypeError):
                 pass
-            persona_data = await PersonaRepository().get(_pid) if isinstance(_pid, int) else None
+            persona_data = await PersonaDB.get(_pid) if isinstance(_pid, int) else None
             if persona_data is None and isinstance(_pid, str):
-                persona_data = await PersonaRepository().get_by_builtin_key(_pid)
-            if persona_data and not persona_data.get("is_builtin"):
-                agent_ltm = bool(persona_data.get("long_term_memory", False))
-            elif "memory_type" in configurable:
-                # UUID-based dynamic agents: persona lookup yields nothing; fall back to
-                # memory_type forwarded from AgentDefinition via get_graph_and_config.
-                agent_ltm = configurable["memory_type"] == "long_term"
+                persona_data = await PersonaDB.get_by_builtin_key(_pid)
         except Exception as _ltm_err:
             logger.warning(f"LTM persona lookup failed: {_ltm_err}")
-    elif "memory_type" in configurable:
-        agent_ltm = configurable["memory_type"] == "long_term"
 
-    # Agent-configured LTM is authoritative for recall/save so memory-enabled
-    # agents can always participate in long-term memory across new chats.
-    configurable["long_term_memory"] = agent_ltm
+    agent_participates = _agent_participates_in_memory(
+        agent_id=user_input.agent_id,
+        persona_data=persona_data,
+        configurable=configurable,
+    )
 
-    # Extract memory flag (independent gate for LLM extraction).
-    # Reuse persona_data already fetched above — no second DB call needed.
+    user_recall = bool(us_data.get("long_term_memory_enabled", False))
     user_extract = bool(us_data.get("extract_memory", True))
     agent_extract = True
     if persona_data and isinstance(persona_data.get("labels"), dict):
         agent_extract = persona_data["labels"].get("extract_memory", True)
 
-    configurable["extract_memory"] = user_extract and agent_extract
+    from service.memory_flags import resolve_memory_flags
+
+    long_term_memory, extract_memory = resolve_memory_flags(
+        user_recall_enabled=user_recall,
+        user_extract_enabled=user_extract,
+        agent_participates=agent_participates,
+        agent_extract_allowed=bool(agent_extract),
+    )
+    configurable["long_term_memory"] = long_term_memory
+    configurable["extract_memory"] = extract_memory
 
     # A retry must generate its response without the previous (rejected)
     # response in context. Locate the checkpoint right after the retried
@@ -500,8 +554,18 @@ async def _handle_input(
     from service.message_conversion import convert_input_messages
 
     input: Command | dict[str, Any] | None
-    if interrupted_tasks:
-        input = Command(resume=user_input.message or "")
+    if interrupted_tasks and fork_configurable is None:
+        # A structured payload (e.g. a Human Input decision or a set of
+        # ask_user answers) wins over the plain message text; both are
+        # accepted by the interrupting node — a bare string reaches ask_user
+        # as "the user said this instead of answering".
+        #
+        # A fork never resumes: retrying or editing branches from an EARLIER
+        # checkpoint, so the pending interrupt belongs to the branch being
+        # abandoned and must stay unresumed (design E8). The fork's own state
+        # happens to carry no interrupt today, which made this work by
+        # accident; the condition says it out loud instead.
+        input = Command(resume=user_input.resume_payload or user_input.message or "")
     elif fork_configurable is not None:
         # State already ends at the target human message (for a retry) or at
         # its just-replaced content (for an edit, via aupdate_state above),

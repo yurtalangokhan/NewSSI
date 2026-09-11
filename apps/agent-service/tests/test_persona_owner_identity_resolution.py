@@ -21,7 +21,7 @@ async def test_resolve_persona_owner_id_uses_local_user_service_id(monkeypatch) 
     )
     request = Request({"type": "http", "headers": []})
 
-    async def resolve_user_identity(*, request, user_id, user):
+    async def resolve_user_identity(*, token, user_id, user):
         assert user_id == keycloak_id
         return {"primary_user_id": local_user_id}
 
@@ -41,7 +41,7 @@ async def test_resolve_persona_owner_id_falls_back_to_authenticated_id(monkeypat
     )
     request = Request({"type": "http", "headers": []})
 
-    async def resolve_user_identity(*, request, user_id, user):
+    async def resolve_user_identity(*, token, user_id, user):
         return {"primary_user_id": None}
 
     auth_service = SimpleNamespace(resolve_user_identity=resolve_user_identity)

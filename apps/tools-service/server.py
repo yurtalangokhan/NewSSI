@@ -38,12 +38,15 @@ from idempotency import IdempotencyMiddleware
 from src.core.auth import KeycloakTokenVerifier
 from src.core.database import close_db_pool
 from src.core.idempotency import build_idempotency_config, build_idempotency_exclude_paths
+from src.core.observability import configure_logging, get_logger, readiness_payload
 from src.core.registry import ToolRegistry
 from src.core.settings import get_settings
 from src.core.trusted_middleware import TrustedContextMiddleware
 
 locales_dir = Path(__file__).parent / "locales"
 init_service_i18n(locales_dir)
+configure_logging(service_name="tools-service", log_level=get_settings().log_level)
+logger = get_logger(__name__)
 
 # Initialize FastMCP server
 mcp = FastMCP("open-agent-tools", auth=KeycloakTokenVerifier())
@@ -53,6 +56,15 @@ mcp = FastMCP("open-agent-tools", auth=KeycloakTokenVerifier())
 async def health_check(request: Request) -> Response:
     """Public health check endpoint outside the MCP protocol transport."""
     return JSONResponse({"status": "ok"})
+
+
+@mcp.custom_route("/health/ready", methods=["GET"], name="readiness", include_in_schema=True)
+async def readiness_check(request: Request) -> Response:
+    """Readiness endpoint reporting dependency state."""
+    payload = readiness_payload(service_name="tools-service")
+    if payload["status"] != "ready":
+        return JSONResponse(status_code=503, content=payload)
+    return JSONResponse(content=payload)
 
 
 # Initialize the tool registry with plugin discovery
@@ -93,18 +105,29 @@ def build_http_app():
     )
 
 
+def log_startup_banner(*, host: str, port: int, logger) -> None:
+    """Log the HTTP server startup details with structured fields."""
+    logger.info(
+        "Starting FastMCP Server.",
+        extra={
+            "event": "startup.server.starting",
+            "dependency": None,
+            "operation": "serve_http",
+            "status": "starting",
+            "host": host,
+            "port": port,
+            "mcp_endpoint": f"http://{host}:{port}/mcp",
+        },
+    )
+
+
 # Run with HTTP transport for Open Agent Platform compatibility
 if __name__ == "__main__":
     settings = get_settings()
     port = settings.mcp_port
     host = settings.mcp_host
 
-    print(f"\n{'=' * 60}")
-    print("MCP Server - Modular Architecture")
-    print(f"{'=' * 60}")
-    print(f"Starting FastMCP Server on http://{host}:{port}")
-    print(f"MCP endpoint: http://{host}:{port}/mcp")
-    print(f"{'=' * 60}\n")
+    log_startup_banner(host=host, port=port, logger=logger)
 
     # Use HTTP transport (serves at /mcp endpoint)
     mcp.run(

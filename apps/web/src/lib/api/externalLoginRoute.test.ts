@@ -8,9 +8,11 @@ jest.mock("@/lib/api/proxy", () => ({
 
 describe("external login API route", () => {
   beforeEach(() => {
-    jest.mocked(proxyToBackend).mockResolvedValue(
-      new Response(JSON.stringify({ ok: true }), { status: 200 }) as never
-    );
+    jest
+      .mocked(proxyToBackend)
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }) as never
+      );
   });
 
   afterEach(() => {

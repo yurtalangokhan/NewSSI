@@ -76,6 +76,7 @@ class KeycloakTokenVerifier(TokenVerifier):
                         "verify_aud": bool(audiences),
                         "verify_iss": True,
                         "verify_exp": True,
+                        "verify_iat": False,
                     },
                 )
                 subject = str(

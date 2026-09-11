@@ -7,7 +7,6 @@ Postgres is used only for collection metadata (langchain_pg_collection).
 All embedding / chunk data lives exclusively in Milvus.
 """
 
-import logging
 import re
 from typing import Any, Optional, Union
 
@@ -17,8 +16,9 @@ from sqlalchemy import Engine
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from langconnect import config
+from langconnect.observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 DBConnection = Union[sqlalchemy.engine.Engine, str]
 

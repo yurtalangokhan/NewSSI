@@ -8,10 +8,8 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 
 from src.core.database.models import (
-    CompositeRoleModel,
     OrganizationLayoutModel,
     OrganizationModel,
-    UserModel,
     UserOrganizationModel,
 )
 from src.core.exceptions import ConflictError, NotFoundError
@@ -45,22 +43,6 @@ class OrganizationLayoutRepository(BaseRepository):
     async def get_writable_organization_ids(self, actor_id: uuid.UUID) -> list[uuid.UUID]:
         """Derive all writable organizations with set-based database queries."""
         async with self._session() as session:
-            actor_result = await session.execute(
-                select(CompositeRoleModel.is_admin)
-                .outerjoin(CompositeRoleModel, CompositeRoleModel.name == UserModel.role)
-                .where(UserModel.id == actor_id)
-            )
-            actor = actor_result.one_or_none()
-            if not actor:
-                return []
-
-            (is_admin,) = actor
-            if is_admin:
-                result = await session.execute(
-                    select(OrganizationModel.id).order_by(OrganizationModel.id)
-                )
-                return list(result.scalars().all())
-
             managed_path = func.concat(
                 "%/", cast(UserOrganizationModel.organization_id, String), "/%"
             )

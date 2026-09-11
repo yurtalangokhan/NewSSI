@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 const UPDATE_ENDPOINT = "/api/admin/code-interpreter";
 
 interface CodeInterpreterUpdateRequest {
@@ -7,7 +8,7 @@ interface CodeInterpreterUpdateRequest {
 export async function updateCodeInterpreter(
   request: CodeInterpreterUpdateRequest
 ): Promise<Response> {
-  return fetch(UPDATE_ENDPOINT, {
+  return authenticatedFetch(UPDATE_ENDPOINT, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),

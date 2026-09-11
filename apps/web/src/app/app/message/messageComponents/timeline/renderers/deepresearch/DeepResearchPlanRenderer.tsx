@@ -41,7 +41,9 @@ export const DeepResearchPlanRenderer: MessageRenderer<
     [packets]
   );
 
-  const statusText = isComplete ? t("timeline.generatedPlan") : t("timeline.generatingPlan");
+  const statusText = isComplete
+    ? t("timeline.generatedPlan")
+    : t("timeline.generatingPlan");
 
   // Markdown renderer callback for ExpandableTextDisplay
   // Uses collapsed components (no spacing) in collapsed view, normal spacing in expanded modal

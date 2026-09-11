@@ -1,4 +1,5 @@
 "use client";
+import CardGridSkeleton from "@/refresh-components/skeletons/CardGridSkeleton";
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -26,7 +27,7 @@ import "./billing.css";
 import { useTranslation } from "react-i18next";
 import { APP_SUPPORT_EMAIL } from "@/lib/appInfo";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
-import { ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_PATHS, ADMIN_ROUTE_CONFIG } from "@/lib/admin-routes";
 
 // ----------------------------------------------------------------------------
 // Types
@@ -269,6 +270,7 @@ export default function BillingPage() {
   };
 
   const viewConfig = getViewConfig();
+  const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.BILLING]!;
 
   // Handle view changes with transition
   const changeView = (newView: "plans" | "details" | "checkout") => {
@@ -295,7 +297,13 @@ export default function BillingPage() {
   };
 
   const renderContent = () => {
-    if (isLoading || view === null) return null;
+    if (isLoading || view === null) {
+      return (
+        <div className="w-full">
+          <CardGridSkeleton cardCount={3} />
+        </div>
+      );
+    }
 
     const animationClass =
       transitionType === "expand"
@@ -384,6 +392,11 @@ export default function BillingPage() {
       <SettingsLayouts.Header
         icon={viewConfig.icon}
         title={viewConfig.title}
+        description={
+          t(route.descriptionKey ?? "", {
+            defaultValue: route.description ?? "",
+          }) || undefined
+        }
         backButton={viewConfig.showBackButton}
         onBack={handleBack}
         separator
@@ -400,19 +413,24 @@ export default function BillingPage() {
                 defaultValue:
                   "Review plan status, license activation, and billing details without leaving the admin console.",
               })}
+              isLoading={isLoading}
               metrics={[
                 {
-                  label: t("admin.billing.currentViewLabel", {
-                    defaultValue: "Current view",
-                  }),
-                  value: viewConfig.title,
+                  label: t("admin.billing.planLabel", { defaultValue: "Plan" }),
+                  value:
+                    billing?.plan_type ??
+                    licenseData?.plan_type ??
+                    t("admin.billing.noActivePlan", {
+                      defaultValue: "No active plan",
+                    }),
                 },
                 {
                   label: t("admin.billing.subscriptionLabel", {
                     defaultValue: "Subscription",
                   }),
-                  value:
-                    hasSubscription || licenseData?.has_license
+                  value: isLoading
+                    ? "..."
+                    : hasSubscription || licenseData?.has_license
                       ? t("admin.billing.active", { defaultValue: "Active" })
                       : t("admin.billing.review", { defaultValue: "Review" }),
                   tone:
@@ -421,23 +439,15 @@ export default function BillingPage() {
                       : "warning",
                 },
                 {
-                  label: t("admin.billing.supportLabel", {
-                    defaultValue: "Support",
+                  label: t("admin.billing.renewalDateLabel", {
+                    defaultValue: "Renewal date",
                   }),
-                  value: APP_SUPPORT_EMAIL,
-                },
-              ]}
-              actions={[
-                {
-                  label: t("admin.navigation.routes.systemInfo.sidebar", {
-                    defaultValue: "System Information",
-                  }),
-                  href: "/admin/systeminfo",
-                },
-                {
-                  label: t("admin.navigation.routes.systemSettings.sidebar"),
-                  href: ADMIN_PATHS.SYSTEM_SETTINGS,
-                  primary: true,
+                  value: billing?.current_period_end
+                    ? new Date(billing.current_period_end).toLocaleDateString()
+                    : t("admin.billing.noRenewalDate", {
+                        defaultValue: "Not set",
+                      }),
+                  tone: billing?.cancel_at_period_end ? "warning" : "neutral",
                 },
               ]}
             />

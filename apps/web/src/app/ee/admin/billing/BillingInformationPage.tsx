@@ -20,6 +20,7 @@ import { SubscriptionSummary } from "./SubscriptionSummary";
 import { BillingAlerts } from "./BillingAlerts";
 import { SvgClipboard, SvgWallet } from "@opal/icons";
 import { useTranslation } from "react-i18next";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 
 export default function BillingInformationPage() {
   const { t } = useTranslation();
@@ -40,7 +41,9 @@ export default function BillingInformationPage() {
 
   if (isLoading) {
     return (
-      <div className="text-center py-8">{t("ee.billing.loading")}</div>
+      <div className="p-4">
+        <FormSkeleton fieldCount={3} />
+      </div>
     );
   }
 
@@ -93,9 +96,7 @@ export default function BillingInformationPage() {
           <CardTitle className="text-xl font-semibold">
             {t("ee.billing.manageSubscription")}
           </CardTitle>
-          <CardDescription>
-            {t("ee.billing.manageDescription")}
-          </CardDescription>
+          <CardDescription>{t("ee.billing.manageDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button

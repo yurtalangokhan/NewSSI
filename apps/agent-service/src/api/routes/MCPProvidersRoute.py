@@ -67,8 +67,8 @@ async def sync_provider_tools(
     from service.MCPToolService import MCPToolService
 
     tool_service = MCPToolService.get_instance()
-    count = await tool_service.sync_tools_from_provider(provider_id)
-    return {"provider_id": provider_id, "tools_synced": count}
+    snapshots = await tool_service.sync_tools_from_provider(provider_id)
+    return {"provider_id": provider_id, "tools_synced": len(snapshots)}
 
 
 @router.patch("/{provider_id}")

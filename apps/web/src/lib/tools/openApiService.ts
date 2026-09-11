@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import { MethodSpec, ApiResponse, ToolSnapshot } from "@/lib/tools/interfaces";
 import { getErrorMsg } from "@/lib/fetchUtils";
 
@@ -63,13 +64,16 @@ export async function validateToolDefinition(toolData: {
   definition: Record<string, any>;
 }): Promise<ApiResponse<MethodSpec[]>> {
   try {
-    const response = await fetch(`/api/admin/tool/custom/validate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(toolData),
-    });
+    const response = await authenticatedFetch(
+      `/api/admin/tool/custom/validate`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(toolData),
+      }
+    );
 
     if (!response.ok) {
       const errorDetail = (await getErrorMsg(response)) ?? "Unknown error";
@@ -92,7 +96,7 @@ export async function createCustomTool(toolData: {
   passthrough_auth: boolean;
 }): Promise<ApiResponse<ToolSnapshot>> {
   try {
-    const response = await fetch("/api/admin/tool/custom", {
+    const response = await authenticatedFetch("/api/admin/tool/custom", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -127,13 +131,16 @@ export async function updateCustomTool(
   toolData: ToolUpdatePayload
 ): Promise<ApiResponse<ToolSnapshot>> {
   try {
-    const response = await fetch(`/api/admin/tool/custom/${toolId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(toolData),
-    });
+    const response = await authenticatedFetch(
+      `/api/admin/tool/custom/${toolId}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(toolData),
+      }
+    );
 
     if (!response.ok) {
       const errorDetail = (await getErrorMsg(response)) ?? "Unknown error";
@@ -152,12 +159,15 @@ export async function deleteCustomTool(
   toolId: number
 ): Promise<ApiResponse<boolean>> {
   try {
-    const response = await fetch(`/api/admin/tool/custom/${toolId}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const response = await authenticatedFetch(
+      `/api/admin/tool/custom/${toolId}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     if (!response.ok) {
       const errorDetail = (await getErrorMsg(response)) ?? "Unknown error";

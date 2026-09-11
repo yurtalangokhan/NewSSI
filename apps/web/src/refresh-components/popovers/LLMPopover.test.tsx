@@ -2,10 +2,51 @@ import {
   buildLlmOptions,
   groupLlmOptions,
   isLlmOptionAvailableForSelection,
+  modelSelectionAppliesToAgent,
 } from "./LLMPopover";
 import { LLMOption } from "./interfaces";
 import { LLMProviderDescriptor } from "@/interfaces/llm";
+import type { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import { makeProvider } from "@tests/setup/llmProviderTestUtils";
+
+function agent(
+  overrides: Partial<MinimalPersonaSnapshot>
+): MinimalPersonaSnapshot {
+  return {
+    id: 1,
+    name: "A",
+    description: "",
+    tools: [],
+    ...overrides,
+  } as MinimalPersonaSnapshot;
+}
+
+/**
+ * Regression: chatting with a flow agent left the user's own default model
+ * ticked in the picker. A flow's model comes from its LLMModel node(s) in
+ * the published spec (agent-service flow_builder._resolve_model) and a flow
+ * graph never reads the request's `configurable["model"]`, so that tick
+ * claimed a model was in use that the agent could not possibly use — and
+ * pointed at the wrong one.
+ */
+describe("modelSelectionAppliesToAgent", () => {
+  it("marks nothing for a flow agent, whose model its own spec decides", () => {
+    expect(modelSelectionAppliesToAgent(agent({ graph_schema: "flow" }))).toBe(
+      false
+    );
+  });
+
+  it("still marks the current model for a classic agent", () => {
+    expect(
+      modelSelectionAppliesToAgent(agent({ graph_schema: "zero_shot" }))
+    ).toBe(true);
+    expect(modelSelectionAppliesToAgent(agent({}))).toBe(true);
+  });
+
+  it("still marks the current model when no agent is selected at all", () => {
+    expect(modelSelectionAppliesToAgent(undefined)).toBe(true);
+  });
+});
 
 describe("LLMPopover helpers", () => {
   test("deduplicates identical provider+model combinations across provider entries", () => {
@@ -121,5 +162,35 @@ describe("LLMPopover helpers", () => {
     expect(grouped[1]?.displayName).toBe("OpenAI Provider");
     expect(grouped[0]?.options).toHaveLength(1);
     expect(grouped[1]?.options).toHaveLength(1);
+  });
+  test("filters out embedding models with supports_embedding flag", () => {
+    const providers: LLMProviderDescriptor[] = [
+      makeProvider({
+        id: 1,
+        name: "Ollama",
+        provider: "ollama",
+        model_configurations: [
+          {
+            name: "llama3.2:latest",
+            is_visible: true,
+            max_input_tokens: 8192,
+            supports_image_input: false,
+            supports_reasoning: false,
+            supports_embedding: false,
+          },
+          {
+            name: "nomic-embed-text:latest",
+            is_visible: true,
+            max_input_tokens: 2048,
+            supports_image_input: false,
+            supports_reasoning: false,
+            supports_embedding: true,
+          },
+        ],
+      }),
+    ];
+
+    const options = buildLlmOptions(providers);
+    expect(options.map((o) => o.modelName)).toEqual(["llama3.2:latest"]);
   });
 });

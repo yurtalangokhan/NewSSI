@@ -67,12 +67,6 @@ const AgentButton = memo(({ agent }: AgentButtonProps) => {
     return query ? `${path}?${query}` : path;
   }, [routeAgentId, currentProjectId]);
 
-  const handleClick = async () => {
-    if (!isActuallyPinned) {
-      await togglePinnedAgent(agent, true);
-    }
-  };
-
   return (
     <SortableItem id={agent.id}>
       <div className="flex flex-col w-full h-full">
@@ -80,21 +74,17 @@ const AgentButton = memo(({ agent }: AgentButtonProps) => {
           key={agent.id}
           leftIcon={() => <AgentAvatar agent={agent} />}
           href={href}
-          onClick={handleClick}
           transient={isCurrentAgent}
           rightChildren={
-            // Hide unpin button for current agent since auto-pin would immediately re-pin
-            isCurrentAgent ? null : (
+            isActuallyPinned ? (
               <IconButton
-                icon={
-                  SvgX /* We only show the unpin button for pinned agents */
-                }
+                icon={SvgX}
                 internal
                 onClick={noProp(() => togglePinnedAgent(agent, false))}
                 className={cn("hidden group-hover/SidebarTab:flex")}
                 tooltip={t("sidebar.unpinAgent")}
               />
-            )
+            ) : null
           }
         >
           {agent.name}

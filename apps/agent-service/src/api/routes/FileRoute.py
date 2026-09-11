@@ -12,13 +12,12 @@ GET  /api/chat/file/{file_id}/text — extract and return plain text
 
 from __future__ import annotations
 
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from i18n import t
 
 from api.dependencies import require_user
+from core.logger import get_logger
 from service.FileService import (
     FileRecord,
     get_file,
@@ -27,7 +26,7 @@ from service.FileService import (
     to_csv_text,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(tags=["files"], dependencies=[Depends(require_user)])
 

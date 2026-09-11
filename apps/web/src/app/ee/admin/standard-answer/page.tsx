@@ -3,7 +3,7 @@
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { toast } from "@/hooks/useToast";
 import { useStandardAnswers, useStandardAnswerCategories } from "./hooks";
-import { ThreeDotsLoader } from "@/components/Loading";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import Separator from "@/refresh-components/Separator";
 import {
@@ -143,7 +143,9 @@ const StandardAnswersTableRow = ({
               {t("admin.connector.trueValue")}
             </span>
           ) : (
-            <span className="text-gray-500">{t("admin.connector.falseValue")}</span>
+            <span className="text-gray-500">
+              {t("admin.connector.falseValue")}
+            </span>
           )}
         </div>,
         <ReactMarkdown
@@ -371,7 +373,19 @@ function Main() {
   } = useStandardAnswerCategories();
 
   if (standardAnswersIsLoading || standardAnswerCategoriesIsLoading) {
-    return <ThreeDotsLoader />;
+    return (
+      <div className="p-6">
+        <TableSkeleton
+          rowCount={5}
+          columns={[
+            { type: "text", width: "w-48", headerWidth: "w-24" },
+            { type: "text", width: "w-64", headerWidth: "w-32" },
+            { type: "badge", width: "w-24", headerWidth: "w-16" },
+            { type: "actions", width: "w-20", headerWidth: "w-16" },
+          ]}
+        />
+      </div>
+    );
   }
 
   if (standardAnswersError || !standardAnswers) {
@@ -428,9 +442,23 @@ function Main() {
 }
 
 export default function Page() {
+  const { t } = useTranslation();
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
+      <SettingsLayouts.Header
+        icon={route.icon}
+        title={
+          route.titleKey
+            ? t(route.titleKey, { defaultValue: route.title })
+            : route.title
+        }
+        description={
+          route.descriptionKey
+            ? t(route.descriptionKey, { defaultValue: route.description })
+            : route.description
+        }
+        separator
+      />
       <SettingsLayouts.Body>
         <Main />
       </SettingsLayouts.Body>

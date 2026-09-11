@@ -33,7 +33,9 @@ async def test_documents_create_and_list_and_delete_and_search() -> None:
         collection_name = "docs_test_col"
         col_payload = {"name": collection_name, "metadata": {"purpose": "doc-test"}}
         create_col = await client.post(
-            "/api/v1/collections", json=col_payload, headers=USER_1_HEADERS
+            "/api/v1/collections",
+            json=col_payload,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-col-create-list"),
         )
         assert create_col.status_code == 201
         collection_data = create_col.json()
@@ -116,7 +118,7 @@ async def test_documents_create_with_invalid_metadata_json() -> None:
         collection_response = await client.post(
             "/api/v1/collections",
             json={"name": col_name, "metadata": {}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-col-create-invalid-meta"),
         )
         assert collection_response.status_code == 201
         collection_data = collection_response.json()
@@ -143,7 +145,7 @@ async def test_documents_search_empty_query() -> None:
         collection_response = await client.post(
             "/api/v1/collections",
             json={"name": col_name, "metadata": {}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-col-create-search"),
         )
         assert collection_response.status_code == 201
         collection_data = collection_response.json()
@@ -208,7 +210,7 @@ async def test_documents_create_with_valid_text_file_and_metadata() -> None:
         collection_response = await client.post(
             "/api/v1/collections",
             json={"name": collection_name, "metadata": {}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-col-create-valid-meta"),
         )
         assert collection_response.status_code == 201
         collection_data = collection_response.json()
@@ -267,7 +269,7 @@ async def test_documents_create_with_valid_text_file_without_metadata() -> None:
         collection_response = await client.post(
             "/api/v1/collections",
             json={"name": collection_name, "metadata": {}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-col-create-no-meta"),
         )
         assert collection_response.status_code == 201
         collection_data = collection_response.json()
@@ -312,7 +314,7 @@ async def test_documents_create_with_empty_file() -> None:
         collection_response = await client.post(
             "/api/v1/collections",
             json={"name": collection_name, "metadata": {}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-col-create-empty"),
         )
         assert collection_response.status_code == 201
         collection_data = collection_response.json()
@@ -342,7 +344,9 @@ async def test_documents_create_with_invalid_metadata_format() -> None:
         collection_response = await client.post(
             "/api/v1/collections",
             json={"name": collection_name, "metadata": {}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(
+                USER_1_HEADERS, "docs-col-create-invalid-format"
+            ),
         )
         assert collection_response.status_code == 201
         collection_data = collection_response.json()
@@ -374,7 +378,7 @@ async def test_document_mutations_blocked_while_graph_building(
         create_col = await client.post(
             "/api/v1/collections",
             json={"name": "docs_locked", "metadata": {}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-col-create-locked"),
         )
         assert create_col.status_code == 201
         collection_id = create_col.json()["uuid"]
@@ -457,7 +461,7 @@ async def test_documents_create_with_multiple_files():
         collection_response = await client.post(
             "/api/v1/collections",
             json={"name": collection_name, "metadata": {}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-col-create-multi"),
         )
         assert collection_response.status_code == 201
         collection_data = collection_response.json()
@@ -505,7 +509,7 @@ async def test_documents_create_with_mismatched_metadata():
         collection_response = await client.post(
             "/api/v1/collections",
             json={"name": collection_name, "metadata": {}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-col-create-mismatch"),
         )
         assert collection_response.status_code == 201
         collection_data = collection_response.json()
@@ -541,7 +545,7 @@ async def test_documents_create_ownership_validation():
         collection_response = await client.post(
             "/api/v1/collections",
             json={"name": collection_name, "metadata": {}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-col-create-ownership"),
         )
         assert collection_response.status_code == 201
         collection_data = collection_response.json()

@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import {
   DocumentBoostStatus,
   Tag,
@@ -260,7 +262,7 @@ export const useLabels = () => {
   };
 
   const createLabel = async (name: string): Promise<PersonaLabel | null> => {
-    const response = await fetch("/api/persona/labels", {
+    const response = await authenticatedFetch("/api/persona/labels", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
@@ -283,11 +285,14 @@ export const useLabels = () => {
   };
 
   const updateLabel = async (id: number, name: string) => {
-    const response = await fetch(`/api/admin/persona/label/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ label_name: name }),
-    });
+    const response = await authenticatedFetch(
+      `/api/admin/persona/label/${id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label_name: name }),
+      }
+    );
 
     if (response.ok) {
       mutate(
@@ -301,10 +306,13 @@ export const useLabels = () => {
   };
 
   const deleteLabel = async (id: number) => {
-    const response = await fetch(`/api/admin/persona/label/${id}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-    });
+    const response = await authenticatedFetch(
+      `/api/admin/persona/label/${id}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
 
     if (response.ok) {
       mutate(
@@ -587,7 +595,7 @@ export function getValidLlmDescriptorForProviders(
       const parts = modelName.split(":");
       const providerId = parts[0];
       const extractedModelName = parts.slice(1).join(":");
-      
+
       const provider = llmProviders.find(
         (p) => String(p.id) === providerId || p.id === providerId
       );
@@ -681,10 +689,7 @@ export function useLlmManager(
   const { user } = useUser();
 
   // Unified available-models endpoint already returns the complete provider/model list.
-  const {
-    llmProviders,
-    isLoading: isLoadingProviders,
-  } = useAvailableModels();
+  const { llmProviders, isLoading: isLoadingProviders } = useAvailableModels();
   const defaultText: DefaultModel | null = null;
 
   const [userHasManuallyOverriddenLLM, setUserHasManuallyOverriddenLLM] =
@@ -742,7 +747,8 @@ export function useLlmManager(
         // current chat session, use the override
         return;
       } else if (user?.preferences?.default_model) {
-        const defaultProviderId = user.preferences.default_provider_id ?? undefined;
+        const defaultProviderId =
+          user.preferences.default_provider_id ?? undefined;
         const resolved = getValidLlmDescriptor(user.preferences.default_model);
         if (defaultProviderId && resolved.modelName) {
           resolved.providerId = defaultProviderId;
@@ -958,7 +964,7 @@ export const fetchConnectorIndexingStatus = async (
   request: IndexingStatusRequest = {},
   sourcePages: Record<ValidSources, number> | null = null
 ): Promise<ConnectorIndexingStatusLiteResponse[]> => {
-  const response = await fetch(INDEXING_STATUS_URL, {
+  const response = await authenticatedFetch(INDEXING_STATUS_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -9,6 +9,7 @@ import { User } from "@/lib/types";
 import Logo from "@/refresh-components/Logo";
 import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
 import { useTranslation } from "react-i18next";
+import { idempotentFetch } from "@/lib/api/idempotency";
 
 export interface VerifyProps {
   user: User | null;
@@ -29,7 +30,7 @@ export default function Verify({ user }: VerifyProps) {
       return;
     }
 
-    const response = await fetch("/api/auth/verify", {
+    const response = await idempotentFetch("/api/auth/verify", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

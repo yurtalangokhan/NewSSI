@@ -26,6 +26,7 @@ import Button from "@/refresh-components/buttons/Button";
 import { TextFormField } from "@/components/Field";
 import { SettingsContext } from "@/providers/SettingsProvider";
 import { SvgAlertTriangle, SvgKey } from "@opal/icons";
+import Text from "@/refresh-components/texts/Text";
 
 interface RerankingDetailsFormProps {
   setRerankingDetails: Dispatch<SetStateAction<RerankingDetails>>;
@@ -153,7 +154,9 @@ const RerankingDetailsForm = forwardRef<
 
           return (
             <div className="p-2 rounded-lg max-w-4xl mx-auto">
-              <p className="mb-4">{t("selectModelIntro")}</p>
+              <Text as="p" className="mb-4">
+                {t("selectModelIntro")}
+              </Text>
               <div className="text-sm mr-auto mb-6 divide-x-2 flex">
                 {originalRerankingDetails.rerank_model_name && (
                   <button
@@ -292,9 +295,9 @@ const RerankingDetailsForm = forwardRef<
                             ) : (
                               <MixedBreadIcon size={24} className="mr-2" />
                             )}
-                            <h3 className="font-bold text-lg">
+                            <Text as="h3" className="font-bold text-lg">
                               {card.displayName}
-                            </h3>
+                            </Text>
                           </div>
                           {card.link && (
                             <a
@@ -308,9 +311,9 @@ const RerankingDetailsForm = forwardRef<
                             </a>
                           )}
                         </div>
-                        <p className="text-sm text-text-600 mb-2">
+                        <Text as="p" className="text-sm text-text-600 mb-2">
                           {card.description}
-                        </p>
+                        </Text>
                         <div className="text-xs text-text-500">
                           {card.cloud
                             ? t("cloudBasedLabel")
@@ -333,10 +336,10 @@ const RerankingDetailsForm = forwardRef<
                         onClose={() => setShowGpuWarningModalModel(null)}
                       />
                       <Modal.Body>
-                        <p className="text-error font-semibold">
+                        <Text as="p" className="text-error font-semibold">
                           {t("warningLabel")}
-                        </p>
-                        <p>{t("gpuWarningBody")}</p>
+                        </Text>
+                        <Text as="p">{t("gpuWarningBody")}</Text>
                       </Modal.Body>
                       <Modal.Footer>
                         <Button

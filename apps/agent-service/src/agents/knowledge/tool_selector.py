@@ -1,27 +1,44 @@
-"""Knowledge tool selector.
+"""Knowledge tool selector for tools-service retrieval capabilities."""
 
-Maps rag_config keys to the appropriate retrieval tools.
-Single responsibility: decides WHICH tools to include, not how to use them.
-"""
+from __future__ import annotations
 
-from langchain_core.tools import BaseTool
+import json
+from typing import Any
 
 
 class KnowledgeToolSelector:
     """Selects retrieval tools based on the keys present in rag_config."""
 
     @staticmethod
-    def select_tools(rag_config: dict) -> list[BaseTool]:
-        """Return the tools appropriate for the given rag_config.
+    def select_tool_names(rag_config: dict) -> list[str]:
+        """Return tools-service tool names appropriate for the given rag_config.
 
-        - document_processing collections → database_search (Milvus vector search)
-        - knowledge_graph collections     → graph_search (Neo4j hybrid)
+        - document_processing collections -> database_search
+        - knowledge_graph collections -> graph_search
         """
-        from agents.tools import database_search, graph_search
-
-        tools: list[BaseTool] = []
+        tool_names: list[str] = []
         if rag_config.get("document_processing"):
-            tools.append(database_search)
+            tool_names.append("database_search")
         if rag_config.get("knowledge_graph"):
-            tools.append(graph_search)
-        return tools
+            tool_names.append("graph_search")
+        return tool_names
+
+    @staticmethod
+    def select_tools(rag_config: dict) -> list[object]:
+        """Compatibility method: agent-service no longer returns local tools."""
+        return []
+
+
+def build_knowledge_binding_references(rag_config: dict[str, Any]) -> dict[str, str]:
+    """Return trusted binding references consumed by tools-service knowledge tools."""
+    references: dict[str, str] = {}
+    document_collection_ids = rag_config.get("document_processing") or rag_config.get(
+        "collections", []
+    )
+    graph_collection_ids = rag_config.get("knowledge_graph") or rag_config.get("collections", [])
+
+    if document_collection_ids:
+        references["database_search.collection_ids"] = json.dumps(document_collection_ids)
+    if graph_collection_ids:
+        references["graph_search.collection_ids"] = json.dumps(graph_collection_ids)
+    return references

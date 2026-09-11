@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import Separator from "@/refresh-components/Separator";
 import { Form, Formik } from "formik";
 import { TextFormField } from "@/components/Field";
@@ -51,7 +52,7 @@ async function fetchOpenRouterModels(params: {
   }
 
   try {
-    const response = await fetch(OPENROUTER_MODELS_API_URL, {
+    const response = await authenticatedFetch(OPENROUTER_MODELS_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -208,7 +209,9 @@ export function OpenRouterModal({
                   <DisplayModels
                     modelConfigurations={currentModels}
                     formikProps={formikProps}
-                    noModelConfigurationsMessage={t("llmConfig.fetchModelsFirst")}
+                    noModelConfigurationsMessage={t(
+                      "llmConfig.fetchModelsFirst"
+                    )}
                     recommendedDefaultModel={null}
                     shouldShowAutoUpdateToggle={false}
                   />

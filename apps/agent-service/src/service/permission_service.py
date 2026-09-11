@@ -5,15 +5,15 @@ Replaces legacy agent_groups with new organization-based permission system
 by delegating to user-service.
 """
 
-import logging
 from typing import Any
 
 import httpx
 
 from core.db.repositories.agent_group_repo import AgentGroupRepository
 from core.env import env
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class PermissionService:

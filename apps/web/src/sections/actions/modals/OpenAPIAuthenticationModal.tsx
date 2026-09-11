@@ -133,9 +133,7 @@ export default function OpenAPIAuthenticationModal({
         console.error("Failed to load OAuth configuration", error);
         if (isActive) {
           setExistingOAuthConfig(null);
-          setOAuthConfigError(
-            t("openAPIAuth.oauthConfigLoadError")
-          );
+          setOAuthConfigError(t("openAPIAuth.oauthConfigLoadError"));
         }
       } finally {
         if (isActive) {
@@ -376,7 +374,9 @@ export default function OpenAPIAuthenticationModal({
                               : "idle"
                         }
                       >
-                        <FormField.Label>{t("openAPIAuth.authMethodLabel")}</FormField.Label>
+                        <FormField.Label>
+                          {t("openAPIAuth.authMethodLabel")}
+                        </FormField.Label>
                         <FormField.Control asChild>
                           <InputSelect
                             value={values.authMethod}
@@ -384,7 +384,9 @@ export default function OpenAPIAuthenticationModal({
                               setFieldValue("authMethod", value)
                             }
                           >
-                            <InputSelect.Trigger placeholder={t("openAPIAuth.selectMethod")} />
+                            <InputSelect.Trigger
+                              placeholder={t("openAPIAuth.selectMethod")}
+                            />
                             <InputSelect.Content>
                               <InputSelect.Item
                                 value="oauth"
@@ -395,14 +397,18 @@ export default function OpenAPIAuthenticationModal({
                               {isOAuthEnabled && (
                                 <InputSelect.Item
                                   value="pt-oauth"
-                                  description={t("openAPIAuth.ptOauthDescription")}
+                                  description={t(
+                                    "openAPIAuth.ptOauthDescription"
+                                  )}
                                 >
                                   OAuth Pass-through
                                 </InputSelect.Item>
                               )}
                               <InputSelect.Item
                                 value="custom-header"
-                                description={t("openAPIAuth.customHeaderDescription")}
+                                description={t(
+                                  "openAPIAuth.customHeaderDescription"
+                                )}
                               >
                                 Custom Authorization Header
                               </InputSelect.Item>
@@ -431,7 +437,9 @@ export default function OpenAPIAuthenticationModal({
                                 : "idle"
                           }
                         >
-                          <FormField.Label>{t("openAPIAuth.authorizationUrlLabel")}</FormField.Label>
+                          <FormField.Label>
+                            {t("openAPIAuth.authorizationUrlLabel")}
+                          </FormField.Label>
                           <FormField.Control asChild>
                             <InputTypeIn
                               name="authorizationUrl"
@@ -458,7 +466,9 @@ export default function OpenAPIAuthenticationModal({
                                 : "idle"
                           }
                         >
-                          <FormField.Label>{t("openAPIAuth.tokenUrlLabel")}</FormField.Label>
+                          <FormField.Label>
+                            {t("openAPIAuth.tokenUrlLabel")}
+                          </FormField.Label>
                           <FormField.Control asChild>
                             <InputTypeIn
                               name="tokenUrl"
@@ -485,7 +495,9 @@ export default function OpenAPIAuthenticationModal({
                                 : "idle"
                           }
                         >
-                          <FormField.Label>{t("openAPIAuth.clientIdLabel")}</FormField.Label>
+                          <FormField.Label>
+                            {t("openAPIAuth.clientIdLabel")}
+                          </FormField.Label>
                           <FormField.Control asChild>
                             <InputTypeIn
                               name="clientId"
@@ -517,7 +529,9 @@ export default function OpenAPIAuthenticationModal({
                                 : "idle"
                           }
                         >
-                          <FormField.Label>{t("openAPIAuth.clientSecretLabel")}</FormField.Label>
+                          <FormField.Label>
+                            {t("openAPIAuth.clientSecretLabel")}
+                          </FormField.Label>
                           <FormField.Control asChild>
                             <PasswordInputTypeIn
                               name="clientSecret"
@@ -551,7 +565,9 @@ export default function OpenAPIAuthenticationModal({
                         >
                           <FormField.Label>
                             {t("openAPIAuth.scopesLabel")}{" "}
-                            <span className="text-text-03">({t("openAPIAuth.optional")})</span>
+                            <span className="text-text-03">
+                              ({t("openAPIAuth.optional")})
+                            </span>
                           </FormField.Label>
                           <FormField.Control asChild>
                             <InputTypeIn
@@ -563,7 +579,7 @@ export default function OpenAPIAuthenticationModal({
                             />
                           </FormField.Control>
                           <FormField.Description>
-                              {t("openAPIAuth.scopesDescription")}
+                            {t("openAPIAuth.scopesDescription")}
                           </FormField.Description>
                           <FormField.Message
                             messages={{
@@ -583,7 +599,7 @@ export default function OpenAPIAuthenticationModal({
                               secondaryBody
                               className="flex flex-wrap gap-1"
                             >
-                                {t("openAPIAuth.useRedirectUri")}
+                              {t("openAPIAuth.useRedirectUri")}
                             </Text>
                             <div className="flex items-center gap-2 rounded-08 border border-border-01 bg-background-tint-00 px-3 py-2">
                               <Text
@@ -672,7 +688,9 @@ export default function OpenAPIAuthenticationModal({
                     !isValid || isSubmitting || shouldDisableForm || !dirty
                   }
                 >
-                  {isSubmitting ? t("openAPIAuth.connecting") : t("openAPIAuth.connect")}
+                  {isSubmitting
+                    ? t("openAPIAuth.connecting")
+                    : t("openAPIAuth.connect")}
                 </Button>
               </Modal.Footer>
             </Form>

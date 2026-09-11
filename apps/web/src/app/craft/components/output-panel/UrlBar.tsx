@@ -74,7 +74,8 @@ export default function UrlBar({
   onScopeChange,
 }: UrlBarProps) {
   const { t } = useTranslation();
-  const effectiveDownloadTooltip = downloadRawTooltip ?? t("craftComponents.downloadFile");
+  const effectiveDownloadTooltip =
+    downloadRawTooltip ?? t("craftComponents.downloadFile");
   const handleOpenInNewTab = () => {
     if (previewUrl) {
       window.open(previewUrl, "_blank", "noopener,noreferrer");
@@ -128,7 +129,10 @@ export default function UrlBar({
         <div className="flex-1 min-w-0 flex items-center px-3 py-1.5 bg-background-tint-02 rounded-full gap-2 min-h-[2.25rem]">
           {/* Download raw file button */}
           {onDownloadRaw && (
-            <SimpleTooltip tooltip={effectiveDownloadTooltip} delayDuration={200}>
+            <SimpleTooltip
+              tooltip={effectiveDownloadTooltip}
+              delayDuration={200}
+            >
               <button
                 onClick={onDownloadRaw}
                 className="flex-shrink-0 p-0.5 rounded transition-colors hover:bg-background-tint-03 text-text-03"
@@ -140,7 +144,10 @@ export default function UrlBar({
           )}
           {/* Open in new tab button - only shown for Preview tab with valid URL */}
           {previewUrl && (
-            <SimpleTooltip tooltip={t("craftComponents.openInNewTab")} delayDuration={200}>
+            <SimpleTooltip
+              tooltip={t("craftComponents.openInNewTab")}
+              delayDuration={200}
+            >
               <button
                 onClick={handleOpenInNewTab}
                 className="flex-shrink-0 p-0.5 rounded transition-colors hover:bg-background-tint-03 text-text-03"
@@ -163,7 +170,9 @@ export default function UrlBar({
             disabled={isDownloading}
             onClick={onDownload}
           >
-            {isDownloading ? t("craftComponents.exporting") : t("craftComponents.exportToDocx")}
+            {isDownloading
+              ? t("craftComponents.exporting")
+              : t("craftComponents.exportToDocx")}
           </Button>
         )}
         {/* Share button — shown when webapp preview is active */}

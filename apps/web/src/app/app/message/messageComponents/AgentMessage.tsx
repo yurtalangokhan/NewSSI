@@ -21,6 +21,8 @@ import { Message } from "@/app/app/interfaces";
 import Text from "@/refresh-components/texts/Text";
 import { AgentTimeline } from "@/app/app/message/messageComponents/timeline/AgentTimeline";
 import GraphStageStrip from "@/app/app/message/messageComponents/timeline/GraphStageStrip";
+import { buildStageGroups } from "@/app/app/message/messageComponents/timeline/hooks/flowStageGrouping";
+import { useMarkdownRenderer } from "@/app/app/message/messageComponents/markdownUtils";
 import { cn } from "@/lib/utils";
 import { useAppBackground } from "@/providers/AppBackgroundProvider";
 import { useTranslation } from "react-i18next";
@@ -102,6 +104,7 @@ const AgentMessage = React.memo(function AgentMessage({
   originalPersonaId,
   processingDurationSeconds,
   finalMessageText,
+  packetCount,
 }: AgentMessageProps) {
   const markdownRef = useRef<HTMLDivElement>(null);
   const finalAnswerRef = useRef<HTMLDivElement>(null);
@@ -154,8 +157,40 @@ const AgentMessage = React.memo(function AgentMessage({
           packet.obj.type === PacketType.GRAPH_STAGE_START ||
           packet.obj.type === PacketType.GRAPH_STAGE_END
       ),
-    [effectivePackets]
+    // effectivePackets is mutated in place (stable ref) — key on length/count
+    // or a stage packet arriving after the first render is never noticed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [effectivePackets, effectivePackets.length, packetCount]
   );
+
+  // FlowAgent per-stage timeline (folded, computed below from the SHARED
+  // pipeline's turn groups so citations / sources / file cards stay intact).
+  // First: if the run ended with no real answer packet (a ConditionalRouter
+  // topology the backend couldn't mark final), splice a synthetic answer so
+  // the bubble renders and the message completes. Only safe at `stop` — no
+  // more real packets append, so the synthetic tail keeps a stable index for
+  // the incremental packet processor. The mid-run equivalent
+  // (`liveFinalAnswerText`) is rendered directly below instead.
+  const preScan = useMemo(
+    () => buildStageGroups([], effectivePackets),
+    [effectivePackets, effectivePackets.length]
+  );
+  const timelinePackets = useMemo(() => {
+    if (!preScan.fallbackAnswerText) return effectivePackets;
+    const at = { turn_index: 100_000, sub_turn_index: null };
+    return [
+      ...effectivePackets,
+      {
+        placement: at,
+        obj: { type: "message_start", content: "", final_documents: null },
+      },
+      {
+        placement: at,
+        obj: { type: "message_delta", content: preScan.fallbackAnswerText },
+      },
+      { placement: at, obj: { type: "stop", stop_reason: "finished" } },
+    ] as unknown as Packet[];
+  }, [effectivePackets, effectivePackets.length, preScan.fallbackAnswerText]);
 
   // Process streaming packets: returns data and callbacks
   // Hook handles all state internally, exposes clean API
@@ -176,7 +211,7 @@ const AgentMessage = React.memo(function AgentMessage({
     finalAnswerComing,
     streamSilentSeconds,
     toolProcessingDuration,
-  } = usePacketProcessor(effectivePackets, nodeId);
+  } = usePacketProcessor(timelinePackets, nodeId);
 
   // Apply pacing delays between different tool types for smoother visual transitions
   const { pacedTurnGroups, pacedDisplayGroups, pacedFinalAnswerComing } =
@@ -187,6 +222,23 @@ const AgentMessage = React.memo(function AgentMessage({
       nodeId,
       finalAnswerComing
     );
+
+  // Fold the FlowAgent stages: split the paced timeline steps into numbered
+  // per-stage sections (intermediate stages) + the steps that stay inline
+  // (final answer stage, un-attributed). The shared pipeline above already
+  // built citations / sources / documents from every packet.
+  //
+  // `packetCount` / `effectivePackets.length` are explicit deps: `timelinePackets`
+  // is the stream's mutated-in-place array (stable reference), and a stage's
+  // folded `flow_stage_output_delta` packets are excluded from `pacedTurnGroups`
+  // — so without a length signal here this memo would not recompute while an
+  // intermediate stage streams its output, and the "Çıktı" block would only
+  // update once some other packet (a tool step, `flow_stage_end`) forced it.
+  const { sections: flowStageSections, inlineTurnGroups } = useMemo(
+    () => buildStageGroups(pacedTurnGroups, timelinePackets),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pacedTurnGroups, timelinePackets, packetCount, effectivePackets.length]
+  );
 
   // The generation skeleton and the file card it turns into are never withheld
   // by step pacing — they would blink out whenever another step is revealed.
@@ -236,19 +288,53 @@ const AgentMessage = React.memo(function AgentMessage({
     onMessageSelection,
   });
 
+  // Live answer for a flow whose final node sits on a loop cycle: the backend
+  // folds every iteration's output (it can't know which is last), so no real
+  // `token` packets reach the bubble. Render the current iteration's folded
+  // text here directly — splicing synthetic packets would shift indices under
+  // the incremental packet processor while real packets are still arriving.
+  // At `stop` the `fallbackAnswerText` splice above takes over with the same
+  // text, so `visibleDisplayGroups` then carries the answer and this hides.
+  const showLiveFinalAnswer =
+    !stopPacketSeen &&
+    visibleDisplayGroups.length === 0 &&
+    preScan.liveFinalAnswerText.trim().length > 0;
+  const { renderedContent: liveFinalAnswerRendered } = useMarkdownRenderer(
+    showLiveFinalAnswer ? preScan.liveFinalAnswerText + " [*]() " : "",
+    effectiveChatState,
+    "font-main-content-body",
+    foregroundTextStyle
+  );
+
   return (
     <div
       className="flex flex-col gap-3 rounded-12 py-1"
       data-testid={isComplete ? "onyx-ai-message" : undefined}
     >
-      {(hasGraphStagePackets || !isComplete) && (
-        <GraphStageStrip agent={chatState.agent} packets={effectivePackets} />
+      {/* graph_stage_start/end packets only ever exist in-memory for the
+          turn that's actually streaming — a page refresh replays historical
+          messages from finalMessageText alone, with no such packets to
+          reconstruct from. A flow-backed agent's strip still has something
+          worth showing then (the flow's own structure, fetched by
+          definition id rather than derived from packets), so it stays
+          mounted regardless of packet history; a classic stage/sub_agent
+          agent has no such fallback and keeps the original packet-driven
+          gate. */}
+      {(hasGraphStagePackets ||
+        !isComplete ||
+        chatState.agent?.graph_schema === "flow") && (
+        <GraphStageStrip
+          agent={chatState.agent}
+          packets={effectivePackets}
+          packetCount={packetCount ?? effectivePackets.length}
+        />
       )}
 
       {/* Row 1: Two-column layout for tool steps */}
 
       <AgentTimeline
-        turnGroups={pacedTurnGroups}
+        turnGroups={inlineTurnGroups}
+        flowStageSections={flowStageSections}
         chatState={effectiveChatState}
         stopPacketSeen={stopPacketSeen}
         stopReason={stopReason}
@@ -273,6 +359,11 @@ const AgentMessage = React.memo(function AgentMessage({
           }
         }}
       >
+        {showLiveFinalAnswer && (
+          <div ref={finalAnswerRef} data-testid="live-final-answer">
+            {liveFinalAnswerRendered}
+          </div>
+        )}
         {visibleDisplayGroups.length > 0 && (
           <div ref={finalAnswerRef}>
             {visibleDisplayGroups.map((displayGroup, index) => (

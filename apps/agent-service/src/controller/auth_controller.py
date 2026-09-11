@@ -4,8 +4,8 @@ from typing import Any
 
 from fastapi import Request
 
+from api.dependencies import extract_auth_token_from_request
 from controller.base import BaseController
-from core.env import env
 from service.AuthService import AuthenticatedUser, get_auth_service
 
 
@@ -16,7 +16,8 @@ class AuthController(BaseController):
         self._auth_service = get_auth_service()
 
     async def get_current_user(self, request: Request, user: AuthenticatedUser) -> dict[str, Any]:
-        return await self._auth_service.get_current_user(request=request, user=user)
+        token = extract_auth_token_from_request(request)
+        return await self._auth_service.get_current_user(token=token, user=user)
 
     async def get_settings(self) -> dict[str, Any]:
         return {
@@ -38,29 +39,6 @@ class AuthController(BaseController):
 
     async def health_check(self) -> dict[str, Any]:
         return {"status": "ok"}
-
-    async def get_mcp_servers(self) -> dict[str, Any]:
-        mcp_servers = []
-        tools_service_url = env.TOOLS_SERVICE_URL or env.MCP_SERVER_URL
-
-        if tools_service_url:
-            from datetime import UTC, datetime
-
-            mcp_servers.append(
-                {
-                    "id": 1,
-                    "name": "Built-in Tools",
-                    "description": "Built-in tools service",
-                    "server_url": tools_service_url,
-                    "owner": "system",
-                    "is_authenticated": True,
-                    "status": "CONNECTED",
-                    "tool_count": 0,
-                    "last_refreshed_at": datetime.now(UTC).isoformat(),
-                }
-            )
-
-        return {"mcp_servers": mcp_servers}
 
 
 _auth_controller: AuthController | None = None

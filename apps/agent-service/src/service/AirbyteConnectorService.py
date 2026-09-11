@@ -11,7 +11,6 @@ it natively via the recursive SchemaForm component.
 
 from __future__ import annotations
 
-import logging as _stdlib_logging
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
@@ -24,7 +23,7 @@ from service.AirbyteApiClientService import get_airbyte_client
 from service.AirbyteDestinationService import get_destination_reader
 
 logger = get_logger(__name__)
-logger_stdlib = _stdlib_logging.getLogger(__name__)
+logger_stdlib = get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------

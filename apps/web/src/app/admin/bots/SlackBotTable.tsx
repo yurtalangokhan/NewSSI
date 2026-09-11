@@ -93,13 +93,19 @@ export const SlackBotTable = ({ slackBots }: { slackBots: SlackBot[] }) => {
                 </TableCell>
                 <TableCell>
                   {slackBot.enabled ? (
-                    <Badge variant="success">{t("admin.bots.enabledBadge")}</Badge>
+                    <Badge variant="success">
+                      {t("admin.bots.enabledBadge")}
+                    </Badge>
                   ) : (
-                    <Badge variant="destructive">{t("admin.bots.disabledBadge")}</Badge>
+                    <Badge variant="destructive">
+                      {t("admin.bots.disabledBadge")}
+                    </Badge>
                   )}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="secondary">{t("admin.bots.defaultSetBadge")}</Badge>
+                  <Badge variant="secondary">
+                    {t("admin.bots.defaultSetBadge")}
+                  </Badge>
                 </TableCell>
                 <TableCell>{slackBot.configs_count}</TableCell>
                 <TableCell>

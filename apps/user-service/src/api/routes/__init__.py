@@ -1,3 +1,4 @@
+from .audit_route import internal_router as internal_audit_router
 from .auth_base_route import router as auth_base_router
 from .auth_own_route import router as auth_own_router
 from .user_route import internal_router as internal_user_router

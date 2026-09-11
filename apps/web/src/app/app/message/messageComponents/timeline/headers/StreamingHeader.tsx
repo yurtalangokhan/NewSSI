@@ -80,7 +80,11 @@ export const StreamingHeader = React.memo(function StreamingHeader({
             size="md"
             onClick={onToggle}
             icon={isExpanded ? SvgFold : SvgExpand}
-            aria-label={isExpanded ? t("craftComponents.collapseTimeline") : t("craftComponents.expandTimeline")}
+            aria-label={
+              isExpanded
+                ? t("craftComponents.collapseTimeline")
+                : t("craftComponents.expandTimeline")
+            }
             aria-expanded={isExpanded}
           />
         ))}

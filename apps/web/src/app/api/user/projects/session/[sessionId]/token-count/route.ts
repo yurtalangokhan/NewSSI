@@ -6,5 +6,8 @@ export async function GET(
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
   const { sessionId } = await params;
-  return proxyToBackend(request, `/api/user/projects/session/${sessionId}/token-count`);
+  return proxyToBackend(
+    request,
+    `/api/user/projects/session/${sessionId}/token-count`
+  );
 }

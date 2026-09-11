@@ -3,13 +3,6 @@ import { INTERNAL_URL, USER_SERVICE_URL } from "@/lib/constants";
 import { BackendService, buildServiceUrl } from "@/lib/api/gatewayRouting";
 
 const BACKEND_URL = INTERNAL_URL;
-const AUTH_COOKIE_NAMES = [
-  "fastapiusersauth",
-  "session",
-  "refresh_token",
-  "id_token",
-  "access_token",
-];
 const EXCLUDED_PROXY_RESPONSE_HEADERS = new Set([
   "connection",
   "content-encoding",
@@ -43,32 +36,6 @@ function getSetCookieHeaders(headers: Headers): string[] {
 
   const single = headers.get("set-cookie");
   return single ? [single] : [];
-}
-
-function shouldUseSecureCookies(request: NextRequest): boolean {
-  const publicWebOrigin = process.env.WEB_DOMAIN;
-  if (publicWebOrigin) {
-    try {
-      return new URL(publicWebOrigin).protocol === "https:";
-    } catch {
-      // Fall back to the concrete request URL below.
-    }
-  }
-
-  return request.nextUrl.protocol === "https:";
-}
-
-function clearAuthCookies(request: NextRequest, response: NextResponse) {
-  const secure = shouldUseSecureCookies(request);
-  AUTH_COOKIE_NAMES.forEach((cookieName) => {
-    response.cookies.set(cookieName, "", {
-      path: "/",
-      maxAge: 0,
-      secure,
-      httpOnly: true,
-      sameSite: "lax",
-    });
-  });
 }
 
 export function getCookieValue(
@@ -250,13 +217,6 @@ export async function proxyToBackend(
     getSetCookieHeaders(response.headers).forEach((cookie) => {
       result.headers.append("Set-Cookie", cookie);
     });
-
-    if (
-      isAuthRefreshRequest &&
-      (response.status === 400 || response.status === 401)
-    ) {
-      clearAuthCookies(request, result);
-    }
 
     return result;
   } catch (error) {

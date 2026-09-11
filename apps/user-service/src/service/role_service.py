@@ -1,14 +1,15 @@
-import logging
 from typing import Any
 
 from i18n import t
 
+from src.core.observability import get_logger
+from src.core.permissions.admin_roles import is_admin_role_name
 from src.repository import CompositeRoleRepository, PermissionRepository, UserRoleRepository
 
 from .coarse_role_service import get_role_service
 from .keycloak_service import get_keycloak_service
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 LEGACY_CLIENT_ROLE_BY_FEATURE_BUNDLE: dict[str, tuple[str, str]] = {
     "access-admin": ("user-service", "user-admin"),
@@ -69,7 +70,7 @@ class CompositeRoleService:
                 "permissions": r.permissions,
                 "role_ids": r.role_ids or [],
                 "is_builtin": r.is_builtin,
-                "is_admin": r.is_admin,
+                "is_admin": is_admin_role_name(r.name),
             }
             for r in roles
         ]
@@ -84,7 +85,7 @@ class CompositeRoleService:
             "permissions": role.permissions,
             "role_ids": role.role_ids or [],
             "is_builtin": role.is_builtin,
-            "is_admin": role.is_admin,
+            "is_admin": is_admin_role_name(role.name),
         }
 
     async def create_role(
@@ -112,7 +113,7 @@ class CompositeRoleService:
             "permissions": role.permissions,
             "role_ids": role.role_ids or [],
             "is_builtin": role.is_builtin,
-            "is_admin": role.is_admin,
+            "is_admin": is_admin_role_name(role.name),
         }
 
     async def update_role(
@@ -142,7 +143,7 @@ class CompositeRoleService:
             "permissions": role.permissions,
             "role_ids": role.role_ids or [],
             "is_builtin": role.is_builtin,
-            "is_admin": role.is_admin,
+            "is_admin": is_admin_role_name(role.name),
         }
 
     async def delete_role(self, name: str) -> bool:

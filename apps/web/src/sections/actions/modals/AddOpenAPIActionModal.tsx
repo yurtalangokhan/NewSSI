@@ -157,7 +157,9 @@ function FormContent({
     [validateDefinition]
   );
 
-  const modalTitle = isEditMode ? t("addOpenAPIAction.editTitle") : t("addOpenAPIAction.addTitle");
+  const modalTitle = isEditMode
+    ? t("addOpenAPIAction.editTitle")
+    : t("addOpenAPIAction.addTitle");
   const modalDescription = isEditMode
     ? t("addOpenAPIAction.editDescription")
     : t("addOpenAPIAction.addDescription");
@@ -315,7 +317,9 @@ function FormContent({
                 <ToolItem
                   key={`${method.method}-${method.path}-${method.name}`}
                   name={method.name}
-                description={method.summary || t("addOpenAPIAction.noSummary")}
+                  description={
+                    method.summary || t("addOpenAPIAction.noSummary")
+                  }
                   variant="openapi"
                   openApiMetadata={{
                     method: method.method,

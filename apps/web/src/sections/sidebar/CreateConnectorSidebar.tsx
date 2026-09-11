@@ -13,7 +13,9 @@ export default function Sidebar() {
 
   const { isAdmin } = useUser();
   const { t } = useTranslation();
-  const buttonName = isAdmin ? t("sidebar.adminPage") : t("sidebar.curatorPage");
+  const buttonName = isAdmin
+    ? t("sidebar.adminPage")
+    : t("sidebar.curatorPage");
 
   const settingSteps = [
     ...(!noCredential ? [t("sidebar.credential")] : []),
@@ -37,7 +39,9 @@ export default function Sidebar() {
         {settingSteps.map((step, index) => {
           const allowed =
             (index === connectorStepIndex && allowCreate) ||
-            (connector !== "file" && index === advancedStepIndex && allowAdvanced) ||
+            (connector !== "file" &&
+              index === advancedStepIndex &&
+              allowAdvanced) ||
             index <= formStep;
 
           return (

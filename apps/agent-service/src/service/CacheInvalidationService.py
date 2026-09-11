@@ -1,11 +1,11 @@
 """Cache invalidation service for cascade updating when agents change."""
 
-import logging
 from uuid import UUID
 
-from agents.storage.repository import AgentDefinitionRepository
+from core.logger import get_logger
+from repository.agent_definition_repository import AgentDefinitionRepository
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class CacheInvalidationService:

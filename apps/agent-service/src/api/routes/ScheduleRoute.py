@@ -7,12 +7,11 @@ scheduling.
 
 from __future__ import annotations
 
-import logging
-
 from fastapi import APIRouter, Depends
 
 from api.dependencies import AuthenticatedUser, require_permission, require_user
 from controller import ScheduleController, get_schedule_controller
+from core.logger import get_logger
 from models.schedules import (
     ScheduleRunStatus,
     SyncScheduleInput,
@@ -21,7 +20,7 @@ from models.schedules import (
     SyncScheduleUpdate,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(tags=["sync-schedules"], dependencies=[Depends(require_user)])
 

@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import {
   OAuthConfig,
   OAuthConfigCreate,
@@ -11,7 +12,7 @@ import { parseApiErrorPayload } from "@/lib/api/errors";
 export async function createOAuthConfig(
   config: OAuthConfigCreate
 ): Promise<OAuthConfig> {
-  const response = await fetch("/api/admin/oauth-config/create", {
+  const response = await authenticatedFetch("/api/admin/oauth-config/create", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(config),
@@ -69,7 +70,7 @@ export async function updateOAuthConfig(
   id: number,
   updates: OAuthConfigUpdate
 ): Promise<OAuthConfig> {
-  const response = await fetch(`/api/admin/oauth-config/${id}`, {
+  const response = await authenticatedFetch(`/api/admin/oauth-config/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(updates),
@@ -90,7 +91,7 @@ export async function updateOAuthConfig(
 }
 
 export async function deleteOAuthConfig(id: number): Promise<void> {
-  const response = await fetch(`/api/admin/oauth-config/${id}`, {
+  const response = await authenticatedFetch(`/api/admin/oauth-config/${id}`, {
     method: "DELETE",
   });
 
@@ -112,7 +113,7 @@ export async function initiateOAuthFlow(
   oauthConfigId: number,
   returnPath: string = "/app"
 ): Promise<void> {
-  const response = await fetch("/api/oauth-config/initiate", {
+  const response = await authenticatedFetch("/api/oauth-config/initiate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -142,7 +143,7 @@ export async function handleOAuthCallback(
   state: string,
   oauthConfigId: number
 ): Promise<{ success: boolean; redirect_url: string; error?: string }> {
-  const response = await fetch("/api/oauth-config/callback", {
+  const response = await authenticatedFetch("/api/oauth-config/callback", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -191,9 +192,12 @@ export async function getUserOAuthTokenStatus(): Promise<OAuthTokenStatus[]> {
 }
 
 export async function revokeOAuthToken(oauthConfigId: number): Promise<void> {
-  const response = await fetch(`/api/oauth-config/${oauthConfigId}/token`, {
-    method: "DELETE",
-  });
+  const response = await authenticatedFetch(
+    `/api/oauth-config/${oauthConfigId}/token`,
+    {
+      method: "DELETE",
+    }
+  );
 
   if (!response.ok) {
     const parsed = parseApiErrorPayload(

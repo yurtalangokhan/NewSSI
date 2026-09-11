@@ -82,6 +82,33 @@ function downloadAsTxt(content: string, filename: string) {
   }
 }
 
+/**
+ * One text line (~1.5rem). The streaming snap pass may leave at most this much
+ * blank space at the bottom of the collapsed window.
+ */
+export const MAX_SNAP_GAP_PX = 24;
+
+/**
+ * During streaming the collapsed view shifts its content up by `rawOverflow` so
+ * the newest text sits flush with the bottom of the window. The snap pass then
+ * nudges that shift to a block boundary so the top line is never half-clipped.
+ *
+ * For a block taller than the window — a long ``` code fence, JSON, or markdown
+ * block opened mid-reasoning — the only boundary the snap pass can find is the
+ * block's bottom, which lies far below `rawOverflow`. Shifting there hoists the
+ * entire block out of view and leaves only a one-line sliver of its background
+ * visible, which is what users were seeing. Clamp the snap so it can never open
+ * more than a single line of gap at the bottom; the block's tail (the latest
+ * streamed lines) then stays on screen instead.
+ */
+export function clampStreamingSnapOffset(
+  snap: number,
+  rawOverflow: number
+): number {
+  if (!Number.isFinite(snap) || snap <= rawOverflow) return rawOverflow;
+  return Math.min(snap, rawOverflow + MAX_SNAP_GAP_PX);
+}
+
 /** Block-level HTML tags used by the snap algorithm to recurse into containers. */
 const CONTAINER_TAGS = new Set([
   "UL",
@@ -161,7 +188,8 @@ export default function ExpandableTextDisplay({
 
     const containerHeight = scrollRef.current.clientHeight;
     const contentHeight = contentInnerRef.current.scrollHeight;
-    let overflow = Math.max(0, contentHeight - containerHeight);
+    const rawOverflow = Math.max(0, contentHeight - containerHeight);
+    let overflow = rawOverflow;
 
     if (overflow > 0) {
       let blockParent: Element = contentInnerRef.current;
@@ -201,7 +229,7 @@ export default function ExpandableTextDisplay({
         if (!found) break;
         if (snap !== overflow) break;
       }
-      overflow = snap;
+      overflow = clampStreamingSnapOffset(snap, rawOverflow);
     }
 
     contentInnerRef.current.style.transform =

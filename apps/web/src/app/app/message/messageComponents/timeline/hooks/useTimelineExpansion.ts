@@ -15,9 +15,12 @@ export interface TimelineExpansionState {
 export function useTimelineExpansion(
   stopPacketSeen: boolean,
   lastTurnGroup: TurnGroup | undefined,
-  hasDisplayContent: boolean = false
+  hasDisplayContent: boolean = false,
+  // Start expanded (e.g. a FlowAgent run: the numbered stage sections should
+  // be visible without a click; the header chevron still collapses them).
+  initiallyExpanded: boolean = false
 ): TimelineExpansionState {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
   const [parallelActiveTab, setParallelActiveTab] = useState<string>("");
   const userHasToggled = useRef(false);
 
@@ -29,10 +32,14 @@ export function useTimelineExpansion(
   // Auto-collapse when streaming completes or message content starts
   // BUT respect user intent - if they've manually toggled, don't auto-collapse
   useEffect(() => {
-    if ((stopPacketSeen || hasDisplayContent) && !userHasToggled.current) {
+    if (
+      !initiallyExpanded &&
+      (stopPacketSeen || hasDisplayContent) &&
+      !userHasToggled.current
+    ) {
       setIsExpanded(false);
     }
-  }, [stopPacketSeen, hasDisplayContent]);
+  }, [stopPacketSeen, hasDisplayContent, initiallyExpanded]);
 
   // Sync active tab when parallel turn group changes
   useEffect(() => {

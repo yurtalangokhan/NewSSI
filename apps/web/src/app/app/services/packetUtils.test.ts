@@ -185,6 +185,21 @@ describe("packetUtils", () => {
       expect(isDisplayPacket(packet)).toBe(true);
     });
 
+    test("returns true for HUMAN_INPUT", () => {
+      expect(isDisplayPacket(createPacket(PacketType.HUMAN_INPUT))).toBe(true);
+    });
+
+    test("returns true for an ask_user pause and its lock", () => {
+      // Without this the card's group is not a display group and nothing
+      // renders — the run looks silently stuck.
+      expect(isDisplayPacket(createPacket(PacketType.USER_CLARIFICATION))).toBe(
+        true
+      );
+      expect(
+        isDisplayPacket(createPacket(PacketType.USER_CLARIFICATION_ANSWERED))
+      ).toBe(true);
+    });
+
     test("returns false for other packet types", () => {
       const packet = createPacket(PacketType.SEARCH_TOOL_START);
       expect(isDisplayPacket(packet)).toBe(false);
@@ -248,6 +263,12 @@ describe("packetUtils", () => {
     test("returns true when packets contain IMAGE_GENERATION_TOOL_START", () => {
       const packets = [createPacket(PacketType.IMAGE_GENERATION_TOOL_START)];
       expect(isFinalAnswerComing(packets)).toBe(true);
+    });
+
+    test("returns true when the run is parked on an ask_user question", () => {
+      expect(
+        isFinalAnswerComing([createPacket(PacketType.USER_CLARIFICATION)])
+      ).toBe(true);
     });
 
     test("returns false when no display packets present", () => {

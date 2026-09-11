@@ -287,6 +287,13 @@ const ChatScrollContainer = React.memo(
 
         if (!shouldScroll) {
           prevAnchorSelectorRef.current = anchorSelector ?? null;
+          // No anchor to jump to (e.g. the message list is still empty
+          // while a session's history is loading) — there's no scroll
+          // position to hide the jump of, so don't leave content stuck
+          // invisible waiting for an anchor that isn't coming this render.
+          if (!anchorSelector) {
+            setIsScrollReady(true);
+          }
           return;
         }
 

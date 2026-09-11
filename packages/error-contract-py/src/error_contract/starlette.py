@@ -29,13 +29,22 @@ class ErrorContractMiddleware:
 
         try:
             await call_next(request)
-        except Exception as exc:
-            logger.exception(
-                "Unhandled %s error for %s %s",
+        except Exception:
+            logger.error(
+                "Unhandled %s request failed: %s %s -> internal.server_error",
                 self.service_name,
                 request.method,
                 request.url.path,
-                exc_info=exc,
+                extra={
+                    "event": "http.request.unhandled_error",
+                    "service": self.service_name,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "error_code": "internal.server_error",
+                    "safe_message": "An unexpected error occurred.",
+                    "request_id": request.headers.get("x-request-id")
+                    or request.headers.get("x-correlation-id"),
+                },
             )
             response = _safe_response(request)
             await response(scope, receive, send)

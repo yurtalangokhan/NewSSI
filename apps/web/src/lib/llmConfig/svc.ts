@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 /**
  * LLM action functions for mutations.
  *
@@ -21,7 +22,7 @@ import { getErrorMsg } from "@/lib/fetchUtils";
  */
 export async function testDefaultProvider(): Promise<boolean> {
   try {
-    const response = await fetch(`${LLM_ADMIN_URL}/test/default`, {
+    const response = await authenticatedFetch(`${LLM_ADMIN_URL}/test/default`, {
       method: "POST",
     });
     return response?.ok || false;
@@ -40,7 +41,7 @@ export async function setDefaultLlmModel(
   providerId: number,
   modelName: string
 ): Promise<void> {
-  const response = await fetch(`${LLM_ADMIN_URL}/default`, {
+  const response = await authenticatedFetch(`${LLM_ADMIN_URL}/default`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -61,9 +62,12 @@ export async function setDefaultLlmModel(
  * @throws Error with the detail message from the API on failure
  */
 export async function deleteLlmProvider(providerId: number): Promise<void> {
-  const response = await fetch(`${LLM_PROVIDERS_ADMIN_URL}/${providerId}`, {
-    method: "DELETE",
-  });
+  const response = await authenticatedFetch(
+    `${LLM_PROVIDERS_ADMIN_URL}/${providerId}`,
+    {
+      method: "DELETE",
+    }
+  );
 
   if (!response.ok) {
     const errorMsg = (await getErrorMsg(response)) ?? "Unknown error";

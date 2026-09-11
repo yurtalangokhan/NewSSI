@@ -5,15 +5,15 @@ Automatically discovers and registers tool categories.
 
 import importlib
 import importlib.util
-import logging
 from pathlib import Path
 from typing import Any
 
 from i18n import t
 
 from .base import BaseToolCategory
+from .observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _safe_t(key: str, default: str | None = None) -> str | None:

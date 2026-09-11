@@ -1,6 +1,11 @@
 from types import SimpleNamespace
 
+from fastapi.testclient import TestClient
 from idempotency import IdempotencyMode
+
+from src.main import create_app
+
+MUTATING_METHODS = {"DELETE", "PATCH", "POST", "PUT"}
 
 
 def test_user_idempotency_config_uses_settings_values() -> None:
@@ -49,7 +54,7 @@ def test_user_idempotency_policy_classifies_representative_routes() -> None:
         IdempotencyMode.REQUIRED_REPLAY
     )
     assert policy.resolve("PATCH", "/api/v9/users/me/settings/").mode == (
-        IdempotencyMode.OPTIONAL_REPLAY
+        IdempotencyMode.REQUIRED_REPLAY
     )
 
 
@@ -94,3 +99,66 @@ def test_user_idempotency_policy_covers_rebased_mutations() -> None:
         ("POST", "/api/v9/permissions/sync", IdempotencyMode.DOMAIN_REQUIRED),
     ]:
         assert policy.resolve(method, path).mode == expected_mode
+
+
+def test_user_idempotency_policy_explicitly_maps_registered_mutating_routes() -> None:
+    from fastapi.routing import APIRoute
+
+    from src.core.idempotency import build_idempotency_policy
+    from src.main import app
+
+    policy = build_idempotency_policy()
+
+    unmapped = []
+    for route in app.routes:
+        if not isinstance(route, APIRoute):
+            continue
+        for method in route.methods or set():
+            if method not in MUTATING_METHODS:
+                continue
+            has_exact_policy = any(
+                candidate.method == method and candidate.path == route.path
+                for candidate in policy.route_policies
+            )
+            if not has_exact_policy:
+                unmapped.append(f"{method} {route.path}")
+
+    assert unmapped == []
+
+
+def test_domain_required_user_invite_rejects_missing_idempotency_key() -> None:
+    response = TestClient(create_app(), raise_server_exceptions=False).post(
+        "/api/v1/users/invite",
+        json={"emails": ["new-user@example.com"]},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "idempotency_key_required"
+
+
+def test_required_user_register_rejects_missing_idempotency_key() -> None:
+    response = TestClient(create_app(), raise_server_exceptions=False).post(
+        "/api/v1/auth/register",
+        json={"email": "new-user@example.com", "password": "secret-password"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "idempotency_key_required"
+
+
+def test_optional_permission_check_bypasses_missing_idempotency_key() -> None:
+    response = TestClient(create_app(), raise_server_exceptions=False).post(
+        "/api/v1/permissions/check",
+        json={"permission": "user:read"},
+    )
+
+    assert response.json().get("error", {}).get("code") != "idempotency_key_required"
+
+
+def test_excluded_login_bypasses_missing_idempotency_key() -> None:
+    response = TestClient(create_app(), raise_server_exceptions=False).post(
+        "/api/v1/auth/login",
+        json={"email": "user@example.com", "password": "secret-password"},
+    )
+
+    assert response.json().get("error", {}).get("code") != "idempotency_key_required"

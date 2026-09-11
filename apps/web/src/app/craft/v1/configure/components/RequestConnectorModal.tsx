@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useState } from "react";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
@@ -35,15 +37,18 @@ export default function RequestConnectorModal({
     setSuccessMessage(null);
 
     try {
-      const response = await fetch("/api/manage/connector-request", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          connector_name: connectorName.trim(),
-        }),
-      });
+      const response = await authenticatedFetch(
+        "/api/manage/connector-request",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            connector_name: connectorName.trim(),
+          }),
+        }
+      );
 
       const data = await response.json();
 

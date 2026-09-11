@@ -36,7 +36,7 @@ async def test_admin_role_can_manage_any_organization(service: UserOrganizationS
     service.user_repo.get_by_id = AsyncMock(
         return_value=SimpleNamespace(is_superuser=False, role="enterprise-admin")
     )
-    service.role_repo.get_by_name = AsyncMock(return_value=SimpleNamespace(is_admin=True))
+    service.role_repo.get_by_name = AsyncMock(return_value=SimpleNamespace(name="enterprise-admin"))
 
     assert await service.can_manage_organization(actor_id, org_id) is True
     service.role_repo.get_by_name.assert_awaited_once_with("enterprise-admin")

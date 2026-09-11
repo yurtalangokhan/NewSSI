@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class GraphSchemaType(str, Enum):
@@ -20,6 +21,7 @@ class GraphSchemaType(str, Enum):
     PIPELINE = "pipeline"
     PLAN_EXECUTE = "plan_execute"
     SELF_REFLECT = "self_reflect"
+    FLOW = "flow"
 
 
 @dataclass
@@ -215,6 +217,30 @@ class SelfReflectSchema(GraphSchema):
         )
 
 
+class FlowSchema(GraphSchema):
+    """Flow - a canvas-defined graph of nodes and edges.
+
+    Unlike the six classic schemas, a flow's structure lives in its
+    ``flow_spec`` (agent_definitions.flow_spec), not in this config schema —
+    FlowGraphBuilder compiles the spec directly rather than following a
+    fixed shape. ``supports_sub_agents`` is True via the AgentRef node
+    (design spec section 4.5), not via ``sub_agent_ids``.
+    """
+
+    def __init__(self):
+        super().__init__(
+            schema_type=GraphSchemaType.FLOW,
+            description="Flow - a canvas-defined graph of nodes and edges",
+            config_schema={},
+            required_fields=[],
+            supports_memory=True,
+            supports_tools=True,
+            supports_sub_agents=True,
+            default_system_prompt="",
+            is_multi_step=True,
+        )
+
+
 _schema_registry: dict[GraphSchemaType, GraphSchema] = {}
 
 
@@ -229,6 +255,7 @@ def _init_schemas() -> None:
         PipelineSchema(),
         PlanExecuteSchema(),
         SelfReflectSchema(),
+        FlowSchema(),
     ]
 
     for schema in schemas:

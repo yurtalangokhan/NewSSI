@@ -7,14 +7,15 @@ policies inside ComposedAgent without inheriting from LazyLoadingAgent.
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from typing import Any
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.runnables import RunnableConfig
 
-logger = logging.getLogger(__name__)
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass(frozen=True)

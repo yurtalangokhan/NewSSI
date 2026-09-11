@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from langgraph.types import Command
 
 from schema import UserInput
 from service.AgentHelpers import _handle_input, get_graph_and_config
@@ -17,7 +18,10 @@ class DummyAgent:
 
 
 @pytest.mark.asyncio
-async def test_handle_input_keeps_runtime_long_term_memory_for_builtin_persona():
+async def test_handle_input_disables_memory_when_user_recall_setting_is_off():
+    """The user's "Depolanan Belleğe Başvur" setting is the master switch: when
+    it is off, a default assistant does not recall or save, even if the request
+    carries long_term_memory=True."""
     user_input = UserInput(
         message="hello",
         thread_id="thread-1",
@@ -37,7 +41,122 @@ async def test_handle_input_keeps_runtime_long_term_memory_for_builtin_persona()
     ):
         kwargs, _ = await _handle_input(user_input, DummyAgent(), api_key_user_id="user-1")
 
-    assert kwargs["config"]["configurable"]["long_term_memory"] is True
+    configurable = kwargs["config"]["configurable"]
+    assert configurable["long_term_memory"] is False
+    assert configurable["extract_memory"] is False
+
+
+@pytest.mark.asyncio
+async def test_handle_input_enables_memory_for_default_assistant_when_user_opts_in():
+    """With the user setting on, the default assistant / plain chatbot recalls
+    and (when "Belleği Güncelle" is on) saves — no agent toggle required."""
+    user_input = UserInput(
+        message="hello",
+        thread_id="thread-1",
+        agent_id="chatbot",
+        agent_config={},
+    )
+
+    with (
+        patch("service.StoreService.get_thread_from_store", return_value={"metadata": {}}),
+        patch("service.StoreService.add_thread", new=AsyncMock()),
+        patch(
+            "service.UserServiceClient.get_user_settings",
+            return_value={"long_term_memory_enabled": True, "extract_memory": True},
+        ),
+        patch("repository.persona_repository.PersonaDB.get", return_value=None),
+        patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
+    ):
+        kwargs, _ = await _handle_input(user_input, DummyAgent(), api_key_user_id="user-1")
+
+    configurable = kwargs["config"]["configurable"]
+    assert configurable["long_term_memory"] is True
+    assert configurable["extract_memory"] is True
+
+
+@pytest.mark.asyncio
+async def test_handle_input_recall_on_but_update_off_disables_save_only():
+    user_input = UserInput(
+        message="hello",
+        thread_id="thread-1",
+        agent_id="chatbot",
+        agent_config={},
+    )
+
+    with (
+        patch("service.StoreService.get_thread_from_store", return_value={"metadata": {}}),
+        patch("service.StoreService.add_thread", new=AsyncMock()),
+        patch(
+            "service.UserServiceClient.get_user_settings",
+            return_value={"long_term_memory_enabled": True, "extract_memory": False},
+        ),
+        patch("repository.persona_repository.PersonaDB.get", return_value=None),
+        patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
+    ):
+        kwargs, _ = await _handle_input(user_input, DummyAgent(), api_key_user_id="user-1")
+
+    configurable = kwargs["config"]["configurable"]
+    assert configurable["long_term_memory"] is True
+    assert configurable["extract_memory"] is False
+
+
+@pytest.mark.asyncio
+async def test_handle_input_custom_agent_with_ltm_off_ignores_user_recall_setting():
+    """A custom persona that did not opt into long-term memory stays silent even
+    when the user's recall setting is on."""
+    user_input = UserInput(
+        message="hello",
+        thread_id="thread-1",
+        agent_id="42",
+        agent_config={"_persona_id": 42},
+    )
+
+    with (
+        patch("service.StoreService.get_thread_from_store", return_value={"metadata": {}}),
+        patch("service.StoreService.add_thread", new=AsyncMock()),
+        patch(
+            "service.UserServiceClient.get_user_settings",
+            return_value={"long_term_memory_enabled": True, "extract_memory": True},
+        ),
+        patch(
+            "repository.persona_repository.PersonaDB.get",
+            return_value={"is_builtin": False, "long_term_memory": False},
+        ),
+        patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
+    ):
+        kwargs, _ = await _handle_input(user_input, DummyAgent(), api_key_user_id="user-1")
+
+    configurable = kwargs["config"]["configurable"]
+    assert configurable["long_term_memory"] is False
+    assert configurable["extract_memory"] is False
+
+
+@pytest.mark.asyncio
+async def test_handle_input_custom_agent_with_ltm_on_requires_user_recall_setting():
+    user_input = UserInput(
+        message="hello",
+        thread_id="thread-1",
+        agent_id="42",
+        agent_config={"_persona_id": 42},
+    )
+
+    for recall, expected in ((True, True), (False, False)):
+        with (
+            patch("service.StoreService.get_thread_from_store", return_value={"metadata": {}}),
+            patch("service.StoreService.add_thread", new=AsyncMock()),
+            patch(
+                "service.UserServiceClient.get_user_settings",
+                return_value={"long_term_memory_enabled": recall, "extract_memory": True},
+            ),
+            patch(
+                "repository.persona_repository.PersonaDB.get",
+                return_value={"is_builtin": False, "long_term_memory": True},
+            ),
+            patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
+        ):
+            kwargs, _ = await _handle_input(user_input, DummyAgent(), api_key_user_id="user-1")
+
+        assert kwargs["config"]["configurable"]["long_term_memory"] is expected
 
 
 @pytest.mark.asyncio
@@ -367,6 +486,67 @@ async def test_handle_input_forks_and_replaces_the_message_for_a_resolvable_edit
     assert kwargs["input"] is None
 
 
+class _InterruptedAgentWithHistory(DummyAgentWithHistory):
+    """A retry target that ALSO has a pending interrupt on its live tip.
+
+    Reproduces design E8: a run paused on an `ask_user` question, then the
+    user retries an earlier message instead of answering. The fork branches
+    from a checkpoint before the interrupt, so the pending question belongs
+    to the branch being abandoned and must never be resumed.
+    """
+
+    async def aget_state(self, config=None, **kwargs):
+        task = SimpleNamespace(interrupts=[SimpleNamespace(value={"type": "user_clarification"})])
+        return SimpleNamespace(tasks=[task], values={})
+
+
+@pytest.mark.asyncio
+async def test_handle_input_never_resumes_a_pending_interrupt_when_it_forks():
+    """E8: fork + bekleyen interrupt → resume YOK, fork yolu kazanır.
+
+    `resume_payload` dolu olsa bile: retry daha eski bir checkpoint'e
+    dallanıyor, bekleyen soru terk edilen dalda kalıyor.
+    """
+    from langchain_core.messages import AIMessage, HumanMessage
+
+    user_input = UserInput(
+        message="hello",
+        thread_id="thread-1",
+        agent_id="configurable-mcp-agent",
+        is_regenerate=True,
+        retry_target_message_id=1,
+        resume_payload={"answered": True, "answers": {"Hedef kitle": ["Yönetim"]}},
+    )
+
+    snapshots = [
+        _FakeSnapshot(
+            [HumanMessage(content="hello"), AIMessage(content="rejected answer")],
+            checkpoint_id="2",
+        ),
+        _FakeSnapshot([HumanMessage(content="hello")], checkpoint_id="1"),
+    ]
+
+    with (
+        patch("service.StoreService.get_thread_from_store", return_value={"metadata": {}}),
+        patch("service.StoreService.add_thread", new=AsyncMock()),
+        patch(
+            "service.UserServiceClient.get_user_settings",
+            return_value={"long_term_memory_enabled": False, "extract_memory": True},
+        ),
+        patch("repository.persona_repository.PersonaDB.get", return_value={"is_builtin": True}),
+        patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
+    ):
+        kwargs, _ = await _handle_input(
+            user_input, _InterruptedAgentWithHistory(snapshots), api_key_user_id="user-1"
+        )
+
+    # Fork resolved to checkpoint 1, and the run starts there with NO input —
+    # not a Command(resume=...).
+    assert kwargs["config"]["configurable"]["checkpoint_id"] == "1"
+    assert kwargs["input"] is None
+    assert not isinstance(kwargs["input"], Command)
+
+
 @pytest.mark.asyncio
 async def test_handle_input_falls_back_to_append_when_edit_fork_point_unresolvable():
     """No matching checkpoint for the edited message (e.g. it no longer
@@ -428,7 +608,7 @@ async def test_get_graph_and_config_preserves_dynamic_persona_owner_id(monkeypat
 
     monkeypatch.setattr("repository.persona_repository.PersonaDB.get", fake_get)
     monkeypatch.setattr(
-        "agents.storage.repository.AgentDefinitionRepository",
+        "repository.agent_definition_repository.AgentDefinitionRepository",
         FakeDefinitionRepository,
     )
     monkeypatch.setattr(
@@ -442,12 +622,14 @@ async def test_get_graph_and_config_preserves_dynamic_persona_owner_id(monkeypat
 
 
 @pytest.mark.asyncio
-async def test_handle_input_enables_long_term_memory_without_user_toggle():
+async def test_handle_input_dynamic_agent_without_long_term_memory_type_does_not_participate():
+    """A dynamic AgentDefinition agent that did not set memory_type == "long_term"
+    stays out of memory even when the user's recall setting is on."""
     user_input = UserInput(
         message="hello",
         thread_id="thread-2",
-        agent_id="configurable-mcp-agent",
-        agent_config={"long_term_memory": True},
+        agent_id="8f0c4d1e-2b3a-4c5d-6e7f-8a9b0c1d2e3f",
+        agent_config={},
     )
 
     with (
@@ -455,11 +637,11 @@ async def test_handle_input_enables_long_term_memory_without_user_toggle():
         patch("service.StoreService.add_thread", new=AsyncMock()),
         patch(
             "service.UserServiceClient.get_user_settings",
-            return_value={"long_term_memory_enabled": False, "extract_memory": True},
+            return_value={"long_term_memory_enabled": True, "extract_memory": True},
         ),
         patch("repository.persona_repository.PersonaDB.get", return_value={"is_builtin": True}),
         patch("repository.persona_repository.PersonaDB.get_by_builtin_key", return_value=None),
     ):
         kwargs, _ = await _handle_input(user_input, DummyAgent(), api_key_user_id="user-1")
 
-    assert kwargs["config"]["configurable"]["long_term_memory"] is True
+    assert kwargs["config"]["configurable"]["long_term_memory"] is False

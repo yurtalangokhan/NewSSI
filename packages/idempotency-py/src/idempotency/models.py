@@ -17,7 +17,11 @@ class IdempotencyPolicy(BaseModel):
     path: str
     mode: IdempotencyMode
     cache_deterministic_client_errors: bool = False
-    enforce_missing_key: bool = False
+    # Tri-state missing-key override:
+    #   None (default) -> fall back to the global enforce_required_keys flag
+    #   True           -> always require a key for this route
+    #   False          -> never require a key for this route (explicit override)
+    enforce_missing_key: bool | None = None
 
     def matches(self, method: str, path: str) -> bool:
         if self.method.upper() != method.upper():

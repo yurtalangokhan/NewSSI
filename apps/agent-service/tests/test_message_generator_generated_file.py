@@ -210,7 +210,7 @@ async def _fake_handle_input(_user_input, _agent, _user_id=None):
 
 @pytest.mark.asyncio
 async def test_emits_generated_file_packet_for_document_tool_result(monkeypatch):
-    from service import agent_message_stream
+    from service import AgentStreamService as agent_message_stream
 
     monkeypatch.setattr(
         agent_message_stream.AssistantAgentService,
@@ -248,7 +248,7 @@ async def test_emits_generated_file_packet_for_document_tool_result(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_does_not_emit_generated_file_packet_for_plain_tool_result(monkeypatch):
-    from service import agent_message_stream
+    from service import AgentStreamService as agent_message_stream
 
     monkeypatch.setattr(
         agent_message_stream.AssistantAgentService,
@@ -271,7 +271,7 @@ async def test_does_not_emit_generated_file_packet_for_plain_tool_result(monkeyp
 
 
 async def _run(monkeypatch, agent, message: str = "rapor hazırla") -> list[dict]:
-    from service import agent_message_stream
+    from service import AgentStreamService as agent_message_stream
 
     monkeypatch.setattr(
         agent_message_stream.AssistantAgentService,

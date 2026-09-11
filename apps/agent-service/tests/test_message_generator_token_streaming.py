@@ -165,7 +165,7 @@ async def _fake_handle_input(_user_input, _agent, _user_id=None):
 
 
 async def _run(monkeypatch, agent) -> list[dict]:
-    from service import agent_message_stream
+    from service import AgentStreamService as agent_message_stream
 
     monkeypatch.setattr(
         agent_message_stream.AssistantAgentService,
@@ -362,7 +362,7 @@ async def test_long_silent_generation_still_emits_keep_alive(monkeypatch):
     down connections that go quiet, which reaches the browser as
     ERR_INCOMPLETE_CHUNKED_ENCODING mid-answer.
     """
-    from service import agent_message_stream
+    from service import AgentStreamService as agent_message_stream
 
     monkeypatch.setattr(agent_message_stream.settings, "STREAM_HEARTBEAT_SECONDS", 0.05)
     monkeypatch.setattr(
@@ -429,7 +429,7 @@ class _InterruptedSentenceAgent:
 
 
 async def _tokens_across_tool_call(monkeypatch, *, tail: str, resume: str) -> str:
-    from service import agent_message_stream
+    from service import AgentStreamService as agent_message_stream
 
     monkeypatch.setattr(
         agent_message_stream.AssistantAgentService,
@@ -558,7 +558,7 @@ async def test_buffered_word_is_released_while_the_stream_is_quiet(monkeypatch):
     Held in the buffer it renders nowhere, leaving a frozen cursor for as
     long as the document takes and appearing only once it is finished.
     """
-    from service import agent_message_stream
+    from service import AgentStreamService as agent_message_stream
 
     monkeypatch.setattr(agent_message_stream.settings, "STREAM_HEARTBEAT_SECONDS", 0.05)
     monkeypatch.setattr(

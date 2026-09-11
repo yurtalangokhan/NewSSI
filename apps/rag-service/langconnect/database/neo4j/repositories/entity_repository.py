@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from langconnect.database.neo4j.queries.entity import (
@@ -17,8 +16,9 @@ from langconnect.database.neo4j.queries.entity import (
 )
 from langconnect.database.neo4j.repositories.base import Neo4jRepository
 from langconnect.models.graph import GraphData, GraphEdge, GraphNode
+from langconnect.observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _normalize_name(name: str) -> str:

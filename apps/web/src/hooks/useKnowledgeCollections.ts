@@ -18,7 +18,9 @@ export function useKnowledgeCollections(enabled: boolean): {
   collections: KnowledgeCollections | null;
   isLoading: boolean;
 } {
-  const [collections, setCollections] = useState<KnowledgeCollections | null>(null);
+  const [collections, setCollections] = useState<KnowledgeCollections | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -35,7 +37,8 @@ export function useKnowledgeCollections(enabled: boolean): {
         if (!cancelled) setCollections(data);
       })
       .catch(() => {
-        if (!cancelled) setCollections({ document_processing: [], knowledge_graph: [] });
+        if (!cancelled)
+          setCollections({ document_processing: [], knowledge_graph: [] });
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);

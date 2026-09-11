@@ -43,6 +43,27 @@ export enum PacketType {
   GRAPH_STAGE_START = "graph_stage_start",
   GRAPH_STAGE_END = "graph_stage_end",
 
+  // Flow per-stage timeline packets (FlowAgent): an intermediate stage's
+  // reasoning + tools + output fold into a numbered AgentTimeline group
+  // instead of the answer bubble.
+  FLOW_STAGE_START = "flow_stage_start",
+  FLOW_STAGE_END = "flow_stage_end",
+  FLOW_STAGE_OUTPUT_DELTA = "flow_stage_output_delta",
+  // Emitted once at the start of a FlowAgent run (and replayed on reload):
+  // the published flow version_no that actually executed, so the chat-side
+  // flow strip pins to it instead of whatever is published now.
+  FLOW_VERSION = "flow_version",
+
+  // FlowAgent Human Input: the run paused at a HumanInput node and is waiting
+  // for a person to pick one of the declared actions.
+  HUMAN_INPUT = "human_input",
+
+  // ask_user: the agent could not tell what the user meant and asked,
+  // rather than guessing. The run is parked until the card is answered;
+  // the second packet locks that card in place with the answers.
+  USER_CLARIFICATION = "user_clarification",
+  USER_CLARIFICATION_ANSWERED = "user_clarification_answered",
+
   // File reader tool packets
   FILE_READER_START = "file_reader_start",
   FILE_READER_RESULT = "file_reader_result",
@@ -239,6 +260,51 @@ export interface FileReaderResult extends BaseObj {
   preview_end: string;
 }
 // Agent-generated file packet (create_document / create_spreadsheet result)
+/** Emitted once when a FlowAgent run suspends at a HumanInput node. The run
+ *  stays parked in the thread until someone answers; picking an action sends
+ *  its label back as the next message, which the backend turns into
+ *  `Command(resume=...)`. */
+export interface HumanInputRequest extends BaseObj {
+  type: "human_input";
+  node_id: string;
+  prompt: string;
+  decisions: string[];
+}
+
+/** One question on an ask_user card. `header` is both the tab title and the
+ *  key the answer is filed under, so it is unique within a card. */
+export interface ClarificationQuestion {
+  question: string;
+  header: string;
+  options: { label: string; description?: string }[];
+  multiSelect?: boolean;
+}
+
+/** Emitted when an agent asks the user what they meant. The run is genuinely
+ *  paused — nothing else happens until this is answered — so the card must
+ *  always offer a way forward, including simply typing instead. */
+export interface UserClarificationRequest extends BaseObj {
+  type: "user_clarification";
+  v: number;
+  request_id: string;
+  questions: ClarificationQuestion[];
+  /** The sub-agent chain that asked, empty for a single agent. Who is asking
+   *  changes the answer, so a supervisor's question says whose it is. */
+  agent_path?: string[];
+}
+
+/** The answers, keyed by question `header`. `answered: false` means the user
+ *  typed something instead — which is explicitly NOT an answer to any
+ *  question, and is never guessed at. */
+export interface UserClarificationAnswered extends BaseObj {
+  type: "user_clarification_answered";
+  v: number;
+  request_id: string;
+  answered: boolean;
+  answers?: Record<string, string[]>;
+  text?: string;
+}
+
 export interface GeneratedFile extends BaseObj {
   type: "generated_file";
   file_id: string;
@@ -478,6 +544,9 @@ export type ObjTypes =
   | ResearchAgentObj
   | PacketErrorObj
   | GeneratedFileObj
+  | HumanInputRequest
+  | UserClarificationRequest
+  | UserClarificationAnswered
   | StreamProgress
   | CitationObj;
 
@@ -486,6 +555,12 @@ export interface Placement {
   turn_index: number;
   tab_index?: number; // For parallel tool calls - tools with same turn_index but different tab_index run in parallel
   sub_turn_index?: number | null;
+  // FlowAgent per-stage timeline: which numbered stage (and loop iteration)
+  // a packet belongs to. Absent for every non-flow agent.
+  stage_key?: string;
+  stage_order?: number;
+  iteration?: number;
+  is_final_stage?: boolean;
 }
 
 // Packet wrapper for streaming objects
@@ -547,6 +622,16 @@ export interface MemoryToolPacket {
 export interface GeneratedFilePacket {
   placement: Placement;
   obj: GeneratedFileObj;
+}
+
+export interface HumanInputPacket {
+  placement: Placement;
+  obj: HumanInputRequest;
+}
+
+export interface UserClarificationPacket {
+  placement: Placement;
+  obj: UserClarificationRequest | UserClarificationAnswered;
 }
 
 export interface ReasoningPacket {

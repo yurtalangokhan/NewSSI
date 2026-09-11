@@ -1,6 +1,6 @@
 "use client";
 
-import { ThreeDotsLoader } from "@/components/Loading";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import { PageSelector } from "@/components/PageSelector";
 import { InfoIcon } from "@/components/icons/icons";
 import {
@@ -387,8 +387,16 @@ function Main() {
 
   if (isDocumentSetsLoading || isEditableDocumentSetsLoading) {
     return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <ThreeDotsLoader />
+      <div className="mb-8">
+        <TableSkeleton
+          rowCount={4}
+          columns={[
+            { type: "icon-text", width: "w-44", headerWidth: "w-20" },
+            { type: "text", width: "w-36", headerWidth: "w-24" },
+            { type: "badge", width: "w-20", headerWidth: "w-16" },
+            { type: "actions", width: "w-16", headerWidth: "w-16" },
+          ]}
+        />
       </div>
     );
   }
@@ -448,7 +456,16 @@ export default function Page() {
 
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header icon={route.icon} title={title} separator />
+      <SettingsLayouts.Header
+        icon={route.icon}
+        title={title}
+        description={
+          t(route.descriptionKey ?? "", {
+            defaultValue: route.description ?? "",
+          }) || undefined
+        }
+        separator
+      />
       <SettingsLayouts.Body>
         <AdminOverviewPanel
           icon={route.icon}
@@ -483,21 +500,6 @@ export default function Page() {
               value: t("admin.navigation.routes.agents.sidebar", {
                 defaultValue: "Agents",
               }),
-            },
-          ]}
-          actions={[
-            {
-              label: t("admin.navigation.routes.documentExplorer.sidebar", {
-                defaultValue: "Explorer",
-              }),
-              href: ADMIN_PATHS.DOCUMENT_EXPLORER,
-            },
-            {
-              label: t("admin.documentSets.newDocumentSet", {
-                defaultValue: "New Document Set",
-              }),
-              href: `${ADMIN_PATHS.DOCUMENT_SETS}/new`,
-              primary: true,
             },
           ]}
         />

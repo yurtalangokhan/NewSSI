@@ -55,6 +55,14 @@ class UserController(BaseController):
             self._raise_forbidden(str(e))
 
     async def update_me(self, user_id: uuid.UUID, **updates: Any) -> dict[str, Any]:
+        user_record = await self.user_service.user_repo.get_by_id(user_id)
+        if not user_record:
+            self._raise_not_found("user.not_found")
+        if getattr(user_record, "is_external_keycloak_user", False):
+            updates.pop("first_name", None)
+            updates.pop("last_name", None)
+            updates.pop("username", None)
+            updates.pop("email", None)
         user = await self.user_service.update_user(user_id, **updates)
         if not user:
             self._raise_not_found("user.not_found")
@@ -97,6 +105,10 @@ class UserController(BaseController):
 
     async def get_invited_users(self) -> list[dict[str, Any]]:
         return await self.user_service.get_invited_users()
+
+    async def get_role_distribution(self) -> dict[str, Any]:
+        distribution = await self.user_service.get_role_distribution()
+        return {"distribution": distribution}
 
     async def create_user(self, **payload: Any) -> dict[str, Any]:
         try:

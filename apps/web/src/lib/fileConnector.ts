@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 export interface ConnectorFileInfo {
   file_id: string;
   file_name: string;
@@ -30,7 +31,7 @@ export async function updateConnectorFiles(
     formData.append("files", file);
   });
 
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `/api/manage/admin/connector/${connectorId}/files/update`,
     {
       method: "POST",

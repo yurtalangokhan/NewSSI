@@ -4,6 +4,7 @@ import { forwardRef, useEffect, useRef, useState, JSX } from "react";
 import { FiCheck, FiChevronDown, FiInfo } from "react-icons/fi";
 import Popover from "@/refresh-components/Popover";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
+import Text from "@/refresh-components/texts/Text";
 export interface Option<T> {
   name: string;
   value: T;
@@ -177,12 +178,12 @@ export const DefaultDropdown = forwardRef<HTMLDivElement, DefaultDropdownProps>(
               cursor-pointer
               w-full`}
           >
-            <p className="line-clamp-1">
+            <Text as="p" className="line-clamp-1">
               {selectedOption?.name ||
                 (includeDefault
                   ? defaultValue || "Default"
                   : "Select an option...")}
-            </p>
+            </Text>
             <FiChevronDown className="my-auto ml-auto" />
           </div>
         </Popover.Trigger>

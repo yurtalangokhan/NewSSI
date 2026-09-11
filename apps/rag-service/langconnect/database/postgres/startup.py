@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 
 import psycopg
@@ -12,8 +11,9 @@ from alembic.script import ScriptDirectory
 from psycopg import sql
 
 from langconnect import config
+from langconnect.observability import get_logger, retry_sync
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _service_root() -> Path:
@@ -82,10 +82,18 @@ def ensure_database_exists() -> None:
 
 def run_startup_migrations() -> None:
     """Ensure the service database exists and apply Alembic migrations."""
-    ensure_database_exists()
+    retry_sync(
+        ensure_database_exists,
+        operation_name="ensure_database",
+        dependency="postgres",
+    )
     alembic_cfg = _build_alembic_config()
     current, target = _migration_revision_state(alembic_cfg)
     logger.info("LangConnect database migration check: current=%s target=%s", current, target)
-    command.upgrade(alembic_cfg, "head")
+    retry_sync(
+        lambda: command.upgrade(alembic_cfg, "head"),
+        operation_name="run_migrations",
+        dependency="postgres",
+    )
     current, target = _migration_revision_state(alembic_cfg)
     logger.info("LangConnect database migrations completed: current=%s target=%s", current, target)

@@ -29,6 +29,7 @@ import {
 import TextSeparator from "@/refresh-components/TextSeparator";
 import { useTranslation } from "react-i18next";
 import { buildAppPath } from "@/hooks/appNavigation";
+import ChatSearchItemSkeleton from "@/refresh-components/skeletons/ChatSearchItemSkeleton";
 
 /**
  * Dynamic footer that shows contextual action labels based on highlighted item type
@@ -319,9 +320,7 @@ export default function ChatSearchCommandMenu({
                   )}
                   {activeFilter === "chats" &&
                     (isLoadingMore || isSearching) && (
-                      <div className="flex justify-center items-center py-3">
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-solid border-text-04 border-t-text-02" />
-                      </div>
+                      <ChatSearchItemSkeleton count={isSearching ? 3 : 2} />
                     )}
                 </>
               )}

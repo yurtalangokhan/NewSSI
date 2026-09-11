@@ -7,8 +7,6 @@ repository layer.  The engine is created lazily on first call to
 
 from __future__ import annotations
 
-import logging
-
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -17,8 +15,9 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from langconnect import config
+from langconnect.observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None

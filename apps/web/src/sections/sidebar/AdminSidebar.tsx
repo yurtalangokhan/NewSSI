@@ -23,6 +23,7 @@ import { ADMIN_PATHS, sidebarItem } from "@/lib/admin-routes";
 import UserAvatarPopover from "@/sections/sidebar/UserAvatarPopover";
 import { useTranslation } from "react-i18next";
 import { useAppSidebarContext } from "@/providers/AppSidebarProvider";
+import AdminSidebarSkeleton from "@/refresh-components/skeletons/AdminSidebarSkeleton";
 
 const connectors_items = (
   t: (key: string, options?: { defaultValue?: string }) => string
@@ -224,11 +225,34 @@ export default function AdminSidebar({
           </div>
         }
       >
-        {items.map((collection, index) => (
-          <div key={index} className="flex flex-col">
-            {!folded && (
-              <SidebarSection title={collection.name}>
-                <div className="flex flex-col w-full">
+        {isPermissionsLoading ? (
+          <AdminSidebarSkeleton folded={folded} />
+        ) : (
+          items.map((collection, index) => (
+            <div key={index} className="flex flex-col">
+              {!folded && (
+                <SidebarSection title={collection.name}>
+                  <div className="flex flex-col w-full">
+                    {collection.items.map(
+                      ({ link, icon: Icon, name }, itemIndex) => (
+                        <SidebarTab
+                          key={itemIndex}
+                          href={link}
+                          transient={pathname.startsWith(link)}
+                          leftIcon={({ className }) => (
+                            <Icon className={className} size={16} />
+                          )}
+                          folded={folded}
+                        >
+                          {name}
+                        </SidebarTab>
+                      )
+                    )}
+                  </div>
+                </SidebarSection>
+              )}
+              {folded && (
+                <div className="flex flex-col w-full gap-0.5 mb-2">
                   {collection.items.map(
                     ({ link, icon: Icon, name }, itemIndex) => (
                       <SidebarTab
@@ -245,29 +269,10 @@ export default function AdminSidebar({
                     )
                   )}
                 </div>
-              </SidebarSection>
-            )}
-            {folded && (
-              <div className="flex flex-col w-full gap-0.5 mb-2">
-                {collection.items.map(
-                  ({ link, icon: Icon, name }, itemIndex) => (
-                    <SidebarTab
-                      key={itemIndex}
-                      href={link}
-                      transient={pathname.startsWith(link)}
-                      leftIcon={({ className }) => (
-                        <Icon className={className} size={16} />
-                      )}
-                      folded={folded}
-                    >
-                      {name}
-                    </SidebarTab>
-                  )
-                )}
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          ))
+        )}
       </SidebarBody>
     </SidebarWrapper>
   );

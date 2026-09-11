@@ -20,6 +20,7 @@ from agent_composition.domain.trusted_context import TrustedToolContext
 from agent_composition.runtime import ComposedAgent
 from agents.graphs.builder import GraphBuilder
 from agents.graphs.schemas import GraphSchemaType, get_schema
+from agents.knowledge.tool_selector import build_knowledge_binding_references
 from agents.lazy_agent import LazyLoadingAgent
 from core import settings
 from core.env import env
@@ -74,6 +75,14 @@ def _build_default_gateway() -> ToolGateway:
     return ToolsServiceToolGateway(service_url=mcp_url, internal_token=token)
 
 
+def _knowledge_tool_names(rag_config: dict[str, Any]) -> list[str]:
+    if not rag_config:
+        return []
+    from agents.knowledge.tool_selector import KnowledgeToolSelector
+
+    return KnowledgeToolSelector.select_tool_names(rag_config)
+
+
 class DynamicAgent(LazyLoadingAgent):
     """
     A dynamic agent whose graph schema, tools, and prompts are driven by an
@@ -93,6 +102,7 @@ class DynamicAgent(LazyLoadingAgent):
         self,
         agent_config: dict[str, Any] | None = None,
         gateway: ToolGateway | None = None,
+        definition_repository: Any | None = None,
     ):
         super().__init__()
         self._config = agent_config or {}
@@ -103,6 +113,7 @@ class DynamicAgent(LazyLoadingAgent):
         self._default_graph: CompiledStateGraph | Pregel | None = None
         self._mcp_tools_map: dict[str, Any] = {}
         self._load_failed = False
+        self._definition_repository = definition_repository
         # Composed runtime (ASC-4) that owns the lifecycle/resources behind the
         # existing resolution and cache contracts.
         self._composed: ComposedAgent | None = None
@@ -173,7 +184,7 @@ class DynamicAgent(LazyLoadingAgent):
             )
         except Exception as e:
             logger.error("DynamicAgent load failed: %s", e)
-            self._default_graph = self._create_fallback_graph()
+            self._default_graph = await self._create_fallback_graph()
             self._graph = self._default_graph
             self._loaded = True
             self._load_failed = True
@@ -184,6 +195,11 @@ class DynamicAgent(LazyLoadingAgent):
         user_id = configurable.get("user_id")
         tenant_id = configurable.get("tenant_id")
         binding_references: dict[str, str] = configurable.get("binding_references") or {}
+        rag_config = configurable.get("rag_config") or self._config.get("rag_config") or {}
+        binding_references = {
+            **build_knowledge_binding_references(rag_config),
+            **binding_references,
+        }
         attachment_handles: tuple[str, ...] = tuple(
             a.get("handle") or a.get("filename") or ""
             for a in (configurable.get("mail_attachments") or [])
@@ -243,12 +259,26 @@ class DynamicAgent(LazyLoadingAgent):
                 )
                 self._gateway_tools = []
 
-        # Tool loading is performed exclusively through the injected
-        # ToolsServiceToolGateway (wired in ASC-2D). The legacy
-        # MultiServerMCPClient path was removed in ASC-5; the gateway is the
-        # canonical, trusted-context-aware tool loader. ``_mcp_tools_map`` is
-        # kept empty so GraphBuilder only consults the gateway-resolved tools.
+        # Built-in tool loading is performed exclusively through the injected
+        # ToolsServiceToolGateway (wired in ASC-2D); the legacy
+        # MultiServerMCPClient path was removed in ASC-5. ``_mcp_tools_map``
+        # therefore only carries tools from *connected external* MCP servers,
+        # which the gateway does not know about, so GraphBuilder still sees
+        # them without shadowing any gateway-resolved built-in.
         self._mcp_tools_map = {}
+        try:
+            from agents.mcp_external import load_external_mcp_tools
+
+            external = await load_external_mcp_tools(None)
+            if external:
+                self._mcp_tools_map.update(external)
+                logger.info(
+                    "DynamicAgent '%s' loaded %d external MCP tools",
+                    self.name,
+                    len(external),
+                )
+        except Exception as e:  # noqa: BLE001 - external servers must not break the run
+            logger.warning("DynamicAgent '%s' could not load external MCP tools: %s", self.name, e)
 
     def _create_graph_from_config(
         self,
@@ -268,9 +298,7 @@ class DynamicAgent(LazyLoadingAgent):
         builder, schema_type, build_config = self._prepare_graph_build(
             runtime_config=runtime_config
         )
-        from agents.storage.repository import AgentDefinitionRepository
-
-        builder.repository = AgentDefinitionRepository()
+        builder.repository = self._definition_repository
         return await builder.build_async(schema_type, build_config)
 
     def _prepare_graph_build(
@@ -310,19 +338,13 @@ class DynamicAgent(LazyLoadingAgent):
             "mail_attachments": effective_config.get("mail_attachments") or [],
         }
         rag_config = effective_config.get("rag_config") or {}
-        rag_tools = []
-        if rag_config:
-            try:
-                from agents.knowledge.tool_selector import KnowledgeToolSelector
+        rag_tool_names = _knowledge_tool_names(rag_config)
 
-                rag_tools = KnowledgeToolSelector.select_tools(rag_config)
-            except Exception as e:
-                logger.warning(
-                    "Failed to resolve knowledge tools for DynamicAgent '%s': %s", self.name, e
-                )
-
-        configured_mcp_tools = effective_config.get("mcp_tools", [])
-        if schema_type == GraphSchemaType.ZERO_SHOT and (configured_mcp_tools or rag_tools):
+        configured_mcp_tools = list(effective_config.get("mcp_tools", []))
+        for tool_name in rag_tool_names:
+            if tool_name not in configured_mcp_tools:
+                configured_mcp_tools.append(tool_name)
+        if schema_type == GraphSchemaType.ZERO_SHOT and configured_mcp_tools:
             logger.info(
                 "Upgrading DynamicAgent '%s' from zero_shot to react because tools or RAG are configured",
                 self.name,
@@ -332,7 +354,6 @@ class DynamicAgent(LazyLoadingAgent):
         if schema_type == GraphSchemaType.REACT:
             build_config["mcp_tools"] = configured_mcp_tools
             build_config["system_prompt"] = system_prompt
-            build_config["extra_tools"] = rag_tools
         elif schema_type == GraphSchemaType.SUPERVISOR:
             build_config["name"] = self.name
             build_config["supervisor_prompt"] = self._config.get(
@@ -349,11 +370,9 @@ class DynamicAgent(LazyLoadingAgent):
             build_config["stages"] = effective_config.get("stages", [])
             build_config["sub_agent_ids"] = effective_config.get("sub_agent_ids", [])
             build_config["model"] = effective_config.get("model")
-            build_config["extra_tools"] = rag_tools
         elif schema_type == GraphSchemaType.PLAN_EXECUTE:
             build_config["system_prompt"] = system_prompt
-            build_config["mcp_tools"] = effective_config.get("mcp_tools", [])
-            build_config["extra_tools"] = rag_tools
+            build_config["mcp_tools"] = configured_mcp_tools
         elif schema_type == GraphSchemaType.SELF_REFLECT:
             build_config["system_prompt"] = system_prompt
             build_config["reflection_prompt"] = effective_config.get(
@@ -365,15 +384,15 @@ class DynamicAgent(LazyLoadingAgent):
 
         return builder, schema_type, build_config
 
-    def _create_fallback_graph(self) -> CompiledStateGraph:
+    async def _create_fallback_graph(self) -> CompiledStateGraph:
         """Minimal fallback graph when load fails."""
-        return GraphBuilder(
+        return await GraphBuilder(
             model=get_model(settings.DEFAULT_MODEL),
             system_prompt="You are a helpful assistant.",
             mcp_tools_map={},
             checkpointer=self._checkpointer if hasattr(self, "_checkpointer") else None,
             gateway_tools=self._gateway_tools,
-        ).build("zero_shot")
+        ).build_async("zero_shot")
 
     def _get_runtime_graph(self, config: RunnableConfig | None) -> CompiledStateGraph | Pregel:
         configurable = (config or {}).get("configurable", {})

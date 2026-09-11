@@ -55,7 +55,8 @@ const ToolsList: React.FC<ToolsListProps> = ({
 }) => {
   const { t } = useTranslation();
   const resolvedEmptyMessage = emptyMessage ?? t("tools.noToolsAvailable");
-  const resolvedEmptySearchMessage = emptySearchMessage ?? t("tools.noToolsFound");
+  const resolvedEmptySearchMessage =
+    emptySearchMessage ?? t("tools.noToolsFound");
   const showFooter =
     totalCount !== undefined && enabledCount !== undefined && totalCount > 0;
 
@@ -107,7 +108,9 @@ const ToolsList: React.FC<ToolsListProps> = ({
                   onClick={onToggleShowOnlyEnabled}
                   transient={showOnlyEnabled}
                   tooltip={
-                    showOnlyEnabled ? t("tools.showAllTools") : t("tools.showOnlyEnabled")
+                    showOnlyEnabled
+                      ? t("tools.showAllTools")
+                      : t("tools.showOnlyEnabled")
                   }
                   aria-label={
                     showOnlyEnabled

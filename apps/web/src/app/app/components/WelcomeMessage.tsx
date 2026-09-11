@@ -1,9 +1,7 @@
 "use client";
 
 import Logo from "@/refresh-components/Logo";
-import {
-  GREETING_MESSAGES,
-} from "@/lib/chat/greetingMessages";
+import { GREETING_MESSAGES } from "@/lib/chat/greetingMessages";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
 import Text from "@/refresh-components/texts/Text";
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";

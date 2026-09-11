@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import {
   OAuthBaseCallbackResponse,
   OAuthConfluenceFinalizeResponse,
@@ -20,7 +21,7 @@ export async function prepareOAuthAuthorizationRequest(
     url += `&redirect_on_success=${encodeURIComponent(finalRedirect)}`;
   }
 
-  const response = await fetch(url, {
+  const response = await authenticatedFetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -73,7 +74,7 @@ export async function handleFederatedOAuthCallback(
     code
   )}&state=${encodeURIComponent(state)}`;
 
-  const response = await fetch(url, {
+  const response = await authenticatedFetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -122,7 +123,7 @@ export async function handleOAuthSlackAuthorizationResponse(
     code
   )}&state=${encodeURIComponent(state)}`;
 
-  const response = await fetch(url, {
+  const response = await authenticatedFetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -160,7 +161,7 @@ export async function handleOAuthGoogleDriveAuthorizationResponse(
     code
   )}&state=${encodeURIComponent(state)}`;
 
-  const response = await fetch(url, {
+  const response = await authenticatedFetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -200,7 +201,7 @@ export async function handleOAuthConfluenceAuthorizationResponse(
     code
   )}&state=${encodeURIComponent(state)}`;
 
-  const response = await fetch(url, {
+  const response = await authenticatedFetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -292,7 +293,7 @@ export async function handleOAuthConfluenceFinalize(
     cloud_name
   )}&cloud_url=${encodeURIComponent(cloud_url)}`;
 
-  const response = await fetch(url, {
+  const response = await authenticatedFetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

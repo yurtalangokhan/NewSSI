@@ -81,6 +81,12 @@ class PersonaModel(Base):
         server_default=text("FALSE"),
     )
     builtin_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Avatar: exactly one of the two is set at a time — an uploaded image
+    # (a file id served by GET /api/chat/file/{id}) or one of the built-in
+    # glyphs from the frontend's agentAvatarIconMap. Both NULL means the
+    # name-letter fallback avatar.
+    uploaded_image_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    icon_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     # For custom agents: which base agent to use (chatbot, configurable-mcp-agent, etc.)
     base_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
     # For custom agents: list of MCP tool names to bind
@@ -93,6 +99,9 @@ class PersonaModel(Base):
         server_default=text("'{}'::jsonb"),
     )
     # Long-term memory toggle for this persona/agent
+    connector_bindings: Mapped[list] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     long_term_memory: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

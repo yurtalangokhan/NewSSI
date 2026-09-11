@@ -64,26 +64,37 @@ export function CustomModal({
         testError,
         setTestError,
       }) => {
-        const initialValues = {
-          ...buildDefaultInitialValues(existingLlmProvider),
-          provider: existingLlmProvider?.provider ?? "",
-          api_key: existingLlmProvider?.api_key ?? "",
-          api_base: existingLlmProvider?.api_base ?? "",
-          api_version: existingLlmProvider?.api_version ?? "",
-          model_configurations: existingLlmProvider?.model_configurations.map(
+        // Seed default_model_name from the provider's own models, the way
+        // every other provider modal does: the schema requires it, so an
+        // edit form built without it can never be submitted.
+        const existingModelConfigurations =
+          existingLlmProvider?.model_configurations.map(
             (modelConfiguration) => ({
               ...modelConfiguration,
               max_input_tokens: modelConfiguration.max_input_tokens ?? null,
             })
-          ) ?? [
-            {
-              name: "",
-              is_visible: true,
-              max_input_tokens: null,
-              supports_image_input: false,
-              supports_reasoning: false,
-            },
-          ],
+          ) ?? [];
+        const initialValues = {
+          ...buildDefaultInitialValues(
+            existingLlmProvider,
+            existingModelConfigurations
+          ),
+          provider: existingLlmProvider?.provider ?? "",
+          api_key: existingLlmProvider?.api_key ?? "",
+          api_base: existingLlmProvider?.api_base ?? "",
+          api_version: existingLlmProvider?.api_version ?? "",
+          model_configurations:
+            existingModelConfigurations.length > 0
+              ? existingModelConfigurations
+              : [
+                  {
+                    name: "",
+                    is_visible: true,
+                    max_input_tokens: null,
+                    supports_image_input: false,
+                    supports_reasoning: false,
+                  },
+                ],
           custom_config_list: existingLlmProvider?.custom_config
             ? Object.entries(existingLlmProvider.custom_config)
             : [],

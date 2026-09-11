@@ -25,14 +25,14 @@ describe("permission helpers", () => {
 
   it("requires every permission when checking all permissions", () => {
     expect(
-      hasAllPermissions(["role:list", "permission:list"], [
-        "role:list",
-        "permission:list",
-      ])
+      hasAllPermissions(
+        ["role:list", "permission:list"],
+        ["role:list", "permission:list"]
+      )
     ).toBe(true);
-    expect(hasAllPermissions(["role:list"], ["role:list", "permission:list"])).toBe(
-      false
-    );
+    expect(
+      hasAllPermissions(["role:list"], ["role:list", "permission:list"])
+    ).toBe(false);
     expect(hasAllPermissions(["*"], ["role:list", "permission:list"])).toBe(
       true
     );

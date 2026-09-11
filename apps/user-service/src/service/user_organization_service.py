@@ -4,6 +4,7 @@ import uuid
 from typing import Any
 
 from src.core.exceptions import ForbiddenError
+from src.core.permissions.admin_roles import is_admin_role_name
 from src.repository import (
     CompositeRoleRepository,
     OrganizationRepository,
@@ -156,8 +157,19 @@ class UserOrganizationService:
         role_name = getattr(actor, "role", None)
         if role_name:
             role = await self.role_repo.get_by_name(role_name)
-            if role and role.is_admin:
+            if role and is_admin_role_name(role.name):
                 return True
+
+        # Allow users whose effective permissions include org management.
+        from src.service.permission_resolver_service import get_permission_resolver_service
+
+        effective = set(
+            await get_permission_resolver_service().resolve_effective_permissions(actor_id)
+        )
+        if "*" in effective or effective.intersection(
+            {"org:update", "org:create", "org:delete", "org:move", "org:manage-users"}
+        ):
+            return True
 
         target = await self.org_repo.get_by_id(organization_id)
         if not target:

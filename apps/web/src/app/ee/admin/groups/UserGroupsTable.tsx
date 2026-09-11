@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/table";
 import { toast } from "@/hooks/useToast";
 import { getErrorMsg } from "@/lib/fetchUtils";
-import { LoadingAnimation } from "@/components/Loading";
 import { ConnectorTitle } from "@/components/admin/connectors/ConnectorTitle";
 import { deleteUserGroup } from "./lib";
 import { useRouter } from "next/navigation";
@@ -147,9 +146,10 @@ export const UserGroupsTable = ({
                         {t("admin.groups.upToDate")}
                       </div>
                     ) : (
-                      <div className="w-10">
-                        <LoadingAnimation text={t("admin.groups.syncing")} />
-                      </div>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-status-warning-05 animate-pulse" />
+                        {t("admin.groups.syncing")}
+                      </span>
                     )}
                   </TableCell>
                   <TableCell>

@@ -1,3 +1,4 @@
+import { idempotentFetch } from "@/lib/api/idempotency";
 import { User } from "./types";
 import { AuthType, SERVER_SIDE_ONLY__AUTH_TYPE } from "./constants";
 import { UrlBuilder, buildUserServiceUrl, fetchUserServiceSS } from "./utilsSS";
@@ -116,14 +117,14 @@ const logoutStandardSS = async (
   if (postLogoutRedirectUri) {
     url.searchParams.set("post_logout_redirect_uri", postLogoutRedirectUri);
   }
-  return await fetch(url.toString(), {
+  return await idempotentFetch(url.toString(), {
     method: "POST",
     headers: headers,
   });
 };
 
 const logoutSAMLSS = async (headers: Headers): Promise<Response> => {
-  return await fetch(buildUserServiceUrl("/api/auth/saml/logout"), {
+  return await idempotentFetch(buildUserServiceUrl("/api/auth/saml/logout"), {
     method: "POST",
     headers: headers,
   });
@@ -144,6 +145,24 @@ export const logoutSS = async (
   }
 };
 
+async function refreshSessionSS(): Promise<string | null> {
+  try {
+    if (!(await hasRefreshTokenCookieSS())) {
+      return null;
+    }
+    const refreshResponse = await fetchUserServiceSS("/api/auth/refresh", {
+      method: "POST",
+    });
+    if (!refreshResponse.ok) {
+      return null;
+    }
+    const data = await refreshResponse.json();
+    return data?.access_token || null;
+  } catch {
+    return null;
+  }
+}
+
 export const getCurrentUserSS = async (): Promise<User | null> => {
   try {
     // Avoid noisy backend 401 calls when there is clearly no authenticated session.
@@ -151,7 +170,18 @@ export const getCurrentUserSS = async (): Promise<User | null> => {
       return null;
     }
 
-    const response = await fetchUserServiceSS("/api/auth/me");
+    let response = await fetchUserServiceSS("/api/auth/me");
+    if (response.status === 401 && (await hasRefreshTokenCookieSS())) {
+      const refreshedAccessToken = await refreshSessionSS();
+      if (refreshedAccessToken) {
+        response = await fetchUserServiceSS("/api/auth/me", {
+          headers: {
+            Authorization: `Bearer ${refreshedAccessToken}`,
+          },
+        });
+      }
+    }
+
     if (response.status === 401) {
       return null;
     }
@@ -164,20 +194,50 @@ export const getCurrentUserSS = async (): Promise<User | null> => {
   }
 };
 
-export const getCurrentUserPermissionsSS = async (): Promise<string[]> => {
+export interface CurrentUserAccess {
+  permissions: string[];
+  // Whether the user holds an admin-tier composite role (system-admin /
+  // enterprise-admin), as resolved by the backend from their actual role
+  // assignment. Do NOT derive "is admin" on the client by checking whether
+  // `permissions` overlaps with what some admin page requires - end users
+  // are legitimately granted plenty of read-only permissions for ordinary
+  // app features, and several admin pages are gated on those same
+  // permission strings. That overlap is what previously let end users into
+  // the admin panel; `isAdmin` here is the correct, backend-computed signal.
+  isAdmin: boolean;
+}
+
+export const getCurrentUserAccessSS = async (): Promise<CurrentUserAccess> => {
   try {
     if (!(await hasAuthSessionCookieSS())) {
-      return [];
+      return { permissions: [], isAdmin: false };
     }
 
-    const response = await fetchUserServiceSS("/api/users/me/permissions");
-    if (!response.ok) {
-      return [];
+    let response = await fetchUserServiceSS("/api/users/me/permissions");
+    if (response.status === 401 && (await hasRefreshTokenCookieSS())) {
+      const refreshedAccessToken = await refreshSessionSS();
+      if (refreshedAccessToken) {
+        response = await fetchUserServiceSS("/api/users/me/permissions", {
+          headers: {
+            Authorization: `Bearer ${refreshedAccessToken}`,
+          },
+        });
+      }
     }
-    const payload = (await response.json()) as { permissions?: string[] };
-    return payload.permissions ?? [];
+
+    if (!response.ok) {
+      return { permissions: [], isAdmin: false };
+    }
+    const payload = (await response.json()) as {
+      permissions?: string[];
+      is_admin?: boolean;
+    };
+    return {
+      permissions: payload.permissions ?? [],
+      isAdmin: payload.is_admin ?? false,
+    };
   } catch {
-    return [];
+    return { permissions: [], isAdmin: false };
   }
 };
 

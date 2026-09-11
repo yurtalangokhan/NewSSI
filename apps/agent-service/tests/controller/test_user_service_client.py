@@ -52,6 +52,41 @@ async def test_user_service_client_uses_api_v1_internal_permission_path(monkeypa
 
 
 @pytest.mark.asyncio
+async def test_create_audit_log_uses_api_v1_internal_audit_logs_path(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_request(method, path, **kwargs):
+        captured["method"] = method
+        captured["path"] = path
+        captured["kwargs"] = kwargs
+        return {"id": "log-1"}
+
+    monkeypatch.setattr(UserServiceClient, "_request", fake_request)
+
+    result = await UserServiceClient.create_audit_log(
+        "flow:published",
+        "flow:abc123",
+        user_id="real-uuid",
+        details={"to_version": 2},
+        access_token="tok",
+    )
+
+    assert result == {"id": "log-1"}
+    assert captured["method"] == "POST"
+    assert captured["path"] == "/api/v1/internal/audit-logs"
+    assert captured["kwargs"] == {
+        "json_body": {
+            "action": "flow:published",
+            "resource": "flow:abc123",
+            "user_id": "real-uuid",
+            "details": {"to_version": 2},
+        },
+        "access_token": "tok",
+        "include_internal_token": True,
+    }
+
+
+@pytest.mark.asyncio
 async def test_user_service_client_uses_api_v1_internal_keycloak_upsert_path(
     monkeypatch,
 ) -> None:

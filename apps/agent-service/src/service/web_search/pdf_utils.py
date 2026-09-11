@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import io
-import logging
 from collections.abc import Callable, Sequence
 from typing import IO, Any
 
-logger = logging.getLogger(__name__)
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 TEXT_SECTION_SEPARATOR = "\n\n"
 MAX_EMBEDDED_IMAGES_PER_FILE = 10

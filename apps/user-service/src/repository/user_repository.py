@@ -147,6 +147,15 @@ class UserRepository(BaseRepository):
             result = await session.execute(select(UserModel).where(UserModel.role == role))
             return list(result.scalars().all())
 
+    async def count_by_role(self) -> list[dict]:
+        async with self._session() as session:
+            result = await session.execute(
+                select(UserModel.role, func.count(UserModel.id).label("count"))
+                .group_by(UserModel.role)
+                .order_by(func.count(UserModel.id).desc())
+            )
+            return [{"role": row[0], "count": row[1]} for row in result]
+
     async def exists_by_email(self, email: str) -> bool:
         async with self._session() as session:
             result = await session.execute(

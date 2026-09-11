@@ -5,8 +5,6 @@ REST API endpoints for managing data sources using Airbyte OSS connectors.
 All connector management is delegated to the Airbyte platform via REST API.
 """
 
-import json
-import logging
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -15,11 +13,17 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from i18n import t
 
 from api.dependencies import AuthenticatedUser, require_permission, require_user
+from api.routes.datasource_helpers import (
+    VALID_SYNC_COMBOS,
+    build_chunk_infos,
+    format_connector_name,
+    mask_sensitive_config,
+)
 from controller import DataController, get_data_controller
 from core.db import DatasourceRepository
+from core.logger import get_logger
 from models.connectors import ConnectorSpecResponse, StreamInfo
 from models.datasources import (
-    ChunkInfo,
     DataSourceDetails,
     DataSourceInput,
     DataSourceResponse,
@@ -27,7 +31,7 @@ from models.datasources import (
 )
 from service.SyncQueueService import SyncJob, get_sync_queue
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(
     prefix="/datasources", tags=["datasources"], dependencies=[Depends(require_user)]
@@ -36,35 +40,6 @@ router = APIRouter(
 
 def _get_controller() -> DataController:
     return get_data_controller()
-
-
-def _mask_sensitive_config(config: dict[str, Any]) -> dict[str, Any]:
-    """Mask sensitive values in connector configs before returning to UI."""
-    sensitive_keys = ["password", "api_key", "secret", "token", "credentials", "private_key"]
-    masked: dict[str, Any] = {}
-    for key, value in (config or {}).items():
-        if any(s in key.lower() for s in sensitive_keys):
-            masked[key] = "****"
-        elif isinstance(value, dict):
-            masked[key] = _mask_sensitive_config(value)
-        else:
-            masked[key] = value
-    return masked
-
-
-def _format_connector_name(name: str) -> str:
-    """Format connector IDs for UI display labels."""
-    from service.AirbyteConnectorService import _format_connector_name as _fmt
-
-    return _fmt(name)
-
-
-# Valid sync mode combinations (must match Airbyte webapp + destination spec)
-_VALID_SYNC_COMBOS = {
-    ("full_refresh", "overwrite"),
-    ("full_refresh", "append"),
-    ("incremental", "append"),
-}
 
 
 # ============================================================================
@@ -130,13 +105,13 @@ async def get_connector_specification(
     Returns the native connectionSpecification — NO flattening.
     The frontend renders it via the recursive SchemaForm.
     """
-    from service.AirbyteConnectorService import _format_connector_name, get_connector_spec
+    from service.AirbyteConnectorService import get_connector_spec
 
     try:
         spec = await get_connector_spec(connector_name)
         return ConnectorSpecResponse(
             name=spec.name,
-            display_name=_format_connector_name(connector_name),
+            display_name=format_connector_name(connector_name),
             source_definition_id=spec.source_definition_id,
             connection_specification=spec.connection_specification,
             documentation_url=spec.documentation_url,
@@ -218,7 +193,7 @@ async def create_datasource(
     ds_repo = DatasourceRepository()
 
     from service.AirbyteApiClientService import get_airbyte_client
-    from service.AirbyteConnectorService import _format_connector_name, find_connector_by_name
+    from service.AirbyteConnectorService import find_connector_by_name
 
     # Check for duplicate name before creating any Airbyte resources
     existing = await ds_repo.get_collection_by_name(input.name)
@@ -368,7 +343,7 @@ async def create_datasource(
         id=row["uuid"],
         name=row["name"],
         connector_type=input.config.connector_type,
-        connector_display_name=_format_connector_name(input.config.connector_type),
+        connector_display_name=format_connector_name(input.config.connector_type),
         streams=input.config.streams,
         created_at=now,
     )
@@ -416,78 +391,7 @@ async def get_datasource_details(
 
     # Get paginated chunks
     emb_rows = await ds_repo.get_paginated_embeddings(id, limit=page_size, offset=offset)
-    chunks = []
-    samples = []  # backward compat
-    for sr in emb_rows:
-        doc_text = sr["document"] or ""
-        emb_meta = sr.get("cmetadata", {}) or {}
-
-        chunks.append(
-            ChunkInfo(
-                content=doc_text[:500] + "..." if len(doc_text) > 500 else doc_text,
-                char_count=emb_meta.get("char_count", len(doc_text)),
-                token_count=emb_meta.get(
-                    "token_count", max(len(doc_text.split()), int(len(doc_text) / 4))
-                ),
-                word_count=emb_meta.get("word_count", len(doc_text.split())),
-                source=emb_meta.get("source"),
-                stream=emb_meta.get("stream"),
-                connector_type=emb_meta.get("connector_type"),
-                metadata=emb_meta,
-            )
-        )
-        # backward compat
-        samples.append(
-            {
-                "content": doc_text[:500] + "..." if len(doc_text) > 500 else doc_text,
-                "metadata": emb_meta,
-            }
-        )
-
-    # In Milvus-backed ingestion flow, PG embedding rows can be empty.
-    # Use the samples already fetched above; skip a second Milvus connection.
-    if not chunks and chunk_count:
-        milvus_rows = milvus_prefetch
-        for mr in milvus_rows:
-            raw_meta = mr.get("metadata") or {}
-            if isinstance(raw_meta, str):
-                try:
-                    raw_meta = json.loads(raw_meta) if raw_meta else {}
-                except Exception:
-                    raw_meta = {}
-            if not isinstance(raw_meta, dict):
-                raw_meta = {}
-
-            doc_text = str(mr.get("text") or "")
-            if not doc_text:
-                continue
-
-            chunks.append(
-                ChunkInfo(
-                    content=doc_text[:500] + "..." if len(doc_text) > 500 else doc_text,
-                    char_count=int(raw_meta.get("char_count", len(doc_text))),
-                    token_count=int(
-                        raw_meta.get(
-                            "token_count",
-                            max(len(doc_text.split()), int(len(doc_text) / 4)),
-                        )
-                    ),
-                    word_count=int(raw_meta.get("word_count", len(doc_text.split()))),
-                    source=raw_meta.get("source"),
-                    stream=raw_meta.get("stream"),
-                    connector_type=raw_meta.get("connector_type"),
-                    metadata={
-                        "chunk_id": str(mr.get("pk", "")),
-                        **raw_meta,
-                    },
-                )
-            )
-            samples.append(
-                {
-                    "content": doc_text[:500] + "..." if len(doc_text) > 500 else doc_text,
-                    "metadata": raw_meta,
-                }
-            )
+    chunks, samples = build_chunk_infos(emb_rows, milvus_prefetch)
 
     # Fetch config from Airbyte API (no longer stored locally)
     masked_config: dict[str, Any] = {}
@@ -503,13 +407,13 @@ async def get_datasource_details(
             _client = _get_client()
             source_data = await _client.get_source(airbyte_source_id)
             raw_config = source_data.get("connectionConfiguration", {})
-            masked_config = _mask_sensitive_config(raw_config)
+            masked_config = mask_sensitive_config(raw_config)
     except Exception as e:
         logger.warning(f"Could not fetch config from Airbyte for {id}: {e}")
         # Fallback: try legacy cmetadata (for old datasources not yet migrated)
         legacy_config = col_meta.get("connector_config", {})
         if legacy_config:
-            masked_config = _mask_sensitive_config(legacy_config)
+            masked_config = mask_sensitive_config(legacy_config)
 
     # Fetch schedule from Airbyte connection
     schedule_data = None
@@ -590,7 +494,7 @@ async def get_datasource_details(
         id=str(row["uuid"]),
         name=row["name"],
         connector_type=connector_type,
-        connector_display_name=_format_connector_name(connector_type),
+        connector_display_name=format_connector_name(connector_type),
         config=masked_config,
         streams=col_meta.get("streams"),
         sync_status=col_meta.get("sync_status"),
@@ -644,7 +548,7 @@ async def update_datasource(
     if input.sync_mode is not None or input.destination_sync_mode is not None:
         sm = input.sync_mode or "full_refresh"
         dm = input.destination_sync_mode or "overwrite"
-        if (sm, dm) not in _VALID_SYNC_COMBOS:
+        if (sm, dm) not in VALID_SYNC_COMBOS:
             raise HTTPException(
                 status_code=400,
                 detail=t("datasource.invalid_sync_mode_combination", sync_mode=sm, dest_mode=dm),

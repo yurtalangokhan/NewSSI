@@ -14,8 +14,7 @@ export function getBackendUrl(path: string[]): URL {
 
   if (USER_PREFIXES.has(firstSegment)) {
     const base = getUserServiceUrl();
-    const servicePath =
-      firstSegment === "user-service" ? path.slice(1) : path;
+    const servicePath = firstSegment === "user-service" ? path.slice(1) : path;
     const pathSuffix = isUserServiceCollectionPath(servicePath) ? "/" : "";
     return buildServiceUrl(
       base,

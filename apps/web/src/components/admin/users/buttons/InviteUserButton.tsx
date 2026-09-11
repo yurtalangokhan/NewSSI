@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import {
   type InvitedUserSnapshot,
   type AcceptedUserSnapshot,
@@ -23,7 +24,7 @@ export const InviteUserButton = ({
   const { trigger: inviteTrigger, isMutating: isInviting } = useSWRMutation(
     "/api/user-service/users/invite",
     async (url, { arg }: { arg: { emails: string[] } }) => {
-      const response = await fetch(url, {
+      const response = await authenticatedFetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -55,7 +56,7 @@ export const InviteUserButton = ({
   const { trigger: uninviteTrigger, isMutating: isUninviting } = useSWRMutation(
     invited && user.id ? `/api/user-service/users/${user.id}` : null,
     async (url: string) => {
-      const response = await fetch(url, {
+      const response = await authenticatedFetch(url, {
         method: "DELETE",
       });
       if (!response.ok) {

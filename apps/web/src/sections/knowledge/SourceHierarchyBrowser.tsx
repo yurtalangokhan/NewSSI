@@ -12,6 +12,7 @@ import * as TableLayouts from "@/layouts/table-layouts";
 import Button from "@/refresh-components/buttons/Button";
 import { Button as OpalButton } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
+import ListSkeleton from "@/refresh-components/skeletons/ListSkeleton";
 import Truncated from "@/refresh-components/texts/Truncated";
 import Separator from "@/refresh-components/Separator";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
@@ -219,7 +220,9 @@ export default function SourceHierarchyBrowser({
         setAllNodes(response.nodes);
       } catch (error) {
         setNodesError(
-          error instanceof Error ? error.message : t("sourceBrowser.failedToLoadFolders")
+          error instanceof Error
+            ? error.message
+            : t("sourceBrowser.failedToLoadFolders")
         );
       } finally {
         setIsLoadingNodes(false);
@@ -656,11 +659,9 @@ export default function SourceHierarchyBrowser({
   // Render loading state
   if (isLoadingNodes) {
     return (
-      <GeneralLayouts.Section height="auto" padding={1}>
-        <Text text03 secondaryBody>
-          Loading folders...
-        </Text>
-      </GeneralLayouts.Section>
+      <div className="p-2">
+        <ListSkeleton itemCount={5} hasIcon={true} />
+      </div>
     );
   }
 
@@ -745,14 +746,20 @@ export default function SourceHierarchyBrowser({
                   transient={sortDropdownOpen}
                   onClick={() => setSortDropdownOpen(true)}
                 >
-                  {sortField === "name" ? t("sourceBrowser.sortByName") : t("sourceBrowser.sortByLastUpdated")}
+                  {sortField === "name"
+                    ? t("sourceBrowser.sortByName")
+                    : t("sourceBrowser.sortByLastUpdated")}
                 </SelectButton>
               </div>
             </Popover.Trigger>
             <Popover.Content align="end" sideOffset={4} width="lg">
               <Popover.Menu>
                 {/* Sort by section */}
-                <Divider showTitle text={t("sourceBrowser.sortBy")} dividerLine={false} />
+                <Divider
+                  showTitle
+                  text={t("sourceBrowser.sortBy")}
+                  dividerLine={false}
+                />
                 <LineItem
                   selected={sortField === "name"}
                   onClick={() => setSortField("name")}
@@ -774,7 +781,11 @@ export default function SourceHierarchyBrowser({
                   {t("sourceBrowser.sortByLastUpdated")}
                 </LineItem>
                 {/* Sorting Order section */}
-                <Divider showTitle text={t("sourceBrowser.sortingOrder")} dividerLine={false} />
+                <Divider
+                  showTitle
+                  text={t("sourceBrowser.sortingOrder")}
+                  dividerLine={false}
+                />
                 <LineItem
                   selected={sortDirection === "desc"}
                   onClick={() => setSortDirection("desc")}
@@ -784,7 +795,9 @@ export default function SourceHierarchyBrowser({
                     ) : undefined
                   }
                 >
-                  {sortField === "name" ? t("sourceBrowser.descName") : t("sourceBrowser.descDate")}
+                  {sortField === "name"
+                    ? t("sourceBrowser.descName")
+                    : t("sourceBrowser.descDate")}
                 </LineItem>
                 <LineItem
                   selected={sortDirection === "asc"}
@@ -793,10 +806,16 @@ export default function SourceHierarchyBrowser({
                     sortDirection === "asc" ? <SvgCheck size={16} /> : undefined
                   }
                 >
-                  {sortField === "name" ? t("sourceBrowser.ascName") : t("sourceBrowser.ascDate")}
+                  {sortField === "name"
+                    ? t("sourceBrowser.ascName")
+                    : t("sourceBrowser.ascDate")}
                 </LineItem>
                 {/* Folders section */}
-                <Divider showTitle text={t("sourceBrowser.folders")} dividerLine={false} />
+                <Divider
+                  showTitle
+                  text={t("sourceBrowser.folders")}
+                  dividerLine={false}
+                />
                 <LineItem
                   selected={folderPosition === "on_top"}
                   onClick={() => setFolderPosition("on_top")}

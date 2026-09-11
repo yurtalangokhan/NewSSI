@@ -1,4 +1,4 @@
 #!/usr/bin/env -S LC_ALL=C.UTF-8 LANG=C.UTF-8 bash
 set -euo pipefail
 
-exec "$(git rev-parse --show-toplevel)/scripts/quality/check.sh" staged
+exec "$(git rev-parse --show-toplevel)/scripts/validate-commit.sh"

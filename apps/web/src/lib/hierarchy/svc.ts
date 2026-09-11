@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import { ValidSources } from "@/lib/types";
 import {
   HierarchyNodesResponse,
@@ -41,13 +42,16 @@ export async function fetchHierarchyNodes(
 export async function fetchHierarchyNodeDocuments(
   request: HierarchyNodeDocumentsRequest
 ): Promise<HierarchyNodeDocumentsResponse> {
-  const response = await fetch(`${HIERARCHY_NODES_PREFIX}/documents`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(request),
-  });
+  const response = await authenticatedFetch(
+    `${HIERARCHY_NODES_PREFIX}/documents`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    }
+  );
 
   if (!response.ok) {
     const detail = await extractErrorDetail(

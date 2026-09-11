@@ -72,6 +72,7 @@ export interface User {
   // we don't want to show them things like the reset password
   // functionality
   password_configured?: boolean;
+  is_external_keycloak_user?: boolean;
   tenant_info?: TenantInfo | null;
   personalization?: UserPersonalization;
 }

@@ -1,16 +1,16 @@
 import i18next, { i18n as I18nInstance } from "i18next";
 import { initReactI18next } from "react-i18next";
-
 import enCommon from "./locales/en";
 import trCommon from "./locales/tr";
 import {
   DEFAULT_LANGUAGE,
+  I18N_LANGUAGE_COOKIE_NAME,
   SUPPORTED_LANGUAGES,
   SupportedLanguage,
+  isSupportedLanguage,
 } from "./locales";
 
 export * from "./locales";
-
 const resources = {
   en: { common: enCommon },
   tr: { common: trCommon },
@@ -28,6 +28,20 @@ const sharedInitOptions = {
     useSuspense: false,
   },
 };
+
+function getInitialClientLanguage(): SupportedLanguage {
+  if (typeof document !== "undefined") {
+    const match = document.cookie.match(
+      new RegExp(`(?:^|; )${I18N_LANGUAGE_COOKIE_NAME}=([^;]*)`)
+    );
+    const cookieLocale =
+      match && match[1] ? decodeURIComponent(match[1]) : null;
+    if (isSupportedLanguage(cookieLocale)) {
+      return cookieLocale;
+    }
+  }
+  return DEFAULT_LANGUAGE;
+}
 
 /**
  * Creates a dedicated i18next instance for the React tree (mounted once per
@@ -63,7 +77,7 @@ export function createI18nInstance(
 const i18n = i18next.createInstance();
 i18n.use(initReactI18next).init({
   ...sharedInitOptions,
-  lng: DEFAULT_LANGUAGE,
+  lng: getInitialClientLanguage(),
 });
 
 export function syncDefaultInstanceLanguage(language: SupportedLanguage) {

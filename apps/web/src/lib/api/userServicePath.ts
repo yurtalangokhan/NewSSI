@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 
 const USER_SERVICE_COLLECTION_PATHS = new Set([
   "coarse-roles",
-  "organizations",
   "permissions",
   "roles",
   "users",

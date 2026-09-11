@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import { LLMProviderResponse, VisionProvider } from "@/interfaces/llm";
 import { LLM_ADMIN_URL } from "@/lib/llmConfig/constants";
 
@@ -20,7 +21,7 @@ export async function setDefaultVisionProvider(
   providerId: number,
   visionModel: string
 ): Promise<void> {
-  const response = await fetch(`${LLM_ADMIN_URL}/default-vision`, {
+  const response = await authenticatedFetch(`${LLM_ADMIN_URL}/default-vision`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

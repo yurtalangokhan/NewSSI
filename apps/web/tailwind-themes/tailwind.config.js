@@ -54,6 +54,18 @@ module.exports = {
           "0%": { opacity: "0" },
           "100%": { opacity: "1" },
         },
+        "transponder-orbit": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
+        "transponder-pulse": {
+          "0%, 100%": { transform: "scale(1)", opacity: "1" },
+          "50%": { transform: "scale(1.28)", opacity: "0.78" },
+        },
+        "transponder-flow": {
+          "0%": { strokeDashoffset: "0" },
+          "100%": { strokeDashoffset: "-6.4" },
+        },
       },
       animation: {
         shimmer: "shimmer 1.8s ease-out infinite",
@@ -65,6 +77,9 @@ module.exports = {
         "collapsible-down": "collapsible-down 0.2s ease-out",
         "collapsible-up": "collapsible-up 0.2s ease-out",
         "org-node-enter": "org-node-enter 220ms ease-out",
+        "transponder-orbit": "transponder-orbit 54s linear infinite",
+        "transponder-pulse": "transponder-pulse 3.4s ease-in-out infinite",
+        "transponder-flow": "transponder-flow 2.6s linear infinite",
       },
       gradientColorStops: {
         "neutral-10": "var(--neutral-10) 5%",
@@ -102,6 +117,36 @@ module.exports = {
       },
       colors: {
         // New and updated Figma stylings
+        "note-yellow-bg": "var(--note-yellow-bg)",
+        "note-yellow-border": "var(--note-yellow-border)",
+        "note-yellow-text": "var(--note-yellow-text)",
+        "note-yellow-dot": "var(--note-yellow-dot)",
+        "note-yellow-dot-border": "var(--note-yellow-dot-border)",
+        "note-blue-bg": "var(--note-blue-bg)",
+        "note-blue-border": "var(--note-blue-border)",
+        "note-blue-text": "var(--note-blue-text)",
+        "note-blue-dot": "var(--note-blue-dot)",
+        "note-blue-dot-border": "var(--note-blue-dot-border)",
+        "note-green-bg": "var(--note-green-bg)",
+        "note-green-border": "var(--note-green-border)",
+        "note-green-text": "var(--note-green-text)",
+        "note-green-dot": "var(--note-green-dot)",
+        "note-green-dot-border": "var(--note-green-dot-border)",
+        "note-pink-bg": "var(--note-pink-bg)",
+        "note-pink-border": "var(--note-pink-border)",
+        "note-pink-text": "var(--note-pink-text)",
+        "note-pink-dot": "var(--note-pink-dot)",
+        "note-pink-dot-border": "var(--note-pink-dot-border)",
+        "note-purple-bg": "var(--note-purple-bg)",
+        "note-purple-border": "var(--note-purple-border)",
+        "note-purple-text": "var(--note-purple-text)",
+        "note-purple-dot": "var(--note-purple-dot)",
+        "note-purple-dot-border": "var(--note-purple-dot-border)",
+        "note-neutral-bg": "var(--note-neutral-bg)",
+        "note-neutral-border": "var(--note-neutral-border)",
+        "note-neutral-text": "var(--note-neutral-text)",
+        "note-neutral-dot": "var(--note-neutral-dot)",
+        "note-neutral-dot-border": "var(--note-neutral-dot-border)",
         "text-05": "var(--text-05)",
         "text-04": "var(--text-04)",
         "text-03": "var(--text-03)",
@@ -275,6 +320,52 @@ module.exports = {
         foreground: "var(--background-tint-inverted-01)",
         border: "var(--border-01)",
         text: "var(--text-04)",
+
+        // ---------------------------------------------------------------
+        // shadcn/ui semantic tokens — Langflow's own values.
+        //
+        // Langflow (vendor/langflow) is a shadcn-based UI written against
+        // `bg-muted`, `text-muted-foreground`, `bg-accent`,
+        // `border-secondary-hover` and friends. The flow canvas carries
+        // its className strings verbatim, so these must resolve to
+        // Langflow's palette — not a re-mapping onto ours, which produced
+        // Langflow's layout in this project's colours and was the reason
+        // the canvas still didn't look like Langflow.
+        //
+        // The `--lf-*` triples are defined in
+        // `src/components/flow-canvas/langflow-theme.css`, scoped to
+        // `.langflow-canvas`, and copied from Langflow's own
+        // `style/index.css` at the pinned commit. The fallbacks keep these
+        // utilities sane if one is ever used outside that scope.
+        // ---------------------------------------------------------------
+        muted: "hsl(var(--lf-muted, 240 5% 96%))",
+        "muted-foreground": "hsl(var(--lf-muted-foreground, 240 4% 43%))",
+        accent: "hsl(var(--lf-accent, 240 5% 96%))",
+        "accent-foreground": "hsl(var(--lf-accent-foreground, 0 0% 0%))",
+        primary: "hsl(var(--lf-primary, 0 0% 0%))",
+        "primary-foreground": "hsl(var(--lf-primary-foreground, 0 0% 100%))",
+        secondary: "hsl(var(--lf-secondary, 0 0% 100%))",
+        "secondary-foreground": "hsl(var(--lf-secondary-foreground, 240 4% 16%))",
+        "secondary-hover": "hsl(var(--lf-secondary-hover, 240 6% 90%))",
+        card: "hsl(var(--lf-card, 0 0% 100%))",
+        "card-foreground": "hsl(var(--lf-card-foreground, 0 0% 0%))",
+        popover: "hsl(var(--lf-popover, 0 0% 100%))",
+        "popover-foreground": "hsl(var(--lf-popover-foreground, 0 0% 0%))",
+        destructive: "hsl(var(--lf-destructive, 0 72% 45%))",
+        "destructive-foreground": "hsl(var(--lf-destructive-foreground, 0 0% 100%))",
+        ring: "hsl(var(--lf-ring, 0 0% 0%))",
+        input: "hsl(var(--lf-input, 240 6% 90%))",
+        "placeholder-foreground": "hsl(var(--lf-placeholder-foreground, 240 5% 40%))",
+        canvas: "hsl(var(--lf-canvas, 240 5% 96%))",
+        "canvas-dot": "hsl(var(--lf-canvas-dot, 240 5% 65%))",
+        "node-selected": "hsl(var(--lf-node-selected, 243 75% 59%))",
+        // Canvas-scoped stand-ins for `background`/`foreground`/`border`.
+        // Those three are project-wide tokens read by shared components,
+        // so the canvas cannot repoint them without breaking every input
+        // rendered inside a node — these carry Langflow's values instead.
+        "canvas-panel": "hsl(var(--lf-background, 0 0% 100%))",
+        "canvas-fg": "hsl(var(--lf-foreground, 0 0% 0%))",
+        "canvas-border": "hsl(var(--lf-border, 240 6% 90%))",
       },
       borderRadius: {
         "02": "var(--border-radius-02)",

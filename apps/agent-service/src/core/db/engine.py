@@ -15,8 +15,6 @@ The SQLAlchemy engine here is for the **application's own tables**
 
 from __future__ import annotations
 
-import logging
-
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -24,9 +22,10 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from core.logger import get_logger
 from core.settings import settings
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Module-level singletons

@@ -103,6 +103,7 @@ export { default as SvgLogOut } from "@opal/icons/log-out";
 export { default as SvgMaximize2 } from "@opal/icons/maximize-2";
 export { default as SvgMcp } from "@opal/icons/mcp";
 export { default as SvgMenu } from "@opal/icons/menu";
+export { default as SvgMinimize2 } from "@opal/icons/minimize-2";
 export { default as SvgMinus } from "@opal/icons/minus";
 export { default as SvgMinusCircle } from "@opal/icons/minus-circle";
 export { default as SvgMoon } from "@opal/icons/moon";
@@ -177,3 +178,5 @@ export { default as SvgXCircle } from "@opal/icons/x-circle";
 export { default as SvgXOctagon } from "@opal/icons/x-octagon";
 export { default as SvgZoomIn } from "@opal/icons/zoom-in";
 export { default as SvgZoomOut } from "@opal/icons/zoom-out";
+
+export { default as SvgStickyNote } from "@opal/icons/sticky-note";

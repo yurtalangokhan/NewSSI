@@ -1,6 +1,5 @@
 import base64
 import io
-import logging
 import re
 from typing import Any
 
@@ -15,12 +14,13 @@ from langchain_core.messages import (
 )
 from pypdf import PdfReader
 
+from core.logger import get_logger
 from models.chat import ChatMessage
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Suppress pypdf warnings about uninterpretable fonts
-logging.getLogger("pypdf").setLevel(logging.ERROR)
+get_logger("pypdf").setLevel("ERROR")
 
 
 def convert_message_content_to_string(content: str | list[str | dict]) -> str:
@@ -87,6 +87,124 @@ def extract_text_from_pdf(base64_data: str) -> str:
     except Exception as e:
         logger.error(f"Failed to extract text from PDF: {e}")
         return "[Error extracting text from PDF]"
+
+
+def extract_reasoning_from_metadata(msg: Any, *, strip: bool = True) -> str:
+    """Pull reasoning/"thinking" text out of a message's provider-specific
+    metadata (``additional_kwargs``/``response_metadata``), where models
+    like reasoning-capable Ollama/DeepSeek variants attach it separately
+    from the visible ``content``. Shared between the main chat stream
+    (chat_controller.py) and the flow playground stream (RunService.py) so
+    both surface a live "Thinking…" block the same way.
+
+    ``strip=False`` for RunService's per-chunk streaming use: each chunk is
+    a fragment of a longer reasoning text, so trimming its edges would glue
+    words together once consecutive deltas are concatenated by the client
+    (e.g. "Let" + strip(" me") -> "Letme"). The default (whole, already-
+    complete message) keeps trimming outer whitespace.
+    """
+
+    def _stringify(value: Any) -> str:
+        if isinstance(value, str):
+            return value.strip() if strip else value
+        if isinstance(value, list):
+            parts: list[str] = []
+            for item in value:
+                if isinstance(item, str) and item:
+                    parts.append(item)
+                elif isinstance(item, dict):
+                    text = item.get("text") or item.get("reasoning") or item.get("thinking")
+                    if isinstance(text, str) and text:
+                        parts.append(text)
+            joined = "\n".join(parts)
+            return joined.strip() if strip else joined
+        return ""
+
+    def _pick(payload: Any) -> str:
+        if not isinstance(payload, dict):
+            return ""
+
+        reasoning_delta = payload.get("reasoning_delta")
+        if isinstance(reasoning_delta, str):
+            return reasoning_delta
+
+        for key in (
+            "reasoning_content",
+            "reasoning",
+            "thinking",
+            "reasoning_text",
+            "thoughts",
+            "thought",
+            "chain_of_thought",
+        ):
+            extracted = _stringify(payload.get(key))
+            if extracted:
+                return extracted
+
+        nested_content = payload.get("content")
+        if isinstance(nested_content, dict):
+            return _pick(nested_content)
+
+        return ""
+
+    if isinstance(msg, dict):
+        additional_kwargs = msg.get("additional_kwargs", {}) or {}
+        response_metadata = msg.get("response_metadata", {}) or {}
+    else:
+        additional_kwargs = getattr(msg, "additional_kwargs", {}) or {}
+        response_metadata = getattr(msg, "response_metadata", {}) or {}
+
+    return _pick(additional_kwargs) or _pick(response_metadata)
+
+
+def split_message_content_reasoning(content: Any) -> tuple[str, str]:
+    """Split a message/chunk ``content`` into ``(reasoning_text, visible_text)``.
+
+    Providers like Anthropic (extended thinking) and Google Gemini (thought
+    summaries) return reasoning inline in the content block list rather than in
+    ``additional_kwargs``:
+
+    - ``{"type": "thinking", "thinking": "..."}``            -> reasoning
+    - ``{"type": "reasoning", "reasoning"/"text": "..."}``    -> reasoning
+    - ``{"type": "text", "thought": true, "text": "..."}``    -> reasoning
+    - ``{"type": "text", "text": "..."}``                     -> visible
+
+    A plain string is treated entirely as visible text. Parts are concatenated
+    with no separator so consecutive streaming deltas join cleanly.
+    """
+    if isinstance(content, str):
+        return "", content
+    if not isinstance(content, list):
+        return "", ""
+
+    reasoning_parts: list[str] = []
+    visible_parts: list[str] = []
+    for item in content:
+        if isinstance(item, str):
+            if item:
+                visible_parts.append(item)
+            continue
+        if not isinstance(item, dict):
+            continue
+        item_type = item.get("type")
+        if item_type == "thinking":
+            text = item.get("thinking")
+            if isinstance(text, str) and text:
+                reasoning_parts.append(text)
+        elif item_type == "reasoning":
+            text = item.get("reasoning") or item.get("text")
+            if isinstance(text, str) and text:
+                reasoning_parts.append(text)
+        elif item_type == "text":
+            text = item.get("text")
+            if not isinstance(text, str) or not text:
+                continue
+            if item.get("thought"):
+                reasoning_parts.append(text)
+            else:
+                visible_parts.append(text)
+
+    return "".join(reasoning_parts), "".join(visible_parts)
 
 
 def convert_input_messages(messages: list[dict[str, Any]]) -> list[BaseMessage]:

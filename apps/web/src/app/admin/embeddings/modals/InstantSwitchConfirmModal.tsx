@@ -30,7 +30,9 @@ export default function InstantSwitchConfirmModal({
           </Text>
         </Modal.Body>
         <Modal.Footer>
-          <Button onClick={onConfirm}>{t("admin.embeddings.confirmButton")}</Button>
+          <Button onClick={onConfirm}>
+            {t("admin.embeddings.confirmButton")}
+          </Button>
           <Button secondary onClick={onClose}>
             {t("admin.embeddings.cancelButton")}
           </Button>

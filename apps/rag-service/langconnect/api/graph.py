@@ -8,7 +8,6 @@ Provides REST API for:
   - Executing Cypher queries.
 """
 
-import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
@@ -28,6 +27,7 @@ from langconnect.models.graph import (
     GraphStats,
     PaginatedCounts,
 )
+from langconnect.observability import get_logger
 from langconnect.services.graph_rag_service import (
     GraphRAGService,
     get_build_progress,
@@ -37,7 +37,7 @@ from langconnect.services.graph_rag_service import (
     start_build,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/graph", tags=["graph-rag"])
 

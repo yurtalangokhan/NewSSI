@@ -469,6 +469,40 @@
   --scrollbar-track: transparent;
   --scrollbar-thumb: #b0b0b0;
   --scrollbar-thumb-hover: #888888;
+
+  /* Flow-canvas sticky notes. A note's colour is user-chosen content,
+     so unlike the semantic tokens these stay recognisably yellow/blue/…
+     in both themes — only the lightness flips. */
+  --note-yellow-bg: #fef3c7e6;
+  --note-yellow-border: #fcd34dcc;
+  --note-yellow-text: #451a03;
+  --note-yellow-dot: #fbbf24;
+  --note-yellow-dot-border: #f59e0b;
+  --note-blue-bg: #e0f2fee6;
+  --note-blue-border: #7dd3fccc;
+  --note-blue-text: #082f49;
+  --note-blue-dot: #38bdf8;
+  --note-blue-dot-border: #0ea5e9;
+  --note-green-bg: #d1fae5e6;
+  --note-green-border: #6ee7b7cc;
+  --note-green-text: #022c22;
+  --note-green-dot: #34d399;
+  --note-green-dot-border: #10b981;
+  --note-pink-bg: #ffe4e6e6;
+  --note-pink-border: #fda4afcc;
+  --note-pink-text: #4c0519;
+  --note-pink-dot: #fb7185;
+  --note-pink-dot-border: #f43f5e;
+  --note-purple-bg: #f3e8ffe6;
+  --note-purple-border: #d8b4fecc;
+  --note-purple-text: #3b0764;
+  --note-purple-dot: #c084fc;
+  --note-purple-dot-border: #a855f7;
+  --note-neutral-bg: var(--background-neutral-00);
+  --note-neutral-border: var(--border-01);
+  --note-neutral-text: var(--text-05);
+  --note-neutral-dot: #a3a3a3;
+  --note-neutral-dot-border: #737373;
 }
 
 /* Dark Colors */
@@ -675,4 +709,38 @@
   --scrollbar-track: transparent;
   --scrollbar-thumb: #555555;
   --scrollbar-thumb-hover: #777777;
+
+  /* Flow-canvas sticky notes. A note's colour is user-chosen content,
+     so unlike the semantic tokens these stay recognisably yellow/blue/…
+     in both themes — only the lightness flips. */
+  --note-yellow-bg: #451a0399;
+  --note-yellow-border: #b4530980;
+  --note-yellow-text: #fef3c7;
+  --note-yellow-dot: #fbbf24;
+  --note-yellow-dot-border: #f59e0b;
+  --note-blue-bg: #082f4999;
+  --note-blue-border: #0369a180;
+  --note-blue-text: #e0f2fe;
+  --note-blue-dot: #38bdf8;
+  --note-blue-dot-border: #0ea5e9;
+  --note-green-bg: #022c2299;
+  --note-green-border: #04785780;
+  --note-green-text: #d1fae5;
+  --note-green-dot: #34d399;
+  --note-green-dot-border: #10b981;
+  --note-pink-bg: #4c051999;
+  --note-pink-border: #be123c80;
+  --note-pink-text: #ffe4e6;
+  --note-pink-dot: #fb7185;
+  --note-pink-dot-border: #f43f5e;
+  --note-purple-bg: #3b076499;
+  --note-purple-border: #7e22ce80;
+  --note-purple-text: #f3e8ff;
+  --note-purple-dot: #c084fc;
+  --note-purple-dot-border: #a855f7;
+  --note-neutral-bg: var(--background-neutral-01);
+  --note-neutral-border: var(--border-02);
+  --note-neutral-text: var(--text-05);
+  --note-neutral-dot: #a3a3a3;
+  --note-neutral-dot-border: #737373;
 }

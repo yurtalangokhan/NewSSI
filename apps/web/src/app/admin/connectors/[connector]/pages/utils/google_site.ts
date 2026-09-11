@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import { toast } from "@/hooks/useToast";
 import { createConnector, runConnector } from "@/lib/connector";
 import { linkCredential } from "@/lib/credential";
@@ -21,10 +22,13 @@ export const submitGoogleSite = async (
       formData.append("files", file);
     });
 
-    const response = await fetch("/api/manage/admin/connector/file/upload", {
-      method: "POST",
-      body: formData,
-    });
+    const response = await authenticatedFetch(
+      "/api/manage/admin/connector/file/upload",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
     const responseJson = await response.json();
     if (!response.ok) {
       toast.error(`Unable to upload files - ${responseJson.detail}`);

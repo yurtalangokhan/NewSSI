@@ -32,6 +32,49 @@ def test_client_credentials_payload_includes_secret(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_validate_token_jwks_disables_iat_verification(monkeypatch):
+    keycloak_service._JWKS_CLIENT = None
+    monkeypatch.setenv("KEYCLOAK_ISSUER_URL", "https://issuer")
+    monkeypatch.setenv("KEYCLOAK_AUDIENCE", "rag-service")
+    monkeypatch.setenv("KEYCLOAK_CLIENT_ID", "agenticai-web")
+    KeycloakService.set_runtime_settings({})
+
+    class FakeSigningKey:
+        key = "signing-key"
+
+    class FakeJWKSClient:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def get_signing_key_from_jwt(self, token: str) -> FakeSigningKey:
+            assert token == "sample-token"
+            return FakeSigningKey()
+
+    def _decode(
+        jwt: str,
+        key: str,
+        algorithms: list[str],
+        issuer: str,
+        audience: list[str] | None,
+        leeway: int,
+        options: dict[str, object],
+    ) -> dict[str, str]:
+        assert key == "signing-key"
+        assert issuer == "https://issuer"
+        assert options["verify_iss"] is True
+        assert options["verify_exp"] is True
+        assert options["verify_iat"] is False
+        return {"sub": "keycloak-sub"}
+
+    monkeypatch.setattr(keycloak_service, "PyJWKClient", FakeJWKSClient)
+    monkeypatch.setattr(keycloak_service.jwt, "decode", _decode)
+
+    claims = await KeycloakService().validate_token_jwks("sample-token")
+
+    assert claims == {"sub": "keycloak-sub"}
+
+
+@pytest.mark.asyncio
 async def test_refresh_token_grant_uses_login_client_credentials(monkeypatch):
     monkeypatch.setenv("KEYCLOAK_BASE_URL", "http://keycloak:8080")
     monkeypatch.setenv("KEYCLOAK_REALM", "agenticai")
@@ -68,6 +111,7 @@ async def test_refresh_token_grant_uses_login_client_credentials(monkeypatch):
         "grant_type": "refresh_token",
         "client_id": "agenticai-web",
         "refresh_token": "refresh-token",
+        "scope": "openid profile email",
     }
 
 
@@ -1125,3 +1169,63 @@ async def test_set_client_role_replaces_existing_direct_client_role_mappings(mon
         "access-admin",
         client_id=None,
     )
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_grant_raises_value_error_for_non_dict_error_body(monkeypatch):
+    """A non-dict error body must still surface as a 401-able ValueError.
+
+    `detail` used to be assigned only inside `if isinstance(error_body, dict)`,
+    so a Keycloak error body that was valid JSON but not an object raised
+    UnboundLocalError - a 500 from the refresh endpoint, which the web client
+    does not treat as "session expired" and the proxy does not clear cookies
+    for.
+    """
+    monkeypatch.setenv("KEYCLOAK_BASE_URL", "http://keycloak:8080")
+    monkeypatch.setenv("KEYCLOAK_REALM", "agenticai")
+    monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
+
+    class Client:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def post(self, url: str, data: dict[str, str]) -> httpx.Response:
+            return httpx.Response(
+                400,
+                json=["not", "a", "dict"],
+                request=httpx.Request("POST", url),
+            )
+
+    monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
+
+    with pytest.raises(ValueError):
+        await KeycloakService().refresh_token_grant("refresh-token")
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_grant_raises_value_error_for_unparseable_body(monkeypatch):
+    monkeypatch.setenv("KEYCLOAK_BASE_URL", "http://keycloak:8080")
+    monkeypatch.setenv("KEYCLOAK_REALM", "agenticai")
+    monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
+
+    class Client:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def post(self, url: str, data: dict[str, str]) -> httpx.Response:
+            return httpx.Response(
+                502,
+                content=b"<html>bad gateway</html>",
+                request=httpx.Request("POST", url),
+            )
+
+    monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
+
+    with pytest.raises(ValueError):
+        await KeycloakService().refresh_token_grant("refresh-token")

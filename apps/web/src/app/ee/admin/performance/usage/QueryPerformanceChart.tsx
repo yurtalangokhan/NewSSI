@@ -3,10 +3,10 @@
 import { useTranslation } from "react-i18next";
 import { DateRangePickerValue } from "@/components/dateRangeSelectors/AdminDateRangeSelector";
 import { getDatesList, useQueryAnalytics, useUserAnalytics } from "../lib";
-import { ThreeDotsLoader } from "@/components/Loading";
+import ChartSkeleton from "@/refresh-components/skeletons/ChartSkeleton";
 import { AreaChartDisplay } from "@/components/ui/areaChart";
 import Title from "@/components/ui/title";
-import Text from "@/components/ui/text";
+import Text from "@/refresh-components/texts/Text";
 import CardSection from "@/components/admin/CardSection";
 
 export function QueryPerformanceChart({
@@ -28,11 +28,7 @@ export function QueryPerformanceChart({
 
   let chart;
   if (isQueryAnalyticsLoading || isUserAnalyticsLoading) {
-    chart = (
-      <div className="h-80 flex flex-col">
-        <ThreeDotsLoader />
-      </div>
-    );
+    chart = <ChartSkeleton height="h-64" barCount={8} />;
   } else if (
     !queryAnalyticsData ||
     queryAnalyticsData[0] === undefined ||
@@ -42,7 +38,9 @@ export function QueryPerformanceChart({
   ) {
     chart = (
       <div className="h-80 text-red-600 text-bold flex flex-col">
-        <p className="m-auto">{t("performanceCharts.failedFetchQuery")}</p>
+        <Text as="p" className="m-auto">
+          {t("performanceCharts.failedFetchQuery")}
+        </Text>
       </div>
     );
   } else {
@@ -104,7 +102,9 @@ export function QueryPerformanceChart({
   return (
     <CardSection className="mt-8">
       <Title>{t("performanceCharts.usageTitle")}</Title>
-      <Text>{t("performanceCharts.usageOverTime")}</Text>
+      <Text as="p" className="text-sm">
+        {t("performanceCharts.usageOverTime")}
+      </Text>
       {chart}
     </CardSection>
   );

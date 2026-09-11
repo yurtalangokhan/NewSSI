@@ -62,12 +62,16 @@ export function AppPopup() {
   // - Otherwise -> show uploaded custom logo (fallback to Onyx icon)
   const headerIcon =
     !hasApplicationName && !hasCustomLogo
-      ? (props: IconProps) => <Logo folded size={24} className={props.className} />
+      ? (props: IconProps) => (
+          <Logo folded size={24} className={props.className} />
+        )
       : logoDisplayStyle === "name_only"
         ? SvgAlertCircle
         : hasCustomLogo
           ? CustomLogoHeaderIcon
-          : (props: IconProps) => <Logo folded size={24} className={props.className} />;
+          : (props: IconProps) => (
+              <Logo folded size={24} className={props.className} />
+            );
 
   return (
     <Modal open onOpenChange={() => {}}>

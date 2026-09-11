@@ -33,7 +33,8 @@ export function FormActionButtons({
       mutate(LLM_PROVIDERS_ADMIN_URL);
       onClose();
     } catch (e) {
-      const message = e instanceof Error ? e.message : t("llmConfig.unknownError");
+      const message =
+        e instanceof Error ? e.message : t("llmConfig.unknownError");
       alert(t("llmConfig.deleteProviderError", { error: message }));
     }
   };

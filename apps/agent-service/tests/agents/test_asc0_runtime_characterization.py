@@ -242,7 +242,7 @@ async def test_resolver_cache_reuses_loaded_dynamic_agent(monkeypatch):
     load_count = 0
 
     class FakeDynamicAgent:
-        def __init__(self, agent_config):
+        def __init__(self, agent_config, **_kwargs):
             assert agent_config["name"] == "cached-definition"
 
         async def load(self):

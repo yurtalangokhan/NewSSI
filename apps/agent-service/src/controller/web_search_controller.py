@@ -2,15 +2,22 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from i18n import t
 
 from controller.base import BaseController
+from core.logger import get_logger
 from service.web_search.onyx_web_crawler import OnyxWebCrawler
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
+
+_WEB_URL_SCHEMES = ("http://", "https://")
+
+
+def _has_web_scheme(url: str) -> bool:
+    return url.startswith(_WEB_URL_SCHEMES)
+
 
 _DEFAULT_CONTENT_PROVIDER: dict[str, Any] = {
     "id": 1,
@@ -101,7 +108,7 @@ class WebSearchController(BaseController):
         if not url:
             self._raise_bad_request("web_search.url_required")
 
-        if not url.startswith(("http://", "https://")):
+        if not _has_web_scheme(url):
             self._raise_bad_request("web_search.url_invalid_scheme")
 
         try:
@@ -119,6 +126,32 @@ class WebSearchController(BaseController):
         except Exception as exc:
             logger.warning("OnyxWebCrawler crawl failed for %s: %s", url, exc)
             self._raise_internal_error(str(exc))
+
+    def crawl_urls(self, urls: list[str]) -> list[dict[str, Any]]:
+        """Crawl multiple URLs in a single batch pass with OnyxWebCrawler."""
+        clean_urls = [u.strip() for u in urls if u and _has_web_scheme(u.strip())]
+        if not clean_urls:
+            return []
+        try:
+            results = self._crawler.contents(clean_urls)
+            return [
+                {
+                    "url": r.url
+                    if hasattr(r, "url")
+                    else (clean_urls[i] if i < len(clean_urls) else ""),
+                    "title": r.title,
+                    "content": r.full_content,
+                    "scrape_successful": r.scrape_successful,
+                    "failure_reason": r.failure_reason,
+                }
+                for i, r in enumerate(results)
+            ]
+        except Exception:
+            # Batch crawl degrades to an empty result set rather than failing the
+            # whole request; per-URL failures already surface as
+            # scrape_successful=False entries above.
+            logger.warning("OnyxWebCrawler batch crawl failed", exc_info=True)
+            return []
 
 
 # Singleton

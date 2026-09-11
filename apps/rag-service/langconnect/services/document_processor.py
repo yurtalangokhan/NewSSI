@@ -1,5 +1,4 @@
 import json
-import logging
 import re
 import uuid
 
@@ -12,8 +11,9 @@ from langchain_core.documents.base import Blob, Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from langconnect.models.documents import FileUploadDTO
+from langconnect.observability import get_logger
 
-LOGGER = logging.getLogger(__name__)
+LOGGER = get_logger(__name__)
 
 # ── Max upload size: 200 MB ──────────────────────────────────────────────
 MAX_FILE_SIZE_BYTES = 200 * 1024 * 1024  # 200 MB

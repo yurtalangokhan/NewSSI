@@ -13,6 +13,7 @@ import {
 } from "@/lib/connectors/credentials";
 import { dictionaryType } from "../types";
 import { isTypedFileField } from "@/lib/connectors/fileTypes";
+import Text from "@/refresh-components/texts/Text";
 
 interface CredentialFieldsRendererProps {
   credentialTemplate: dictionaryType;
@@ -81,9 +82,12 @@ export function CredentialFieldsRenderer({
               {Object.keys(method.fields).length === 0 &&
                 method.description && (
                   <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md">
-                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <Text
+                      as="p"
+                      className="text-sm text-blue-800 dark:text-blue-200"
+                    >
                       {method.description}
-                    </p>
+                    </Text>
                   </div>
                 )}
 

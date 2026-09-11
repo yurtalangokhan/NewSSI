@@ -10,7 +10,6 @@ safety policy, retry policy) are available in agent_composition.runtime for
 new composed-agent construction.
 """
 
-import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -19,6 +18,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.pregel import Pregel
 
+from core.logger import get_logger
 from memory.long_term import (
     build_event_emitters,
     build_memory_context,
@@ -27,7 +27,7 @@ from memory.long_term import (
     tag_response_with_ltm_recall,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class LazyLoadingAgent(ABC):

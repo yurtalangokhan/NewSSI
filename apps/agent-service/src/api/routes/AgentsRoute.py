@@ -1,13 +1,13 @@
 """
 Agent interaction routes.
 
-Endpoints: /info, /invoke, /stream, /feedback, /history.
-The SSE ``message_generator`` that powers /stream and chat streaming lives in
-``service/agent_message_stream.py`` — routes import and wrap it in a
-StreamingResponse.
+Endpoints: /info, /catalog, /{id}, /invoke, /stream, /feedback, /history.
+
+Handlers only: parse, delegate, respond. The SSE streaming engine behind
+/stream lives in ``service/AgentStreamService.py``.
 """
 
-import logging
+import json
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -21,6 +21,7 @@ from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
 from api.dependencies import AuthenticatedUser, require_permission, require_user
 from controller import get_persona_controller
 from core import settings
+from core.logger import get_logger
 from models.agents import ServiceMetadata
 from models.chat import (
     ChatHistory,
@@ -31,13 +32,13 @@ from models.chat import (
     StreamInput,
     UserInput,
 )
-from service.agent_message_stream import message_generator
 from service.AgentHelpers import _handle_input
+from service.AgentStreamService import message_generator
 from service.AssistantAgentService import AssistantAgentService
 from service.AuthService import extract_user_id_from_token
 from service.message_conversion import langchain_to_chat_message
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/agents", tags=["agents"], dependencies=[Depends(require_user)])
 
@@ -155,8 +156,13 @@ async def invoke(
         if response_type == "values":
             output = langchain_to_chat_message(response["messages"][-1])
         elif response_type == "updates" and "__interrupt__" in response:
+            _interrupt_value = response["__interrupt__"][0].value
             output = langchain_to_chat_message(
-                AIMessage(content=response["__interrupt__"][0].value)
+                AIMessage(
+                    content=_interrupt_value
+                    if isinstance(_interrupt_value, str)
+                    else json.dumps(_interrupt_value)
+                )
             )
         else:
             raise ValueError(f"Unexpected response type: {response_type}")

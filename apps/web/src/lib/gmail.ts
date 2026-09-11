@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import { Credential } from "./connectors/credentials";
 
 export const setupGmailOAuth = async ({
@@ -5,17 +6,20 @@ export const setupGmailOAuth = async ({
 }: {
   isAdmin: boolean;
 }): Promise<[string | null, string]> => {
-  const credentialCreationResponse = await fetch("/api/manage/credential", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      admin_public: isAdmin,
-      credential_json: {},
-      source: "gmail",
-    }),
-  });
+  const credentialCreationResponse = await authenticatedFetch(
+    "/api/manage/credential",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        admin_public: isAdmin,
+        credential_json: {},
+        source: "gmail",
+      }),
+    }
+  );
   if (!credentialCreationResponse.ok) {
     return [
       null,

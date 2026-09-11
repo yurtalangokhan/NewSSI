@@ -3,14 +3,14 @@
 Delegates resource permission checks to user-service.
 """
 
-import logging
 from typing import Any
 
 import httpx
 
 from langconnect import config
+from langconnect.observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class PermissionService:

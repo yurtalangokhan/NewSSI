@@ -23,7 +23,6 @@ import {
   SvgChevronRight,
 } from "@opal/icons";
 import { cn } from "@/lib/utils";
-import { ThreeDotsLoader } from "@/components/Loading";
 import { useTranslation } from "react-i18next";
 import {
   isClusterNode,
@@ -58,8 +57,10 @@ import {
 const ForceGraph3DLazy = dynamic(() => import("./ForceGraph3DWrapper"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full items-center justify-center">
-      <ThreeDotsLoader />
+    <div className="flex h-full w-full min-h-[500px] items-center justify-center relative">
+      <div className="h-64 w-64 rounded-full border-2 border-dashed border-border-01 animate-pulse flex items-center justify-center">
+        <div className="h-32 w-32 rounded-full border border-border-01 animate-ping opacity-30" />
+      </div>
     </div>
   ),
 });
@@ -959,7 +960,11 @@ export default function GraphExplorer({
   if (loading) {
     return (
       <CardSection className="flex w-full flex-col min-h-[700px] items-center justify-center">
-        <ThreeDotsLoader />
+        <div className="flex h-full w-full min-h-[500px] items-center justify-center relative">
+          <div className="h-64 w-64 rounded-full border-2 border-dashed border-border-01 animate-pulse flex items-center justify-center">
+            <div className="h-32 w-32 rounded-full border border-border-01 animate-ping opacity-30" />
+          </div>
+        </div>
       </CardSection>
     );
   }
@@ -1230,8 +1235,10 @@ export default function GraphExplorer({
 
           {/* 2D loading placeholder */}
           {!is3D && !ForceGraph2D && (
-            <div className="flex h-full items-center justify-center">
-              <ThreeDotsLoader />
+            <div className="flex h-full w-full min-h-[500px] items-center justify-center relative">
+              <div className="h-64 w-64 rounded-full border-2 border-dashed border-border-01 animate-pulse flex items-center justify-center">
+                <div className="h-32 w-32 rounded-full border border-border-01 animate-ping opacity-30" />
+              </div>
             </div>
           )}
 

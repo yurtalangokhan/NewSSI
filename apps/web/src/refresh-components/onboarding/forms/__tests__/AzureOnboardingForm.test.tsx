@@ -130,9 +130,7 @@ describe("AzureOnboardingForm", () => {
     test("renders description", () => {
       render(<AzureOnboardingForm {...defaultProps} />);
 
-      expect(
-        screen.getByText(descriptionText)
-      ).toBeInTheDocument();
+      expect(screen.getByText(descriptionText)).toBeInTheDocument();
     });
 
     test("renders Target URI field", () => {
@@ -201,9 +199,7 @@ describe("AzureOnboardingForm", () => {
 
       // Should show validation error
       await waitFor(() => {
-        expect(
-          screen.getByText(targetUriValidationText)
-        ).toBeInTheDocument();
+        expect(screen.getByText(targetUriValidationText)).toBeInTheDocument();
       });
     });
   });

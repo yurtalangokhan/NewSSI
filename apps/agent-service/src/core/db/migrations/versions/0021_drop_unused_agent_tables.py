@@ -13,14 +13,14 @@ Create Date: 2026-06-22
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 from alembic import op
 
 revision: str = "0021"
-down_revision: Union[str, None] = "0020"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "0020"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -45,7 +45,9 @@ def downgrade() -> None:
         )
         """
     )
-    op.execute("CREATE INDEX IF NOT EXISTS ix_agent_instances_definition ON agent_instances (definition_id)")
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_agent_instances_definition ON agent_instances (definition_id)"
+    )
     op.execute("CREATE INDEX IF NOT EXISTS ix_agent_instances_user ON agent_instances (user_id)")
 
     op.execute(
@@ -80,4 +82,6 @@ def downgrade() -> None:
         )
         """
     )
-    op.execute("CREATE INDEX IF NOT EXISTS ix_pipeline_stages_pipeline ON agent_pipeline_stages (pipeline_id)")
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_pipeline_stages_pipeline ON agent_pipeline_stages (pipeline_id)"
+    )

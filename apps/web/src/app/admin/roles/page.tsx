@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 import { parseApiErrorPayload } from "@/lib/api/errors";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/useToast";
@@ -178,7 +178,7 @@ async function putPermissions(
   url: string,
   { arg }: { arg: { permissions: string[] } }
 ) {
-  const res = await fetch(url, {
+  const res = await authenticatedFetch(url, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(arg),
@@ -198,7 +198,7 @@ async function putRoleIds(
   url: string,
   { arg }: { arg: { role_ids: string[] } }
 ) {
-  const res = await fetch(url, {
+  const res = await authenticatedFetch(url, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(arg),
@@ -215,9 +215,12 @@ async function putRoleIds(
 }
 
 async function postSync(_url: string) {
-  const res = await fetch("/api/user-service/roles/sync-keycloak", {
-    method: "POST",
-  });
+  const res = await authenticatedFetch(
+    "/api/user-service/roles/sync-keycloak",
+    {
+      method: "POST",
+    }
+  );
   if (!res.ok) {
     const fallback = i18n.t("admin.rolesPage.syncToKeycloakFailed");
     const parsed = parseApiErrorPayload(
@@ -235,7 +238,7 @@ async function postCreateCompositeRole(
 ) {
   const params = new URLSearchParams({ name: arg.name });
   if (arg.description) params.set("description", arg.description);
-  const res = await fetch(`/api/user-service/roles/?${params}`, {
+  const res = await authenticatedFetch(`/api/user-service/roles/?${params}`, {
     method: "POST",
   });
   if (!res.ok) {
@@ -254,7 +257,7 @@ async function patchRole(
   { arg }: { arg: Record<string, string> }
 ) {
   const params = new URLSearchParams(arg);
-  const res = await fetch(`${url}?${params}`, {
+  const res = await authenticatedFetch(`${url}?${params}`, {
     method: "PATCH",
   });
   if (!res.ok) {
@@ -269,7 +272,7 @@ async function patchRole(
 }
 
 async function deleteRole(url: string) {
-  const res = await fetch(url, { method: "DELETE" });
+  const res = await authenticatedFetch(url, { method: "DELETE" });
   if (!res.ok) {
     const fallback = i18n.t("admin.rolesPage.deleteRoleFailed");
     const parsed = parseApiErrorPayload(
@@ -329,6 +332,34 @@ function RoleBundlesSkeleton() {
   );
 }
 
+function RolesTabContentSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
+      {/* Left Sidebar Skeleton */}
+      <div className="rounded-08 border border-border-01 bg-background-neutral-01 p-3 space-y-3">
+        <div className="h-8 w-full rounded-06 bg-background-neutral-02 animate-pulse" />
+        <div className="space-y-1.5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex h-10 w-full items-center justify-between rounded-08 bg-background-neutral-02/60 px-3"
+            >
+              <div className="h-3.5 w-24 rounded bg-background-neutral-03 animate-pulse" />
+              <div className="h-3 w-8 rounded bg-background-neutral-03 animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Right Panel Skeleton */}
+      <div className="min-w-0 space-y-4">
+        <RoleCardSkeleton />
+        <RoleBundlesSkeleton />
+      </div>
+    </div>
+  );
+}
+
 function RolesPageSkeleton() {
   return (
     <div className="space-y-4">
@@ -348,29 +379,7 @@ function RolesPageSkeleton() {
       <div className="h-9 w-64 rounded-08 bg-background-neutral-02 animate-pulse" />
 
       {/* Main Grid */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
-        {/* Left Sidebar Skeleton */}
-        <div className="rounded-08 border border-border-01 bg-background-neutral-01 p-3 space-y-3">
-          <div className="h-8 w-full rounded-06 bg-background-neutral-02 animate-pulse" />
-          <div className="space-y-1.5">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex h-10 w-full items-center justify-between rounded-08 bg-background-neutral-02/60 px-3"
-              >
-                <div className="h-3.5 w-24 rounded bg-background-neutral-03 animate-pulse" />
-                <div className="h-3 w-8 rounded bg-background-neutral-03 animate-pulse" />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Right Panel Skeleton */}
-        <div className="min-w-0 space-y-4">
-          <RoleCardSkeleton />
-          <RoleBundlesSkeleton />
-        </div>
-      </div>
+      <RolesTabContentSkeleton />
     </div>
   );
 }
@@ -888,6 +897,9 @@ function RolesManager() {
       ? Boolean(selectedRole) && (rolePermsLoading || roleIdsLoading)
       : Boolean(selectedCoarseRole) && coarseRolePermsLoading;
 
+  const isCurrentTabLoading =
+    activeLayer === "composite" ? compLoading : coarseLoading;
+
   const hasRoles = roles.length > 0;
   const hasCoarseRoles = coarseRoles.length > 0;
   const hasActiveItems =
@@ -939,7 +951,9 @@ function RolesManager() {
         </Tabs.List>
       </Tabs>
 
-      {!hasActiveItems ? (
+      {isCurrentTabLoading ? (
+        <RolesTabContentSkeleton />
+      ) : !hasActiveItems ? (
         <EmptyState
           title={
             activeLayer === "composite"
@@ -1650,16 +1664,40 @@ function RolesManager() {
 
 export default function Page() {
   const { t } = useTranslation();
+  const { data: compData, isLoading: isRolesLoading } = useSWR<{
+    composite_roles: CompositeRole[];
+  }>("/api/user-service/roles/", errorHandlingFetcher, {
+    dedupingInterval: 30000,
+  });
+  const { data: permsData, isLoading: permsLoading } = useSWR<{
+    permissions: Permission[];
+  }>("/api/user-service/permissions/", errorHandlingFetcher, {
+    dedupingInterval: 30000,
+  });
+  const { data: roleDistributionData, isLoading: roleDistributionLoading } =
+    useSWR<{ distribution: { role: string; count: number }[] }>(
+      "/api/user-service/users/role-distribution",
+      errorHandlingFetcher
+    );
+  const roles = compData?.composite_roles ?? [];
+  const builtInRolesCount = roles.filter((r) => r.is_builtin).length;
+  const topRole = roleDistributionData?.distribution[0] ?? null;
   return (
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         title={t(route.titleKey || "", { defaultValue: route.title })}
+        description={
+          route.descriptionKey
+            ? t(route.descriptionKey, { defaultValue: route.description })
+            : route.description
+        }
         icon={route.icon}
         separator
       />
       <SettingsLayouts.Body>
         <AdminOverviewPanel
           icon={route.icon}
+          isLoading={isRolesLoading}
           title={t("admin.roles.workspaceTitle", {
             defaultValue: "Access policy workspace",
           })}
@@ -1669,35 +1707,34 @@ export default function Page() {
           })}
           metrics={[
             {
-              label: t("admin.roles.featureLayerLabel", {
-                defaultValue: "Permission groups",
-              }),
-              value: t("admin.roles.features", {
-                defaultValue: "Features",
-              }),
-            },
-            {
               label: t("admin.roles.roleProfilesLabel", {
                 defaultValue: "Role profiles",
               }),
-              value: t("admin.roles.roles", { defaultValue: "Roles" }),
+              value: isRolesLoading ? "..." : String(roles.length),
             },
             {
               label: t("admin.roles.permissionCatalogLabel", {
                 defaultValue: "Permission catalog",
               }),
-              value: t("admin.roles.permissions", {
-                defaultValue: "Permissions",
-              }),
+              value: permsLoading
+                ? "..."
+                : String(permsData?.permissions?.length ?? 0),
             },
-          ]}
-          actions={[
             {
-              label: t("admin.navigation.routes.users.sidebar", {
-                defaultValue: "Users",
+              label: t("admin.roles.builtInRolesLabel", {
+                defaultValue: "Built-in roles",
               }),
-              href: ADMIN_PATHS.USERS,
-              primary: true,
+              value: isRolesLoading ? "..." : String(builtInRolesCount),
+            },
+            {
+              label: t("admin.roles.topRoleLabel", {
+                defaultValue: "Most used role",
+              }),
+              value: roleDistributionLoading
+                ? "..."
+                : topRole
+                  ? `${formatRoleName(topRole.role)} · ${topRole.count}`
+                  : t("admin.roles.noRoleData", { defaultValue: "No data" }),
             },
           ]}
         />

@@ -1,6 +1,7 @@
 """Graph schema and builder modules."""
 
 from agents.graphs.builder import GraphBuilder, GraphBuilderError, build_graph
+from agents.graphs.flow_builder import PASSTHROUGH_NODE_TYPES
 from agents.graphs.schemas import GraphSchema, GraphSchemaType, get_all_schemas, get_schema
 from agents.graphs.strategies import (
     GraphSchemaStrategy,
@@ -23,6 +24,7 @@ __all__ = [
     "GraphBuilder",
     "GraphBuilderError",
     "build_graph",
+    "PASSTHROUGH_NODE_TYPES",
     # Strategies
     "GraphSchemaStrategy",
     "ZeroShotGraphStrategy",

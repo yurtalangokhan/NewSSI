@@ -6,12 +6,11 @@ require manual migration execution.
 
 from __future__ import annotations
 
-import logging
-
 from langconnect.database.postgres.engine import get_db_engine
 from langconnect.database.postgres.models import Base
+from langconnect.observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def ensure_schema() -> None:

@@ -16,7 +16,7 @@ import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { Section } from "@/layouts/general-layouts";
 import { Button } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
-import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
+import Skeleton from "@/refresh-components/skeletons/Skeleton";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
 import useCodeInterpreter from "@/hooks/useCodeInterpreter";
 import { updateCodeInterpreter } from "@/lib/admin/code-interpreter/svc";
@@ -59,7 +59,6 @@ function CodeInterpreterCard({
 }
 
 function CheckingStatus() {
-  const { t } = useTranslation();
   return (
     <Section
       flexDirection="row"
@@ -68,10 +67,7 @@ function CheckingStatus() {
       gap={0.25}
       padding={0.5}
     >
-      <Text mainUiAction text03>
-        {t("admin.codeInterpreter.checking")}
-      </Text>
-      <SimpleLoader />
+      <Skeleton className="h-5 w-24 rounded-08" />
     </Section>
   );
 }
@@ -156,15 +152,17 @@ export default function CodeInterpreterPage() {
   const [isReconnecting, setIsReconnecting] = useState(false);
 
   async function handleToggle(enabled: boolean) {
-      const actionKey = enabled ? "reconnect" : "disconnect";
-      const actionLabel = t(`admin.codeInterpreter.${actionKey}`).toLowerCase();
-      setIsReconnecting(enabled);
-      try {
-        const response = await updateCodeInterpreter({ enabled });
-        if (!response.ok) {
-          toast.error(t("admin.codeInterpreter.toastToggleFailed", { action: actionLabel }));
-          return;
-        }
+    const actionKey = enabled ? "reconnect" : "disconnect";
+    const actionLabel = t(`admin.codeInterpreter.${actionKey}`).toLowerCase();
+    setIsReconnecting(enabled);
+    try {
+      const response = await updateCodeInterpreter({ enabled });
+      if (!response.ok) {
+        toast.error(
+          t("admin.codeInterpreter.toastToggleFailed", { action: actionLabel })
+        );
+        return;
+      }
       setShowDisconnectModal(false);
       refetch();
     } finally {
@@ -184,6 +182,7 @@ export default function CodeInterpreterPage() {
       <SettingsLayouts.Body>
         <AdminOverviewPanel
           icon={route.icon}
+          isLoading={isLoading}
           title={t("admin.codeInterpreter.workspaceTitle", {
             defaultValue: "Code execution workspace",
           })}
@@ -197,7 +196,7 @@ export default function CodeInterpreterPage() {
                 defaultValue: "Connection",
               }),
               value: isLoading
-                ? t("admin.codeInterpreter.checking")
+                ? "..."
                 : isHealthy
                   ? t("admin.codeInterpreter.connected")
                   : t("admin.codeInterpreter.connectionLost"),
@@ -218,19 +217,6 @@ export default function CodeInterpreterPage() {
               value: t("admin.actions.toolAccessValue", {
                 defaultValue: "Tool access",
               }),
-            },
-          ]}
-          actions={[
-            {
-              label: t("admin.navigation.routes.chatPreferences.sidebar", {
-                defaultValue: "Chat Preferences",
-              }),
-              href: ADMIN_PATHS.CHAT_PREFERENCES,
-            },
-            {
-              label: t("admin.navigation.routes.mcpActions.sidebar"),
-              href: ADMIN_PATHS.MCP_ACTIONS,
-              primary: true,
             },
           ]}
         />

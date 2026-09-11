@@ -14,6 +14,8 @@
 
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useState, useCallback, useMemo } from "react";
 import useSWR, { mutate } from "swr";
 import {
@@ -170,7 +172,7 @@ export function ResourcePermissionManager({
   const handleAddUserPermission = useCallback(
     async (userId: string, level: PermissionLevel) => {
       try {
-        const res = await fetch("/api/permissions", {
+        const res = await authenticatedFetch("/api/permissions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -199,7 +201,7 @@ export function ResourcePermissionManager({
   const handleAddOrgPermission = useCallback(
     async (orgId: string, level: PermissionLevel) => {
       try {
-        const res = await fetch("/api/permissions", {
+        const res = await authenticatedFetch("/api/permissions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -229,9 +231,12 @@ export function ResourcePermissionManager({
       if (!confirm("Remove this permission?")) return;
 
       try {
-        const res = await fetch(`/api/permissions/${permissionId}`, {
-          method: "DELETE",
-        });
+        const res = await authenticatedFetch(
+          `/api/permissions/${permissionId}`,
+          {
+            method: "DELETE",
+          }
+        );
 
         if (!res.ok) {
           throw new Error("Failed to remove permission");

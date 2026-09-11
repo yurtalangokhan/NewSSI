@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { HOST_URL, INTERNAL_URL, USER_SERVICE_URL } from "./constants";
 import { processCookies } from "@/lib/userSS";
 import { buildServiceUrl } from "@/lib/api/gatewayRouting";
+import { attachIdempotencyKey } from "@/lib/api/idempotency";
 
 export function buildClientUrl(path: string) {
   if (path.startsWith("/")) {
@@ -72,7 +73,8 @@ export async function fetchSS(url: string, options?: RequestInit) {
     },
   };
 
-  return fetch(buildUrl(url), init);
+  const targetUrl = buildUrl(url);
+  return fetch(targetUrl, attachIdempotencyKey(targetUrl, init));
 }
 
 export async function fetchUserServiceSS(url: string, options?: RequestInit) {
@@ -88,5 +90,6 @@ export async function fetchUserServiceSS(url: string, options?: RequestInit) {
     },
   };
 
-  return fetch(buildUserServiceUrl(url), init);
+  const targetUrl = buildUserServiceUrl(url);
+  return fetch(targetUrl, attachIdempotencyKey(targetUrl, init));
 }

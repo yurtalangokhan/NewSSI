@@ -1,13 +1,13 @@
 """Composition validation service for multi-agent hierarchies."""
 
-import logging
 from uuid import UUID
 
 from pydantic import BaseModel
 
-from agents.storage.repository import AgentDefinitionRepository
+from core.logger import get_logger
+from repository.agent_definition_repository import AgentDefinitionRepository
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class CompositionValidationError(ValueError):
@@ -161,6 +161,14 @@ class CompositionValidationService:
                 continue
 
             sub_schema_upper = sub_agent.graph_schema.upper()
+
+            # §5.4: Flow-backed agents cannot be composed into classic agents
+            if sub_schema_upper == "FLOW":
+                errors.append(
+                    f"Sub-agent '{sub_agent.name}' (FLOW) cannot be used as a sub-agent; "
+                    "flow-backed agents cannot be composed into classic agents (design spec 5.4)"
+                )
+                continue
 
             # SUPERVISOR requires tool-capable agents
             if master_schema_upper == "SUPERVISOR":

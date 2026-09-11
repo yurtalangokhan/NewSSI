@@ -1,6 +1,74 @@
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import { ReadonlyURLSearchParams } from "next/navigation";
-import { buildChatUrl } from "./lib";
+import { buildChatUrl, processRawChatHistory } from "./lib";
+
+describe("processRawChatHistory — forked (retried) flow-agent session", () => {
+  it("builds a sibling tree: one user message with two assistant children", () => {
+    // Shape returned by get_chat_session for a FlowAgent thread after a
+    // retry forks a new branch — both answers persist as children of the
+    // same user message (regression guard for the checkpoint_ns="" fix in
+    // ThreadController.get_thread_state_history).
+    const rawMessages = [
+      {
+        message_id: 1,
+        message_type: "user",
+        message: "rapor hazırla",
+        parent_message: null,
+        latest_child_message: 3,
+        files: [],
+      },
+      {
+        message_id: 2,
+        message_type: "assistant",
+        message: "ilk rapor",
+        parent_message: 1,
+        latest_child_message: null,
+        files: [],
+      },
+      {
+        message_id: 3,
+        message_type: "assistant",
+        message: "ikinci rapor",
+        parent_message: 1,
+        latest_child_message: null,
+        files: [],
+      },
+    ] as any;
+    const packets = [
+      [
+        {
+          placement: { turn_index: 0, sub_turn_index: null },
+          obj: {
+            type: "graph_stage_start",
+            stage_name: "ChatInput-x",
+            timestamp: 1000,
+          },
+        },
+      ],
+      [
+        {
+          placement: { turn_index: 0, sub_turn_index: null },
+          obj: {
+            type: "graph_stage_start",
+            stage_name: "ChatInput-x",
+            timestamp: 5000,
+          },
+        },
+      ],
+    ] as any;
+
+    const tree = processRawChatHistory(rawMessages, packets);
+
+    const user = tree.get(1)!;
+    expect(user.childrenNodeIds).toEqual([2, 3]);
+    expect(user.latestChildNodeId).toBe(3);
+    expect(tree.get(2)!.parentNodeId).toBe(1);
+    expect(tree.get(3)!.parentNodeId).toBe(1);
+    // packets map to assistants by order
+    expect((tree.get(2)!.packets?.[0] as any).obj.timestamp).toBe(1000);
+    expect((tree.get(3)!.packets?.[0] as any).obj.timestamp).toBe(5000);
+  });
+});
 
 describe("buildChatUrl", () => {
   it("uses path routes for chat sessions and omits app state query params", () => {

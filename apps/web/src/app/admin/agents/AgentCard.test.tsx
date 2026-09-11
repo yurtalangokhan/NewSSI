@@ -137,6 +137,35 @@ describe("AgentCard", () => {
     expect(mockTogglePinnedAgent).not.toHaveBeenCalled();
   });
 
+  it("shows Share and Pin buttons for a dynamic (flow/agentic) agent, not just static ones", () => {
+    render(
+      <AgentCard
+        agent={{
+          id: 9,
+          name: "Dynamic Planner",
+          description: "A dynamic agent",
+          tools: [],
+          starter_messages: null,
+          document_sets: [],
+          is_visible: true,
+          is_public: false,
+          display_priority: null,
+          featured: false,
+          builtin_persona: false,
+          is_dynamic: true,
+          owner: { id: "user-1", email: "owner@example.com" },
+        }}
+      />
+    );
+
+    expect(
+      screen.getByRole("button", { name: "agentsPage.shareAgentTooltip" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "agentsPage.pinToSidebarTooltip" })
+    ).toBeInTheDocument();
+  });
+
   it("renders delete confirmation modal and triggers deleteAgent", async () => {
     render(
       <AgentCard

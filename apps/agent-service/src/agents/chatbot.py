@@ -2,10 +2,14 @@ from __future__ import annotations
 
 from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.errors import GraphBubbleUp
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.store.base import BaseStore
 from pydantic import ValidationError
 
+from agents.clarification import is_clarification_tool
+from agents.clarification.prompt import ASK_USER_PROMPT
+from agents.clarification.tool import get_clarification_tools
 from agents.document_tools import (
     DOCUMENT_TOOL_PROMPT,
     bind_document_tools,
@@ -22,6 +26,7 @@ from memory.long_term import (
     recall_memories,
     tag_response_with_ltm_recall,
 )
+from service.CheckpointerService import get_checkpointer
 
 logger = get_logger(__name__)
 
@@ -73,6 +78,11 @@ async def _run_tool_call(tool, call: dict, config: RunnableConfig) -> str:
         args = recover_document_tool_args(args)
     try:
         return str(await tool.ainvoke(args, config))
+    except GraphBubbleUp:
+        # An `interrupt()` (ask_user) pausing the run — NOT a tool failure.
+        # It has to bubble past this hand-rolled loop the way it would pass
+        # through a prebuilt ToolNode, or the pause turns into an error string.
+        raise
     except ValidationError as exc:
         logger.warning("Rejected tool call for %s: %s", tool_name, exc)
         return _describe_validation_error(tool_name, exc)
@@ -86,24 +96,37 @@ async def _run_with_document_tools(
     messages: list,
     config: RunnableConfig,
 ) -> list:
-    """Run a bounded tool-calling loop restricted to the document output tools.
+    """Run a bounded tool-calling loop over the document tools and `ask_user`.
 
     Returns every new message produced (tool-call AIMessages, ToolMessages,
     and the final answer) so the caller can persist them all onto the graph
     state — matching how react-based agents expose tool steps natively.
+
+    `ask_user` rides the same loop as the document tools for BINDING and
+    prompting, but not for execution: when the model asks, this returns and
+    lets the `clarify` node do the pausing. Nothing here has to guard against
+    a resume re-running a document write, because this node is finished and
+    committed by the time the run parks.
     """
     document_tools = get_document_tools()
-    if not document_tools:
+    # Only offer ask_user when a resume is possible (design 5.3, E13). In prod
+    # the chatbot graph is handed the global checkpointer at request time.
+    clarification_tools = get_clarification_tools() if get_checkpointer() else []
+    loop_tools = [*document_tools, *clarification_tools]
+    if not loop_tools:
         response = await model.ainvoke(messages)
         return [response]
 
-    bound_model, tools_enabled = bind_document_tools(model, document_tools)
+    bound_model, tools_enabled = bind_document_tools(model, loop_tools)
     if not tools_enabled:
         response = await model.ainvoke(messages)
         return [response]
 
-    tools_by_name = {tool.name: tool for tool in document_tools}
-    conversation = [SystemMessage(content=DOCUMENT_TOOL_PROMPT), *messages]
+    tools_by_name = {tool.name: tool for tool in loop_tools}
+    system_prompt = DOCUMENT_TOOL_PROMPT
+    if clarification_tools:
+        system_prompt = f"{system_prompt}\n{ASK_USER_PROMPT}"
+    conversation = [SystemMessage(content=system_prompt), *messages]
     new_messages: list = []
 
     for _ in range(_MAX_DOCUMENT_TOOL_ITERATIONS):
@@ -142,7 +165,40 @@ async def _run_with_document_tools(
         if not tool_calls:
             return new_messages
 
-        for index, call in enumerate(tool_calls):
+        def _tool_message(call: dict, index: int, content: str, **extra) -> ToolMessage:
+            return ToolMessage(
+                content=content,
+                # Models occasionally omit the id; a synthetic one keeps the
+                # call/result pairing valid instead of raising.
+                tool_call_id=call.get("id") or f"call-{len(new_messages)}-{index}",
+                name=call.get("name", "tool"),
+                **extra,
+            )
+
+        ask_calls = [c for c in tool_calls if is_clarification_tool(c.get("name"))]
+        other_calls = [c for c in tool_calls if not is_clarification_tool(c.get("name"))]
+
+        if ask_calls:
+            # Ask first, then act: anything alongside the question is not run
+            # (matching AskUserAloneMiddleware on the react paths). Extra
+            # questions beyond the first wait their turn too — one card at a
+            # time keeps "which question am I answering" unambiguous.
+            for index, call in enumerate(other_calls + ask_calls[1:]):
+                skipped = _tool_message(
+                    call,
+                    index,
+                    "Not run: ask_user must be called alone. Call this again "
+                    "after the user has answered.",
+                )
+                conversation.append(skipped)
+                new_messages.append(skipped)
+
+            # The question is NOT asked here. Returning hands it to the
+            # `clarify` node, which pauses in a superstep of its own — see
+            # that node for why the pause cannot happen inside this one.
+            return new_messages
+
+        for index, call in enumerate(other_calls):
             tool_name = call.get("name", "tool")
             tool = tools_by_name.get(tool_name)
             if tool is None:
@@ -150,13 +206,7 @@ async def _run_with_document_tools(
             else:
                 content = await _run_tool_call(tool, call, config)
 
-            tool_message = ToolMessage(
-                content=content,
-                # Models occasionally omit the id; a synthetic one keeps the
-                # call/result pairing valid instead of raising.
-                tool_call_id=call.get("id") or f"call-{len(new_messages)}-{index}",
-                name=tool_name,
-            )
+            tool_message = _tool_message(call, index, content)
             conversation.append(tool_message)
             new_messages.append(tool_message)
 
@@ -229,7 +279,14 @@ async def call_model(
         messages = [SystemMessage(content=system_prompt.strip())] + list(messages)
 
     new_messages = await _run_with_document_tools(model, messages, config)
-    response = new_messages[-1]
+    # The last message is not always the answer: when the model asks a
+    # question, the loop returns with refusals for whatever it called
+    # alongside, so the tail can be a ToolMessage. The recall badge belongs on
+    # an AIMessage or history reconstruction never finds it.
+    response = next(
+        (m for m in reversed(new_messages) if isinstance(m, AIMessage)),
+        new_messages[-1],
+    )
     tag_response_with_ltm_recall(response, memories)
 
     # Long-term memory: extract and save new facts
@@ -252,9 +309,91 @@ async def call_model(
     return {"messages": new_messages}
 
 
+def _pending_ask_user(messages: list) -> dict | None:
+    """The `ask_user` call the model made and nobody has answered yet.
+
+    Not simply "the last message asked": the loop appends a refusal for every
+    tool the model called ALONGSIDE the question, so the asking AIMessage is
+    usually not last. What makes a call pending is the absence of a result for
+    it — the same rule a provider applies when it validates the transcript.
+    """
+    answered = {
+        m.tool_call_id
+        for m in messages
+        if isinstance(m, ToolMessage) and getattr(m, "tool_call_id", None)
+    }
+    for message in reversed(messages):
+        if not isinstance(message, AIMessage):
+            continue
+        for call in getattr(message, "tool_calls", None) or []:
+            if is_clarification_tool(call.get("name")) and call.get("id") not in answered:
+                return call
+        # Only the most recent turn can still be waiting; an older unanswered
+        # question belongs to an abandoned branch.
+        return None
+    return None
+
+
+async def clarify(state: MessagesState, config: RunnableConfig) -> MessagesState:
+    """Park the run on the model's question — in a superstep of its own.
+
+    Why this is not done inside `call_model`, where the rest of the tool loop
+    lives: everything a node writes before `interrupt()` is DISCARDED. Measured
+    on a real paused thread, whose newest checkpoint held only the user's
+    message — the reasoning, the recalled memories and the tool call had all
+    been thrown away, so a reloaded chat showed the question card floating
+    alone while the live stream had shown a full timeline.
+
+    Splitting the pause out is what a react graph gets for free from
+    model -> tools: the model node commits, and only then does the run park.
+
+    Nothing before the `interrupt()` here has a side effect, which matters
+    because a resumed node re-runs from the top (design 3.2). Keep it that way.
+    """
+    call = _pending_ask_user(state["messages"])
+    if call is None:
+        return {"messages": []}
+
+    tools = get_clarification_tools()
+    if not tools:
+        # No checkpointer, so no resume: the model could not have been offered
+        # the tool at all. Answer the call rather than leave it dangling —
+        # some providers reject a tool_call with no result.
+        return {
+            "messages": [
+                ToolMessage(
+                    content="Not run: asking the user is unavailable in this run.",
+                    tool_call_id=call.get("id") or "ask-unavailable",
+                    name="ask_user",
+                )
+            ]
+        }
+
+    # Invoked as a real tool call so the (content, artifact) pair comes back;
+    # `interrupt()` bubbles out on the first pass and returns the user's
+    # answer once the run is resumed.
+    answer = await tools[0].ainvoke(
+        {
+            "type": "tool_call",
+            "name": "ask_user",
+            "args": call.get("args") or {},
+            "id": call.get("id") or "ask-1",
+        },
+        config,
+    )
+    return {"messages": [answer]}
+
+
+def _route_after_model(state: MessagesState) -> str:
+    return "clarify" if _pending_ask_user(state["messages"]) else END
+
+
 workflow = StateGraph(MessagesState)
 workflow.add_node("model", call_model)
+workflow.add_node("clarify", clarify)
 workflow.set_entry_point("model")
-workflow.add_edge("model", END)
+workflow.add_conditional_edges("model", _route_after_model, {"clarify": "clarify", END: END})
+# Back to the model with the answer in hand, so it can carry on with the work.
+workflow.add_edge("clarify", "model")
 
 chatbot = workflow.compile()

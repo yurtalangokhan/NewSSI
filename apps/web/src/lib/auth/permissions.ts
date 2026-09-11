@@ -9,7 +9,8 @@ export function hasPermission(
   }
 
   return (
-    permissions.includes(WILDCARD_PERMISSION) || permissions.includes(permission)
+    permissions.includes(WILDCARD_PERMISSION) ||
+    permissions.includes(permission)
   );
 }
 

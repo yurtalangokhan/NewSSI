@@ -18,7 +18,7 @@ import {
 import UserRoleDropdown from "@/components/admin/users/buttons/UserRoleDropdown";
 import DeactivateUserButton from "@/components/admin/users/buttons/DeactivateUserButton";
 import usePaginatedFetch from "@/hooks/usePaginatedFetch";
-import { ThreeDotsLoader } from "@/components/Loading";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import {
   Select,
@@ -445,11 +445,16 @@ export default function SignedUpUserTable({
         </TableHeader>
         {isLoading ? (
           <TableBody>
-            <TableRow>
-              <TableCell colSpan={4} className="text-center">
-                <ThreeDotsLoader />
-              </TableCell>
-            </TableRow>
+            <TableSkeleton
+              standalone={false}
+              rowCount={5}
+              columns={[
+                { type: "avatar", width: "w-44" },
+                { type: "badge", width: "w-20" },
+                { type: "badge", width: "w-20" },
+                { type: "actions", width: "w-24" },
+              ]}
+            />
           </TableBody>
         ) : (
           <TableBody>

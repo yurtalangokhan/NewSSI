@@ -43,10 +43,13 @@ async def test_get_user_permissions_returns_composite_role_permissions_without_b
         get_by_id=AsyncMock(return_value=SimpleNamespace(role="member"))
     )
     service.permission_resolver = SimpleNamespace(
-        resolve_effective_permissions=AsyncMock(return_value=["user:list"])
+        resolve_effective_access=AsyncMock(return_value=(["user:list"], False))
     )
 
-    assert await service.get_user_permissions(user_id) == {"permissions": ["user:list"]}
+    assert await service.get_user_permissions(user_id) == {
+        "permissions": ["user:list"],
+        "is_admin": False,
+    }
 
 
 @pytest.mark.asyncio
@@ -57,10 +60,13 @@ async def test_get_user_permissions_returns_role_permissions():
         get_by_id=AsyncMock(return_value=SimpleNamespace(role="analyst"))
     )
     service.permission_resolver = SimpleNamespace(
-        resolve_effective_permissions=AsyncMock(return_value=["user:list"])
+        resolve_effective_access=AsyncMock(return_value=(["user:list"], False))
     )
 
-    assert await service.get_user_permissions(user_id) == {"permissions": ["user:list"]}
+    assert await service.get_user_permissions(user_id) == {
+        "permissions": ["user:list"],
+        "is_admin": False,
+    }
 
 
 @pytest.mark.asyncio
@@ -71,7 +77,7 @@ async def test_user_has_permission_returns_allowed_decision():
         get_by_id=AsyncMock(return_value=SimpleNamespace(role="analyst"))
     )
     service.permission_resolver = SimpleNamespace(
-        resolve_effective_permissions=AsyncMock(return_value=["user:list"])
+        resolve_effective_access=AsyncMock(return_value=(["user:list"], False))
     )
 
     assert await service.user_has_permission(user_id, "user:list") == {
@@ -92,10 +98,13 @@ async def test_get_user_permissions_preserves_permission_wildcard():
         get_by_id=AsyncMock(return_value=SimpleNamespace(role="system-admin"))
     )
     service.permission_resolver = SimpleNamespace(
-        resolve_effective_permissions=AsyncMock(return_value=["*"])
+        resolve_effective_access=AsyncMock(return_value=(["*"], True))
     )
 
-    assert await service.get_user_permissions(user_id) == {"permissions": ["*"]}
+    assert await service.get_user_permissions(user_id) == {
+        "permissions": ["*"],
+        "is_admin": True,
+    }
 
 
 def test_me_permissions_endpoint_returns_current_user_permissions(monkeypatch):
@@ -204,7 +213,7 @@ async def test_set_user_role_invalidates_active_keycloak_sessions():
         get_by_id=AsyncMock(return_value=_user(id=user_id, role="enduser")),
         update=AsyncMock(return_value=updated_user),
     )
-    service.user_role_repo = SimpleNamespace(assign_roles=AsyncMock())
+    service.user_role_repo = SimpleNamespace(replace_roles=AsyncMock(return_value=0))
     service.permission_resolver = SimpleNamespace(invalidate_user=AsyncMock())
     service.keycloak = SimpleNamespace(
         is_enabled=lambda: True,
@@ -318,3 +327,32 @@ async def test_deactivating_user_invalidates_active_keycloak_sessions():
 
     assert result["is_active"] is False
     service.keycloak.logout_user_sessions.assert_awaited_once_with("kc-user-id")
+
+
+@pytest.mark.asyncio
+async def test_set_user_role_revokes_previously_assigned_roles():
+    """Demoting a user must revoke their old role, not merely add the new one.
+
+    `set_user_role` is authoritative for the user's single role. Because
+    permission resolution unions across every assigned role, an appended
+    assignment would let a demoted admin keep full access while the admin
+    Users page showed them as an end user.
+    """
+    user_id = uuid.uuid4()
+    service = UserService()
+    service.role_repo = SimpleNamespace(exists=AsyncMock(return_value=True))
+    service.user_repo = SimpleNamespace(
+        get_by_id=AsyncMock(return_value=_user(id=user_id, role="system-admin")),
+        update=AsyncMock(return_value=_user(id=user_id, role="enduser")),
+    )
+    service.user_role_repo = SimpleNamespace(replace_roles=AsyncMock(return_value=1))
+    service.permission_resolver = SimpleNamespace(invalidate_user=AsyncMock())
+    service.keycloak = SimpleNamespace(is_enabled=lambda: False)
+
+    result = await service.set_user_role(user_id, "enduser")
+
+    assert result["role"] == "enduser"
+    service.user_role_repo.replace_roles.assert_awaited_once_with(
+        user_id, ["enduser"], primary_role="enduser"
+    )
+    service.permission_resolver.invalidate_user.assert_awaited_once_with(user_id)

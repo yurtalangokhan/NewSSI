@@ -11,7 +11,7 @@ async def _create_collection(client, name: str) -> str:
     resp = await client.post(
         "/api/v1/collections",
         json={"name": name, "metadata": {}},
-        headers=USER_1_HEADERS,
+        headers={**USER_1_HEADERS, "Idempotency-Key": f"upload-jobs-col-{name}"},
     )
     assert resp.status_code == 201
     return resp.json()["uuid"]
@@ -37,7 +37,7 @@ async def test_start_upload_job_then_status_reports_completed_with_chunks() -> N
         start_resp = await client.post(
             f"/api/v1/collections/{collection_id}/documents/upload-jobs",
             files=files,
-            headers=USER_1_HEADERS,
+            headers={**USER_1_HEADERS, "Idempotency-Key": "upload-job-completes"},
         )
         assert start_resp.status_code == 202
         started = start_resp.json()
@@ -66,7 +66,7 @@ async def test_start_upload_job_skips_filename_already_in_collection() -> None:
         first = await client.post(
             f"/api/v1/collections/{collection_id}/documents/upload-jobs",
             files=files,
-            headers=USER_1_HEADERS,
+            headers={**USER_1_HEADERS, "Idempotency-Key": "upload-job-dedup-first"},
         )
         assert first.status_code == 202
 
@@ -74,7 +74,7 @@ async def test_start_upload_job_skips_filename_already_in_collection() -> None:
         second = await client.post(
             f"/api/v1/collections/{collection_id}/documents/upload-jobs",
             files=files_again,
-            headers=USER_1_HEADERS,
+            headers={**USER_1_HEADERS, "Idempotency-Key": "upload-job-dedup-second"},
         )
         assert second.status_code == 202
 
@@ -96,7 +96,10 @@ async def test_start_upload_job_skips_same_content_under_different_filename() ->
         first = await client.post(
             f"/api/v1/collections/{collection_id}/documents/upload-jobs",
             files=files,
-            headers=USER_1_HEADERS,
+            headers={
+                **USER_1_HEADERS,
+                "Idempotency-Key": "upload-job-content-dedup-first",
+            },
         )
         assert first.status_code == 202
 
@@ -106,7 +109,10 @@ async def test_start_upload_job_skips_same_content_under_different_filename() ->
         second = await client.post(
             f"/api/v1/collections/{collection_id}/documents/upload-jobs",
             files=renamed_files,
-            headers=USER_1_HEADERS,
+            headers={
+                **USER_1_HEADERS,
+                "Idempotency-Key": "upload-job-content-dedup-second",
+            },
         )
         assert second.status_code == 202
 
@@ -141,7 +147,7 @@ async def test_start_upload_job_returns_existing_progress_when_already_active(
         resp = await client.post(
             f"/api/v1/collections/{collection_id}/documents/upload-jobs",
             files=files,
-            headers=USER_1_HEADERS,
+            headers={**USER_1_HEADERS, "Idempotency-Key": "upload-job-already-active"},
         )
         assert resp.status_code == 202
         data = resp.json()
@@ -166,6 +172,6 @@ async def test_start_upload_job_blocked_while_graph_building(monkeypatch) -> Non
         resp = await client.post(
             f"/api/v1/collections/{collection_id}/documents/upload-jobs",
             files=files,
-            headers=USER_1_HEADERS,
+            headers={**USER_1_HEADERS, "Idempotency-Key": "upload-job-graph-locked"},
         )
         assert resp.status_code == 409

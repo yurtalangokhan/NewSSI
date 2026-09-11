@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { XYPosition } from "@xyflow/react";
 import useSWR from "swr";
@@ -49,11 +51,14 @@ async function saveOrganizationLayout(
       `Organization layout cannot exceed ${MAX_ORGANIZATION_LAYOUT_POSITIONS} positions`
     );
   }
-  const response = await fetch("/api/user-service/organizations/layout", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ positions }),
-  });
+  const response = await authenticatedFetch(
+    "/api/user-service/organizations/layout",
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ positions }),
+    }
+  );
   if (!response.ok) {
     throw await responseError(
       response,

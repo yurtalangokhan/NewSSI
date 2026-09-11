@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 import { toast } from "@/hooks/useToast";
@@ -19,7 +21,11 @@ interface Props {
 
 type TestStatus = "idle" | "testing" | "ok" | "error";
 
-export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Props) {
+export function UrlProviderModal({
+  open,
+  onOpenChange,
+  wellKnownProviders,
+}: Props) {
   const { t } = useTranslation();
   const { mutate } = useSWRConfig();
   const [name, setName] = useState("");
@@ -27,7 +33,9 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [apiVersion, setApiVersion] = useState("");
-  const [customConfigList, setCustomConfigList] = useState<Array<[string, string]>>([]);
+  const [customConfigList, setCustomConfigList] = useState<
+    Array<[string, string]>
+  >([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [testStatus, setTestStatus] = useState<TestStatus>("idle");
@@ -60,15 +68,18 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
     setTestStatus("testing");
     setTestError(null);
     try {
-      const res = await fetch("/api/admin/providers/test-connection", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider_type: providerType,
-          base_url: baseUrl.trim(),
-          api_key: apiKey.trim() || undefined,
-        }),
-      });
+      const res = await authenticatedFetch(
+        "/api/admin/providers/test-connection",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provider_type: providerType,
+            base_url: baseUrl.trim(),
+            api_key: apiKey.trim() || undefined,
+          }),
+        }
+      );
       const data = await res.json();
       setTestLatency(data.latency_ms ?? null);
       if (data.success) {
@@ -79,7 +90,9 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
       }
     } catch (e) {
       setTestStatus("error");
-      setTestError(e instanceof Error ? e.message : t("admin.llm.connectionFailed"));
+      setTestError(
+        e instanceof Error ? e.message : t("admin.llm.connectionFailed")
+      );
     }
   };
 
@@ -89,17 +102,20 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
       return;
     }
 
-    const customConfig = customConfigList.reduce<Record<string, string>>((acc, [key, value]) => {
-      const cleanedKey = key.trim();
-      if (cleanedKey) {
-        acc[cleanedKey] = value;
-      }
-      return acc;
-    }, {});
+    const customConfig = customConfigList.reduce<Record<string, string>>(
+      (acc, [key, value]) => {
+        const cleanedKey = key.trim();
+        if (cleanedKey) {
+          acc[cleanedKey] = value;
+        }
+        return acc;
+      },
+      {}
+    );
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/admin/providers", {
+      const res = await authenticatedFetch("/api/admin/providers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -124,7 +140,8 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
       onOpenChange(false);
     } catch (e: unknown) {
       toast({
-        message: e instanceof Error ? e.message : t("admin.llm.failedToAddProvider"),
+        message:
+          e instanceof Error ? e.message : t("admin.llm.failedToAddProvider"),
         level: "error",
       });
     } finally {
@@ -146,9 +163,14 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
               <Text secondaryBody>{t("admin.llm.providerType")}</Text>
               <InputSelect
                 value={providerType}
-                onValueChange={(v) => { setProviderType(v); setTestStatus("idle"); }}
+                onValueChange={(v) => {
+                  setProviderType(v);
+                  setTestStatus("idle");
+                }}
               >
-                <InputSelect.Trigger placeholder={t("admin.llm.selectProvider")} />
+                <InputSelect.Trigger
+                  placeholder={t("admin.llm.selectProvider")}
+                />
                 <InputSelect.Content>
                   {urlProviders.map((p) => {
                     const ProviderIcon = getProviderIcon(p.provider_type);
@@ -183,26 +205,32 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
                   className="flex-1 rounded border border-input bg-background px-3 py-2 text-sm"
                   placeholder={t("admin.llm.baseUrlPlaceholder")}
                   value={baseUrl}
-                  onChange={(e) => { setBaseUrl(e.target.value); setTestStatus("idle"); }}
+                  onChange={(e) => {
+                    setBaseUrl(e.target.value);
+                    setTestStatus("idle");
+                  }}
                 />
                 <Button
                   prominence="secondary"
                   onClick={handleTest}
                   disabled={testStatus === "testing" || !baseUrl.trim()}
                 >
-                  {testStatus === "testing" ? t("admin.llm.testing") : t("admin.llm.test")}
+                  {testStatus === "testing"
+                    ? t("admin.llm.testing")
+                    : t("admin.llm.test")}
                 </Button>
               </div>
               {testStatus === "ok" && (
-                <p className="text-sm text-green-600">
+                <Text as="p" className="text-sm text-green-600">
                   {t("admin.llm.connected")}
                   {testLatency !== null ? ` (${testLatency}ms)` : ""}
-                </p>
+                </Text>
               )}
               {testStatus === "error" && (
-                <p className="text-sm text-red-500">
-                  {t("admin.llm.connectionFailed")}: {testError || t("admin.llm.connectionFailed")}
-                </p>
+                <Text as="p" className="text-sm text-red-500">
+                  {t("admin.llm.connectionFailed")}:{" "}
+                  {testError || t("admin.llm.connectionFailed")}
+                </Text>
               )}
             </div>
 
@@ -259,7 +287,9 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
                     <Button
                       prominence="tertiary"
                       onClick={() => {
-                        setCustomConfigList((prev) => prev.filter((_, i) => i !== idx));
+                        setCustomConfigList((prev) =>
+                          prev.filter((_, i) => i !== idx)
+                        );
                       }}
                     >
                       {t("admin.llm.remove")}
@@ -269,13 +299,13 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
               ))}
               <Button
                 prominence="secondary"
-                onClick={() => setCustomConfigList((prev) => [...prev, ["", ""]])}
+                onClick={() =>
+                  setCustomConfigList((prev) => [...prev, ["", ""]])
+                }
               >
                 {t("admin.llm.addConfig")}
               </Button>
             </div>
-
-
 
             <div className="space-y-1">
               <Text secondaryBody>{t("admin.llm.defaultModelOptional")}</Text>
@@ -286,7 +316,6 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
                 onChange={(e) => setDefaultModel(e.target.value)}
               />
             </div>
-
           </div>
         </Modal.Body>
 
@@ -294,7 +323,11 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
           <Button prominence="secondary" onClick={() => onOpenChange(false)}>
             {t("modals.cancel")}
           </Button>
-          <Button prominence="primary" onClick={handleSubmit} disabled={submitting}>
+          <Button
+            prominence="primary"
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
             {submitting ? t("admin.llm.adding") : t("admin.llm.addProvider")}
           </Button>
         </Modal.Footer>

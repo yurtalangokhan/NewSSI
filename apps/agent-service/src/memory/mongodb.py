@@ -1,6 +1,7 @@
-import logging
 import urllib.parse
 from contextlib import AbstractAsyncContextManager
+
+from core.logger import get_logger
 
 try:
     from langgraph.checkpoint.mongodb.aio import AsyncMongoDBSaver
@@ -9,7 +10,7 @@ except ImportError:
 
 from core.settings import settings
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _has_auth_credentials() -> bool:

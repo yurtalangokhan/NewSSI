@@ -12,6 +12,8 @@ IS_TESTING = env("IS_TESTING", cast=str, default="").lower() == "true"
 
 # Simple Auth configuration
 VALID_API_KEYS = env("VALID_API_KEYS", cast=str, default="")
+LOG_LEVEL = env("LOG_LEVEL", cast=str, default="INFO")
+LOG_FORMAT = env("LOG_FORMAT", cast=str, default="text")
 
 
 def _require_env(mapping: Mapping[str, Any], name: str) -> str:
@@ -177,13 +179,9 @@ IDEMPOTENCY_ENABLED = env("IDEMPOTENCY_ENABLED", cast=bool, default=True)
 IDEMPOTENCY_ENFORCE_REQUIRED_KEYS = env(
     "IDEMPOTENCY_ENFORCE_REQUIRED_KEYS",
     cast=bool,
-    default=False,
+    default=True,
 )
 IDEMPOTENCY_LOCK_TTL = env("IDEMPOTENCY_LOCK_TTL", cast=int, default=10)
 IDEMPOTENCY_WAIT_TIMEOUT = env("IDEMPOTENCY_WAIT_TIMEOUT", cast=float, default=10.0)
 
 ALLOWED_ORIGINS = parse_allowed_origins(ALLOW_ORIGINS_JSON)
-if ALLOW_ORIGINS_JSON:
-    print(f"ALLOW_ORIGINS environment variable set to: {ALLOW_ORIGINS_JSON}")
-else:
-    print("ALLOW_ORIGINS environment variable not set.")

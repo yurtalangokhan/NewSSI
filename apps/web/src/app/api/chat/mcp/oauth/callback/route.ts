@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { deriveIdempotencyKey } from "@/lib/api/idempotency";
 
 // Proxies browser callback to backend OAuth callback endpoint and then
 // redirects back to the chat UI.
@@ -25,7 +26,13 @@ export async function GET(req: NextRequest) {
       }/api/mcp/oauth/callback`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": await deriveIdempotencyKey(
+            code,
+            "mcp-oauth-callback"
+          ),
+        },
         body: JSON.stringify({
           server_id: serverId,
           code,

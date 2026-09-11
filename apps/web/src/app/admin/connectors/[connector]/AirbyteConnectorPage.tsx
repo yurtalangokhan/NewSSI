@@ -21,6 +21,7 @@ import {
   createDatasource,
 } from "@/lib/airbyte";
 import SchemaForm from "@/components/admin/airbyte/SchemaForm/index";
+import { materializeSchemaDefaults } from "@/components/admin/airbyte/SchemaForm/utils";
 import { useTranslation } from "react-i18next";
 
 type Step = 0 | 1 | 2;
@@ -62,7 +63,15 @@ export default function AirbyteConnectorPage({
 
   useEffect(() => {
     fetchConnectorSpec(connectorName)
-      .then((s) => setSpec(s))
+      .then((s) => {
+        setSpec(s);
+        setConfig(
+          (materializeSchemaDefaults(s.connection_specification, {}) as Record<
+            string,
+            unknown
+          >) ?? {}
+        );
+      })
       .catch(() => setSpecError(true));
   }, [connectorName]);
 

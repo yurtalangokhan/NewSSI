@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock
 import pytest
 from starlette.requests import Request
 
+import api.dependencies as api_dependencies
 from core.exceptions import UnauthorizedError
 from service import AuthService
 from service.AuthService import require_user, require_user_or_internal_service_token
@@ -62,7 +63,7 @@ async def test_require_user_falls_back_to_user_service_token_validation(monkeypa
     }
 
     monkeypatch.setattr(
-        AuthService,
+        api_dependencies,
         "_decode_keycloak_token",
         raise_invalid_keycloak_token,
     )
@@ -93,3 +94,43 @@ async def test_require_user_or_internal_service_token_accepts_internal_header(mo
     assert user.user_id == "internal-service"
     assert user.email == "internal@service.local"
     assert user.roles == ["internal"]
+
+
+def test_decode_keycloak_token_disables_iat_verification(monkeypatch):
+    monkeypatch.setattr(AuthService.settings, "KEYCLOAK_ISSUER_URL", "https://issuer")
+    monkeypatch.setattr(AuthService.settings, "KEYCLOAK_AUDIENCE", "rag-service")
+    monkeypatch.setattr(AuthService.settings, "KEYCLOAK_CLIENT_ID", "agenticai-web")
+
+    class FakeSigningKey:
+        key = "signing-key"
+
+    def _get_signing_key(token: str) -> FakeSigningKey:
+        assert token == "sample-token"
+        return FakeSigningKey()
+
+    def _decode(
+        jwt: str,
+        key: str,
+        algorithms: list[str],
+        issuer: str,
+        audience: list[str] | None,
+        leeway: int,
+        options: dict[str, object],
+    ) -> dict[str, str]:
+        assert key == "signing-key"
+        assert issuer == "https://issuer"
+        assert options["verify_iss"] is True
+        assert options["verify_exp"] is True
+        assert options["verify_iat"] is False
+        return {"sub": "keycloak-sub"}
+
+    monkeypatch.setattr(
+        AuthService.AuthService,
+        "get_signing_key",
+        staticmethod(_get_signing_key),
+    )
+    monkeypatch.setattr(AuthService.jwt, "decode", _decode)
+
+    assert AuthService.AuthService.decode_keycloak_token("sample-token") == {
+        "sub": "keycloak-sub"
+    }

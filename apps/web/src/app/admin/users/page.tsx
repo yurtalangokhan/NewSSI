@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import SimpleTabs from "@/refresh-components/SimpleTabs";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import SignedUpUserTable from "@/components/admin/users/SignedUpUserTable";
@@ -13,13 +13,13 @@ import PendingUsersTable from "@/components/admin/users/PendingUsersTable";
 import Button from "@/refresh-components/buttons/Button";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
-import { Spinner } from "@/components/Spinner";
 import { SvgDownloadCloud, SvgPlus } from "@opal/icons";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
+import { formatRoleName } from "@/lib/auth/roles";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.USERS]!;
 
@@ -88,6 +88,27 @@ function UsersTables({
   const { data: rolesData, isLoading: rolesLoading } = useSWR<{
     roles: { name: string }[];
   }>("/api/user-service/roles", errorHandlingFetcher);
+  const { data: roleDistributionData, isLoading: roleDistributionLoading } =
+    useSWR<{ distribution: { role: string; count: number }[] }>(
+      "/api/user-service/users/role-distribution",
+      errorHandlingFetcher
+    );
+  const distribution = roleDistributionData?.distribution ?? [];
+  const roleCarouselValues = useMemo(
+    () =>
+      distribution
+        .slice(0, 8)
+        .map((r) => ({ value: `${formatRoleName(r.role)} · ${r.count}` })),
+    [distribution]
+  );
+
+  const { data: activeUsersData, isLoading: activeUsersLoading } = useSWR<{
+    total_items: number;
+  }>("/api/user-service/users?is_active=true&limit=1", errorHandlingFetcher);
+  const { data: inactiveUsersData, isLoading: inactiveUsersLoading } = useSWR<{
+    total_items: number;
+  }>("/api/user-service/users?is_active=false&limit=1", errorHandlingFetcher);
+  const userStatusLoading = activeUsersLoading || inactiveUsersLoading;
 
   const currentUsersContent = (
     <Card className="w-full rounded-12 border-border-01 bg-background-neutral-00 shadow-none">
@@ -190,44 +211,52 @@ function UsersTables({
     }),
   });
 
+  const isOverviewLoading =
+    rolesLoading || roleDistributionLoading || userStatusLoading;
+
   return (
     <>
       <AdminOverviewPanel
         icon={route.icon}
+        isLoading={isOverviewLoading}
         title={t("admin.users.workspaceTitle")}
         description={t("admin.users.workspaceDescription")}
         metrics={[
           {
-            label: t("admin.users.matchingUsersLabel"),
-            value: currentUsersLoading
+            label: t("admin.users.userStatusLabel", {
+              defaultValue: "User status",
+            }),
+            value: userStatusLoading
               ? "..."
-              : (currentUsersCount ?? 0).toLocaleString(),
-            tone:
-              !currentUsersLoading && (currentUsersCount ?? 0) > 0
-                ? "success"
-                : "warning",
-          },
-          {
-            label: t("admin.users.pendingRequestsLabel"),
-            value: NEXT_PUBLIC_CLOUD_ENABLED
-              ? pendingUsersLoading
-                ? "..."
-                : (pendingUsersCount ?? 0).toLocaleString()
-              : t("admin.users.notAvailable"),
-            tone:
-              NEXT_PUBLIC_CLOUD_ENABLED && (pendingUsersCount ?? 0) > 0
-                ? "warning"
-                : "neutral",
+              : `${(activeUsersData?.total_items ?? 0).toLocaleString()} ${t(
+                  "admin.users.activeStatus"
+                )} · ${(
+                  inactiveUsersData?.total_items ?? 0
+                ).toLocaleString()} ${t("admin.users.inactiveStatus")}`,
           },
           {
             label: t("admin.users.rolesAvailableLabel"),
             value: rolesLoading ? "..." : String(rolesData?.roles?.length ?? 0),
           },
-        ]}
-        actions={[
           {
-            label: t("admin.navigation.routes.roles.sidebar"),
-            href: ADMIN_PATHS.ROLES,
+            label: t("admin.users.roleDistributionLabel", {
+              defaultValue: "Role distribution",
+            }),
+            isLoading: roleDistributionLoading,
+            value: roleDistributionLoading
+              ? "..."
+              : roleCarouselValues[0]?.value ??
+                t("admin.users.noRoleData", { defaultValue: "No data" }),
+            values:
+              roleCarouselValues.length > 0
+                ? roleCarouselValues
+                : [
+                    {
+                      value: t("admin.users.noRoleData", {
+                        defaultValue: "No data",
+                      }),
+                    },
+                  ],
           },
         ]}
       />
@@ -247,7 +276,6 @@ function SearchableTables() {
 
   return (
     <div>
-      {isDownloadingUsers && <Spinner />}
       <div className="flex flex-col gap-y-3">
         <UsersTables
           q={debouncedQuery}
@@ -267,6 +295,11 @@ export default function Page() {
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         title={t(route.titleKey || "", { defaultValue: route.title })}
+        description={
+          route.descriptionKey
+            ? t(route.descriptionKey, { defaultValue: route.description })
+            : route.description
+        }
         icon={route.icon}
         separator
       />

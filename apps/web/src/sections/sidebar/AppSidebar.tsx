@@ -70,19 +70,25 @@ import {
   SvgSettings,
 } from "@opal/icons";
 import SidebarTabSkeleton from "@/refresh-components/skeletons/SidebarTabSkeleton";
+import AppSidebarContentSkeleton from "@/refresh-components/skeletons/AppSidebarContentSkeleton";
 import BuildModeIntroBackground from "@/app/craft/components/IntroBackground";
 import BuildModeIntroContent from "@/app/craft/components/IntroContent";
 import { CRAFT_PATH } from "@/app/craft/v1/constants";
 import { usePostHog } from "posthog-js/react";
 import { motion, AnimatePresence } from "motion/react";
 import { Notification, NotificationType } from "@/interfaces/settings";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 import UserAvatarPopover from "@/sections/sidebar/UserAvatarPopover";
 import ChatSearchCommandMenu from "@/sections/sidebar/ChatSearchCommandMenu";
 import { useAppMode } from "@/providers/AppModeProvider";
 import { buildAppPath } from "@/hooks/appNavigation";
 import { useQueryController } from "@/providers/QueryControllerProvider";
 import { useTranslation } from "react-i18next";
+import {
+  ADMIN_PATHS,
+  canAccessAdminPanel,
+  getFirstAccessibleAdminPath,
+} from "@/lib/admin-routes";
 
 // Visible-agents = pinned-agents + current-agent (if current-agent not in pinned-agents)
 // OR Visible-agents = pinned-agents (if current-agent in pinned-agents)
@@ -310,9 +316,12 @@ const MemoizedAppSidebarInner = memo(
     const dismissBuildModeNotification = useCallback(async () => {
       if (!buildModeNotification) return;
       try {
-        await fetch(`/api/notifications/${buildModeNotification.id}/dismiss`, {
-          method: "POST",
-        });
+        await authenticatedFetch(
+          `/api/notifications/${buildModeNotification.id}/dismiss`,
+          {
+            method: "POST",
+          }
+        );
         mutateNotifications();
       } catch (error) {
         console.error("Error dismissing notification:", error);
@@ -505,7 +514,8 @@ const MemoizedAppSidebarInner = memo(
       ]
     );
 
-    const { isAdmin, isCurator, user } = useUser();
+    const { isCurator, permissions, user } = useUser();
+    const canViewAdminPanel = canAccessAdminPanel(permissions);
     const { t, i18n } = useTranslation();
     const activeLanguage = i18n.resolvedLanguage ?? i18n.language;
     const activeSidebarTab = useAppFocus();
@@ -645,20 +655,25 @@ const MemoizedAppSidebarInner = memo(
 
     const vectorDbEnabled =
       combinedSettings?.settings?.vector_db_enabled !== false;
-    const adminDefaultHref = vectorDbEnabled
+    const preferredAdminHref = vectorDbEnabled
       ? "/admin/indexing/status"
       : "/admin/agents";
+    const adminDefaultHref =
+      getFirstAccessibleAdminPath(permissions, [preferredAdminHref]) ??
+      ADMIN_PATHS.AGENTS;
 
     const settingsButton = useMemo(
       () => (
         <div>
-          {(isAdmin || isCurator) && (
+          {(canViewAdminPanel || isCurator) && (
             <SidebarTab
               href={adminDefaultHref}
               leftIcon={SvgSettings}
               folded={folded}
             >
-              {isAdmin ? t("sidebar.adminPanel") : t("sidebar.curatorPanel")}
+              {canViewAdminPanel
+                ? t("sidebar.adminPanel")
+                : t("sidebar.curatorPanel")}
             </SidebarTab>
           )}
           <UserAvatarPopover
@@ -671,7 +686,7 @@ const MemoizedAppSidebarInner = memo(
       ),
       [
         folded,
-        isAdmin,
+        canViewAdminPanel,
         isCurator,
         handleShowBuildIntro,
         isOnyxCraftEnabled,
@@ -760,7 +775,9 @@ const MemoizedAppSidebarInner = memo(
                 {moreAgentsButton}
                 {newProjectButton}
               </>
-            ) : isLoadingDynamicContent ? null : (
+            ) : isLoadingDynamicContent ? (
+              <AppSidebarContentSkeleton />
+            ) : (
               <>
                 {/* Agents */}
                 <DndContext

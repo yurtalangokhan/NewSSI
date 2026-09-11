@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MemoryItem } from "@/lib/types";
 
@@ -50,11 +52,14 @@ export default function useUserMemories(options?: UseUserMemoriesOptions) {
     async (content: string): Promise<MemoryItem | null> => {
       setIsMutating(true);
       try {
-        const res = await fetch("/api/user-service/users/me/memories", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
-        });
+        const res = await authenticatedFetch(
+          "/api/user-service/users/me/memories",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content }),
+          }
+        );
         if (!res.ok) throw new Error("Failed to create memory");
         const item: MemoryItem = await res.json();
         setMemories((prev) => [...prev, item]);
@@ -74,11 +79,14 @@ export default function useUserMemories(options?: UseUserMemoriesOptions) {
     async (id: string, content: string): Promise<MemoryItem | null> => {
       setIsMutating(true);
       try {
-        const res = await fetch(`/api/user-service/users/me/memories/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
-        });
+        const res = await authenticatedFetch(
+          `/api/user-service/users/me/memories/${id}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content }),
+          }
+        );
         if (!res.ok) throw new Error("Failed to update memory");
         const item: MemoryItem = await res.json();
         setMemories((prev) => prev.map((m) => (m.id === id ? item : m)));
@@ -93,31 +101,34 @@ export default function useUserMemories(options?: UseUserMemoriesOptions) {
     []
   );
 
-  const deleteMemory = useCallback(
-    async (id: string): Promise<boolean> => {
-      setIsMutating(true);
-      try {
-        const res = await fetch(`/api/user-service/users/me/memories/${id}`, {
+  const deleteMemory = useCallback(async (id: string): Promise<boolean> => {
+    setIsMutating(true);
+    try {
+      const res = await authenticatedFetch(
+        `/api/user-service/users/me/memories/${id}`,
+        {
           method: "DELETE",
-        });
-        if (!res.ok) throw new Error("Failed to delete memory");
-        setMemories((prev) => prev.filter((m) => m.id !== id));
-        setTotal((prev) => prev - 1);
-        return true;
-      } catch (error) {
-        onErrorRef.current?.(error);
-        return false;
-      } finally {
-        setIsMutating(false);
-      }
-    },
-    []
-  );
+        }
+      );
+      if (!res.ok) throw new Error("Failed to delete memory");
+      setMemories((prev) => prev.filter((m) => m.id !== id));
+      setTotal((prev) => prev - 1);
+      return true;
+    } catch (error) {
+      onErrorRef.current?.(error);
+      return false;
+    } finally {
+      setIsMutating(false);
+    }
+  }, []);
 
   const deleteAllMemories = useCallback(async (): Promise<number> => {
     setIsMutating(true);
     try {
-      const res = await fetch("/api/user-service/users/me/memories", { method: "DELETE" });
+      const res = await authenticatedFetch(
+        "/api/user-service/users/me/memories",
+        { method: "DELETE" }
+      );
       if (!res.ok) throw new Error("Failed to delete all memories");
       const data: { deleted: number } = await res.json();
       setMemories([]);

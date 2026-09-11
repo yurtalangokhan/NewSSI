@@ -67,6 +67,7 @@ interface SystemKeycloakSettings {
       access_token_lifespan?: number | null;
       sso_session_idle_timeout?: number | null;
       sso_session_max_lifespan?: number | null;
+      client_session_max_lifespan?: number | null;
       error?: string;
     };
   };
@@ -116,6 +117,9 @@ function sessionFormFromSettings(data: SystemKeycloakSettings) {
     ),
     sso_session_max_lifespan: String(
       data.keycloak.realm_session.sso_session_max_lifespan ?? ""
+    ),
+    client_session_max_lifespan: String(
+      data.keycloak.realm_session.client_session_max_lifespan ?? ""
     ),
   };
 }
@@ -288,6 +292,7 @@ export default function SystemSettingsPage() {
     access_token_lifespan: "",
     sso_session_idle_timeout: "",
     sso_session_max_lifespan: "",
+    client_session_max_lifespan: "",
   });
 
   const { data, error, isLoading, mutate } = useSWR<SystemKeycloakSettings>(
@@ -385,12 +390,18 @@ export default function SystemSettingsPage() {
             ? t(route.titleKey, { defaultValue: route.title })
             : route.title
         }
+        description={
+          route.descriptionKey
+            ? t(route.descriptionKey, { defaultValue: route.description })
+            : route.description
+        }
         separator
       />
       <SettingsLayouts.Body>
         <div className="flex flex-col gap-4">
           <AdminOverviewPanel
             icon={route.icon}
+            isLoading={isLoading}
             title={t("admin.systemSettings.workspaceTitle")}
             description={t("admin.systemSettings.workspaceDescription")}
             metrics={[
@@ -418,48 +429,97 @@ export default function SystemSettingsPage() {
                   : "warning",
               },
             ]}
-            actions={[
-              {
-                label: t("admin.navigation.routes.roles.sidebar"),
-                href: ADMIN_PATHS.ROLES,
-              },
-              {
-                label: t("admin.navigation.routes.users.sidebar"),
-                href: ADMIN_PATHS.USERS,
-                primary: true,
-              },
-            ]}
           />
-          <section className="rounded-08 border border-border-01 bg-background-neutral-00 px-4 py-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-col gap-1">
-                <Text as="span" headingH2 text05>
-                  {headline}
-                </Text>
-                <Text as="span" secondaryBody text04>
-                  {t("admin.systemSettings.externalIdpEnvNote")}
-                </Text>
+          {isLoading ? (
+            <>
+              {/* Status Banner Skeleton */}
+              <section className="rounded-08 border border-border-01 bg-background-neutral-00 px-4 py-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex flex-col gap-2">
+                    <div className="h-6 w-48 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                    <div className="h-4 w-72 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-6 w-24 rounded-full bg-background-tint-03 dark:bg-background-tint-04 animate-pulse"
+                      />
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              {/* Keycloak Settings Form Skeleton */}
+              <section className="rounded-08 border border-border-01 bg-background-neutral-00 p-6 shadow-01">
+                <div className="flex flex-col gap-2 mb-6">
+                  <div className="h-5 w-44 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                  <div className="h-4 w-80 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="flex flex-col gap-1.5">
+                      <div className="h-4 w-28 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                      <div className="h-9 w-full rounded-08 border border-border-01 bg-background-neutral-01 animate-pulse" />
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 flex justify-end">
+                  <div className="h-9 w-28 rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                </div>
+              </section>
+
+              {/* Realm Session Settings Form Skeleton */}
+              <section className="rounded-08 border border-border-01 bg-background-neutral-00 p-6 shadow-01">
+                <div className="flex flex-col gap-2 mb-6">
+                  <div className="h-5 w-48 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                  <div className="h-4 w-72 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex flex-col gap-1.5">
+                      <div className="h-4 w-32 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                      <div className="h-9 w-full rounded-08 border border-border-01 bg-background-neutral-01 animate-pulse" />
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 flex justify-end">
+                  <div className="h-9 w-28 rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                </div>
+              </section>
+            </>
+          ) : (
+            <section className="rounded-08 border border-border-01 bg-background-neutral-00 px-4 py-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-1">
+                  <Text as="span" headingH2 text05>
+                    {headline}
+                  </Text>
+                  <Text as="span" secondaryBody text04>
+                    {t("admin.systemSettings.externalIdpEnvNote")}
+                  </Text>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <StatusPill
+                    active={Boolean(data?.keycloak.enabled)}
+                    label={t("admin.systemSettings.keycloakLabel")}
+                  />
+                  <StatusPill
+                    active={Boolean(data?.external_keycloak.enabled)}
+                    label={t("admin.systemSettings.externalIdpLabel")}
+                  />
+                  <StatusPill
+                    active={Boolean(idp?.exists)}
+                    label={t("admin.systemSettings.providerExistsLabel")}
+                  />
+                  <StatusPill
+                    active={Boolean(idp?.mapper?.exists)}
+                    label={t("admin.systemSettings.roleMapperLabel")}
+                  />
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <StatusPill
-                  active={Boolean(data?.keycloak.enabled)}
-                  label={t("admin.systemSettings.keycloakLabel")}
-                />
-                <StatusPill
-                  active={Boolean(data?.external_keycloak.enabled)}
-                  label={t("admin.systemSettings.externalIdpLabel")}
-                />
-                <StatusPill
-                  active={Boolean(idp?.exists)}
-                  label={t("admin.systemSettings.providerExistsLabel")}
-                />
-                <StatusPill
-                  active={Boolean(idp?.mapper?.exists)}
-                  label={t("admin.systemSettings.roleMapperLabel")}
-                />
-              </div>
-            </div>
-          </section>
+            </section>
+          )}
 
           {error ? (
             <section className="rounded-08 border border-status-error-02 bg-background-neutral-00 px-4 py-4">
@@ -806,6 +866,24 @@ export default function SystemSettingsPage() {
                         setSessionForm((current) => ({
                           ...current,
                           sso_session_max_lifespan: event.target.value,
+                        }))
+                      }
+                    />
+                  </Field>
+                  <Field
+                    label={t(
+                      "admin.systemSettings.clientSessionMaxLifespanLabel"
+                    )}
+                  >
+                    <InputTypeIn
+                      type="number"
+                      min={0}
+                      max={2592000}
+                      value={sessionForm.client_session_max_lifespan}
+                      onChange={(event) =>
+                        setSessionForm((current) => ({
+                          ...current,
+                          client_session_max_lifespan: event.target.value,
                         }))
                       }
                     />

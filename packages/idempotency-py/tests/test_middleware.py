@@ -72,6 +72,7 @@ def make_client(
     stream: bool = False,
     enforce_required_keys: bool = True,
     max_cache_body_size: int = 1_048_576,
+    principal_extractor=None,
 ) -> TestClient:
     app = FastAPI()
     app.add_middleware(
@@ -89,6 +90,7 @@ def make_client(
             wait_timeout=0.01,
             inflight_timeout_status_code=425,
             max_cache_body_size=max_cache_body_size,
+            principal_extractor=principal_extractor,
             policy=policy
             or IdempotencyPolicyConfig(
                 default_mode=IdempotencyMode.OPTIONAL_REPLAY,
@@ -105,6 +107,11 @@ def make_client(
 
     @app.post("/echo")
     async def echo(request: Request) -> dict[str, Any]:
+        body = await request.json()
+        return {"body": body, "marker": object_counter()}
+
+    @app.put("/echo")
+    async def put_echo(request: Request) -> dict[str, Any]:
         body = await request.json()
         return {"body": body, "marker": object_counter()}
 
@@ -205,6 +212,52 @@ def test_replays_same_request_with_same_idempotency_key(fake_redis: FakeRedis) -
     assert lock_set[2] is True
     assert lock_set[3] == 3
     assert fake_redis.expire_calls == []
+
+
+def test_put_replays_same_request_with_same_idempotency_key(
+    fake_redis: FakeRedis,
+) -> None:
+    client = make_client()
+
+    first = client.put(
+        "/echo",
+        json={"value": 1},
+        headers={"Idempotency-Key": "put-key-1", "X-User-Id": "user-1"},
+    )
+    second = client.put(
+        "/echo",
+        json={"value": 1},
+        headers={"Idempotency-Key": "put-key-1", "X-User-Id": "user-1"},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.json() == first.json()
+    assert first.json()["marker"] == 1
+    assert second.headers["Idempotency-Replayed"] == "true"
+    assert _counter == 1
+
+
+def test_put_with_new_key_is_a_new_operation(fake_redis: FakeRedis) -> None:
+    client = make_client()
+
+    first = client.put(
+        "/echo",
+        json={"value": 1},
+        headers={"Idempotency-Key": "put-key-1", "X-User-Id": "user-1"},
+    )
+    second = client.put(
+        "/echo",
+        json={"value": 1},
+        headers={"Idempotency-Key": "put-key-2", "X-User-Id": "user-1"},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["marker"] == 1
+    assert second.json()["marker"] == 2
+    assert "Idempotency-Replayed" not in second.headers
+    assert _counter == 2
 
 
 def test_reusing_key_with_different_body_returns_conflict(fake_redis: FakeRedis) -> None:
@@ -393,6 +446,57 @@ def test_policy_can_enforce_missing_key_without_global_required_enforcement(
     )
 
     response = client.post("/domain-ready", json={"value": 1})
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "idempotency_key_required"
+
+
+def test_policy_can_opt_out_of_global_required_enforcement(
+    fake_redis: FakeRedis,
+) -> None:
+    """A route with enforce_missing_key=False must not require a key even when
+    the global enforce_required_keys flag is on (e.g. tools-service /mcp)."""
+    client = make_client(
+        enforce_required_keys=True,
+        policy=IdempotencyPolicyConfig(
+            default_mode=IdempotencyMode.OPTIONAL_REPLAY,
+            route_policies=[
+                IdempotencyPolicy(
+                    method="POST",
+                    path="/domain-ready",
+                    mode=IdempotencyMode.DOMAIN_REQUIRED,
+                    enforce_missing_key=False,
+                ),
+            ],
+        ),
+    )
+
+    response = client.post("/domain-ready", json={"value": 1})
+
+    assert response.status_code == 200
+    assert response.json() == {"body": {"value": 1}}
+
+
+def test_policy_without_override_falls_back_to_global_enforcement(
+    fake_redis: FakeRedis,
+) -> None:
+    """A route with enforce_missing_key=None (default) enforces when the global
+    flag is on and the mode is required_replay or domain_required."""
+    client = make_client(
+        enforce_required_keys=True,
+        policy=IdempotencyPolicyConfig(
+            default_mode=IdempotencyMode.OPTIONAL_REPLAY,
+            route_policies=[
+                IdempotencyPolicy(
+                    method="POST",
+                    path="/required",
+                    mode=IdempotencyMode.REQUIRED_REPLAY,
+                ),
+            ],
+        ),
+    )
+
+    response = client.post("/required", json={"value": 1})
 
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "idempotency_key_required"
@@ -815,21 +919,26 @@ def test_redis_unavailable_fails_open_for_optional_route(
 
 def test_redis_unavailable_returns_503_for_required_route(
     monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     async def connect(config: IdempotencyConfig) -> None:
-        raise redis.exceptions.ConnectionError("redis down")
+        raise redis.exceptions.ConnectionError("redis.exceptions.ConnectionError: redis down")
 
     monkeypatch.setattr(AsyncRedisPool, "connect", connect)
     client = make_client()
 
-    response = client.post(
-        "/required",
-        json={"value": 1},
-        headers={"Idempotency-Key": "key-fail-required"},
-    )
+    with caplog.at_level("WARNING"):
+        response = client.post(
+            "/required",
+            json={"value": 1},
+            headers={"Idempotency-Key": "key-fail-required"},
+        )
 
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "idempotency_store_unavailable"
+    assert "Idempotency store unavailable for POST /required" in caplog.text
+    assert "redis.exceptions" not in caplog.text
+    assert "redis down" not in caplog.text
 
 
 def test_caches_binary_response_and_replays_byte_for_byte(
@@ -883,3 +992,125 @@ def test_replay_strips_set_cookie_and_challenge_headers(
     assert "set-cookie" not in second.headers
     assert "www-authenticate" not in second.headers
     assert second.headers["Idempotency-Replayed"] == "true"
+
+
+async def _extractor_from_header(request: Request) -> str | None:
+    return request.headers.get("X-Authenticated-User-Id")
+
+
+async def _extractor_returns_none(request: Request) -> str | None:
+    return None
+
+
+def test_principal_extractor_used_for_scope(fake_redis: FakeRedis) -> None:
+    client = make_client(principal_extractor=_extractor_from_header)
+
+    first = client.post(
+        "/echo",
+        json={"value": 1},
+        headers={"Idempotency-Key": "key-ext-1", "X-Authenticated-User-Id": "user-1"},
+    )
+    second = client.post(
+        "/echo",
+        json={"value": 1},
+        headers={"Idempotency-Key": "key-ext-1", "X-Authenticated-User-Id": "user-1"},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.headers["Idempotency-Replayed"] == "true"
+    response_keys = [key for key in fake_redis.values if key.endswith(":response")]
+    assert len(response_keys) == 1
+    assert "user:" in response_keys[0]
+    assert "x-authenticated-user-id" not in response_keys[0]
+
+
+def test_principal_extractor_ignores_client_supplied_x_user_id(
+    fake_redis: FakeRedis,
+) -> None:
+    client = make_client(principal_extractor=_extractor_from_header)
+
+    first = client.post(
+        "/echo",
+        json={"value": 1},
+        headers={"Idempotency-Key": "key-ext-2", "X-User-Id": "spoofed-user"},
+    )
+    second = client.post(
+        "/echo",
+        json={"value": 1},
+        headers={"Idempotency-Key": "key-ext-2", "X-User-Id": "spoofed-user"},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.headers["Idempotency-Replayed"] == "true"
+    response_keys = [key for key in fake_redis.values if key.endswith(":response")]
+    assert len(response_keys) == 1
+    assert "spoofed-user" not in response_keys[0]
+
+
+def test_principal_extractor_returns_none_falls_back_to_anonymous(
+    fake_redis: FakeRedis,
+) -> None:
+    client = make_client(principal_extractor=_extractor_returns_none)
+
+    first = client.post(
+        "/echo",
+        json={"value": 1},
+        headers={"Idempotency-Key": "key-ext-3", "X-User-Id": "user-1"},
+    )
+    second = client.post(
+        "/echo",
+        json={"value": 1},
+        headers={"Idempotency-Key": "key-ext-3", "X-User-Id": "user-1"},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.headers["Idempotency-Replayed"] == "true"
+    response_keys = [key for key in fake_redis.values if key.endswith(":response")]
+    assert len(response_keys) == 1
+    assert "anonymous" in response_keys[0]
+
+
+def test_principal_extractor_separates_users(fake_redis: FakeRedis) -> None:
+    client = make_client(principal_extractor=_extractor_from_header)
+
+    first = client.post(
+        "/echo",
+        json={"value": 1},
+        headers={"Idempotency-Key": "key-ext-4", "X-Authenticated-User-Id": "user-1"},
+    )
+    second = client.post(
+        "/echo",
+        json={"value": 1},
+        headers={"Idempotency-Key": "key-ext-4", "X-Authenticated-User-Id": "user-2"},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 409
+    assert second.json()["error"]["code"] == "idempotency_key_reused"
+
+
+def test_no_extractor_uses_header_candidates_backward_compatible(
+    fake_redis: FakeRedis,
+) -> None:
+    client = make_client()
+
+    first = client.post(
+        "/echo",
+        json={"value": 1},
+        headers={"Idempotency-Key": "key-ext-5", "X-User-Id": "user-1"},
+    )
+    second = client.post(
+        "/echo",
+        json={"value": 1},
+        headers={"Idempotency-Key": "key-ext-5", "X-User-Id": "user-1"},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.headers["Idempotency-Replayed"] == "true"
+    response_keys = [key for key in fake_redis.values if key.endswith(":response")]
+    assert len(response_keys) == 1
+    assert "x-user-id" in response_keys[0]

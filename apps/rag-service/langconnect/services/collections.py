@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import builtins
 import json
-import logging
 from typing import Any, Optional
 
 from error_contract import BadRequestError, NotFoundError
@@ -23,8 +22,9 @@ from langconnect.database.postgres.repositories.collection_repo import (
     CollectionRepository,
 )
 from langconnect.models.collection import CollectionDetails
+from langconnect.observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 MILVUS_QUERY_BATCH_SIZE = 10_000
 
 

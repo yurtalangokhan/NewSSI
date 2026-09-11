@@ -24,6 +24,7 @@ import {
 } from "react-arborist";
 import { useTranslation } from "react-i18next";
 import { OrganizationSearchCombobox } from "@/components/organization/OrganizationSearchCombobox";
+import { LoadingAnimation } from "@/components/Loading";
 import type {
   MoveOrganization,
   OrganizationMembersByUnit,
@@ -72,6 +73,7 @@ interface OrganizationTreeProps extends Partial<OrganizationSearchProps> {
   onShowMembersChange?: (show: boolean) => void;
   membersLoading?: boolean;
   onExpandOrg?: (orgId: string) => void;
+  expandingOrganizationIds?: ReadonlySet<string>;
   className?: string;
 }
 
@@ -124,6 +126,7 @@ interface OrganizationNodeRendererProps
   membersByOrganizationId: OrganizationMembersByUnit;
   showMembers: boolean;
   onExpandOrg?: (orgId: string) => void;
+  expandingOrganizationIds?: ReadonlySet<string>;
 }
 
 interface InlineOrganizationCreateProps {
@@ -210,6 +213,7 @@ function Node({
   membersByOrganizationId,
   showMembers,
   onExpandOrg,
+  expandingOrganizationIds,
 }: OrganizationNodeRendererProps) {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
@@ -222,6 +226,7 @@ function Node({
     language
   );
   const hasSearch = Boolean(searchQuery.trim());
+  const isExpanding = expandingOrganizationIds?.has(node.data.id) ?? false;
   const directMembers = membersByOrganizationId[node.data.id] ?? [];
 
   const handleSave = useCallback(() => {
@@ -293,7 +298,13 @@ function Node({
             className={cn("flex h-4 w-4 shrink-0 items-center justify-center")}
             aria-hidden="true"
           >
-            {node.isOpen ? "−" : "+"}
+            {isExpanding ? (
+              <LoadingAnimation text="" size="text-sm" />
+            ) : node.isOpen ? (
+              "−"
+            ) : (
+              "+"
+            )}
           </div>
         ) : (
           <div className={cn("w-4 shrink-0")} />
@@ -498,6 +509,7 @@ export function OrganizationTree({
   onShowMembersChange,
   membersLoading = false,
   onExpandOrg,
+  expandingOrganizationIds,
   className,
   searchResults = [],
   searchLoading = false,
@@ -742,6 +754,7 @@ export function OrganizationTree({
                 }
                 showMembers={showMembers}
                 membersByOrganizationId={membersByOrganizationId}
+                expandingOrganizationIds={expandingOrganizationIds}
                 onExpandOrg={onExpandOrg}
               />
             )}

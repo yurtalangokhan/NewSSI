@@ -1,4 +1,3 @@
-import logging
 import re
 from copy import copy
 from dataclasses import dataclass
@@ -8,7 +7,9 @@ from typing import IO
 
 import bs4
 
-logger = logging.getLogger(__name__)
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class HtmlBasedConnectorTransformLinksStrategy(Enum):

@@ -22,12 +22,12 @@ import {
   SvgZoomOut,
 } from "@opal/icons";
 import PreviewImage from "@/refresh-components/PreviewImage";
-import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import ScrollIndicatorDiv from "@/refresh-components/ScrollIndicatorDiv";
 import { cn } from "@/lib/utils";
 import { Section } from "@/layouts/general-layouts";
 import DocxPreview from "@/app/app/components/files/DocxPreview";
 import { useTranslation } from "react-i18next";
+import { resolveDownloadHref } from "@/lib/chat/svc";
 
 interface TextViewProps {
   presentingDocument: MinimalOnyxDocument;
@@ -229,9 +229,23 @@ export default function TextViewModal({
     };
   }, [fileUrl]);
 
+  // A file chosen in the composer but not sent yet is previewed straight from
+  // its own data:/blob: URL and has no backend copy to download instead.
+  const isInlinePreview = Boolean(
+    docPreviewUrl &&
+      (docPreviewUrl.startsWith("data:") || docPreviewUrl.startsWith("blob:"))
+  );
+
   const handleDownload = () => {
     const link = document.createElement("a");
-    link.href = fileUrl;
+    // Not `fileUrl`: that blob is the *preview* response, and for an XLSX the
+    // backend transcodes it to CSV so the table can render. Saving it under
+    // the .xlsx name is what made Excel reject the downloaded file.
+    link.href = resolveDownloadHref(
+      docId.split("__")[1] || docId,
+      fileUrl,
+      isInlinePreview
+    );
     link.download = fileName || presentingDocument.document_id;
     document.body.appendChild(link);
     link.click();
@@ -285,7 +299,11 @@ export default function TextViewModal({
         <Modal.Body>
           <Section>
             {isLoading ? (
-              <SimpleLoader className="h-8 w-8" />
+              <div className="flex flex-col gap-3 p-6 w-full">
+                <div className="h-4 w-2/3 rounded bg-background-tint-02 animate-pulse" />
+                <div className="h-4 w-1/2 rounded bg-background-tint-02 animate-pulse" />
+                <div className="h-48 w-full rounded-08 bg-background-neutral-01 animate-pulse border border-border-01" />
+              </div>
             ) : loadError ? (
               <Text text03 mainUiBody>
                 {loadError}

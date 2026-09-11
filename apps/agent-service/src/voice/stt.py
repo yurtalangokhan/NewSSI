@@ -4,12 +4,12 @@ This module provides a factory class that loads the appropriate STT provider
 based on configuration.
 """
 
-import logging
 from typing import BinaryIO, Literal, cast
 
 from core.env import env
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 Provider = Literal["openai", "deepgram"]
 

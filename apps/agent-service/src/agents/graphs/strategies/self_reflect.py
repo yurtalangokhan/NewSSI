@@ -7,11 +7,17 @@ from typing import TYPE_CHECKING, Any
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 
+# Imported at module scope on purpose: LangGraph resolves the node callables'
+# annotations at runtime (``get_type_hints``), and with
+# ``from __future__ import annotations`` a TYPE_CHECKING-only import leaves
+# ``MessagesState`` undefined there.
+from langgraph.graph import MessagesState
+
 from agents.graphs.schemas import GraphSchemaType
 from agents.graphs.strategies.base import GraphSchemaStrategy
 
 if TYPE_CHECKING:
-    from langgraph.graph.state import CompiledStateGraph, MessagesState
+    from langgraph.graph.state import CompiledStateGraph
 
 
 class SelfReflectGraphStrategy(GraphSchemaStrategy):
@@ -26,7 +32,7 @@ class SelfReflectGraphStrategy(GraphSchemaStrategy):
     async def build(self, config: dict[str, Any]) -> CompiledStateGraph:
         """Build Self-Reflect graph with generate → reflect loop."""
         from langgraph.graph import END
-        from langgraph.graph.state import MessagesState, StateGraph
+        from langgraph.graph.state import StateGraph
 
         system_prompt = config.get("system_prompt", self.system_prompt)
         reflection_prompt = config.get(

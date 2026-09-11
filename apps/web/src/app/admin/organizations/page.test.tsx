@@ -545,6 +545,32 @@ describe("OrganizationsPage", () => {
     ]);
   });
 
+  it("adds an idempotency key when creating an organization", async () => {
+    managementEditable = true;
+    const user = setupUser();
+    render(<OrganizationsPage />);
+    await user.click(screen.getByRole("button", { name: "Select Platform" }));
+    await user.click(
+      screen.getByRole("button", { name: "Open organization designer" })
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Create in designer" })
+    );
+
+    const createCall = jest
+      .mocked(global.fetch)
+      .mock.calls.find(
+        ([request, options]) =>
+          request === "/api/user-service/organizations" &&
+          options?.method === "POST"
+      );
+    expect(createCall).toBeDefined();
+    expect(
+      new Headers(createCall?.[1]?.headers).get("Idempotency-Key")
+    ).toBeTruthy();
+  });
+
   it("revalidates exactly tree and layout after move", async () => {
     managementEditable = true;
     const successToast = jest.spyOn(toast, "success");
@@ -585,6 +611,69 @@ describe("OrganizationsPage", () => {
       ["/api/user-service/organizations/tree?max_depth=2"],
       ["/api/user-service/organizations/layout"],
     ]);
+  });
+
+  it("refetches cached subunits after a mutation so the tree reflects it", async () => {
+    managementEditable = true;
+    let platformChildren: any[] = [
+      {
+        id: "org-2",
+        name: "Team A",
+        path: "/platform/team-a",
+        parent_id: "org-1",
+        children: [],
+      },
+    ];
+    const baseFetch = jest.mocked(global.fetch).getMockImplementation()!;
+    jest
+      .mocked(global.fetch)
+      .mockImplementation(async (request: any, options: any) => {
+        if (request === "/api/user-service/organizations/org-1/children") {
+          return new Response(
+            JSON.stringify({
+              children: platformChildren,
+              count: platformChildren.length,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          );
+        }
+        return baseFetch(request, options);
+      });
+    const user = setupUser();
+    render(<OrganizationsPage />);
+
+    await user.click(screen.getByRole("button", { name: "Expand org-1" }));
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("organization-tree").dataset.organizations
+      ).toContain("Team A")
+    );
+
+    platformChildren = [
+      {
+        id: "org-3",
+        name: "Team B",
+        path: "/platform/team-b",
+        parent_id: "org-1",
+        children: [],
+      },
+    ];
+    await user.click(screen.getByRole("button", { name: "Select Platform" }));
+    await user.click(
+      screen.getByRole("button", { name: "Open organization designer" })
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Create in designer" })
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("organization-tree").dataset.organizations
+      ).toContain("Team B")
+    );
+    expect(
+      screen.getByTestId("organization-tree").dataset.organizations
+    ).not.toContain("Team A");
   });
 
   it("revalidates exactly the tree after an Access save", async () => {

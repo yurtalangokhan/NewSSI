@@ -13,7 +13,7 @@ import {
   createIdempotencyKey,
   withIdempotencyKey,
 } from "@/lib/api/idempotency";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 
 const RAG = "/api/rag";
 const CHUNKS_PAGE_SIZE = 20;
@@ -425,7 +425,7 @@ export function useGraphCollections() {
 export async function createCollection(
   input: CreateCollectionInput
 ): Promise<RagCollection> {
-  const res = await fetch(`${RAG}/collections`, {
+  const res = await authenticatedFetch(`${RAG}/collections`, {
     method: "POST",
     headers: withRagIdempotency({ "Content-Type": "application/json" }),
     body: JSON.stringify(input),
@@ -441,7 +441,7 @@ export async function updateCollection(
   id: string,
   input: Partial<CreateCollectionInput>
 ): Promise<RagCollection> {
-  const res = await fetch(`${RAG}/collections/${id}`, {
+  const res = await authenticatedFetch(`${RAG}/collections/${id}`, {
     method: "PATCH",
     headers: withRagIdempotency({ "Content-Type": "application/json" }),
     body: JSON.stringify(input),
@@ -454,7 +454,7 @@ export async function updateCollection(
 }
 
 export async function deleteCollection(id: string): Promise<void> {
-  const res = await fetch(`${RAG}/collections/${id}`, {
+  const res = await authenticatedFetch(`${RAG}/collections/${id}`, {
     method: "DELETE",
     headers: withRagIdempotency(),
   });
@@ -482,11 +482,14 @@ export async function uploadDocuments(
   if (metadatas && metadatas.length > 0) {
     formData.append("metadatas_json", JSON.stringify(metadatas));
   }
-  const res = await fetch(`${RAG}/collections/${collectionId}/documents`, {
-    method: "POST",
-    headers: withRagIdempotency(),
-    body: formData,
-  });
+  const res = await authenticatedFetch(
+    `${RAG}/collections/${collectionId}/documents`,
+    {
+      method: "POST",
+      headers: withRagIdempotency(),
+      body: formData,
+    }
+  );
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.detail || "Failed to upload documents");
@@ -509,7 +512,7 @@ export async function startUploadJob(
   if (metadatas && metadatas.length > 0) {
     formData.append("metadatas_json", JSON.stringify(metadatas));
   }
-  const res = await fetch(
+  const res = await authenticatedFetch(
     `${RAG}/collections/${collectionId}/documents/upload-jobs`,
     { method: "POST", headers: withRagIdempotency(), body: formData }
   );
@@ -537,7 +540,7 @@ export async function deleteDocument(
   collectionId: string,
   documentId: string
 ): Promise<void> {
-  const res = await fetch(
+  const res = await authenticatedFetch(
     `${RAG}/collections/${collectionId}/documents/${documentId}`,
     { method: "DELETE", headers: withRagIdempotency() }
   );
@@ -551,7 +554,7 @@ export async function searchDocuments(
   collectionId: string,
   input: SearchInput
 ): Promise<SearchResult[]> {
-  const res = await fetch(
+  const res = await authenticatedFetch(
     `${RAG}/collections/${collectionId}/documents/search`,
     {
       method: "POST",
@@ -571,7 +574,7 @@ export async function searchDocuments(
 // ============================================================================
 
 export async function buildGraph(input: GraphBuildInput): Promise<void> {
-  const res = await fetch(`${RAG}/graph/build`, {
+  const res = await authenticatedFetch(`${RAG}/graph/build`, {
     method: "POST",
     headers: withRagIdempotency({ "Content-Type": "application/json" }),
     body: JSON.stringify(input),
@@ -583,10 +586,13 @@ export async function buildGraph(input: GraphBuildInput): Promise<void> {
 }
 
 export async function pauseGraphBuild(collectionId: string): Promise<void> {
-  const res = await fetch(`${RAG}/graph/build/${collectionId}/pause`, {
-    method: "POST",
-    headers: withRagIdempotency(),
-  });
+  const res = await authenticatedFetch(
+    `${RAG}/graph/build/${collectionId}/pause`,
+    {
+      method: "POST",
+      headers: withRagIdempotency(),
+    }
+  );
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.detail || "Failed to pause graph build");
@@ -594,10 +600,13 @@ export async function pauseGraphBuild(collectionId: string): Promise<void> {
 }
 
 export async function resumeGraphBuild(collectionId: string): Promise<void> {
-  const res = await fetch(`${RAG}/graph/build/${collectionId}/resume`, {
-    method: "POST",
-    headers: withRagIdempotency(),
-  });
+  const res = await authenticatedFetch(
+    `${RAG}/graph/build/${collectionId}/resume`,
+    {
+      method: "POST",
+      headers: withRagIdempotency(),
+    }
+  );
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.detail || "Failed to resume graph build");
@@ -605,10 +614,13 @@ export async function resumeGraphBuild(collectionId: string): Promise<void> {
 }
 
 export async function stopGraphBuild(collectionId: string): Promise<void> {
-  const res = await fetch(`${RAG}/graph/build/${collectionId}/stop`, {
-    method: "POST",
-    headers: withRagIdempotency(),
-  });
+  const res = await authenticatedFetch(
+    `${RAG}/graph/build/${collectionId}/stop`,
+    {
+      method: "POST",
+      headers: withRagIdempotency(),
+    }
+  );
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.detail || "Failed to stop graph build");
@@ -616,10 +628,13 @@ export async function stopGraphBuild(collectionId: string): Promise<void> {
 }
 
 export async function deleteGraph(collectionId: string): Promise<void> {
-  const res = await fetch(`${RAG}/graph/collections/${collectionId}`, {
-    method: "DELETE",
-    headers: withRagIdempotency(),
-  });
+  const res = await authenticatedFetch(
+    `${RAG}/graph/collections/${collectionId}`,
+    {
+      method: "DELETE",
+      headers: withRagIdempotency(),
+    }
+  );
   if (!res.ok && res.status !== 204) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.detail || "Failed to delete graph");
@@ -640,7 +655,7 @@ export async function fetchGraphBuildStatus(
 export async function searchGraph(
   input: GraphSearchInput
 ): Promise<GraphSearchResult> {
-  const res = await fetch(`${RAG}/graph/search`, {
+  const res = await authenticatedFetch(`${RAG}/graph/search`, {
     method: "POST",
     headers: withRagIdempotency({ "Content-Type": "application/json" }),
     body: JSON.stringify(input),

@@ -155,6 +155,26 @@ class ThinkingTagProcessor:
         self.buffer = ""
         return [event]
 
+    def reset(self) -> list[dict]:
+        """Flush the buffer AND clear tag state, for a hard boundary such as
+        one FlowAgent stage ending and the next beginning.
+
+        A single processor instance serves every stage of a run. A stage
+        whose model streams ``<think>`` reasoning can end with the closing
+        ``</think>`` (and the visible answer) folded into that stage's
+        aggregated `updates` message rather than a `messages` chunk — so the
+        processor is legitimately left with ``in_thinking`` (or, for
+        ``<tool_call>`` markup, ``in_tool_call``) still set. Without this
+        reset the next stage's visible output is consumed as `reasoning_delta`
+        and never streamed as a `token` / `flow_stage_output_delta`, so it
+        only reaches the client as the one-shot `updates` fallback."""
+        events = self.flush()
+        self.in_thinking = False
+        self.in_tool_call = False
+        self.reasoning_started = False
+        self.pending_prefix = ""
+        return events
+
     @classmethod
     def _find_first(cls, text: str, *groups: tuple) -> tuple:
         """Find the earliest tag across several labelled tag groups."""

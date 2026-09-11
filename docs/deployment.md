@@ -6,7 +6,48 @@ The platform is deployed as Docker containers orchestrated with Docker Compose. 
 
 ---
 
+## Connector tool upgrade
+
+Apply agent-service migration `0046` before starting the updated application.
+It adds an empty `connector_bindings` list to existing personas. Rebuild
+tools-service to install its connector client dependencies, and refresh the
+Kong configuration to include the internal connector-resolution route.
+
+Both Compose environments provide the internal agent-service URL to
+tools-service and the existing Airbyte config database settings to
+agent-service. The initial credential resolver supports the configured Airbyte
+0.50.x `NONE` secret persistence mode. It does not migrate or duplicate source
+credentials. See [connector runtime variables](env-variables.md#saved-connector-runtime).
+
 ## Environments
+
+### Local application with Docker Airbyte
+
+The web app and Python services can run locally while Airbyte, PostgreSQL, and
+Redis run in Docker. Start Airbyte from the repository root:
+
+```powershell
+docker volume create langgraph-with-ui_airbyte-workspace
+docker volume create langgraph-with-ui_airbyte-data
+docker compose --env-file configs/.env -f configs/docker-compose-services.yml up -d airbyte-server airbyte-worker airbyte-webapp
+```
+
+Before startup, create the database named by `AIRBYTE_DATABASE_URL` if it does
+not exist. Set `AIRBYTE_DB_USER` and `AIRBYTE_DB_PASSWORD` to credentials accepted
+by the existing PostgreSQL instance. Changing a container environment variable
+does not change the password stored in an existing PostgreSQL volume.
+
+For the pinned Temporal image, set `AIRBYTE_DYNAMIC_CONFIG_FILE_PATH` to
+`config/dynamicconfig/docker.yaml`, which is bundled in the image. The worker
+requires its `control-plane` environment and the actual external workspace
+volume name; Compose supplies both. The webapp's unused Community Keycloak
+upstream uses the image's `localhost` placeholder.
+
+The bootloader should exit with code zero; server and Temporal should be healthy,
+and worker/webapp should remain running. The configured local UI is
+`http://localhost:8010`; API health is `http://localhost:8001/api/v1/health`.
+Local agent-service uses `AIRBYTE_API_URL=http://localhost:8001/api/v1`.
+Connector jobs reach the Docker PostgreSQL service at `postgres:5432`.
 
 | Environment | Compose file | Purpose |
 |-------------|-------------|---------|

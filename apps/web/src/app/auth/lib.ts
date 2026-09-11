@@ -1,5 +1,7 @@
+import { idempotentFetch } from "@/lib/api/idempotency";
+
 export async function requestEmailVerification(email: string) {
-  return await fetch("/api/auth/request-verify-token", {
+  return await idempotentFetch("/api/auth/request-verify-token", {
     headers: {
       "Content-Type": "application/json",
     },

@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 /**
  * Search API Helper Functions
  */
@@ -18,14 +19,17 @@ export async function classifyQuery(
   query: string,
   signal?: AbortSignal
 ): Promise<SearchFlowClassificationResponse> {
-  const response = await fetch("/api/search/search-flow-classification", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      user_query: query,
-    } as SearchFlowClassificationRequest),
-    signal,
-  });
+  const response = await authenticatedFetch(
+    "/api/search/search-flow-classification",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_query: query,
+      } as SearchFlowClassificationRequest),
+      signal,
+    }
+  );
 
   if (!response.ok) {
     throw new Error(`Classification failed: ${response.statusText}`);
@@ -54,7 +58,7 @@ export async function searchDocuments(
     stream: false,
   };
 
-  const response = await fetch("/api/search/send-search-message", {
+  const response = await authenticatedFetch("/api/search/send-search-message", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),

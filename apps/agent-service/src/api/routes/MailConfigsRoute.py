@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from api.dependencies import AuthenticatedUser, require_permission, require_user
 from controller.mail_config_controller import get_mail_config_controller
 from models.mail_configs import (
+    AvailableMailConfigResponse,
     MailConfigCreateRequest,
     MailConfigResponse,
     MailConfigTestRequest,
@@ -16,6 +17,10 @@ from models.mail_configs import (
     MailConfigUpdateRequest,
     MailSendRequest,
     MailSendResponse,
+    PaginatedMailConfigsResponse,
+    UserMailSettingsRequest,
+    UserMailSettingsResponse,
+    UserMailSettingsTestRequest,
 )
 
 router = APIRouter(
@@ -25,11 +30,69 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=list[MailConfigResponse])
+# -----------------------------------------------------------------------------
+# User-Specific Credentials Routes
+# (Placed before /{config_id} to avoid parameterized route matching)
+# -----------------------------------------------------------------------------
+
+
+@router.get("/available", response_model=list[AvailableMailConfigResponse])
+async def list_available_mail_configs(
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
+):
+    return await get_mail_config_controller().list_available_configs(user.user_id)
+
+
+@router.get("/user-credentials", response_model=UserMailSettingsResponse | None)
+async def get_user_mail_credentials(user: Annotated[AuthenticatedUser, Depends(require_user)]):
+    return await get_mail_config_controller().get_user_credentials(user.user_id)
+
+
+@router.put("/user-credentials", response_model=UserMailSettingsResponse)
+async def upsert_user_mail_credentials(
+    body: UserMailSettingsRequest,
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
+):
+    return await get_mail_config_controller().upsert_user_credentials(
+        user.user_id, body.model_dump()
+    )
+
+
+@router.delete("/user-credentials")
+async def delete_user_mail_credentials(user: Annotated[AuthenticatedUser, Depends(require_user)]):
+    return await get_mail_config_controller().delete_user_credentials(user.user_id)
+
+
+@router.post("/user-credentials/test", response_model=MailConfigTestResponse)
+async def test_user_mail_credentials(
+    body: UserMailSettingsTestRequest,
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
+):
+    return await get_mail_config_controller().test_user_credentials(
+        user.user_id,
+        body.mail_config_id,
+        body.to_email,
+    )
+
+
+# -----------------------------------------------------------------------------
+# Admin / General Mail Configs Routes
+# -----------------------------------------------------------------------------
+
+
+@router.get("", response_model=PaginatedMailConfigsResponse)
 async def list_mail_configs(
     user: Annotated[AuthenticatedUser, Depends(require_permission("mail_config:read"))],
+    search: str | None = Query(None, description="Search by name, email, host, username"),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
 ):
-    return await get_mail_config_controller().list_configs(user.user_id)
+    return await get_mail_config_controller().list_configs(
+        user.user_id,
+        search=search,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.post("", response_model=MailConfigResponse)

@@ -7,6 +7,13 @@ review that a mechanical codemod cannot safely perform. They are NOT blocking th
 architecture gate for the files already remediated, but they remain open findings
 in the full-tree (`--all`) report and should be scheduled as follow-up work.
 
+## Documentation automation
+
+The service docs now keep human-readable API contracts under
+`apps/<service>/docs/api.md`. Add a shared OpenAPI export command for FastAPI
+services so generated schema artifacts can be refreshed consistently and kept
+out of routine planning context.
+
 ## Source
 
 - Spec: `.tmp/codebase-simplification/design.md`
@@ -59,6 +66,25 @@ in the full-tree (`--all`) report and should be scheduled as follow-up work.
 - **Plan:** Decide whether GitHub MCP is a built-in recipe, a dynamic-agent
   template, or unsupported. If unsupported, delete the module and its tests in
   the same TDD cleanup task.
+
+### AS-KEYCLOAK-ADMIN-SHIM — inert Keycloak admin compatibility shim
+- **Finding:** `integrations/keycloak_admin.py` is an inert compatibility shim
+  (admin token helper always returns `None`, so profile lookups always return
+  `None`). `service/AuthService.py` still imports `get_keycloak_user_profile`
+  from it. Identity resolution flows through `user-service` and token claims.
+- **Why deferred:** Low risk, but removal touches the auth identity path and its
+  tests; the shim is documented with a removal note and exempted from the
+  Keycloak boundary gate.
+- **Plan:** Remove the shim module and its `AuthService` import, update any
+  callers and tests, and run the full agent-service gate.
+
+### AS-DOMAIN-HTTP-HOTSPOTS — domain-layer HTTP calls
+- **Finding:** `domain/ollama/repository.py` and `domain/providers/service.py`
+  perform concrete HTTP calls from the domain package.
+- **Why deferred:** Existing architecture hotspots; not expanded during the
+  observability work.
+- **Plan:** Treat provider integrations as adapter candidates and introduce
+  domain ports in a later refactor.
 
 ---
 

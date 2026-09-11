@@ -1,5 +1,7 @@
+import { idempotentFetch } from "@/lib/api/idempotency";
+
 export const forgotPassword = async (email: string): Promise<void> => {
-  const response = await fetch(`/api/auth/forgot-password`, {
+  const response = await idempotentFetch(`/api/auth/forgot-password`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -19,7 +21,7 @@ export const resetPassword = async (
   token: string,
   password: string
 ): Promise<void> => {
-  const response = await fetch(`/api/auth/reset-password`, {
+  const response = await idempotentFetch(`/api/auth/reset-password`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

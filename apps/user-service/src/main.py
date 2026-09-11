@@ -1,4 +1,3 @@
-import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -15,6 +14,14 @@ from src.core.api_versioning import API_PREFIX
 from src.core.database.engine import close_db_engine
 from src.core.database.startup import run_startup_migrations
 from src.core.idempotency import build_idempotency_config, build_idempotency_exclude_paths
+from src.core.observability import (
+    DependencyPolicy,
+    configure_logging,
+    dependency_error_fields,
+    dependency_registry,
+    get_logger,
+    retry_async,
+)
 
 _here = Path(__file__).resolve().parent
 locales_dir = _here.parent / "locales"
@@ -22,7 +29,7 @@ if not locales_dir.exists():
     locales_dir = _here / "locales"
 init_service_i18n(locales_dir)
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _admin_email(settings) -> str | None:
@@ -128,6 +135,7 @@ async def _ensure_default_admin(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     run_startup_migrations()
+    dependency_registry.record_ok("postgres", policy=DependencyPolicy.REQUIRED)
     try:
         from src.service.system_settings_service import get_system_settings_service
 
@@ -137,8 +145,21 @@ async def lifespan(app: FastAPI):
             try:
                 login_client_result = await system_settings.keycloak.ensure_login_client_config()
                 logger.info("Keycloak login client bootstrap: %s", login_client_result)
-            except Exception:
-                logger.exception("Keycloak login client bootstrap failed (non-fatal)")
+            except Exception as exc:
+                dependency_registry.record_degraded(
+                    "keycloak_login_client",
+                    hint="Login client bootstrap failed; login flow may be degraded.",
+                )
+                logger.warning(
+                    "keycloak is unavailable; continuing without login client bootstrap.",
+                    extra={
+                        **dependency_error_fields(exc, dependency="keycloak"),
+                        "event": "startup.dependency.degraded",
+                        "dependency": "keycloak",
+                        "operation": "ensure_login_client_config",
+                        "status": "degraded",
+                    },
+                )
 
             try:
                 from src.repository import (
@@ -158,9 +179,23 @@ async def lifespan(app: FastAPI):
                     settings_repo=UserSettingsRepository(),
                 )
                 logger.info("Keycloak default admin bootstrap: %s", admin_bootstrap_result)
-            except Exception:
-                logger.exception("Keycloak default admin bootstrap failed")
-                raise
+                dependency_registry.record_ok("keycloak", policy=DependencyPolicy.REQUIRED)
+            except Exception as exc:
+                dependency_registry.record_degraded(
+                    "keycloak",
+                    hint="Default admin bootstrap failed; admin user may be missing.",
+                )
+                logger.warning(
+                    "keycloak is unavailable during default admin bootstrap; "
+                    "continuing without admin user sync.",
+                    extra={
+                        **dependency_error_fields(exc, dependency="keycloak"),
+                        "event": "startup.dependency.degraded",
+                        "dependency": "keycloak",
+                        "operation": "ensure_default_admin",
+                        "status": "degraded",
+                    },
+                )
 
             if system_settings.keycloak.is_external_keycloak():
                 try:
@@ -168,16 +203,64 @@ async def lifespan(app: FastAPI):
                     logger.info("External Keycloak identity provider sync result: %s", result)
                 except httpx.HTTPStatusError as exc:
                     if exc.response.status_code in (401, 403):
+                        dependency_registry.record_degraded(
+                            "keycloak_idp",
+                            hint="External IdP sync skipped; admin API access denied.",
+                        )
                         logger.warning(
                             "Skipping external Keycloak identity provider sync: "
                             "admin API access was denied by the configured Keycloak"
                         )
                     else:
                         raise
-    except Exception:
-        logger.exception("Failed to initialize Keycloak system settings")
-        raise
-    await AsyncRedisPool.connect(_idempotency_config)
+                except Exception as exc:
+                    dependency_registry.record_degraded(
+                        "keycloak_idp",
+                        hint="External IdP sync skipped; Keycloak unreachable.",
+                    )
+                    logger.warning(
+                        "Skipping external Keycloak identity provider sync: "
+                        "Keycloak is unreachable.",
+                        extra={
+                            **dependency_error_fields(exc, dependency="keycloak"),
+                            "event": "startup.dependency.degraded",
+                            "dependency": "keycloak",
+                            "operation": "ensure_external_identity_provider",
+                            "status": "degraded",
+                        },
+                    )
+    except Exception as exc:
+        dependency_registry.record_degraded(
+            "keycloak",
+            hint="Keycloak system settings could not be initialized; "
+            "service is running without Keycloak integration.",
+        )
+        logger.warning(
+            "keycloak system settings could not be initialized; "
+            "continuing without Keycloak integration.",
+            extra={
+                **dependency_error_fields(exc, dependency="keycloak"),
+                "event": "startup.dependency.degraded",
+                "dependency": "keycloak",
+                "operation": "load_runtime_settings",
+                "status": "degraded",
+            },
+        )
+    await retry_async(
+        lambda: AsyncRedisPool.connect(_idempotency_config),
+        operation_name="connect",
+        dependency="redis",
+    )
+    dependency_registry.record_ok("redis", policy=DependencyPolicy.REQUIRED)
+    logger.info(
+        "Redis idempotency pool connected.",
+        extra={
+            "event": "startup.dependency.ok",
+            "dependency": "redis",
+            "operation": "connect",
+            "status": "ok",
+        },
+    )
     yield
     await AsyncRedisPool.close()
     await close_db_engine()
@@ -192,6 +275,7 @@ _idempotency_config = _build_idempotency_config()
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    configure_logging(service_name="user-service", log_level=settings.LOG_LEVEL)
 
     app = FastAPI(
         title="User Service",
@@ -225,6 +309,7 @@ def create_app() -> FastAPI:
         auth_base_router,
         auth_own_router,
         coarse_roles_router,
+        internal_audit_router,
         internal_settings_router,
         internal_user_memory_router,
         internal_user_router,
@@ -257,6 +342,7 @@ def create_app() -> FastAPI:
     app.include_router(organizations_router, prefix=API_PREFIX)
     app.include_router(user_organizations_router, prefix=API_PREFIX)
     app.include_router(system_settings_router, prefix=API_PREFIX)
+    app.include_router(internal_audit_router, prefix=API_PREFIX)
 
     return app
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import uuid as _uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -12,8 +11,9 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from core.db.models.mcp_tool import MCPToolModel
 from core.db.repositories.base import BaseRepository
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class MCPToolRepository(BaseRepository):
@@ -31,6 +31,8 @@ class MCPToolRepository(BaseRepository):
             "tool_metadata": row.tool_metadata or {},
             "category": row.category,
             "tags": row.tags or [],
+            "int_id": row.int_id,
+            "enabled": row.enabled,
             "is_active": row.is_active,
             "last_synced": row.last_synced.isoformat() if row.last_synced else None,
             "time_created": row.time_created.isoformat() if row.time_created else None,
@@ -81,6 +83,26 @@ class MCPToolRepository(BaseRepository):
         if row is None:
             return None
         return self._to_dict(row)
+
+    async def get_by_int_ids(self, int_ids: list[int]) -> list[dict[str, Any]]:
+        if not int_ids:
+            return []
+        async with self._session() as session:
+            stmt = select(MCPToolModel).where(MCPToolModel.int_id.in_(int_ids))
+            result = await session.execute(stmt)
+            rows = result.scalars().all()
+        return [self._to_dict(r) for r in rows]
+
+    async def set_enabled(self, int_ids: list[int], enabled: bool) -> int:
+        """Toggle ``enabled`` for the given tools. Returns affected row count."""
+        if not int_ids:
+            return 0
+        async with self._session() as session:
+            stmt = (
+                update(MCPToolModel).where(MCPToolModel.int_id.in_(int_ids)).values(enabled=enabled)
+            )
+            result = await session.execute(stmt)
+            return result.rowcount
 
     async def get_by_name(self, name: str, provider_id: str | None = None) -> dict[str, Any] | None:
         async with self._session() as session:
@@ -182,7 +204,7 @@ class MCPToolRepository(BaseRepository):
                         "description": description,
                         "input_schema": input_schema or {},
                         "output_schema": output_schema or {},
-                        "tool_metadata": tool_metadata or {},
+                        "metadata": tool_metadata or {},
                         "category": category,
                         "tags": tags or [],
                         "last_synced": now,
@@ -218,7 +240,7 @@ class MCPToolRepository(BaseRepository):
                         set_={
                             "description": tool.get("description", ""),
                             "input_schema": tool.get("input_schema", {}),
-                            "tool_metadata": tool.get("tool_metadata", {}),
+                            "metadata": tool.get("tool_metadata", {}),
                             "last_synced": now,
                         },
                     )
@@ -247,5 +269,14 @@ class MCPToolRepository(BaseRepository):
     async def deactivate(self, tool_id: str) -> bool:
         async with self._session() as session:
             stmt = update(MCPToolModel).where(MCPToolModel.id == tool_id).values(is_active=False)
+            result = await session.execute(stmt)
+            return result.rowcount > 0
+
+    async def set_active(self, tool_id: str, is_active: bool) -> bool:
+        """Enable or disable a tool. Returns True when a row was updated."""
+        async with self._session() as session:
+            stmt = (
+                update(MCPToolModel).where(MCPToolModel.id == tool_id).values(is_active=is_active)
+            )
             result = await session.execute(stmt)
             return result.rowcount > 0

@@ -31,19 +31,29 @@ function Main() {
 
   return (
     <div>
-      <Text className="mb-8">
-        {t("admin.performance.customAnalytics.pageDescription")}
-      </Text>
-
       <CustomAnalyticsUpdateForm />
     </div>
   );
 }
 
 export default function Page() {
+  const { t } = useTranslation();
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
+      <SettingsLayouts.Header
+        icon={route.icon}
+        title={
+          route.titleKey
+            ? t(route.titleKey, { defaultValue: route.title })
+            : route.title
+        }
+        description={
+          route.descriptionKey
+            ? t(route.descriptionKey, { defaultValue: route.description })
+            : route.description
+        }
+        separator
+      />
       <SettingsLayouts.Body>
         <Main />
       </SettingsLayouts.Body>

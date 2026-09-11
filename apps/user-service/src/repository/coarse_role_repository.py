@@ -1,6 +1,6 @@
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import bindparam, delete, select, text
 
 from src.core.database.models import RoleModel
 
@@ -25,6 +25,26 @@ class RoleRepository(BaseRepository):
         async with self._session() as session:
             result = await session.execute(select(RoleModel).where(RoleModel.name.in_(names)))
             return list(result.scalars().all())
+
+    async def get_permissions_by_names(self, names: list[str]) -> dict[str, list[str]]:
+        if not names:
+            return {}
+        async with self._session() as session:
+            result = await session.execute(
+                text(
+                    """
+                    SELECT role_name, permission_name
+                    FROM role_permissions
+                    WHERE role_name IN :names
+                    ORDER BY role_name, permission_name
+                    """
+                ).bindparams(bindparam("names", expanding=True)),
+                {"names": names},
+            )
+            permissions_by_role: dict[str, list[str]] = {name: [] for name in names}
+            for role_name, permission_name in result.fetchall():
+                permissions_by_role.setdefault(str(role_name), []).append(str(permission_name))
+            return permissions_by_role
 
     async def create(
         self,

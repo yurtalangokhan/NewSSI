@@ -1,7 +1,7 @@
 "use client";
 
 import { notFound } from "next/navigation";
-import { LoadingAnimation } from "@/components/Loading";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import { useMostReactedToDocuments } from "@/lib/hooks";
 import { DocumentFeedbackTable } from "./DocumentFeedbackTable";
 import { numPages, numToDisplay } from "./constants";
@@ -33,7 +33,22 @@ function Main() {
   };
 
   if (isMostLikedDocumentsLoading || isMostLikedDocumentLoading) {
-    return <LoadingAnimation text={t("admin.documentsFeedback.loading")} />;
+    return (
+      <div className="flex flex-col gap-6">
+        <div>
+          <Title className="mb-2">
+            {t("admin.documentsFeedback.mostLikedTitle")}
+          </Title>
+          <TableSkeleton rowCount={4} />
+        </div>
+        <div>
+          <Title className="mb-2 mt-6">
+            {t("admin.documentsFeedback.mostDislikedTitle")}
+          </Title>
+          <TableSkeleton rowCount={4} />
+        </div>
+      </div>
+    );
   }
 
   if (
@@ -76,7 +91,16 @@ export default function Page() {
 
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
+      <SettingsLayouts.Header
+        icon={route.icon}
+        title={t(route.titleKey || "", { defaultValue: route.title })}
+        description={
+          t(route.descriptionKey ?? "", {
+            defaultValue: route.description ?? "",
+          }) || undefined
+        }
+        separator
+      />
       <SettingsLayouts.Body>
         <AdminOverviewPanel
           icon={route.icon}
@@ -109,21 +133,6 @@ export default function Page() {
               value: t("admin.navigation.routes.documentExplorer.sidebar", {
                 defaultValue: "Explorer",
               }),
-            },
-          ]}
-          actions={[
-            {
-              label: t("admin.navigation.routes.documentExplorer.sidebar", {
-                defaultValue: "Explorer",
-              }),
-              href: ADMIN_PATHS.DOCUMENT_EXPLORER,
-            },
-            {
-              label: t("admin.navigation.routes.searchSettings.sidebar", {
-                defaultValue: "Search Settings",
-              }),
-              href: ADMIN_PATHS.SEARCH_SETTINGS,
-              primary: true,
             },
           ]}
         />

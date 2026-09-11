@@ -6,5 +6,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  return proxyToBackend(request, "/api/admin/user-providers", { method: "POST" });
+  return proxyToBackend(request, "/api/admin/user-providers", {
+    method: "POST",
+  });
 }

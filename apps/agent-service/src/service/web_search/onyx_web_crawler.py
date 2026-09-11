@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import email.utils
-import logging
 import os
 import random
 import time
@@ -11,6 +10,7 @@ from datetime import UTC, datetime
 
 import requests
 
+from core.logger import get_logger
 from models.web_search import RenderedPage
 from service.web_search.html_utils import ParsedHTML, web_html_cleanup
 from service.web_search.models import WebContent, WebContentProvider
@@ -28,7 +28,7 @@ from service.web_search.web_content import (
     title_from_url,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _env_flag_enabled(name: str, default: bool = False) -> bool:
@@ -195,9 +195,15 @@ def fetch_rendered_html(url: str) -> RenderedPage | None:
 
 
 def looks_like_cloudflare_challenge(html: str) -> bool:
-    from service.web_search.playwright_fetch import (
-        looks_like_cloudflare_challenge as _looks_like_cloudflare_challenge,
-    )
+    try:
+        from service.web_search.playwright_fetch import (
+            looks_like_cloudflare_challenge as _looks_like_cloudflare_challenge,
+        )
+    except ImportError:
+        # Pure HTML string inspection, but it lives beside the optional
+        # Playwright import. Without Playwright nothing could have rendered
+        # a challenge page anyway, so "not a challenge" is the safe answer.
+        return False
 
     return _looks_like_cloudflare_challenge(html)
 

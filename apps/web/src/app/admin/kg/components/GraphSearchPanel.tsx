@@ -14,7 +14,7 @@ import {
 import { toast } from "@/hooks/useToast";
 import { SvgSearch } from "@opal/icons";
 import { cn } from "@/lib/utils";
-import { ThreeDotsLoader } from "@/components/Loading";
+import ListSkeleton from "@/refresh-components/skeletons/ListSkeleton";
 import { useTranslation } from "react-i18next";
 
 const SEARCH_TYPES: {
@@ -65,7 +65,9 @@ export default function GraphSearchPanel({
       const res = await searchGraph(input);
       setResult(res);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("admin.kg.graphSearchFailed"));
+      toast.error(
+        e instanceof Error ? e.message : t("admin.kg.graphSearchFailed")
+      );
     } finally {
       setIsSearching(false);
     }
@@ -102,7 +104,12 @@ export default function GraphSearchPanel({
                   : "border-border-01 bg-background-tint-00 hover:bg-background-neutral-01"
               )}
             >
-              <Text as="span" mainUiAction text04 className="text-sm font-medium">
+              <Text
+                as="span"
+                mainUiAction
+                text04
+                className="text-sm font-medium"
+              >
                 {t(`admin.kg.searchTypes.${value}.label`)}
               </Text>
               <Text as="span" mainContentMuted text03 className="text-xs">
@@ -178,7 +185,12 @@ export default function GraphSearchPanel({
           />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <Text as="span" mainContentMuted text03 className="text-xs whitespace-nowrap">
+          <Text
+            as="span"
+            mainContentMuted
+            text03
+            className="text-xs whitespace-nowrap"
+          >
             {t("admin.kg.limit")}
           </Text>
           <input
@@ -203,8 +215,8 @@ export default function GraphSearchPanel({
 
       {/* Loading */}
       {isSearching && (
-        <div className="flex justify-center py-4">
-          <ThreeDotsLoader />
+        <div className="py-2">
+          <ListSkeleton itemCount={3} hasIcon={false} />
         </div>
       )}
 

@@ -299,6 +299,17 @@ services:
   # receives the original internal path (e.g. /api/v1/internal/users/...).
   # --------------------------------------------------------------------------
 
+  - name: internal-agent-connector-tools
+    url: __AGENT_SERVICE_UPSTREAM_URL__/api/v1/internal/connector-tools
+    routes:
+      - name: internal-agent-connector-tools
+        paths:
+          - /internal/agent-service/api/v1/internal/connector-tools
+        methods:
+          - POST
+        strip_path: true
+        preserve_host: true
+
   - name: internal-user-service
     url: __USER_SERVICE_UPSTREAM_URL__
     routes:

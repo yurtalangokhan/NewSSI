@@ -171,6 +171,42 @@ def test_decode_keycloak_token_translates_invalid_token_error(
     assert exc.value.detail == "Invalid bearer token: Signature verification failed"
 
 
+def test_decode_keycloak_token_disables_iat_verification(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(auth.config, "KEYCLOAK_ISSUER_URL", "https://issuer")
+
+    class _FakeSigningKey:
+        key = "signing-key"
+
+    class FakeJWKSClient:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+        def get_signing_key_from_jwt(self, token: str) -> _FakeSigningKey:
+            assert token == "sample-token"
+            return _FakeSigningKey()
+
+    def _decode(
+        jwt: str,
+        key: str,
+        algorithms: list[str],
+        issuer: str,
+        audience: list[str] | None,
+        leeway: int,
+        options: dict[str, object],
+    ) -> dict[str, str]:
+        assert key == "signing-key"
+        assert issuer == "https://issuer"
+        assert options["verify_iss"] is True
+        assert options["verify_exp"] is True
+        assert options["verify_iat"] is False
+        return {"sub": "keycloak-sub"}
+
+    monkeypatch.setattr(auth, "PyJWKClient", FakeJWKSClient)
+    monkeypatch.setattr(auth.jwt, "decode", _decode)
+
+    assert auth.decode_keycloak_token("sample-token") == {"sub": "keycloak-sub"}
+
+
 def test_decode_keycloak_token_error_is_translated_for_turkish_locale(
     monkeypatch: pytest.MonkeyPatch,
 ):

@@ -113,6 +113,13 @@ async def get_invited_users(
     return await get_user_controller().get_invited_users()
 
 
+@router.get("/role-distribution")
+async def get_role_distribution(
+    user_id: Annotated[str, Depends(require_permission("user:list"))],  # noqa: ARG001
+):
+    return await get_user_controller().get_role_distribution()
+
+
 @router.get("/download/csv")
 async def download_csv(
     user_id: Annotated[str, Depends(require_permission("user:list"))],  # noqa: ARG001

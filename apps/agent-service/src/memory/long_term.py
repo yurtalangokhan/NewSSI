@@ -15,14 +15,15 @@ SSE transport.
 """
 
 import json
-import logging
 from collections.abc import Callable, Coroutine
 from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.store.base import BaseStore
 
-logger = logging.getLogger(__name__)
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 # Keep these constants exported for any code that imports them directly
 MEMORY_NAMESPACE_PREFIX = "memories"

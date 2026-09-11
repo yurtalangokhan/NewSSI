@@ -32,6 +32,7 @@ import {
   SvgWallet,
   SvgZoomIn,
 } from "@opal/icons";
+import { hasAllPermissions } from "@/lib/auth/permissions";
 
 /**
  * Canonical path constants for every admin route.
@@ -85,6 +86,8 @@ interface AdminRouteConfig {
   requiredPermissions?: string[];
   titleKey?: string;
   sidebarLabelKey?: string;
+  description?: string;
+  descriptionKey?: string;
   // Defaults to true. Set to false to 404 the page and hide it from the
   // sidebar, e.g. for MVP-scoped-out features that will return later.
   enabled?: boolean;
@@ -102,6 +105,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["datasource:read"],
     titleKey: "admin.navigation.routes.indexingStatus.title",
     sidebarLabelKey: "admin.navigation.routes.indexingStatus.sidebar",
+    description:
+      "View and manage your configured data connectors and indexing status.",
+    descriptionKey: "admin.navigation.routes.indexingStatus.description",
   },
   [ADMIN_PATHS.ADD_CONNECTOR]: {
     icon: SvgUploadCloud,
@@ -110,6 +116,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["datasource:create"],
     titleKey: "admin.navigation.routes.addConnector.title",
     sidebarLabelKey: "admin.navigation.routes.addConnector.sidebar",
+    description:
+      "Connect new data sources and external services to ingest knowledge for your agents.",
+    descriptionKey: "admin.navigation.routes.addConnector.description",
   },
   [ADMIN_PATHS.DOCUMENT_SETS]: {
     icon: SvgFolder,
@@ -118,6 +127,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["collection:list"],
     titleKey: "admin.navigation.routes.documentSets.title",
     sidebarLabelKey: "admin.navigation.routes.documentSets.sidebar",
+    description:
+      "Group documents into collections to define knowledge scopes for agents and search.",
+    descriptionKey: "admin.navigation.routes.documentSets.description",
     enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.DOCUMENT_EXPLORER]: {
@@ -127,6 +139,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["document:search"],
     titleKey: "admin.navigation.routes.documentExplorer.title",
     sidebarLabelKey: "admin.navigation.routes.documentExplorer.sidebar",
+    description:
+      "Search, inspect, and verify indexed documents and their chunked contents.",
+    descriptionKey: "admin.navigation.routes.documentExplorer.description",
     enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.DOCUMENT_FEEDBACK]: {
@@ -136,15 +151,21 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["document:read"],
     titleKey: "admin.navigation.routes.documentFeedback.title",
     sidebarLabelKey: "admin.navigation.routes.documentFeedback.sidebar",
+    description:
+      "Review user ratings and feedback on document relevance and answer quality.",
+    descriptionKey: "admin.navigation.routes.documentFeedback.description",
     enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.AGENTS]: {
     icon: SvgOnyxOctagon,
     title: "Agents",
-    sidebarLabel: "Agents",
+    sidebarLabel: "Agents & Flows",
     requiredPermissions: ["agent:list"],
     titleKey: "admin.navigation.routes.agents.title",
     sidebarLabelKey: "admin.navigation.routes.agents.sidebar",
+    description:
+      "Create and manage AI agents equipped with custom instructions, tools, and knowledge sources.",
+    descriptionKey: "admin.navigation.routes.agents.description",
   },
   [ADMIN_PATHS.SLACK_BOTS]: {
     icon: SvgSlack,
@@ -153,6 +174,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["settings:read"],
     titleKey: "admin.navigation.routes.slackBots.title",
     sidebarLabelKey: "admin.navigation.routes.slackBots.sidebar",
+    description:
+      "Connect ATLAS to your Slack workspace and let users ask questions directly from Slack channels.",
+    descriptionKey: "admin.navigation.routes.slackBots.description",
   },
   [ADMIN_PATHS.DISCORD_BOTS]: {
     icon: SvgDiscordMono,
@@ -161,6 +185,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["settings:read"],
     titleKey: "admin.navigation.routes.discordBots.title",
     sidebarLabelKey: "admin.navigation.routes.discordBots.sidebar",
+    description:
+      "Connect ATLAS to your Discord servers. Users can ask questions directly in Discord channels.",
+    descriptionKey: "admin.navigation.routes.discordBots.description",
   },
   [ADMIN_PATHS.MCP_ACTIONS]: {
     icon: SvgMcp,
@@ -169,6 +196,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["mcp_tool:read"],
     titleKey: "admin.navigation.routes.mcpActions.title",
     sidebarLabelKey: "admin.navigation.routes.mcpActions.sidebar",
+    description:
+      "Connect MCP (Model Context Protocol) servers to add custom actions and tools for your agents.",
+    descriptionKey: "admin.navigation.routes.mcpActions.description",
   },
   [ADMIN_PATHS.OPENAPI_ACTIONS]: {
     icon: SvgActions,
@@ -177,6 +207,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["mcp_tool:read"],
     titleKey: "admin.navigation.routes.openapiActions.title",
     sidebarLabelKey: "admin.navigation.routes.openapiActions.sidebar",
+    description:
+      "Connect OpenAPI servers to add custom actions and tools for your agents.",
+    descriptionKey: "admin.navigation.routes.openapiActions.description",
     enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.STANDARD_ANSWERS]: {
@@ -186,6 +219,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["assistant:read"],
     titleKey: "admin.navigation.routes.standardAnswers.title",
     sidebarLabelKey: "admin.navigation.routes.standardAnswers.sidebar",
+    description:
+      "Configure predefined standard answers triggered by specific questions or keywords.",
+    descriptionKey: "admin.navigation.routes.standardAnswers.description",
   },
   [ADMIN_PATHS.GROUPS]: {
     icon: SvgUsers,
@@ -194,6 +230,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["user:list"],
     titleKey: "admin.navigation.routes.groups.title",
     sidebarLabelKey: "admin.navigation.routes.groups.sidebar",
+    description:
+      "Create and organize user groups to manage permissions and document access collectively.",
+    descriptionKey: "admin.navigation.routes.groups.description",
   },
   [ADMIN_PATHS.CHAT_PREFERENCES]: {
     icon: SvgBubbleText,
@@ -202,6 +241,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["settings:read"],
     titleKey: "admin.navigation.routes.chatPreferences.title",
     sidebarLabelKey: "admin.navigation.routes.chatPreferences.sidebar",
+    description:
+      "Configure default AI behaviors, team context, and chat preferences for your organization.",
+    descriptionKey: "admin.navigation.routes.chatPreferences.description",
     enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.LLM_MODELS]: {
@@ -211,6 +253,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["provider:read"],
     titleKey: "admin.navigation.routes.llmModels.title",
     sidebarLabelKey: "admin.navigation.routes.llmModels.sidebar",
+    description:
+      "Configure LLM providers, API keys, and default models used across the system.",
+    descriptionKey: "admin.navigation.routes.llmModels.description",
   },
   [ADMIN_PATHS.WEB_SEARCH]: {
     icon: SvgGlobe,
@@ -219,6 +264,8 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["web_search:manage"],
     titleKey: "admin.navigation.routes.webSearch.title",
     sidebarLabelKey: "admin.navigation.routes.webSearch.sidebar",
+    description: "Search settings for external search across the internet.",
+    descriptionKey: "admin.navigation.routes.webSearch.description",
   },
   [ADMIN_PATHS.IMAGE_GENERATION]: {
     icon: SvgImage,
@@ -227,6 +274,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["provider:read"],
     titleKey: "admin.navigation.routes.imageGeneration.title",
     sidebarLabelKey: "admin.navigation.routes.imageGeneration.sidebar",
+    description:
+      "Configure image generation models for users to generate images directly from the chat interface.",
+    descriptionKey: "admin.navigation.routes.imageGeneration.description",
     enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.CODE_INTERPRETER]: {
@@ -236,6 +286,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["settings:read"],
     titleKey: "admin.navigation.routes.codeInterpreter.title",
     sidebarLabelKey: "admin.navigation.routes.codeInterpreter.sidebar",
+    description:
+      "Secure, isolated Python runtime available for your LLM. See docs for more details.",
+    descriptionKey: "admin.navigation.routes.codeInterpreter.description",
     enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.MAIL_CONFIGS]: {
@@ -245,6 +298,8 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["settings:read"],
     titleKey: "admin.navigation.routes.mailConfigs.title",
     sidebarLabelKey: "admin.navigation.routes.mailConfigs.sidebar",
+    description: "Manage SMTP accounts that agents can use with send_email.",
+    descriptionKey: "admin.navigation.routes.mailConfigs.description",
   },
   [ADMIN_PATHS.SEARCH_SETTINGS]: {
     icon: SvgSearch,
@@ -253,6 +308,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["settings:read"],
     titleKey: "admin.navigation.routes.searchSettings.title",
     sidebarLabelKey: "admin.navigation.routes.searchSettings.sidebar",
+    description:
+      "Configure embedding models, reindexing options, and search retrieval quality settings.",
+    descriptionKey: "admin.navigation.routes.searchSettings.description",
     enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.DOCUMENT_PROCESSING]: {
@@ -262,6 +320,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["settings:read"],
     titleKey: "admin.navigation.routes.documentProcessing.title",
     sidebarLabelKey: "admin.navigation.routes.documentProcessing.sidebar",
+    description:
+      "Configure settings for the Document Processing & RAG Pipeline.",
+    descriptionKey: "admin.navigation.routes.documentProcessing.description",
   },
   [ADMIN_PATHS.KNOWLEDGE_GRAPH]: {
     icon: SvgNetworkGraph,
@@ -270,6 +331,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["graph:read"],
     titleKey: "admin.navigation.routes.knowledgeGraph.title",
     sidebarLabelKey: "admin.navigation.routes.knowledgeGraph.sidebar",
+    description:
+      "Build, inspect, and search entity graphs across your indexed knowledge sources.",
+    descriptionKey: "admin.navigation.routes.knowledgeGraph.description",
   },
   [ADMIN_PATHS.ORGANIZATIONS]: {
     icon: SvgUser,
@@ -278,6 +342,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["org:list"],
     titleKey: "admin.navigation.routes.organizations.title",
     sidebarLabelKey: "admin.navigation.routes.organizations.sidebar",
+    description:
+      "Manage your organizational hierarchy, department tree, and user assignments.",
+    descriptionKey: "admin.navigation.routes.organizations.description",
   },
   [ADMIN_PATHS.USERS]: {
     icon: SvgUser,
@@ -286,6 +353,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["user:list"],
     titleKey: "admin.navigation.routes.users.title",
     sidebarLabelKey: "admin.navigation.routes.users.sidebar",
+    description:
+      "Manage user accounts, send invitations, and configure user roles.",
+    descriptionKey: "admin.navigation.routes.users.description",
   },
   [ADMIN_PATHS.API_KEYS]: {
     icon: SvgKey,
@@ -294,6 +364,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["api_key:read"],
     titleKey: "admin.navigation.routes.apiKeys.title",
     sidebarLabelKey: "admin.navigation.routes.apiKeys.sidebar",
+    description:
+      "Generate and manage API keys for programmatic access to platform APIs.",
+    descriptionKey: "admin.navigation.routes.apiKeys.description",
     enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.ROLES]: {
@@ -303,6 +376,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["role:list", "role:read", "permission:list"],
     titleKey: "admin.navigation.routes.roles.title",
     sidebarLabelKey: "admin.navigation.routes.roles.sidebar",
+    description:
+      "Configure access roles and granular permissions for users and teams.",
+    descriptionKey: "admin.navigation.routes.roles.description",
   },
   [ADMIN_PATHS.TOKEN_RATE_LIMITS]: {
     icon: SvgShield,
@@ -311,6 +387,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["user:list"],
     titleKey: "admin.navigation.routes.tokenRateLimits.title",
     sidebarLabelKey: "admin.navigation.routes.tokenRateLimits.sidebar",
+    description:
+      "Manage token usage quotas and rate limits for users and groups.",
+    descriptionKey: "admin.navigation.routes.tokenRateLimits.description",
   },
   [ADMIN_PATHS.USAGE]: {
     icon: SvgActivity,
@@ -319,6 +398,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["audit_log:read"],
     titleKey: "admin.navigation.routes.usage.title",
     sidebarLabelKey: "admin.navigation.routes.usage.sidebar",
+    description:
+      "Monitor query volumes, user activity, and system usage statistics.",
+    descriptionKey: "admin.navigation.routes.usage.description",
   },
   [ADMIN_PATHS.QUERY_HISTORY]: {
     icon: SvgServer,
@@ -327,6 +409,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["audit_log:read"],
     titleKey: "admin.navigation.routes.queryHistory.title",
     sidebarLabelKey: "admin.navigation.routes.queryHistory.sidebar",
+    description:
+      "Inspect and review past search and chat queries made by users.",
+    descriptionKey: "admin.navigation.routes.queryHistory.description",
   },
   [ADMIN_PATHS.CUSTOM_ANALYTICS]: {
     icon: SvgBarChart,
@@ -335,6 +420,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["settings:read"],
     titleKey: "admin.navigation.routes.customAnalytics.title",
     sidebarLabelKey: "admin.navigation.routes.customAnalytics.sidebar",
+    description:
+      "Integrate third-party analytics tools to track user interactions and usage events.",
+    descriptionKey: "admin.navigation.routes.customAnalytics.description",
   },
   [ADMIN_PATHS.THEME]: {
     icon: SvgPaintBrush,
@@ -343,6 +431,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["settings:update"],
     titleKey: "admin.navigation.routes.theme.title",
     sidebarLabelKey: "admin.navigation.routes.theme.sidebar",
+    description:
+      "Customize how the application looks to users across your organization.",
+    descriptionKey: "admin.navigation.routes.theme.description",
   },
   [ADMIN_PATHS.BILLING]: {
     icon: SvgWallet,
@@ -351,6 +442,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["system.settings:read"],
     titleKey: "admin.navigation.routes.billing.title",
     sidebarLabelKey: "admin.navigation.routes.billing.sidebar",
+    description:
+      "Manage your subscription plan, seat licenses, and billing details.",
+    descriptionKey: "admin.navigation.routes.billing.description",
   },
   [ADMIN_PATHS.INDEX_MIGRATION]: {
     icon: SvgArrowExchange,
@@ -359,6 +453,9 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["system.settings:read"],
     titleKey: "admin.navigation.routes.indexMigration.title",
     sidebarLabelKey: "admin.navigation.routes.indexMigration.sidebar",
+    description:
+      "Monitor migration from Vespa to OpenSearch and control active ingestion source.",
+    descriptionKey: "admin.navigation.routes.indexMigration.description",
   },
   [ADMIN_PATHS.DEBUG]: {
     icon: SvgDownload,
@@ -367,14 +464,19 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["audit_log:read"],
     titleKey: "admin.navigation.routes.debug.title",
     sidebarLabelKey: "admin.navigation.routes.debug.sidebar",
+    description: "Review system debug logs and download diagnostic bundles.",
+    descriptionKey: "admin.navigation.routes.debug.description",
   },
   [ADMIN_PATHS.SYSTEM_SETTINGS]: {
     icon: SvgSettings,
     title: "System Settings",
     sidebarLabel: "System Settings",
-    requiredPermissions: ["*"],
+    requiredPermissions: ["system.settings:read"],
     titleKey: "admin.navigation.routes.systemSettings.title",
     sidebarLabelKey: "admin.navigation.routes.systemSettings.sidebar",
+    description:
+      "Manage global system configurations, session settings, and authentication preferences.",
+    descriptionKey: "admin.navigation.routes.systemSettings.description",
   },
   [ADMIN_PATHS.SYSTEM_INFO]: {
     icon: SvgServer,
@@ -383,8 +485,38 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["system.settings:read"],
     titleKey: "admin.navigation.routes.systemInfo.title",
     sidebarLabelKey: "admin.navigation.routes.systemInfo.sidebar",
+    description:
+      "View system version information and runtime environment details.",
+    descriptionKey: "admin.navigation.routes.systemInfo.description",
   },
 };
+
+export function canAccessAdminPanel(
+  permissions: readonly string[] | null | undefined
+): boolean {
+  return getFirstAccessibleAdminPath(permissions) !== null;
+}
+
+export function getFirstAccessibleAdminPath(
+  permissions: readonly string[] | null | undefined,
+  preferredPaths: readonly string[] = []
+): string | null {
+  const canAccessRoute = (path: string) => {
+    const route = ADMIN_ROUTE_CONFIG[path];
+    return Boolean(
+      route &&
+        route.enabled !== false &&
+        route.requiredPermissions?.length &&
+        hasAllPermissions(permissions, route.requiredPermissions)
+    );
+  };
+
+  return (
+    preferredPaths.find(canAccessRoute) ??
+    Object.keys(ADMIN_ROUTE_CONFIG).find(canAccessRoute) ??
+    null
+  );
+}
 
 /**
  * Helper that converts a route config entry into the `{ name, icon, link }`

@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
-import { ThreeDotsLoader } from "@/components/Loading";
+import ChartSkeleton from "@/refresh-components/skeletons/ChartSkeleton";
 import { getDatesList, useOnyxBotAnalytics } from "../lib";
 import { DateRangePickerValue } from "@/components/dateRangeSelectors/AdminDateRangeSelector";
-import Text from "@/components/ui/text";
+import Text from "@/refresh-components/texts/Text";
 import Title from "@/components/ui/title";
 import CardSection from "@/components/admin/CardSection";
 import { AreaChartDisplay } from "@/components/ui/areaChart";
@@ -21,11 +21,7 @@ export function OnyxBotChart({
 
   let chart;
   if (isOnyxBotAnalyticsLoading) {
-    chart = (
-      <div className="h-80 flex flex-col">
-        <ThreeDotsLoader />
-      </div>
-    );
+    chart = <ChartSkeleton height="h-64" barCount={8} />;
   } else if (
     !onyxBotAnalyticsData ||
     onyxBotAnalyticsData[0] == undefined ||
@@ -33,7 +29,9 @@ export function OnyxBotChart({
   ) {
     chart = (
       <div className="h-80 text-red-600 text-bold flex flex-col">
-        <p className="m-auto">{t("performanceCharts.failedFetchFeedback")}</p>
+        <Text as="p" className="m-auto">
+          {t("performanceCharts.failedFetchFeedback")}
+        </Text>
       </div>
     );
   } else {
@@ -60,8 +58,7 @@ export function OnyxBotChart({
           return {
             [dayLabel]: dateStr,
             [totalQueriesLabel]: onyxBotAnalyticsForDate?.total_queries || 0,
-            [autoResolvedLabel]:
-              onyxBotAnalyticsForDate?.auto_resolved || 0,
+            [autoResolvedLabel]: onyxBotAnalyticsForDate?.auto_resolved || 0,
           };
         })}
         categories={[totalQueriesLabel, autoResolvedLabel]}
@@ -75,7 +72,9 @@ export function OnyxBotChart({
   return (
     <CardSection className="mt-8">
       <Title>{t("performanceCharts.slackChannelTitle")}</Title>
-      <Text>{t("performanceCharts.totalVsAutoResolved")}</Text>
+      <Text as="p" className="text-sm">
+        {t("performanceCharts.totalVsAutoResolved")}
+      </Text>
       {chart}
     </CardSection>
   );

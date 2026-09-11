@@ -166,7 +166,9 @@ export default function AddMCPServerModal({
 
                 <InputLayouts.Vertical
                   name="description"
-                  title={`${t("admin.mcp.description")} (${t("admin.mcp.optional")})`}
+                  title={`${t("admin.mcp.description")} (${t(
+                    "admin.mcp.optional"
+                  )})`}
                 >
                   <InputTextAreaField
                     name="description"

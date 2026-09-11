@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 import { toast } from "@/hooks/useToast";
@@ -24,6 +26,7 @@ import { useTranslation } from "react-i18next";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
 import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
 import Text from "@/refresh-components/texts/Text";
+import Skeleton from "@/refresh-components/skeletons/Skeleton";
 import { EditProviderModal } from "@/sections/modals/llmConfig/EditProviderModal";
 
 type TestStatus = "idle" | "testing" | "ok" | "error";
@@ -51,11 +54,16 @@ interface Props {
 
 const GROUP = (id: string) => `url-provider-${id}`;
 
-function ModelLoadingSpinner({ loadingLabel }: { loadingLabel: string }) {
+function ModelLoadingSkeleton() {
   return (
-    <div className="flex items-center justify-center gap-2 px-3 py-4 text-sm text-muted-foreground">
-      <SvgRefreshCw className="h-4 w-4 animate-spin" />
-      <span>{loadingLabel}</span>
+    <div className="flex flex-col gap-2 p-3">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-4 w-28 rounded-08" />
+        <Skeleton className="h-4 w-12 rounded-08" />
+      </div>
+      <Skeleton className="h-8 w-full rounded-08" />
+      <Skeleton className="h-8 w-full rounded-08" />
+      <Skeleton className="h-8 w-4/5 rounded-08" />
     </div>
   );
 }
@@ -155,15 +163,18 @@ export function UrlProviderCard({
   const handleTest = async () => {
     setTestStatus("testing");
     try {
-      const res = await fetch("/api/admin/providers/test-connection", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider_type: provider.provider_type,
-          base_url: provider.base_url,
-          provider_id: provider.id,
-        }),
-      });
+      const res = await authenticatedFetch(
+        "/api/admin/providers/test-connection",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provider_type: provider.provider_type,
+            base_url: provider.base_url,
+            provider_id: provider.id,
+          }),
+        }
+      );
       const data = await res.json();
       setTestLatency(data.latency_ms ?? null);
       if (data.success) {
@@ -215,7 +226,7 @@ export function UrlProviderCard({
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const res = await fetch(
+      const res = await authenticatedFetch(
         `/api/admin/providers/${provider.id}/sync-models`,
         {
           method: "POST",
@@ -254,9 +265,12 @@ export function UrlProviderCard({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/admin/providers/${provider.id}`, {
-        method: "DELETE",
-      });
+      const res = await authenticatedFetch(
+        `/api/admin/providers/${provider.id}`,
+        {
+          method: "DELETE",
+        }
+      );
       if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
       toast({ message: t("admin.llm.providerDeletedSuccess") });
       deleteModal.toggle(false);
@@ -409,17 +423,18 @@ export function UrlProviderCard({
           {expanded && (
             <div className="w-full mt-1 pt-2 border-t border-border">
               {modelsLoading ? (
-                <ModelLoadingSpinner
-                  loadingLabel={t("admin.llm.loadingModels")}
-                />
+                <ModelLoadingSkeleton />
               ) : displayModels.length > 0 ? (
                 <div className="flex flex-col gap-0.5">
                   <div className="flex items-center justify-between px-1 mb-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    <Text
+                      as="p"
+                      className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+                    >
                       {t("admin.llm.modelsCount", {
                         count: displayModels.length,
                       })}
-                    </p>
+                    </Text>
                     {!readOnly && (
                       <button
                         type="button"
@@ -466,9 +481,9 @@ export function UrlProviderCard({
                 </div>
               ) : (
                 <div className="flex items-center justify-between px-1 py-1">
-                  <p className="text-sm text-muted-foreground">
+                  <Text as="p" className="text-sm text-muted-foreground">
                     {t("app.llmPopover.noModelsFound")}
-                  </p>
+                  </Text>
                   {!readOnly && (
                     <button
                       type="button"

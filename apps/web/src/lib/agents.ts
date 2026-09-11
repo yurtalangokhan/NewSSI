@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import {
   AgentId,
   MinimalPersonaSnapshot,
@@ -22,10 +23,30 @@ export const UNKNOWN_AGENT_OWNER_EMAIL = "Unknown user";
 export function resolveAgentOwnerEmail(
   email: string | null | undefined,
   t: (key: string) => string,
-  fallback = "Onyx"
+  fallback = "Onyx",
+  ownerId?: string | null,
+  currentUser?: { id?: string; email?: string } | null
 ): string {
+  if (
+    ownerId &&
+    currentUser?.id &&
+    ownerId === currentUser.id &&
+    currentUser.email
+  ) {
+    return currentUser.email;
+  }
   if (!email) return fallback;
-  if (email === UNKNOWN_AGENT_OWNER_EMAIL) return t("agentsPage.unknownOwner");
+  if (email === UNKNOWN_AGENT_OWNER_EMAIL) {
+    if (
+      ownerId &&
+      currentUser?.id &&
+      ownerId === currentUser.id &&
+      currentUser.email
+    ) {
+      return currentUser.email;
+    }
+    return t("agentsPage.unknownOwner");
+  }
   return email;
 }
 
@@ -71,7 +92,7 @@ export function checkUserIdOwnsAgent(
  */
 export async function pinAgents(pinnedAgentIds: number[]) {
   // TODO: rename to agent — https://linear.app/onyx-app/issue/ENG-3766
-  const response = await fetch(`/api/user/pinned-assistants`, {
+  const response = await authenticatedFetch(`/api/user/pinned-assistants`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -112,7 +133,7 @@ export async function deleteAgent(agentId: AgentId): Promise<string | null> {
       typeof agentId === "string"
         ? `/api/agent-definitions/${agentId}`
         : `/api/persona/${agentId}`;
-    const response = await fetch(endpoint, {
+    const response = await authenticatedFetch(endpoint, {
       method: "DELETE",
     });
 
@@ -163,7 +184,7 @@ export async function updateAgentSharedStatus(
   }
 
   try {
-    const response = await fetch(`/api/persona/${agentId}/share`, {
+    const response = await authenticatedFetch(`/api/persona/${agentId}/share`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -201,7 +222,7 @@ export async function updateAgentLabels(
   labelIds: number[]
 ): Promise<string | null> {
   try {
-    const response = await fetch(`/api/persona/${agentId}/share`, {
+    const response = await authenticatedFetch(`/api/persona/${agentId}/share`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ label_ids: labelIds }),
@@ -231,11 +252,14 @@ export async function updateAgentFeaturedStatus(
   isFeatured: boolean
 ): Promise<string | null> {
   try {
-    const response = await fetch(`/api/admin/persona/${agentId}/featured`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ featured: isFeatured }),
-    });
+    const response = await authenticatedFetch(
+      `/api/admin/persona/${agentId}/featured`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ featured: isFeatured }),
+      }
+    );
 
     if (response.ok) {
       return null;

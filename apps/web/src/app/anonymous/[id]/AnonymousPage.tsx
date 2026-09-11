@@ -1,8 +1,11 @@
 "use client";
+
+import { authenticatedFetch } from "@/lib/fetcher";
 import { redirect } from "next/navigation";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
+import Skeleton from "@/refresh-components/skeletons/Skeleton";
 
 export default function AnonymousPage({
   anonymousPath,
@@ -12,7 +15,7 @@ export default function AnonymousPage({
   const { t } = useTranslation("common", { keyPrefix: "anonymousPage" });
   const loginAsAnonymousUser = async () => {
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `/api/tenants/anonymous-user?anonymous_user_path=${encodeURIComponent(
           anonymousPath
         )}`,
@@ -48,7 +51,7 @@ export default function AnonymousPage({
           {t("redirecting")}
         </Text>
         <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-background-800"></div>
+          <Skeleton className="h-12 w-12 rounded-full" />
         </div>
         <Text as="p" className="mt-4 text-text-600 text-center">
           {t("settingUpSession")}

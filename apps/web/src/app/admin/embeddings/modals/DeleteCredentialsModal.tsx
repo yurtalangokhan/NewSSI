@@ -37,7 +37,10 @@ export default function DeleteCredentialsModal({
               provider: getFormattedProviderName(modelProvider.provider_type),
             })}
           </Text>
-          <Callout type="danger" title={t("admin.embeddings.pointOfNoReturn")} />
+          <Callout
+            type="danger"
+            title={t("admin.embeddings.pointOfNoReturn")}
+          />
         </Modal.Body>
         <Modal.Footer>
           <Button secondary onClick={onCancel}>

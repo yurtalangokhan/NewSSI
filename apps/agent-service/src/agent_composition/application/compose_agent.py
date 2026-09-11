@@ -82,10 +82,11 @@ class AgentFactory:
         """
         from agents.dynamic_agent import DynamicAgent
 
-        if gateway is None:
-            agent = DynamicAgent(agent_config=definition_config)
-        else:
-            agent = DynamicAgent(agent_config=definition_config, gateway=gateway)
+        agent = DynamicAgent(
+            agent_config=definition_config,
+            gateway=gateway,
+            definition_repository=repository,
+        )
         if checkpointer is not None:
             agent._checkpointer = checkpointer
         await agent.load()

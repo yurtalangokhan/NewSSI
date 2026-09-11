@@ -217,6 +217,9 @@ services:
       - /tmp/airbyte_local:/tmp/airbyte_local
       - airbyte-workspace:/tmp/workspace
     environment:
+      MICRONAUT_ENVIRONMENTS: control-plane
+      WORKSPACE_DOCKER_MOUNT: langgraph-with-ui_airbyte-workspace
+      LOCAL_DOCKER_MOUNT: ${AIRBYTE_LOCAL_ROOT}
       AIRBYTE_VERSION: ${AIRBYTE_VERSION}
       DATABASE_URL: ${AIRBYTE_DATABASE_URL}
       DATABASE_USER: ${AIRBYTE_DB_USER}
@@ -243,6 +246,8 @@ services:
       airbyte-server:
         condition: service_healthy
     environment:
+      # Community deployment placeholder required by the image's Nginx template.
+      KEYCLOAK_INTERNAL_HOST: localhost
       INTERNAL_API_HOST: ${AIRBYTE_INTERNAL_API_HOST}
       CONNECTOR_BUILDER_API_HOST: ${AIRBYTE_CONNECTOR_BUILDER_API_HOST}
       AIRBYTE_VERSION: ${AIRBYTE_VERSION}

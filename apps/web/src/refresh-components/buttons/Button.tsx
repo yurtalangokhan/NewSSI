@@ -38,16 +38,16 @@ const BUTTON_SIZE_CLASS_MAP = {
   lg: {
     button: "p-2 rounded-12 gap-1.5",
     content: {
-      left: "pr-1",
-      right: "pl-1",
+      left: "pl-1",
+      right: "pr-1",
       none: "",
     },
   },
   md: {
-    button: "p-1 rounded-08 gap-0",
+    button: "p-1 rounded-08 gap-1",
     content: {
-      left: "pr-1 py-0.5",
-      right: "pl-1 py-0.5",
+      left: "pl-1 py-0.5",
+      right: "pr-1 py-0.5",
       none: "py-0.5",
     },
   },
@@ -106,7 +106,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const textClass = `button-${variant}-${subvariant}-text`;
     const iconClass = `button-${variant}-${subvariant}-icon`;
     const iconPlacement = LeftIcon ? "left" : RightIcon ? "right" : "none";
-    const sizeClasses = BUTTON_SIZE_CLASS_MAP[size];
+    const sizeClasses =
+      BUTTON_SIZE_CLASS_MAP[size as "lg" | "md"] ?? BUTTON_SIZE_CLASS_MAP.md;
     const textSizeProps =
       size === "md"
         ? { secondaryAction: true as const }

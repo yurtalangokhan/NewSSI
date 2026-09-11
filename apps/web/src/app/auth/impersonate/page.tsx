@@ -12,6 +12,7 @@ import { TextFormField } from "@/components/Field";
 import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
 import { useTranslation } from "react-i18next";
+import { idempotentFetch } from "@/lib/api/idempotency";
 
 const ImpersonateSchema = Yup.object().shape({
   email: Yup.string().email("Invalid email").required("Required"),
@@ -35,7 +36,7 @@ export default function ImpersonatePage() {
     helpers: FormikHelpers<{ email: string; apiKey: string }>
   ) => {
     try {
-      const response = await fetch("/api/tenants/impersonate", {
+      const response = await idempotentFetch("/api/tenants/impersonate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

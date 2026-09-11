@@ -6,13 +6,13 @@ GET /threads/{id}/state, PATCH /threads/{id}, DELETE /threads/{id}
 """
 
 import asyncio
-import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from i18n import t
 
 from api.dependencies import require_permission, require_user
 from controller import ThreadController, get_thread_controller
+from core.logger import get_logger
 from models.threads import (
     ThreadCreateRequest,
     ThreadSearchRequest,
@@ -20,7 +20,7 @@ from models.threads import (
 )
 from service.CheckpointerService import get_checkpointer
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/threads", tags=["threads"], dependencies=[Depends(require_user)])
 

@@ -15,6 +15,14 @@ class UserInput(BaseModel):
         default=None,
         description="List of messages to pass to the agent.",
     )
+    resume_payload: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Structured value to resume an interrupted run with (e.g. a Human "
+            'Input decision: {"decision": "approve"}). Takes priority over '
+            "`message` when the run is paused at an interrupt."
+        ),
+    )
     model: str | None = Field(
         default=None,
         description="LLM Model to use for the agent. Defaults to the default model set in the settings of the service.",

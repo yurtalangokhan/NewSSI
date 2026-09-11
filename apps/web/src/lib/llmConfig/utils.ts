@@ -1,3 +1,4 @@
+export { isEmbeddingModel, isChatModel } from "./modelClassification";
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import {
   DefaultModel,
@@ -177,19 +178,43 @@ export const findModelInModelConfigurations = (
   return modelConfigurations.find((m) => m.name === modelName) || null;
 };
 
+/** Whether `hint` names this provider by any handle a caller might hold: its
+ * descriptor display name, its provider *type* ("ollama"), or its id/UUID. Flow
+ * `LLMModel`/`OllamaModel` nodes store `values.provider` as the type or id,
+ * never the display name, so all three have to match. */
+const providerMatchesHint = (
+  provider: LLMProviderDescriptor,
+  hint: string
+): boolean => {
+  const needle = hint.trim().toLowerCase();
+  if (!needle) {
+    return false;
+  }
+  return (
+    provider.name?.toLowerCase() === needle ||
+    provider.provider?.toLowerCase() === needle ||
+    provider.provider_display_name?.toLowerCase() === needle ||
+    String(provider.id).toLowerCase() === needle
+  );
+};
+
 export const findModelConfiguration = (
   llmProviders: LLMProviderDescriptor[],
   modelName: string,
   providerName: string | null = null
 ): ModelConfiguration | null => {
-  if (providerName) {
-    const provider = llmProviders.find((p) => p.name === providerName);
-    return provider
-      ? findModelInModelConfigurations(provider.model_configurations, modelName)
-      : null;
-  }
+  // Treat `providerName` as a hint that reorders the search rather than a hard
+  // filter: try the providers it names first, then fall back to a full scan so
+  // the lookup never fails closed when the hint doesn't line up with any
+  // descriptor field (e.g. a flow node storing the provider type or id).
+  const orderedProviders = providerName
+    ? [
+        ...llmProviders.filter((p) => providerMatchesHint(p, providerName)),
+        ...llmProviders.filter((p) => !providerMatchesHint(p, providerName)),
+      ]
+    : llmProviders;
 
-  for (const provider of llmProviders) {
+  for (const provider of orderedProviders) {
     const modelConfiguration = findModelInModelConfigurations(
       provider.model_configurations,
       modelName
@@ -213,6 +238,87 @@ export const modelSupportsImageInput = (
     providerName
   );
   return modelConfiguration?.supports_image_input || false;
+};
+
+/** Flow-canvas node types that carry a resolvable chat model
+ * (apps/agent-service/src/agents/graphs/flow_builder.py `_MODEL_RESOURCE_TYPES`). */
+const FLOW_MODEL_NODE_TYPES = new Set(["LLMModel", "OllamaModel"]);
+
+export interface FlowModelRef {
+  model: string;
+  provider: string | null;
+}
+
+type FlowSpecLike =
+  | {
+      nodes?: Array<{ type?: string; values?: Record<string, unknown> | null }>;
+    }
+  | null
+  | undefined;
+
+/**
+ * Collects every chat model a flow-backed agent could actually run, mirroring
+ * the backend's resolution in `flow_builder._resolve_model` / `_select_model`:
+ *
+ * - Each `LLMModel` / `OllamaModel` resource node resolves to its `values.model`,
+ *   or the system default model when that field is unset.
+ * - An agent node without a wired model resource falls back to the system
+ *   default. That only matters when the flow has zero model nodes (every agent
+ *   uses the default) or several (an unwired agent may use the default), so the
+ *   default is added to the set unless there is exactly one model node.
+ *
+ * Returns an empty array when the spec is missing or has no nodes — callers
+ * treat that as "capability unknown".
+ */
+export const collectFlowModelRefs = (
+  flowSpec: FlowSpecLike,
+  defaultModelName: string
+): FlowModelRef[] => {
+  const nodes = flowSpec?.nodes;
+  if (!nodes || nodes.length === 0) {
+    return [];
+  }
+
+  const modelNodes = nodes.filter(
+    (node) => node?.type != null && FLOW_MODEL_NODE_TYPES.has(node.type)
+  );
+
+  const refs: FlowModelRef[] = modelNodes.map((node) => {
+    const values = node.values ?? {};
+    const rawModel =
+      typeof values.model === "string" ? values.model.trim() : "";
+    const rawProvider =
+      typeof values.provider === "string" ? values.provider.trim() : "";
+    return {
+      model: rawModel || defaultModelName,
+      provider: rawProvider || null,
+    };
+  });
+
+  if (modelNodes.length !== 1) {
+    refs.push({ model: defaultModelName, provider: null });
+  }
+
+  return refs;
+};
+
+/**
+ * Whether a flow-backed agent can accept image input: true only when *every*
+ * model it could run supports vision. Returns false while the flow spec is
+ * still loading or failed to load (empty ref set) — the conservative default.
+ */
+export const flowModelsSupportImageInput = (
+  llmProviders: LLMProviderDescriptor[],
+  flowSpec: FlowSpecLike,
+  defaultModelName: string
+): boolean => {
+  const refs = collectFlowModelRefs(flowSpec, defaultModelName);
+  if (refs.length === 0) {
+    return false;
+  }
+  return refs.every((ref) =>
+    modelSupportsImageInput(llmProviders, ref.model, ref.provider)
+  );
 };
 
 export function getDisplayName(

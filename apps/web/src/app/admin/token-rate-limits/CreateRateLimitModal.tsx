@@ -115,9 +115,18 @@ export default function CreateRateLimitModal({
                     name="target_scope"
                     label={t("admin.tokenRateLimits.targetScopeLabel")}
                     options={[
-                      { name: t("admin.tokenRateLimits.scopeGlobal"), value: Scope.GLOBAL },
-                      { name: t("admin.tokenRateLimits.scopeUser"), value: Scope.USER },
-                      { name: t("admin.tokenRateLimits.scopeUserGroup"), value: Scope.USER_GROUP },
+                      {
+                        name: t("admin.tokenRateLimits.scopeGlobal"),
+                        value: Scope.GLOBAL,
+                      },
+                      {
+                        name: t("admin.tokenRateLimits.scopeUser"),
+                        value: Scope.USER,
+                      },
+                      {
+                        name: t("admin.tokenRateLimits.scopeUserGroup"),
+                        value: Scope.USER_GROUP,
+                      },
                     ]}
                     includeDefault={false}
                     onSelect={(selected) => {

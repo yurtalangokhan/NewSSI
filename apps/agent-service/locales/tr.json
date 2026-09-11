@@ -25,7 +25,9 @@
   "persona": {
     "not_found": "Persona bulunamadı",
     "cannot_update_builtin": "Yerleşik temsilciler güncellenemez",
-    "cannot_delete_builtin": "Yerleşik temsilciler silinemez"
+    "cannot_delete_builtin": "Yerleşik temsilciler silinemez",
+    "image_must_be_an_image": "Avatar bir görsel dosyası olmalıdır",
+    "image_is_empty": "Yüklenen görsel boş"
   },
   "file": {
     "not_found": "Dosya bulunamadı.",
@@ -106,19 +108,20 @@
   "mailConfig": {
     "notFound": "Posta yapılandırması bulunamadı",
     "attachedToAgent": "Posta yapılandırması bir temsilciye bağlı",
-    "attachmentRequired": "Ek dosya adı ve içeriği gereklidir.",
-    "recipientSubjectBodyRequired": "E-posta göndermeden önce alıcı, konu ve gövde gereklidir.",
-    "attachmentInvalid": "E-posta eki verisi geçersiz.",
     "smtpAuthFailedDetail": "SMTP kimlik doğrulaması başarısız oldu: {detail}",
-    "smtpAuthFailed": "SMTP kimlik doğrulaması başarısız oldu.",
     "smtpConnectionFailed": "SMTP sunucusuna ulaşılamadı: {error}",
     "recipientsRejected": "SMTP sunucusu alıcılardan birini veya daha fazlasını reddetti.",
-    "testRecipientRejected": "SMTP sunucusu test alıcısını reddetti.",
     "messageRejected": "SMTP sunucusu mesajı reddetti: {error}",
-    "testMessageRejected": "SMTP sunucusu test mesajını reddetti: {error}",
     "emailSent": "E-posta gönderildi.",
     "testEmailSent": "Test e-postası gönderildi.",
     "emailFailed": "E-posta gönderilemedi: {detail}",
-    "testEmailFailed": "Test e-postası gönderilemedi: {detail}"
+    "testEmailFailed": "Test e-postası gönderilemedi: {detail}",
+    "personalVerificationSubject": "Agentic AI SMTP Doğrulaması",
+    "personalVerificationBody": "Bu test e-postası, kişisel SMTP bilgilerinizin geçerli olduğunu ve e-posta gönderebildiğini doğrular.",
+    "personalVerificationSent": "Test e-postası başarıyla gönderildi!",
+    "personalVerificationFailed": "Test e-postası gönderilemedi: {detail}",
+    "adminTestSubject": "Agentic AI SMTP Testi",
+    "adminTestBody": "Bu test e-postası, SMTP yapılandırmanızın e-posta gönderebildiğini doğrular.",
+    "selectionUnavailable": "Seçilen e-posta yapılandırması kullanılamıyor. Ayarlar > E-posta bölümünden etkin bir yapılandırma seçin."
   }
 }

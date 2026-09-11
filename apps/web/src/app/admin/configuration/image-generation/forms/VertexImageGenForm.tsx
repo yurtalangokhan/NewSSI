@@ -101,10 +101,15 @@ function VertexFormFields(
               <FormField.APIMessage
                 state={apiStatus}
                 messages={{
-                  loading: t("admin.imageGeneration.forms.vertex.testingCredentials", {
-                    name: imageProvider.title,
-                  }),
-                  success: t("admin.imageGeneration.forms.vertex.credentialsValid"),
+                  loading: t(
+                    "admin.imageGeneration.forms.vertex.testingCredentials",
+                    {
+                      name: imageProvider.title,
+                    }
+                  ),
+                  success: t(
+                    "admin.imageGeneration.forms.vertex.credentialsValid"
+                  ),
                   error:
                     errorMessage ||
                     t("admin.imageGeneration.forms.vertex.credentialsInvalid"),

@@ -2,7 +2,7 @@
 import { use } from "react";
 
 import { useTranslation } from "react-i18next";
-import Text from "@/components/ui/text";
+import Text from "@/refresh-components/texts/Text";
 import Title from "@/components/ui/title";
 import Separator from "@/refresh-components/Separator";
 import { ChatSessionSnapshot, MessageSnapshot } from "../../usage/types";
@@ -13,27 +13,29 @@ import { FeedbackBadge } from "../FeedbackBadge";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import useSWR from "swr";
 import { ErrorCallout } from "@/components/ErrorCallout";
-import { ThreeDotsLoader } from "@/components/Loading";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import CardSection from "@/components/admin/CardSection";
 
 function MessageDisplay({ message }: { message: MessageSnapshot }) {
   const { t } = useTranslation("common", { keyPrefix: "admin" });
   return (
     <div>
-      <p className="text-xs font-bold mb-1">
+      <Text as="p" className="text-xs font-bold mb-1">
         {message.message_type === "user"
           ? t("queryHistoryDetail.user")
           : t("queryHistoryDetail.ai")}
-      </p>
-      <Text>{message.message}</Text>
+      </Text>
+      <Text as="p" className="text-sm">
+        {message.message}
+      </Text>
       {message.documents.length > 0 && (
         <div className="flex flex-col gap-y-2 mt-2">
-          <p className="font-bold text-xs">
+          <Text as="p" className="font-bold text-xs">
             {t("queryHistoryDetail.referenceDocuments")}
-          </p>
+          </Text>
           {message.documents.slice(0, 5).map((document) => {
             return (
-              <Text className="flex" key={document.document_id}>
+              <Text as="p" className="text-sm flex" key={document.document_id}>
                 <FiBook
                   className={
                     "my-auto mr-1" + (document.link ? " text-link" : " ")
@@ -58,10 +60,14 @@ function MessageDisplay({ message }: { message: MessageSnapshot }) {
       )}
       {message.feedback_type && (
         <div className="mt-2">
-          <p className="font-bold text-xs">
+          <Text as="p" className="font-bold text-xs">
             {t("queryHistoryDetail.feedback")}
-          </p>
-          {message.feedback_text && <Text>{message.feedback_text}</Text>}
+          </Text>
+          {message.feedback_text && (
+            <Text as="p" className="text-sm">
+              {message.feedback_text}
+            </Text>
+          )}
           <div className="mt-1">
             <FeedbackBadge feedback={message.feedback_type} />
           </div>
@@ -85,7 +91,11 @@ export default function QueryPage(props: { params: Promise<{ id: string }> }) {
   );
 
   if (isLoading) {
-    return <ThreeDotsLoader />;
+    return (
+      <div className="p-6">
+        <FormSkeleton fieldCount={4} />
+      </div>
+    );
   }
 
   if (!chatSessionSnapshot || error) {
@@ -104,10 +114,16 @@ export default function QueryPage(props: { params: Promise<{ id: string }> }) {
       <CardSection className="mt-4">
         <Title>{t("queryHistoryDetail.chatSessionDetails")}</Title>
 
-        <Text className="flex flex-wrap whitespace-normal mt-1 text-sm">
+        <Text
+          as="p"
+          className="text-sm flex flex-wrap whitespace-normal mt-1 text-sm"
+        >
           {chatSessionSnapshot.assistant_name}
         </Text>
-        <Text className="flex flex-wrap whitespace-normal mt-1 text-xs">
+        <Text
+          as="p"
+          className="text-sm flex flex-wrap whitespace-normal mt-1 text-xs"
+        >
           {chatSessionSnapshot.user_email &&
             `${chatSessionSnapshot.user_email}, `}
           {timestampToReadableDate(chatSessionSnapshot.time_created)},{" "}

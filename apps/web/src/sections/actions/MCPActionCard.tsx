@@ -7,6 +7,7 @@ import React, {
   useRef,
   useCallback,
 } from "react";
+import { useRouter } from "next/navigation";
 import ActionCard from "@/sections/actions/ActionCard";
 import Actions from "@/sections/actions/Actions";
 import ToolItem from "@/sections/actions/ToolItem";
@@ -103,6 +104,7 @@ export default function MCPActionCard({
   className,
 }: MCPActionCardProps) {
   const { t } = useTranslation();
+  const router = useRouter();
   const [isToolsExpanded, setIsToolsExpanded] = useState(initialExpanded);
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyEnabled, setShowOnlyEnabled] = useState(false);
@@ -320,6 +322,13 @@ export default function MCPActionCard({
               onToggle={(enabled) =>
                 onToolToggle?.(serverId, tool.id, enabled, mutate)
               }
+              onTest={() =>
+                router.push(
+                  `/tools/playground?server=${serverId}&tool=${encodeURIComponent(
+                    tool.name
+                  )}&serverName=${encodeURIComponent(server.name)}`
+                )
+              }
               variant="mcp"
             />
           ))}
@@ -354,10 +363,9 @@ export default function MCPActionCard({
           <div className="flex flex-col gap-4">
             <Text as="p" text03>
               {t("admin.mcp.deleteServerWarning", { name: title })}
-              {t("admin.mcp.deleteServerConfirm")}
             </Text>
             <Text as="p" text03>
-              Are you sure you want to delete this MCP server?
+              {t("admin.mcp.deleteServerConfirm")}
             </Text>
           </div>
         </Modal>

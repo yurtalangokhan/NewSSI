@@ -5,16 +5,16 @@ combining document-processing collections (Milvus vector search) with knowledge-
 collections (Neo4j).
 """
 
-import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 
 from langconnect.auth import AuthenticatedUser, require_permission
 from langconnect.database.neo4j import GraphStore
+from langconnect.observability import get_logger
 from langconnect.services.collections import CollectionsManager
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/datasources", tags=["datasources"])
 

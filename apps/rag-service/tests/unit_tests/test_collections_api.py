@@ -37,7 +37,9 @@ async def test_create_and_get_collection() -> None:
     async with get_async_test_client() as client:
         payload = {"name": "test_collection", "metadata": {"purpose": "unit-test"}}
         response = await client.post(
-            "/api/v1/collections", json=payload, headers=USER_1_HEADERS
+            "/api/v1/collections",
+            json=payload,
+            headers=idempotency_headers(USER_1_HEADERS, "col-create-get"),
         )
         assert response.status_code == 201, (
             f"Failed with error message: {response.text}"
@@ -56,7 +58,9 @@ async def test_create_and_get_collection() -> None:
         # Test without metadata
         payload_no_metadata = {"name": "test_collection_no_metadata"}
         response_no_metadata = await client.post(
-            "/api/v1/collections", json=payload_no_metadata, headers=USER_1_HEADERS
+            "/api/v1/collections",
+            json=payload_no_metadata,
+            headers=idempotency_headers(USER_1_HEADERS, "col-create-no-metadata"),
         )
         assert response_no_metadata.status_code == 201, (
             f"Failed with error message: {response_no_metadata.text}"
@@ -76,7 +80,9 @@ async def test_create_and_list_collection() -> None:
     async with get_async_test_client() as client:
         payload = {"name": "test_collection", "metadata": {"purpose": "unit-test"}}
         response = await client.post(
-            "/api/v1/collections", json=payload, headers=USER_1_HEADERS
+            "/api/v1/collections",
+            json=payload,
+            headers=idempotency_headers(USER_1_HEADERS, "col-create-list"),
         )
         assert response.status_code == 201, (
             f"Failed with error message: {response.text}"
@@ -99,13 +105,17 @@ async def test_create_collections_with_identical_names() -> None:
         payload = {"name": "dup_collection", "metadata": {"foo": "bar"}}
         # first create
         r1 = await client.post(
-            "/api/v1/collections", json=payload, headers=USER_1_HEADERS
+            "/api/v1/collections",
+            json=payload,
+            headers=idempotency_headers(USER_1_HEADERS, "col-dup-1"),
         )
         assert r1.status_code == 201
 
         # second create with same name
         r2 = await client.post(
-            "/api/v1/collections", json=payload, headers=USER_1_HEADERS
+            "/api/v1/collections",
+            json=payload,
+            headers=idempotency_headers(USER_1_HEADERS, "col-dup-2"),
         )
         assert r2.status_code == 201
         assert r1.json()["uuid"] != r2.json()["uuid"]
@@ -115,7 +125,11 @@ async def test_create_collection_requires_auth() -> None:
     """POST /collections without a bearer token should be 401."""
     async with get_async_test_client() as client:
         payload = {"name": "no_auth", "metadata": {}}
-        r = await client.post("/api/v1/collections", json=payload)
+        r = await client.post(
+            "/api/v1/collections",
+            json=payload,
+            headers={"Idempotency-Key": "col-no-auth"},
+        )
         assert r.status_code == 401
 
 
@@ -139,7 +153,9 @@ async def test_delete_collection_and_nonexistent() -> None:
         # create first
         payload = {"name": "to_delete", "metadata": {"foo": "bar"}}
         r1 = await client.post(
-            "/api/v1/collections", json=payload, headers=USER_1_HEADERS
+            "/api/v1/collections",
+            json=payload,
+            headers=idempotency_headers(USER_1_HEADERS, "col-delete-create"),
         )
         assert r1.status_code == 201
 
@@ -154,7 +170,8 @@ async def test_delete_collection_and_nonexistent() -> None:
 
         # delete it by ID
         r2 = await client.delete(
-            f"/api/v1/collections/{collection_id}", headers=USER_1_HEADERS
+            f"/api/v1/collections/{collection_id}",
+            headers=idempotency_headers(USER_1_HEADERS, "col-delete-1"),
         )
         assert r2.status_code == 204
 
@@ -166,7 +183,8 @@ async def test_delete_collection_and_nonexistent() -> None:
 
         # Deletion is idempotent
         r4 = await client.delete(
-            f"/api/v1/collections/{collection_id}", headers=USER_1_HEADERS
+            f"/api/v1/collections/{collection_id}",
+            headers=idempotency_headers(USER_1_HEADERS, "col-delete-1"),
         )
         assert r4.status_code == 204
 
@@ -181,7 +199,7 @@ async def test_user_can_rename_and_delete_internal_collection_visible_in_list(
         create_resp = await client.post(
             "/api/v1/collections",
             json={"name": "internal_visible", "metadata": {}},
-            headers=INTERNAL_HEADERS,
+            headers=idempotency_headers(INTERNAL_HEADERS, "col-internal-create"),
         )
         assert create_resp.status_code == 201
         collection_id = create_resp.json()["uuid"]
@@ -193,14 +211,14 @@ async def test_user_can_rename_and_delete_internal_collection_visible_in_list(
         rename_resp = await client.patch(
             f"/api/v1/collections/{collection_id}",
             json={"name": "renamed_internal_visible"},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "col-internal-rename"),
         )
         assert rename_resp.status_code == 200
         assert rename_resp.json()["name"] == "renamed_internal_visible"
 
         delete_resp = await client.delete(
             f"/api/v1/collections/{collection_id}",
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "col-internal-delete"),
         )
         assert delete_resp.status_code == 204
 
@@ -219,7 +237,7 @@ async def test_collection_mutations_blocked_while_graph_building(
         create_resp = await client.post(
             "/api/v1/collections",
             json={"name": "locked_collection", "metadata": {}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "col-locked-create"),
         )
         assert create_resp.status_code == 201
         collection_id = create_resp.json()["uuid"]
@@ -234,14 +252,14 @@ async def test_collection_mutations_blocked_while_graph_building(
 
         delete_resp = await client.delete(
             f"/api/v1/collections/{collection_id}",
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "col-locked-delete"),
         )
         assert delete_resp.status_code == 409
 
         update_resp = await client.patch(
             f"/api/v1/collections/{collection_id}",
             json={"name": "renamed"},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "col-locked-patch"),
         )
         assert update_resp.status_code == 409
 
@@ -258,14 +276,14 @@ async def test_force_delete_removes_connector_managed_collection() -> None:
                     "sync_status": "error",
                 },
             },
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "col-orphan-create"),
         )
         assert create_resp.status_code == 201
         collection_id = create_resp.json()["uuid"]
 
         normal_delete_resp = await client.delete(
             f"/api/v1/collections/{collection_id}",
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "col-orphan-normal-delete"),
         )
         assert normal_delete_resp.status_code == 403
 
@@ -290,7 +308,9 @@ async def test_patch_collection() -> None:
         # create a collection
         payload = {"name": "colA", "metadata": {"a": 1}}
         r = await client.post(
-            "/api/v1/collections", json=payload, headers=USER_1_HEADERS
+            "/api/v1/collections",
+            json=payload,
+            headers=idempotency_headers(USER_1_HEADERS, "col-patch-create"),
         )
         assert r.status_code == 201
         assert r.json() == {
@@ -308,7 +328,7 @@ async def test_patch_collection() -> None:
         r2 = await client.patch(
             f"/api/v1/collections/{collection_id}",
             json={"metadata": {"a": 2}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "col-patch-update"),
         )
         assert r2.status_code == 200
         assert r2.json() == {
@@ -328,13 +348,13 @@ async def test_update_collection_name_and_metadata() -> None:
         create_col_a = await client.post(
             "/api/v1/collections",
             json={"name": "colA", "metadata": {"a": 1}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "col-update-create-a"),
         )
         assert create_col_a.status_code == 201
         create_col_b = await client.post(
             "/api/v1/collections",
             json={"name": "colB", "metadata": {"b": 2}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "col-update-create-b"),
         )
         assert create_col_b.status_code == 201
         col_a_id = create_col_a.json()["uuid"]
@@ -343,7 +363,7 @@ async def test_update_collection_name_and_metadata() -> None:
         no_conflict = await client.patch(
             f"/api/v1/collections/{col_a_id}",
             json={"name": "colB"},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "col-update-rename"),
         )
         assert no_conflict.status_code == 200
         assert no_conflict.json() == {
@@ -359,7 +379,7 @@ async def test_update_collection_name_and_metadata() -> None:
         update = await client.patch(
             f"/api/v1/collections/{col_a_id}",
             json={"name": "colC", "metadata": {"x": "y"}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "col-update-rename-meta"),
         )
         assert update.status_code == 200
         body = update.json()
@@ -381,7 +401,7 @@ async def test_update_collection_name_and_metadata() -> None:
         meta_update = await client.patch(
             f"/api/v1/collections/{col_a_id}",
             json={"metadata": {"foo": "bar"}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "col-update-meta"),
         )
         assert meta_update.status_code == 200
         assert meta_update.json() == {
@@ -397,14 +417,14 @@ async def test_update_nonexistent_collection() -> None:
         r = await client.patch(
             "/api/v1/collections/does_not_exist",
             json={"metadata": {"any": "thing"}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "col-patch-nonexistent-1"),
         )
         assert r.status_code == 422
 
         r = await client.patch(
             "/api/v1/collections/12345678-1234-5678-1234-567812345678",
             json={"metadata": {"any": "thing"}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "col-patch-nonexistent-2"),
         )
         assert r.status_code == 404
 
@@ -421,11 +441,11 @@ async def test_list_empty_and_multiple_collections() -> None:
 
         # create several
         names = ["one", "two", "three"]
-        for n in names:
+        for i, n in enumerate(names):
             r = await client.post(
                 "/api/v1/collections",
                 json={"name": n, "metadata": {}},
-                headers=USER_1_HEADERS,
+                headers=idempotency_headers(USER_1_HEADERS, f"col-list-create-{i}"),
             )
             assert r.status_code == 201
 
@@ -443,7 +463,9 @@ async def test_ownership() -> None:
         # create a collection as user 1
         payload = {"name": "owned_by_user1", "metadata": {}}
         r = await client.post(
-            "/api/v1/collections", json=payload, headers=USER_1_HEADERS
+            "/api/v1/collections",
+            json=payload,
+            headers=idempotency_headers(USER_1_HEADERS, "col-owner-create"),
         )
         assert r.status_code == 201
 
@@ -457,7 +479,8 @@ async def test_ownership() -> None:
 
         # Always ack with 204 for idempotency
         r3 = await client.delete(
-            f"/api/v1/collections/{collection_id}", headers=USER_2_HEADERS
+            f"/api/v1/collections/{collection_id}",
+            headers=idempotency_headers(USER_2_HEADERS, "col-owner-delete-u2"),
         )
         assert r3.status_code == 204
 
@@ -470,12 +493,13 @@ async def test_ownership() -> None:
         r4 = await client.patch(
             f"/api/v1/collections/{collection_id}",
             json={"name": "new_name"},
-            headers=USER_2_HEADERS,
+            headers=idempotency_headers(USER_2_HEADERS, "col-owner-patch-u2"),
         )
         assert r4.status_code == 404
 
         # user 1 can delete it
         r5 = await client.delete(
-            f"/api/v1/collections/{collection_id}", headers=USER_1_HEADERS
+            f"/api/v1/collections/{collection_id}",
+            headers=idempotency_headers(USER_1_HEADERS, "col-owner-delete-u1"),
         )
         assert r5.status_code == 204

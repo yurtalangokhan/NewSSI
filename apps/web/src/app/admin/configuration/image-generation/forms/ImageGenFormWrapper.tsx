@@ -160,7 +160,8 @@ export function ImageGenFormWrapper<T extends FormValues>({
         if (!result.ok) {
           setApiStatus("error");
           setErrorMessage(
-            result.errorMessage || t("admin.imageGeneration.forms.validationFailed")
+            result.errorMessage ||
+              t("admin.imageGeneration.forms.validationFailed")
           );
           setIsSubmitting(false);
           return;

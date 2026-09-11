@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import Text from "@/components/ui/text";
+import Text from "@/refresh-components/texts/Text";
 import Title from "@/components/ui/title";
 import {
   CloudEmbeddingProvider,
@@ -101,18 +101,20 @@ export default function CloudEmbeddingPage({
   return (
     <div>
       <Title className="mt-8">{t("introTitle")}</Title>
-      <Text className="mb-4">{t("introDescription")}</Text>
+      <Text as="p" className="text-sm mb-4">
+        {t("introDescription")}
+      </Text>
 
       <div className="gap-4 mt-2 pb-10 flex content-start flex-wrap">
         {providers.map((provider) => (
           <div key={provider.provider_type} className="mt-4 w-full">
             <div className="flex items-center mb-2">
               {provider.icon({ size: 40 })}
-              <h2 className="ml-2  mt-2 text-xl font-bold">
+              <Text as="h2" className="ml-2  mt-2 text-xl font-bold">
                 {getFormattedProviderName(provider.provider_type)}{" "}
                 {provider.provider_type == EmbeddingProvider.COHERE &&
                   t("recommendedSuffix")}
-              </h2>
+              </Text>
               <HoverPopup
                 mainContent={
                   <FiInfo className="ml-2 mt-2 cursor-pointer" size={18} />
@@ -157,7 +159,7 @@ export default function CloudEmbeddingPage({
           </div>
         ))}
 
-        <Text className="mt-6">
+        <Text as="p" className="text-sm mt-6">
           {t("liteLLMIntro")}{" "}
           <a
             href="https://docs.litellm.ai/"
@@ -172,11 +174,11 @@ export default function CloudEmbeddingPage({
         <div key={LITELLM_CLOUD_PROVIDER.provider_type} className="mt-4 w-full">
           <div className="flex items-center mb-2">
             {LITELLM_CLOUD_PROVIDER.icon({ size: 40 })}
-            <h2 className="ml-2  mt-2 text-xl font-bold">
+            <Text as="h2" className="ml-2  mt-2 text-xl font-bold">
               {getFormattedProviderName(LITELLM_CLOUD_PROVIDER.provider_type)}{" "}
               {LITELLM_CLOUD_PROVIDER.provider_type ==
                 EmbeddingProvider.COHERE && t("recommendedSuffix")}
-            </h2>
+            </Text>
             <HoverPopup
               mainContent={
                 <FiInfo className="ml-2 mt-2 cursor-pointer" size={18} />
@@ -213,15 +215,15 @@ export default function CloudEmbeddingPage({
             {!liteLLMProvider && (
               <CardSection className="mt-2 w-full max-w-4xl bg-background-50 border border-background-200">
                 <div className="p-4">
-                  <Text className="text-lg font-semibold mb-2">
+                  <Text as="p" className="text-sm text-lg font-semibold mb-2">
                     {t("apiUrlRequiredTitle")}
                   </Text>
-                  <Text className="text-sm text-text-600 mb-4">
+                  <Text as="p" className="text-sm text-sm text-text-600 mb-4">
                     {t("apiUrlRequiredBody")}
                   </Text>
                   <div className="flex items-center">
                     <FiInfo className="text-blue-500 mr-2" size={18} />
-                    <Text className="text-sm text-blue-500">
+                    <Text as="p" className="text-sm text-sm text-blue-500">
                       {t("apiUrlRequiredNote")}
                     </Text>
                   </div>
@@ -277,14 +279,16 @@ export default function CloudEmbeddingPage({
           </div>
         </div>
 
-        <Text className="mt-6">{t("azureIntro")}</Text>
+        <Text as="p" className="text-sm mt-6">
+          {t("azureIntro")}
+        </Text>
 
         <div key={AZURE_CLOUD_PROVIDER.provider_type} className="mt-4 w-full">
           <div className="flex items-center mb-2">
             {AZURE_CLOUD_PROVIDER.icon({ size: 40 })}
-            <h2 className="ml-2  mt-2 text-xl font-bold">
+            <Text as="h2" className="ml-2  mt-2 text-xl font-bold">
               {getFormattedProviderName(AZURE_CLOUD_PROVIDER.provider_type)}{" "}
-            </h2>
+            </Text>
             <HoverPopup
               mainContent={
                 <FiInfo className="ml-2 mt-2 cursor-pointer" size={18} />
@@ -312,15 +316,17 @@ export default function CloudEmbeddingPage({
               </button>
               <div className="mt-2 w-full max-w-4xl">
                 <CardSection className="p-4 border border-background-200 rounded-lg shadow-sm">
-                  <Text className="text-base font-medium mb-2">
+                  <Text as="p" className="text-sm text-base font-medium mb-2">
                     {t("configureAzureTitle")}
                   </Text>
-                  <Text className="text-sm text-text-600 mb-3">
+                  <Text as="p" className="text-sm text-sm text-text-600 mb-3">
                     {t("configureAzureBody")}
                   </Text>
                   <div className="flex items-center text-sm text-text-700">
                     <FiInfo className="text-neutral-400 mr-2" size={16} />
-                    <Text>{t("azureRequirementsNote")}</Text>
+                    <Text as="p" className="text-sm">
+                      {t("azureRequirementsNote")}
+                    </Text>
                   </div>
                 </CardSection>
               </div>
@@ -328,7 +334,7 @@ export default function CloudEmbeddingPage({
           ) : (
             <>
               <div className="mb-6 w-full">
-                <Text className="text-lg font-semibold mb-3">
+                <Text as="p" className="text-sm text-lg font-semibold mb-3">
                   {t("currentAzureConfigTitle")}
                 </Text>
 
@@ -472,9 +478,9 @@ export function CloudModelCard({
       )}
 
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-bold dark:text-neutral-100 text-lg">
+        <Text as="h3" className="font-bold dark:text-neutral-100 text-lg">
           {model.model_name}
-        </h3>
+        </Text>
         <div className="flex gap-x-2">
           {model.provider_type == EmbeddingProvider.LITELLM.toLowerCase() && (
             <button
@@ -496,9 +502,9 @@ export function CloudModelCard({
           </a>
         </div>
       </div>
-      <p className="text-sm text-text-600 dark:text-neutral-400 mb-2">
+      <Text as="p" className="text-sm text-text-600 dark:text-neutral-400 mb-2">
         {model.description}
-      </p>
+      </Text>
       {model?.provider_type?.toLowerCase() !=
         EmbeddingProvider.LITELLM.toLowerCase() && (
         <div className="text-xs text-text-500 mb-2">

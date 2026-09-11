@@ -9,7 +9,6 @@ This module provides LLM access using:
 No paid providers (OpenAI, Anthropic, Google, etc.) are supported.
 """
 
-import logging
 from functools import cache
 from typing import TypeAlias
 
@@ -19,9 +18,10 @@ from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
 from core.env import env
+from core.logger import get_logger
 from core.settings import settings
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _normalize_model_name(model_name: str | None) -> str | None:
@@ -55,7 +55,7 @@ class FakeToolModel(FakeListChatModel):
     def __init__(self, responses: list[str]):
         super().__init__(responses=responses)
 
-    def bind_tools(self, tools):
+    def bind_tools(self, tools, *, tool_choice=None, **kwargs):
         return self
 
 

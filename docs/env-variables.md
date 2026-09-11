@@ -38,6 +38,24 @@
 
 ---
 
+## Saved connector runtime
+
+Compose supplies these values to reuse existing saved connector credentials.
+Do not place source credentials in an agent definition or in chat arguments.
+
+| Service | Variable | Purpose |
+| --- | --- | --- |
+| tools-service | `AGENT_SERVICE_URL` | Agent-service internal gateway base, ending in `/api/v1` |
+| both services | `INTERNAL_SERVICE_TOKEN` | Authenticate internal connector resolution |
+| agent-service | `AIRBYTE_CONFIG_DATABASE_URL` | Airbyte configuration database URL; JDBC PostgreSQL prefixes are accepted |
+| agent-service | `AIRBYTE_CONFIG_DATABASE_USER` | Airbyte configuration database user |
+| agent-service | `AIRBYTE_CONFIG_DATABASE_PASSWORD` | Airbyte configuration database password |
+| agent-service | `AIRBYTE_SECRET_PERSISTENCE` | Must be `NONE` for the implemented Airbyte 0.50.x credential resolver |
+
+Development and production Compose map the config database values from the
+existing `AIRBYTE_DATABASE_URL`, `AIRBYTE_DB_USER`, and `AIRBYTE_DB_PASSWORD`
+settings. The database resolver only reads the assigned source configuration.
+
 ## Kong (`configs/kong/kong.env`)
 
 | Variable           | Description              | Default    |
@@ -78,7 +96,7 @@
 | `REDIS_PASSWORD`              | Redis password for idempotency cache    | —                                                             |
 | `IDEMPOTENCY_TTL`             | Cached response and key-owner TTL       | `86400`                                                       |
 | `IDEMPOTENCY_ENABLED`         | Enable shared idempotency middleware    | `true`                                                        |
-| `IDEMPOTENCY_ENFORCE_REQUIRED_KEYS` | Require keys for `required_replay` routes | `false`                                                  |
+| `IDEMPOTENCY_ENFORCE_REQUIRED_KEYS` | Require keys for `required_replay` routes | `true`                                                   |
 | `IDEMPOTENCY_LOCK_TTL`        | Redis lock TTL for in-flight requests   | `10`                                                          |
 | `IDEMPOTENCY_WAIT_TIMEOUT`    | Wait time for an in-flight cached replay | `10.0`                                                       |
 
@@ -92,9 +110,14 @@
 | `SECRET_KEY`             | JWT verification key                                                                     | —                                                             |
 | `ALGORITHM`              | JWT algorithm                                                                            | `HS256`                                                       |
 | `INTERNAL_SERVICE_TOKEN` | Service-to-service auth token                                                            | —                                                             |
-| `ENCRYPTION_KEY`         | Fernet key for encrypted secret storage, including SMTP passwords and per-agent API keys | —                                                             |
+| `ENCRYPTION_KEY`         | **Required.** Fernet key for encrypted secret storage: SMTP passwords, per-agent API keys, and external MCP server credentials/OAuth tokens. Rotating it invalidates every stored secret. | —                                                             |
+| `MCP_OAUTH_REDIRECT_BASE` | Public origin used to build the external-MCP OAuth redirect URI (`{base}/mcp/oauth/callback`) | `http://localhost:3000`                                      |
+| `MCP_EXTERNAL_ENABLED`   | Load tools from connected external MCP servers into agent runs                            | `true`                                                        |
+| `MCP_OAUTH_HTTP_TIMEOUT` | Timeout (seconds) for MCP OAuth discovery / DCR / token requests                         | `30`                                                          |
 | `USER_SERVICE_URL`       | User service base URL                                                                    | `http://localhost:8090`                                       |
-| `RAG_SERVICE_URL`        | RAG service base URL                                                                     | `http://localhost:8083`                                       |
+| `RAG_API_URL`            | RAG service base URL, used by the flow compiler and the option resolvers. Docker compose sets it to `http://kong:8000/internal/rag-service`. | `http://localhost:8000`                |
+| `RAG_SERVICE_API_URL`    | Legacy alias for `RAG_API_URL`; still read when that is unset                            | —                                                             |
+| `RAG_HTTP_TIMEOUT_SECONDS` | Per-request timeout (seconds) for agent-service -> rag-service calls                   | `15`                                                          |
 | `KEYCLOAK_SERVER_URL`    | Keycloak base URL                                                                        | `http://localhost:8080`                                       |
 | `KEYCLOAK_REALM`         | Keycloak realm                                                                           | `agenticai`                                                   |
 | `KEYCLOAK_CLIENT_ID`     | Keycloak client ID for agent-service                                                     | —                                                             |
@@ -121,7 +144,7 @@
 | `REDIS_PASSWORD`         | Redis password for idempotency cache                                                     | —                                                             |
 | `IDEMPOTENCY_TTL`        | Cached response and key-owner TTL                                                        | `86400`                                                       |
 | `IDEMPOTENCY_ENABLED`    | Enable shared idempotency middleware                                                     | `true`                                                        |
-| `IDEMPOTENCY_ENFORCE_REQUIRED_KEYS` | Require keys for `required_replay` routes                                        | `false`                                                       |
+| `IDEMPOTENCY_ENFORCE_REQUIRED_KEYS` | Require keys for `required_replay` routes                                        | `true`                                                        |
 | `IDEMPOTENCY_LOCK_TTL`   | Redis lock TTL for in-flight requests                                                    | `10`                                                          |
 | `IDEMPOTENCY_WAIT_TIMEOUT` | Wait time for an in-flight cached replay                                               | `10.0`                                                        |
 
@@ -156,7 +179,7 @@
 | `REDIS_PASSWORD`         | Redis password for idempotency cache      | —                                                             |
 | `IDEMPOTENCY_TTL`        | Cached response and key-owner TTL         | `86400`                                                       |
 | `IDEMPOTENCY_ENABLED`    | Enable shared idempotency middleware      | `true`                                                        |
-| `IDEMPOTENCY_ENFORCE_REQUIRED_KEYS` | Require keys for `required_replay` routes | `false`                                                  |
+| `IDEMPOTENCY_ENFORCE_REQUIRED_KEYS` | Require keys for `required_replay` routes | `true`                                                   |
 | `IDEMPOTENCY_LOCK_TTL`   | Redis lock TTL for in-flight requests     | `10`                                                          |
 | `IDEMPOTENCY_WAIT_TIMEOUT` | Wait time for an in-flight cached replay | `10.0`                                                       |
 
@@ -184,7 +207,7 @@
 | `REDIS_PASSWORD`         | Redis password for idempotency cache | —                                                           |
 | `IDEMPOTENCY_TTL`        | Cached response and key-owner TTL  | `86400`                                                       |
 | `IDEMPOTENCY_ENABLED`    | Enable shared idempotency middleware | `true`                                                      |
-| `IDEMPOTENCY_ENFORCE_REQUIRED_KEYS` | Require keys for `required_replay` routes | `false`                                             |
+| `IDEMPOTENCY_ENFORCE_REQUIRED_KEYS` | Require keys for `required_replay` routes | `true`                                                   |
 | `IDEMPOTENCY_LOCK_TTL`   | Redis lock TTL for in-flight requests | `10`                                                       |
 | `IDEMPOTENCY_WAIT_TIMEOUT` | Wait time for an in-flight cached replay | `10.0`                                                 |
 

@@ -10,6 +10,7 @@ from idempotency import (
 
 from langconnect import config
 from langconnect.api_versioning import API_PREFIX
+from langconnect.idempotency_principal import extract_principal_from_jwt
 
 
 class IdempotencySettings(Protocol):
@@ -57,13 +58,14 @@ def build_idempotency_config(
         enforce_required_keys=getattr(s, "IDEMPOTENCY_ENFORCE_REQUIRED_KEYS", False),
         lock_ttl=getattr(s, "IDEMPOTENCY_LOCK_TTL", 10),
         wait_timeout=getattr(s, "IDEMPOTENCY_WAIT_TIMEOUT", 10.0),
+        principal_extractor=extract_principal_from_jwt,
         policy=build_idempotency_policy(),
     )
 
 
 def build_idempotency_exclude_paths(api_prefix: str = API_PREFIX) -> set[str]:
     """Build public paths that bypass idempotency handling."""
-    return {f"{api_prefix}/health"}
+    return {f"{api_prefix}/health", f"{api_prefix}/health/ready"}
 
 
 def build_idempotency_policy(api_prefix: str = API_PREFIX) -> IdempotencyPolicyConfig:
@@ -75,6 +77,7 @@ def build_idempotency_policy(api_prefix: str = API_PREFIX) -> IdempotencyPolicyC
             "/graph/build/{collection_id}/resume",
             "/graph/build/{collection_id}/stop",
             "/collections/{collection_id}/documents",
+            "/collections/{collection_id}/documents/upload-jobs",
         ],
         "DELETE": [
             "/graph/collections/{collection_id}",
@@ -94,6 +97,7 @@ def build_idempotency_policy(api_prefix: str = API_PREFIX) -> IdempotencyPolicyC
             "/graph/search",
             "/collections/{collection_id}/documents/search",
             "/graph/cypher",
+            "/retrieval",
         ],
         "DELETE": [
             "/collections/{collection_id}",
@@ -122,7 +126,11 @@ def build_route_policies(
             method=method,
             path=f"{api_prefix}{path}",
             mode=mode,
-            enforce_missing_key=mode == IdempotencyMode.DOMAIN_REQUIRED,
+            # domain_required always enforces a key; other modes fall back to
+            # the global enforce_required_keys flag (None).
+            enforce_missing_key=(
+                True if mode == IdempotencyMode.DOMAIN_REQUIRED else None
+            ),
         )
         for method, paths in routes_by_method.items()
         for path in paths

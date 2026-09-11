@@ -4,7 +4,7 @@ import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { DocumentSetCreationForm } from "../DocumentSetCreationForm";
 import { useConnectorStatus, useUserGroups } from "@/lib/hooks";
-import { ThreeDotsLoader } from "@/components/Loading";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { useRouter, notFound } from "next/navigation";
 import { refreshDocumentSets } from "../hooks";
@@ -27,7 +27,9 @@ function Main() {
   if (isCCPairsLoading || userGroupsIsLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
-        <ThreeDotsLoader />
+        <div className="p-4">
+          <FormSkeleton fieldCount={4} />
+        </div>
       </div>
     );
   }

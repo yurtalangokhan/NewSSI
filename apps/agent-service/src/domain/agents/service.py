@@ -1,14 +1,31 @@
 """Agent domain service - handles agent registry, definitions, and management."""
 
-import logging
 from typing import Any
 from uuid import UUID
 
+from core.logger import get_logger
 from models.agents import AgentInfo
 from service.CacheInvalidationService import CacheInvalidationService
 from service.CompositionValidationService import CompositionValidationService
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
+
+
+def build_agent_preview_text(d: Any) -> str:
+    """Summarize an agent definition's model/tools/memory/prompt for hover previews."""
+    tools_count = len(getattr(d, "mcp_tools", None) or [])
+    memory_type = getattr(d, "memory_type", None)
+    memory_on = bool(memory_type) and memory_type != "none"
+    model = getattr(d, "model", None)
+    header = (
+        f"Model: {model or 'default'} · Tools: {tools_count} · "
+        f"Memory: {'on' if memory_on else 'off'}"
+    )
+    prompt = (getattr(d, "system_prompt", None) or "").strip()
+    if not prompt:
+        return header
+    preview = prompt if len(prompt) <= 157 else f"{prompt[:157]}..."
+    return f"{header}\n{preview}"
 
 
 class AgentService:
@@ -182,6 +199,8 @@ class AgentDefinitionService:
         id: UUID,
         updates: dict[str, Any],
     ):
+        existing_definition = await self._repo.get_by_id(id)
+
         graph_schema = updates.get("graph_schema")
         normalized_graph_schema = (
             self._normalize_graph_schema(
@@ -233,14 +252,28 @@ class AgentDefinitionService:
                 )
 
             # Increment version for cache validation
-            agent = await self._repo.get_by_id(id)
-            if agent:
-                updates["sub_agent_config_version"] = agent.sub_agent_config_version + 1
+            if existing_definition:
+                updates["sub_agent_config_version"] = (
+                    existing_definition.sub_agent_config_version + 1
+                )
 
-        # Invalidate cache for this definition so next request reloads
-        from agents.dynamic_agent import invalidate_agent_cache
+        # Invalidate cache for this definition so next request reloads.
+        #
+        # A flow-backed definition (graph_schema == "flow") is cached in
+        # FlowAgent's own cache module, separate from DynamicAgent's — a
+        # pre-existing bug (found during P3 planning) invalidated only the
+        # DynamicAgent cache here unconditionally, so updating a flow-backed
+        # agent left it serving a stale compiled graph until process
+        # restart. invalidate_agent_cache_for picks the right cache based on
+        # the definition's actual graph_schema. If the update itself changes
+        # graph_schema, also clear the new schema's cache — nothing should
+        # ever be cached under it yet, but it costs nothing to be safe.
+        from agents.agent_factory import invalidate_agent_cache_for
 
-        invalidate_agent_cache(str(id))
+        current_schema = existing_definition.graph_schema if existing_definition else "zero_shot"
+        invalidate_agent_cache_for(str(id), current_schema)
+        if graph_schema and graph_schema != current_schema:
+            invalidate_agent_cache_for(str(id), graph_schema)
 
         # NEW: Also cascade invalidate if dependents need recompilation
         if "sub_agent_ids" in updates and not self._cache_service:
@@ -252,9 +285,11 @@ class AgentDefinitionService:
         return await self._repo.update(id, updates)
 
     async def delete_agent_definition(self, id: UUID) -> bool:
-        from agents.dynamic_agent import invalidate_agent_cache
+        from agents.agent_factory import invalidate_agent_cache_for
 
-        invalidate_agent_cache(str(id))
+        existing_definition = await self._repo.get_by_id(id)
+        current_schema = existing_definition.graph_schema if existing_definition else "zero_shot"
+        invalidate_agent_cache_for(str(id), current_schema)
         return await self._repo.delete(id)
 
     async def activate_agent_definition(self, id: UUID) -> bool:

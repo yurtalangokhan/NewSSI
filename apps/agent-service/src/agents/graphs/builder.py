@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 from uuid import UUID
 
+from langchain.agents import create_agent
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
@@ -13,14 +13,23 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 from langgraph.pregel import Pregel
 
+from agents.clarification.middleware import (
+    AskUserAloneMiddleware,
+    ask_user_alone_post_model_hook,
+)
+from agents.clarification.prompt import ASK_USER_PROMPT
+from agents.clarification.tool import get_clarification_tools
 from agents.document_tools import DOCUMENT_TOOL_PROMPT, get_document_tools
+from agents.graphs.builder_helpers import agent_def_to_config
+from agents.graphs.middleware import DeadEndTurnRetryMiddleware
 from agents.graphs.schemas import (
     GraphSchemaType,
     get_schema,
 )
 from agents.mail_tooling import append_email_tool_policy, maybe_wrap_mcp_tool
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class GraphBuilderError(Exception):
@@ -249,7 +258,7 @@ class GraphBuilder:
                     logger.warning(f"Sub-agent {sub_id} not found in DB")
                     continue
 
-                sub_config = self._agent_def_to_config(sub_agent_def)
+                sub_config = agent_def_to_config(sub_agent_def)
                 nested_target = (
                     "stages"
                     if sub_config.get("graph_schema") == GraphSchemaType.PIPELINE.value
@@ -283,38 +292,51 @@ class GraphBuilder:
                 f"{len(existing)} inline configs in {field}"
             )
 
-    def _agent_def_to_config(self, agent_def: Any) -> dict[str, Any]:
-        """
-        Convert AgentDefinitionModel to graph config dict.
+    def _attach_clarification(self, tools: list[Any], system_prompt: str) -> tuple[list[Any], str]:
+        """Give a chat agent the ability to ask the user what they meant.
 
-        Args:
-            agent_def: AgentDefinitionModel instance
+        Gated on the checkpointer, which decides two things at once:
 
-        Returns:
-            Config dict compatible with graph builders
+        - Without one, ``interrupt()`` has nowhere to park and would return
+          nothing at all, leaving the model with an empty answer to a question
+          the user never saw (design 5.3, E13). A tool that does not exist
+          cannot be called, so the situation never arises.
+        - Every flow-canvas build constructs GraphBuilder with
+          ``checkpointer=None`` (the parent flow owns persistence), so the tool
+          stays out of flows for free (K3, E14). Flows have their own
+          HumanInput node, and a RunFlow sub-run cannot pause at all.
         """
-        return {
-            "name": agent_def.name,
-            "graph_schema": agent_def.graph_schema,
-            "system_prompt": agent_def.system_prompt or "You are a helpful agent.",
-            "model": agent_def.model,
-            "mcp_tools": agent_def.mcp_tools or [],
-            "mcp_tool_configs": agent_def.mcp_tool_configs or {},
-            "rag_config": agent_def.rag_config,
-            "supervisor_prompt": agent_def.supervisor_prompt,
-            "stages": agent_def.stages,
-            "pipeline_prompt": agent_def.pipeline_prompt,
-            "reflection_prompt": agent_def.reflection_prompt,
-            "max_iterations": agent_def.max_iterations or 3,
-            "sub_agent_ids": agent_def.sub_agent_ids or [],
-        }
+        if not self.checkpointer:
+            return tools, system_prompt
+        tools.extend(get_clarification_tools())
+        return tools, f"{system_prompt}\n{ASK_USER_PROMPT}"
+
+    def _clarification_post_model_hook(self):
+        """The "call ask_user alone" guard for the ``create_react_agent`` paths.
+
+        ``_build_react``/``_build_zero_shot`` run ``create_agent`` and get this
+        guard as ``AskUserAloneMiddleware``. Sub-agents and plan-execute run
+        ``create_react_agent``, which has no middleware slot — so they take the
+        same guard as a ``post_model_hook``. Gated on the same checkpointer as
+        the tool: no tool attached, no guard needed, so ``None`` (the
+        create_react_agent default) is correct there.
+        """
+        return ask_user_alone_post_model_hook if self.checkpointer else None
 
     def _build_zero_shot(self, config: dict[str, Any]) -> CompiledStateGraph:
-        """Build zero-shot chat graph."""
+        """Build zero-shot chat graph.
+
+        "Zero-shot" is one model call with a system prompt — a tool loop is what
+        ReActAgent is for. Document tools alone used to trigger the upgrade
+        below, which silently turned every zero-shot graph into a react agent
+        (and appended DOCUMENT_TOOL_PROMPT to the caller's own prompt). An
+        explicitly attached tool still upgrades, since that is the caller asking
+        for a loop, but document tools never ride along into it.
+        """
         tool_names = config.get("mcp_tools", [])
         extra_tools = config.get("extra_tools", []) or []
-        if tool_names or extra_tools or get_document_tools():
-            return self._build_react(config)
+        if tool_names or extra_tools:
+            return self._build_react({**config, "document_tools": False})
 
         from langgraph.graph import END, MessagesState, StateGraph
 
@@ -363,17 +385,20 @@ class GraphBuilder:
         if self.gateway_tools:
             tools = list(self.gateway_tools) + tools
 
-        document_tools = get_document_tools()
+        document_tools = get_document_tools() if config.get("document_tools", True) else []
         if document_tools:
             tools.extend(document_tools)
             system_prompt = f"{system_prompt}\n{DOCUMENT_TOOL_PROMPT}"
 
-        agent = create_react_agent(
+        tools, system_prompt = self._attach_clarification(tools, system_prompt)
+
+        agent = create_agent(
             model=model,
             tools=tools,
             name="react-agent",
-            prompt=SystemMessage(content=system_prompt),
+            system_prompt=system_prompt,
             checkpointer=self.checkpointer,
+            middleware=[DeadEndTurnRetryMiddleware(), AskUserAloneMiddleware()],
         )
 
         return agent
@@ -541,11 +566,14 @@ class GraphBuilder:
             agent_tools.extend(document_tools)
             system_prompt = f"{system_prompt}\n{DOCUMENT_TOOL_PROMPT}"
 
+        agent_tools, system_prompt = self._attach_clarification(agent_tools, system_prompt)
+
         return create_react_agent(
             model=agent_model,
             tools=agent_tools,
             name=name,
             prompt=SystemMessage(content=system_prompt),
+            post_model_hook=self._clarification_post_model_hook(),
         )
 
     def _build_plan_execute(self, config: dict[str, Any]) -> CompiledStateGraph:
@@ -579,12 +607,15 @@ class GraphBuilder:
             tools.extend(document_tools)
             system_prompt = f"{system_prompt}\n{DOCUMENT_TOOL_PROMPT}"
 
+        tools, system_prompt = self._attach_clarification(tools, system_prompt)
+
         agent = create_react_agent(
             model=model,
             tools=tools,
             name="plan-execute",
             prompt=SystemMessage(content=system_prompt),
             checkpointer=self.checkpointer,
+            post_model_hook=self._clarification_post_model_hook(),
         )
 
         return agent
@@ -615,7 +646,13 @@ class GraphBuilder:
             reflection = await model.ainvoke([SystemMessage(content=reflection_query)])
             return {"messages": list(state["messages"]) + [reflection]}
 
-        def should_continue(state: MessagesState) -> str:
+        def should_continue(state: dict) -> str:
+            # NOTE: intentionally annotated `dict`, not `MessagesState`. This
+            # module uses `from __future__ import annotations`, so the hint is
+            # a stringized forward ref; LangGraph's add_conditional_edges runs
+            # get_type_hints() on this branch callable and resolves it against
+            # this module's globals, where the function-local `MessagesState`
+            # import is not visible -> NameError at build time.
             # Stop if max iterations reached or reflection says DONE
             msg_count = len(state["messages"])
             if msg_count >= max_iterations * 2 + 1:

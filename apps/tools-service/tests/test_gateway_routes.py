@@ -55,6 +55,40 @@ def test_tools_service_health_endpoint_is_public() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_tools_service_readiness_endpoint_is_public() -> None:
+    app = mcp.http_app(transport="http")
+
+    with TestClient(app) as client:
+        response = client.get("/health/ready")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ready"
+    assert response.json()["service"] == "tools-service"
+
+
+def test_tools_service_readiness_returns_503_when_required_dependency_fails() -> None:
+    from src.core.observability import DependencyPolicy, DependencyStatus, dependency_registry
+
+    dependency_registry.record(
+        DependencyStatus(
+            name="postgres",
+            policy=DependencyPolicy.REQUIRED,
+            status="failed",
+        )
+    )
+    try:
+        app = mcp.http_app(transport="http")
+        with TestClient(app) as client:
+            response = client.get("/health/ready")
+    finally:
+        dependency_registry.record_ok("postgres", policy=DependencyPolicy.REQUIRED)
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "not_ready"
+    assert response.json()["dependencies"]["postgres"]["status"] == "failed"
+    assert response.json()["dependencies"]["postgres"]["required"] is True
+
+
 def test_tools_service_mcp_endpoint_requires_auth() -> None:
     app = mcp.http_app(transport="http")
 

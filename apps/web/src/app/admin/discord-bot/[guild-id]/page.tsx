@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { ThreeDotsLoader } from "@/components/Loading";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { toast } from "@/hooks/useToast";
 import { Section } from "@/layouts/general-layouts";
@@ -68,7 +68,11 @@ function GuildDetailContent({
     useDiscordChannels(guildId);
 
   if (guildLoading) {
-    return <ThreeDotsLoader />;
+    return (
+      <div className="p-6">
+        <FormSkeleton fieldCount={4} />
+      </div>
+    );
   }
 
   if (guildError || !guild) {
@@ -129,7 +133,7 @@ function GuildDetailContent({
             errorTitle={t("admin.discord.loadChannelsErrorTitle")}
           </Text>
         ) : channelsLoading ? (
-          <ThreeDotsLoader />
+          <FormSkeleton fieldCount={2} />
         ) : channelsError ? (
           <ErrorCallout
             errorTitle={t("admin.discord.loadChannelsErrorTitle")}

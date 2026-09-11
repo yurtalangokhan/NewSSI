@@ -2,7 +2,7 @@
 
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n/config";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 import useSWR, { mutate } from "swr";
 import { AdminPageTitle } from "@/components/admin/Title";
 import { buildSimilarCredentialInfoURL } from "@/app/admin/connector/[ccPairId]/lib";
@@ -56,7 +56,7 @@ import {
   useOAuthDetails,
 } from "@/lib/connectors/oauth";
 import { CreateStdOAuthCredential } from "@/components/credentials/actions/CreateStdOAuthCredential";
-import { Spinner } from "@/components/Spinner";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import Button from "@/refresh-components/buttons/Button";
 import { deleteConnector } from "@/lib/connector";
 import ConnectorDocsLink from "@/components/admin/connectors/ConnectorDocsLink";
@@ -86,7 +86,7 @@ export async function submitConnector<T>(
 
   try {
     if (fakeCredential) {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         "/api/manage/admin/connector-with-mock-credential",
         {
           method: isUpdate ? "PATCH" : "POST",
@@ -113,7 +113,7 @@ export async function submitConnector<T>(
         };
       }
     } else {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         BASE_CONNECTOR_URL + (isUpdate ? `/${connectorId}` : ""),
         {
           method: isUpdate ? "PATCH" : "POST",
@@ -512,10 +512,6 @@ export default function AddConnector({
     >
       {(formikProps) => (
         <div className="mx-auto w-full">
-          {uploading && <Spinner />}
-
-          {creatingConnector && <Spinner />}
-
           <AdminPageTitle
             includeDivider={false}
             icon={<SourceIcon iconSize={32} sourceType={connector} />}
@@ -636,7 +632,12 @@ export default function AddConnector({
                         />
                         <Modal.Body>
                           {oauthDetailsLoading ? (
-                            <Spinner />
+                            <div className="py-6">
+                              <FormSkeleton
+                                fieldCount={3}
+                                hasSubmitButton={false}
+                              />
+                            </div>
                           ) : (
                             <>
                               {oauthDetails && oauthDetails.oauth_enabled ? (

@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
@@ -120,7 +122,7 @@ export default function OAuthCallbackPage({ config }: OAuthCallbackPageProps) {
           code
         )}&state=${encodeURIComponent(state)}`;
 
-        const response = await fetch(url, {
+        const response = await authenticatedFetch(url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

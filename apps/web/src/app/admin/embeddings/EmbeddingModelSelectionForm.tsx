@@ -29,6 +29,7 @@ import {
 } from "@/lib/llmConfig/constants";
 import { AdvancedSearchConfiguration } from "@/app/admin/embeddings/interfaces";
 import Button from "@/refresh-components/buttons/Button";
+import Text from "@/refresh-components/texts/Text";
 
 export interface EmbeddingDetails {
   api_key?: string;
@@ -206,7 +207,9 @@ export default function EmbeddingModelSelection({
         />
       )}
 
-      <p className="mb-4">{t("description")}</p>
+      <Text as="p" className="mb-4">
+        {t("description")}
+      </Text>
       <div className="text-sm mr-auto mb-6 divide-x-2 flex">
         <button
           onClick={() => setModelTab(null)}
@@ -269,14 +272,16 @@ export default function EmbeddingModelSelection({
 
       {!modelTab && (
         <>
-          <button onClick={() => updateSelectedProvider(currentEmbeddingModel)}>
-            <ModelOption
-              model={currentEmbeddingModel}
-              selected={
-                selectedProvider.model_name == currentEmbeddingModel.model_name
-              }
-            />
-          </button>
+          {/* ModelOption renders its own select control from onSelect. The
+              card used to be wrapped in a bare button element, which nested
+              interactive content (the card carries a link) inside a button. */}
+          <ModelOption
+            model={currentEmbeddingModel}
+            selected={
+              selectedProvider.model_name == currentEmbeddingModel.model_name
+            }
+            onSelect={updateSelectedProvider}
+          />
           {currentEmbeddingModel?.provider_type && (
             <div className="mt-2">
               <Button

@@ -29,7 +29,7 @@ def build_idempotency_config(settings: Settings) -> IdempotencyConfig:
 
 def build_idempotency_exclude_paths() -> set[str]:
     """Build public paths that bypass idempotency handling."""
-    return {"/health"}
+    return {"/health", "/health/ready"}
 
 
 def build_idempotency_policy() -> IdempotencyPolicyConfig:

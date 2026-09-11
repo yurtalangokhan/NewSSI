@@ -7,6 +7,7 @@ from core.env import env
 from core.logger import get_logger
 from core.providers.base import LLMProvider, ModelInfo
 from core.providers.vllm_chat import VLLMChatOpenAI
+from core.utils.model_classifier import is_embedding_model
 
 logger = get_logger(__name__)
 
@@ -47,6 +48,10 @@ class VLLMProvider(LLMProvider):
                         name=m["id"],
                         display_name=m.get("name", m["id"]),
                         provider_type="vllm",
+                        max_input_tokens=m.get("max_model_len")
+                        or m.get("context_length")
+                        or m.get("max_input_tokens"),
+                        supports_embedding=is_embedding_model(m),
                     )
                     for m in models
                 ]

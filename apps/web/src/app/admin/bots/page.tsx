@@ -1,7 +1,7 @@
 "use client";
 
 import { ErrorCallout } from "@/components/ErrorCallout";
-import { ThreeDotsLoader } from "@/components/Loading";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import { InstantSSRAutoRefresh } from "@/components/SSRAutoRefresh";
 import { SlackBotTable } from "./SlackBotTable";
 import { useSlackBots } from "./[bot-id]/hooks";
@@ -22,7 +22,17 @@ function Main() {
   } = useSlackBots();
 
   if (isSlackBotsLoading) {
-    return <ThreeDotsLoader />;
+    return (
+      <TableSkeleton
+        rowCount={3}
+        columns={[
+          { type: "icon-text", width: "w-48", headerWidth: "w-24" },
+          { type: "text", width: "w-32", headerWidth: "w-20" },
+          { type: "badge", width: "w-20", headerWidth: "w-16" },
+          { type: "actions", width: "w-16", headerWidth: "w-16" },
+        ]}
+      />
+    );
   }
 
   if (slackBotsError || !slackBots) {
@@ -78,6 +88,11 @@ function Main() {
 export default function Page() {
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.SLACK_BOTS]!;
   const { t } = useTranslation();
+  const { data: slackBots, isLoading: isSlackBotsLoading } = useSlackBots();
+  const totalBots = slackBots?.length ?? 0;
+  const activeBots = slackBots?.filter((b) => b.enabled).length ?? 0;
+  const configuredChannels =
+    slackBots?.reduce((sum, b) => sum + b.configs_count, 0) ?? 0;
 
   return (
     <SettingsLayouts.Root>
@@ -88,11 +103,17 @@ export default function Page() {
             ? t(route.titleKey, { defaultValue: route.title })
             : route.title
         }
+        description={
+          route.descriptionKey
+            ? t(route.descriptionKey, { defaultValue: route.description })
+            : route.description
+        }
         separator
       />
       <SettingsLayouts.Body>
         <AdminOverviewPanel
           icon={route.icon}
+          isLoading={isSlackBotsLoading}
           title={t("admin.bots.workspaceTitle", {
             defaultValue: "Slack bot workspace",
           })}
@@ -102,39 +123,28 @@ export default function Page() {
           })}
           metrics={[
             {
-              label: t("admin.bots.integrationLabel", {
-                defaultValue: "Integration",
+              label: t("admin.bots.totalBotsLabel", {
+                defaultValue: "Total bots",
               }),
-              value: "Slack",
+              value: isSlackBotsLoading ? "..." : String(totalBots),
             },
             {
-              label: t("admin.bots.routingLabel", {
-                defaultValue: "Routing",
+              label: t("admin.bots.activeBotsLabel", {
+                defaultValue: "Active bots",
               }),
-              value: t("admin.bots.channels", {
-                defaultValue: "Channels",
-              }),
+              value: isSlackBotsLoading ? "..." : String(activeBots),
+              tone:
+                !isSlackBotsLoading && totalBots > 0 && activeBots === totalBots
+                  ? "success"
+                  : !isSlackBotsLoading && activeBots < totalBots
+                    ? "warning"
+                    : "neutral",
             },
             {
-              label: t("admin.bots.agentLayerLabel", {
-                defaultValue: "Agent layer",
+              label: t("admin.bots.configuredChannelsLabel", {
+                defaultValue: "Configured channels",
               }),
-              value: t("admin.navigation.routes.agents.sidebar", {
-                defaultValue: "Agents",
-              }),
-            },
-          ]}
-          actions={[
-            {
-              label: t("admin.bots.newSlackBotButton"),
-              href: "/admin/bots/new",
-              primary: true,
-            },
-            {
-              label: t("admin.navigation.routes.agents.sidebar", {
-                defaultValue: "Agents",
-              }),
-              href: ADMIN_PATHS.AGENTS,
+              value: isSlackBotsLoading ? "..." : String(configuredChannels),
             },
           ]}
         />

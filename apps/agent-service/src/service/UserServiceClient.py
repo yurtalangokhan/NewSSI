@@ -306,6 +306,38 @@ async def get_user_permissions(
     return {"permissions": []}
 
 
+async def create_audit_log(
+    action: str,
+    resource: str,
+    *,
+    user_id: str | None = None,
+    details: dict[str, Any] | None = None,
+    access_token: str | None = None,
+) -> dict[str, Any]:
+    """Write one audit event to user-service's audit_logs table.
+
+    user-service owns the audit schema/retention/export; agent-service has
+    no audit infra of its own (P3 Task 19). Never call this without
+    handling failure at the caller — an audit write must not be allowed to
+    break the operation it's recording.
+    """
+    data = await _request(
+        "POST",
+        f"{USER_SERVICE_API_PREFIX}/internal/audit-logs",
+        json_body={
+            "action": action,
+            "resource": resource,
+            "user_id": user_id,
+            "details": details or {},
+        },
+        access_token=access_token,
+        include_internal_token=True,
+    )
+    if isinstance(data, dict):
+        return data
+    return {}
+
+
 async def authorize_user_permission(
     user_id: str,
     permission: str,

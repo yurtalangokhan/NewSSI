@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any, Protocol
 
-logger = logging.getLogger(__name__)
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class ThreadRepositoryPort(Protocol):

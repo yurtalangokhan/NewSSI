@@ -15,7 +15,6 @@ class CompositeRoleModel(Base):
     permissions: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     role_ids: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     is_builtin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )

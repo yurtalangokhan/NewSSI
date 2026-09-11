@@ -6,12 +6,11 @@ requiring a manual Alembic run during local startup.
 
 from __future__ import annotations
 
-import logging
-
 from core.db.engine import get_db_engine
 from core.db.models import Base
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def ensure_schema() -> None:

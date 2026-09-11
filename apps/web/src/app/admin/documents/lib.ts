@@ -1,5 +1,6 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 export const updateBoost = async (documentId: string, boost: number) => {
-  const response = await fetch("/api/manage/admin/doc-boosts", {
+  const response = await authenticatedFetch("/api/manage/admin/doc-boosts", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -20,7 +21,7 @@ export const updateHiddenStatus = async (
   documentId: string,
   isHidden: boolean
 ) => {
-  const response = await fetch("/api/manage/admin/doc-hidden", {
+  const response = await authenticatedFetch("/api/manage/admin/doc-hidden", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

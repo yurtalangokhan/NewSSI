@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
+
+from core.logger import get_logger
 
 if TYPE_CHECKING:
     from langgraph.store.base import BaseStore
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 NAMESPACE_PREFIX = "memories"
 FACTS_KEY = "user_facts"

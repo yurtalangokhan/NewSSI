@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { ThreeDotsLoader } from "@/components/Loading";
+import ChartSkeleton from "@/refresh-components/skeletons/ChartSkeleton";
 import { getDatesList } from "@/app/ee/admin/performance/lib";
 import { useEffect, useState, useMemo } from "react";
 import {
@@ -111,11 +111,7 @@ export function AgentStats({ agentId }: { agentId: number }) {
 
   let content;
   if (isLoading || !agent) {
-    content = (
-      <div className="h-80 flex flex-col">
-        <ThreeDotsLoader />
-      </div>
-    );
+    content = <ChartSkeleton height="h-64" barCount={8} />;
   } else if (error) {
     content = (
       <div className="h-80 text-red-600 font-bold flex flex-col">

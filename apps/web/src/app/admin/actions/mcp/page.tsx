@@ -33,6 +33,7 @@ export default function Main() {
       <SettingsLayouts.Body>
         <AdminOverviewPanel
           icon={route.icon}
+          isLoading={isLoading}
           title={t("admin.actions.mcpWorkspaceTitle", {
             defaultValue: "Action workspace",
           })}
@@ -53,15 +54,6 @@ export default function Main() {
             {
               label: t("admin.actions.toolsLabel"),
               value: isLoading ? "..." : String(toolCount),
-            },
-          ]}
-          actions={[
-            {
-              label: t("admin.navigation.routes.agents.sidebar", {
-                defaultValue: "Agents",
-              }),
-              href: ADMIN_PATHS.AGENTS,
-              primary: true,
             },
           ]}
         />

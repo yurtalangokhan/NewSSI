@@ -39,12 +39,105 @@ export function mergeAllOf(
       ...acc,
       ...resolved,
       properties: { ...(acc.properties ?? {}), ...(resolved.properties ?? {}) },
-      required: [
-        ...(acc.required ?? []),
-        ...(resolved.required ?? []),
-      ],
+      required: [...(acc.required ?? []), ...(resolved.required ?? [])],
     };
   }, {});
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Build the actual connector config represented by a schema and its displayed
+ * discriminator branch. Existing values always win, including false and zero.
+ */
+export function materializeSchemaDefaults(
+  rawSchema: JSONSchemaProperty,
+  value: unknown,
+  rootSchema: JSONSchemaProperty = rawSchema
+): unknown {
+  let schema = resolveSchema(rawSchema, rootSchema);
+  if (schema.allOf) {
+    const merged = mergeAllOf(schema.allOf, rootSchema);
+    schema = {
+      ...schema,
+      ...merged,
+      properties: {
+        ...(schema.properties ?? {}),
+        ...(merged.properties ?? {}),
+      },
+    };
+  }
+
+  const variants = schema.oneOf ?? schema.anyOf;
+  if (variants?.length) {
+    const resolvedVariants = variants.map((variant) => {
+      const resolved = resolveSchema(variant, rootSchema);
+      return resolved.allOf
+        ? { ...resolved, ...mergeAllOf(resolved.allOf, rootSchema) }
+        : resolved;
+    });
+    const discriminatorKey = detectDiscriminatorKey(resolvedVariants);
+    if (!discriminatorKey) {
+      return materializeSchemaDefaults(
+        resolvedVariants[0] ?? {},
+        value === undefined ? schema.default : value,
+        rootSchema
+      );
+    }
+    const currentObject = isRecord(value) ? value : {};
+    const discriminatorValue =
+      currentObject[discriminatorKey] ??
+      (isRecord(schema.default)
+        ? schema.default[discriminatorKey]
+        : schema.default);
+    const matchedVariant = resolvedVariants.find(
+      (variant) =>
+        getDiscriminatorValue(variant, discriminatorKey) ===
+        String(discriminatorValue)
+    );
+    if (
+      currentObject[discriminatorKey] !== undefined &&
+      matchedVariant === undefined
+    ) {
+      return currentObject;
+    }
+    const selected = matchedVariant ?? resolvedVariants[0];
+    const selectedValue =
+      discriminatorValue !== undefined
+        ? { ...currentObject, [discriminatorKey]: discriminatorValue }
+        : currentObject;
+    return materializeSchemaDefaults(selected ?? {}, selectedValue, rootSchema);
+  }
+
+  const type = Array.isArray(schema.type) ? schema.type[0] : schema.type;
+  if (type === "object" || schema.properties) {
+    const defaultObject = isRecord(schema.default) ? schema.default : undefined;
+    const currentObject = isRecord(value) ? value : undefined;
+    const source = { ...(defaultObject ?? {}), ...(currentObject ?? {}) };
+    const result: Record<string, unknown> = { ...source };
+    let hasValue = defaultObject !== undefined || currentObject !== undefined;
+    for (const [key, propertySchema] of Object.entries(
+      schema.properties ?? {}
+    )) {
+      const next = materializeSchemaDefaults(
+        propertySchema,
+        source[key],
+        rootSchema
+      );
+      if (next !== undefined) {
+        result[key] = next;
+        hasValue = true;
+      }
+    }
+    return hasValue ? result : undefined;
+  }
+
+  if (value !== undefined) return value;
+  if (schema.const !== undefined) return schema.const;
+  if (schema.default !== undefined) return schema.default;
+  return undefined;
 }
 
 /**

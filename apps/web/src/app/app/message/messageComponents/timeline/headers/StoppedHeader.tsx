@@ -10,6 +10,7 @@ export interface StoppedHeaderProps {
   collapsible: boolean;
   isExpanded: boolean;
   onToggle: () => void;
+  hasStageSections?: boolean;
 }
 
 /** Header when user stopped/cancelled */
@@ -18,9 +19,10 @@ export const StoppedHeader = React.memo(function StoppedHeader({
   collapsible,
   isExpanded,
   onToggle,
+  hasStageSections = false,
 }: StoppedHeaderProps) {
   const { t } = useTranslation();
-  const isInteractive = collapsible && totalSteps > 0;
+  const isInteractive = collapsible && (totalSteps > 0 || hasStageSections);
 
   return (
     <div
@@ -38,18 +40,40 @@ export const StoppedHeader = React.memo(function StoppedHeader({
         </Text>
       </div>
 
-      {isInteractive && (
-        <Button
-          prominence="tertiary"
-          size="md"
-          onClick={noProp(onToggle)}
-          rightIcon={isExpanded ? SvgFold : SvgExpand}
-          aria-label={isExpanded ? t("timeline.collapseTimeline") : t("timeline.expandTimeline")}
-          aria-expanded={isExpanded}
-        >
-          {`${totalSteps} ${totalSteps === 1 ? t("timeline.stepSingular") : t("timeline.stepPlural")}`}
-        </Button>
-      )}
+      {isInteractive &&
+        (totalSteps > 0 ? (
+          <Button
+            prominence="tertiary"
+            size="md"
+            onClick={noProp(onToggle)}
+            rightIcon={isExpanded ? SvgFold : SvgExpand}
+            aria-label={
+              isExpanded
+                ? t("timeline.collapseTimeline")
+                : t("timeline.expandTimeline")
+            }
+            aria-expanded={isExpanded}
+          >
+            {`${totalSteps} ${
+              totalSteps === 1
+                ? t("timeline.stepSingular")
+                : t("timeline.stepPlural")
+            }`}
+          </Button>
+        ) : (
+          <Button
+            prominence="tertiary"
+            size="md"
+            onClick={noProp(onToggle)}
+            icon={isExpanded ? SvgFold : SvgExpand}
+            aria-label={
+              isExpanded
+                ? t("timeline.collapseTimeline")
+                : t("timeline.expandTimeline")
+            }
+            aria-expanded={isExpanded}
+          />
+        ))}
     </div>
   );
 });

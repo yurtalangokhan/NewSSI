@@ -4,35 +4,37 @@ Authentication helpers.
 Agent-service does not issue, refresh, or revoke user tokens. User-service owns
 login, logout, registration, and OIDC flows. This module only validates incoming
 tokens and resolves user context for protected agent-service endpoints.
+
+This module contains the pure domain logic (token decode, claims extraction,
+user-profile building). The FastAPI HTTP dependencies (``require_user``,
+``require_permission``, etc.) live in ``api.dependencies`` and are re-exported
+here as a documented backward-compatibility shim. The Keycloak admin client
+lives in ``integrations.keycloak_admin``.
 """
 
 from dataclasses import dataclass, field
-from typing import Annotated, Any
+from typing import Any
 
-import httpx
 import jwt
-from fastapi import Depends, Request, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from i18n import t
 from jwt import InvalidTokenError, PyJWKClient
 
 from core.exceptions import (
     ApplicationError,
     DependencyUnavailableError,
-    ForbiddenError,
     UnauthorizedError,
 )
 from core.logger import get_logger
 from core.settings import settings
+from integrations.keycloak_admin import get_keycloak_user_profile
 from service.UserServiceClient import (
     get_current_user as get_user_service_current_user,
 )
 from service.UserServiceClient import (
     get_user_settings,
-    set_current_access_token,
 )
 
-__all__ = [
+__all__ = [  # noqa: F822  (FastAPI deps resolved lazily via __getattr__ shim)
     "AuthService",
     "get_auth_service",
     "AuthenticatedUser",
@@ -40,11 +42,42 @@ __all__ = [
     "require_permission",
     "require_user_or_internal_service_token",
     "get_primary_user_id",
+    "resolve_known_user_ids",
     "verify_bearer",
     "verify_bearer_or_internal_service_token",
     "extract_user_id_from_token",
     "verify_api_key",
 ]
+
+# Symbols moved to their proper layers (documented backward-compatibility shim):
+# - FastAPI dependencies -> api.dependencies
+# These are resolved lazily via __getattr__ below to avoid a circular import
+# (api.dependencies imports AuthService from this module).
+_SHIM_SOURCES = {
+    "require_user": "api.dependencies",
+    "require_permission": "api.dependencies",
+    "require_user_or_internal_service_token": "api.dependencies",
+    "verify_bearer": "api.dependencies",
+    "verify_api_key": "api.dependencies",
+    "verify_bearer_or_internal_service_token": "api.dependencies",
+    "extract_user_id_from_token": "api.dependencies",
+    "get_primary_user_id": "api.dependencies",
+    "extract_auth_token_from_request": "api.dependencies",
+    "get_keycloak_admin_token": "integrations.keycloak_admin",
+}
+
+
+def __getattr__(name: str):
+    module_name = _SHIM_SOURCES.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    import importlib
+
+    module = importlib.import_module(module_name)
+    value = getattr(module, name)
+    globals()[name] = value
+    return value
+
 
 logger = get_logger(__name__)
 
@@ -53,39 +86,12 @@ _JWKS_KEYS: dict[str, Any] = {}  # kid -> key cache
 _auth_service: "AuthService | None" = None
 
 
-def _get_valid_api_keys() -> set:
-    keys = settings.VALID_API_KEYS
-    if keys:
-        return set(k.strip() for k in keys.split(",") if k.strip())
-    return set()
-
-
-def _extract_auth_token(
-    http_auth: HTTPAuthorizationCredentials | None,
-    request: Request,
-) -> str | None:
-    if http_auth and http_auth.credentials:
-        return http_auth.credentials
-    return (
-        request.cookies.get("fastapiusersauth")
-        or request.cookies.get("session")
-        or request.cookies.get("access_token")
-        or request.cookies.get("id_token")
-    )
-
-
-def _extract_auth_tokens(
-    http_auth: HTTPAuthorizationCredentials | None,
-    request: Request,
-) -> list[str]:
-    tokens: list[str] = []
-    if http_auth and http_auth.credentials:
-        tokens.append(http_auth.credentials)
-    for cookie_name in ("fastapiusersauth", "session", "access_token", "id_token"):
-        token = request.cookies.get(cookie_name)
-        if token and token not in tokens:
-            tokens.append(token)
-    return tokens
+def _refresh_jwks() -> None:
+    """Reset the JWKS client cache so the next lookup re-fetches keys."""
+    global _JWKS_CLIENT, _JWKS_KEYS
+    _JWKS_CLIENT = None
+    _JWKS_KEYS = {}
+    _ = AuthService.get_jwks_client()
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +206,7 @@ class AuthService:
                     "verify_aud": bool(audiences),
                     "verify_iss": True,
                     "verify_exp": True,
+                    "verify_iat": False,
                 },
             )
             return claims
@@ -336,11 +343,7 @@ class AuthService:
         try:
             user_data = await get_user_service_current_user(token)
         except ApplicationError as exc:
-            if exc.status_code in {
-                status.HTTP_401_UNAUTHORIZED,
-                status.HTTP_403_FORBIDDEN,
-                status.HTTP_404_NOT_FOUND,
-            }:
+            if exc.status_code in {401, 403, 404}:
                 return None
             raise
         if not user_data:
@@ -349,11 +352,10 @@ class AuthService:
 
     async def resolve_user_identity(
         self,
-        request: Request,
+        token: str | None,
         user_id: str | None,
         user: AuthenticatedUser | None = None,
     ) -> dict[str, Any]:
-        token = _extract_auth_token(None, request)
         user_service_user = None
         keycloak_id = user.claims.get("keycloak_id") if user else None
         if user and isinstance(user.claims.get("user_service_user"), dict):
@@ -398,15 +400,13 @@ class AuthService:
             "known_user_ids": known_user_ids,
         }
 
-    async def get_current_user(self, request: Request, user: AuthenticatedUser) -> dict[str, Any]:
-        identity = await self.resolve_user_identity(
-            request=request, user_id=user.user_id, user=user
-        )
+    async def get_current_user(self, token: str | None, user: AuthenticatedUser) -> dict[str, Any]:
+        identity = await self.resolve_user_identity(token=token, user_id=user.user_id, user=user)
         keycloak_id = identity.get("keycloak_id")
         user_service_user = identity.get("user_service_user")
         effective_user_id = str(identity.get("primary_user_id") or user.user_id)
 
-        keycloak_profile = await self.get_keycloak_user_profile(keycloak_id or user.user_id)
+        keycloak_profile = await get_keycloak_user_profile(keycloak_id or user.user_id)
 
         email = (
             user.email or (user_service_user and user_service_user.get("email")) or user.username
@@ -483,6 +483,11 @@ class AuthService:
             "team_name": None,
             "is_anonymous_user": False,
             "password_configured": True,
+            "is_external_keycloak_user": bool(
+                user_service_user.get("is_external_keycloak_user", False)
+            )
+            if isinstance(user_service_user, dict)
+            else False,
             "first_name": str(given_name) if given_name else None,
             "last_name": str(family_name) if family_name else None,
             "full_name": str(full_name) if full_name else None,
@@ -500,36 +505,6 @@ class AuthService:
             },
         }
 
-    # ------------------------------------------------------------------
-    # Keycloak admin API
-    # ------------------------------------------------------------------
-
-    async def get_keycloak_admin_token(self) -> str | None:
-        return None
-
-    async def get_keycloak_user_profile(self, user_id: str) -> dict[str, Any] | None:
-        issuer = self.get_keycloak_issuer()
-        if "/realms/" not in issuer:
-            return None
-
-        base_url = issuer.split("/realms/")[0].rstrip("/")
-        realm = issuer.split("/realms/")[-1].split("/")[0]
-        admin_token = await self.get_keycloak_admin_token()
-        if not admin_token:
-            return None
-
-        headers = {"Authorization": f"Bearer {admin_token}"}
-        user_url = f"{base_url}/admin/realms/{realm}/users/{user_id}"
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(user_url, headers=headers)
-            if not response.is_success:
-                return None
-            data = response.json()
-            return data if isinstance(data, dict) else None
-        except Exception:
-            return None
-
 
 def get_auth_service() -> AuthService:
     global _auth_service
@@ -539,275 +514,57 @@ def get_auth_service() -> AuthService:
 
 
 # ------------------------------------------------------------------
-# JWKS key rotation helper
+# Module-level identity helpers
+#
+# The FastAPI dependencies themselves moved to ``api.dependencies`` (see the
+# shim above). These two stay here: they are plain identity resolution over
+# ``AuthService``, called from services and domain code that must not import
+# the HTTP dependency layer.
 # ------------------------------------------------------------------
 
 
-def _refresh_jwks() -> None:
-    global _JWKS_CLIENT, _JWKS_KEYS
-    _JWKS_CLIENT = None
-    _JWKS_KEYS = {}
-    _ = AuthService.get_jwks_client()
+def resolve_user_service_id(user: AuthenticatedUser) -> str | None:
+    """The user-service `users.id` for this authenticated user, if known.
 
-
-# ------------------------------------------------------------------
-# Module-level auth helpers
-# ------------------------------------------------------------------
-
-
-def _is_keycloak_enabled() -> bool:
-    return AuthService.is_keycloak_enabled()
-
-
-def _decode_keycloak_token(token: str) -> dict:
-    return AuthService.decode_keycloak_token(token)
-
-
-def extract_user_id_from_token(token: str) -> str | None:
-    return AuthService.extract_user_id_from_token(token)
-
-
-def get_primary_user_id(
-    identity: dict[str, Any] | None, fallback_user_id: str | None
-) -> str | None:
-    if identity and identity.get("primary_user_id"):
-        return str(identity["primary_user_id"])
-    if fallback_user_id:
-        return str(fallback_user_id)
+    Fine-grained permission checks and audit records (P3 Task 19) both need
+    a real user-service UUID rather than whatever identifier happened to
+    authenticate the request — a Keycloak `sub`, an API key, or the literal
+    "dev-user". Returns None when no such id is available; callers decide
+    their own fallback (the flow audit emitter records the raw identifier in
+    event details instead of guessing a FK-safe value).
+    """
+    user_service_user = user.claims.get("user_service_user")
+    if isinstance(user_service_user, dict) and user_service_user.get("id"):
+        return str(user_service_user["id"])
     return None
 
 
-def _has_valid_internal_service_token(request: Request) -> bool:
-    internal_token = (settings.INTERNAL_SERVICE_TOKEN or "").strip()
-    if not internal_token:
-        return False
+async def resolve_known_user_ids(
+    user_id: str | None,
+    *,
+    token: str | None = None,
+    user: AuthenticatedUser | None = None,
+) -> list[str]:
+    """Owner-id candidates for ``user_id``, bridging Keycloak ``sub`` vs user-service id.
 
-    header_token = (request.headers.get("X-Internal-Service-Token") or "").strip()
-    if header_token == internal_token:
-        return True
-
-    authorization = (request.headers.get("Authorization") or "").strip()
-    if authorization.lower().startswith("bearer "):
-        return authorization[7:].strip() == internal_token
-
-    return False
-
-
-def _internal_service_user(token: str | None = None) -> AuthenticatedUser:
-    return AuthenticatedUser(
-        user_id="internal-service",
-        email="internal@service.local",
-        roles=["internal"],
-        access_token=token,
-    )
-
-
-# ------------------------------------------------------------------
-# Primary FastAPI dependencies (use these in routes)
-# ------------------------------------------------------------------
-
-
-async def require_user(
-    request: Request,
-    http_auth: Annotated[
-        HTTPAuthorizationCredentials | None,
-        Depends(HTTPBearer(description="Please provide a bearer token", auto_error=False)),
-    ],
-) -> AuthenticatedUser:
-    """Validate bearer token and return authenticated user context.
-
-    Raises UnauthorizedError if token is missing or invalid.
+    Rows owned by a user may be stored under either identifier (personas use the
+    user-service primary id, mail configs use the Keycloak ``sub``). Delegates to
+    :meth:`AuthService.resolve_user_identity` — which already logs user-service
+    failures — and always includes the raw ``user_id`` so a lookup stays scoped
+    to the caller even when user-service is unreachable. Returns ``[]`` only when
+    ``user_id`` itself is blank, so callers never fall back to an unscoped query.
     """
-    token = _extract_auth_token(http_auth, request)
-    set_current_access_token(token)
-
-    if _is_keycloak_enabled():
-        if not token:
-            raise UnauthorizedError(
-                message=t("auth.missing_bearer_token"),
-            )
-        try:
-            claims = _decode_keycloak_token(token)
-            return AuthService.build_authenticated_user(claims, token)
-        except ApplicationError:
-            user = await AuthService.authenticate_with_user_service(token)
-            if user:
-                return user
-            raise
-
-    valid_keys = _get_valid_api_keys()
-    if not valid_keys:
-        # No keys configured — dev mode, allow all
-        return AuthenticatedUser(user_id="dev-user", email="dev@local.dev")
-
-    if not token:
-        raise UnauthorizedError(
-            message=t("auth.missing_bearer_token"),
+    if not user_id:
+        return []
+    raw = str(user_id)
+    try:
+        identity = await get_auth_service().resolve_user_identity(
+            token=token, user_id=raw, user=user
         )
-
-    if token in valid_keys:
-        uid = extract_user_id_from_token(token)
-        return AuthenticatedUser(
-            user_id=uid or token,
-            email=f"{uid or token}@local.dev",
-            access_token=token,
-        )
-
-    uid = extract_user_id_from_token(token)
-    if uid in valid_keys:
-        return AuthenticatedUser(
-            user_id=uid,
-            email=f"{uid}@local.dev",
-            access_token=token,
-        )
-
-    raise UnauthorizedError(
-        message=t("auth.invalid_bearer_token"),
-    )
-
-
-def require_permission(permission: str):
-    """Factory returning a FastAPI dependency requiring a specific permission.
-
-    Usage: ``user = Depends(require_permission("datasource:create"))``
-
-    Authenticates via require_user, then fetches the user's resolved permissions
-    from user-service (the source of truth) and verifies membership.
-    Dev mode and internal-service bypass.
-
-    Fine-grained permissions live ONLY in the user-service database, not in the
-    JWT. The JWT contains only coarse client roles for service-level grouping.
-    """
-
-    async def _check_permission(
-        user: AuthenticatedUser = Depends(require_user),
-    ) -> AuthenticatedUser:
-        if user.user_id in ("dev-user", "internal-service"):
-            return user
-
-        user_service_user = user.claims.get("user_service_user")
-        permission_user_id = (
-            str(user_service_user["id"])
-            if isinstance(user_service_user, dict) and user_service_user.get("id")
-            else user.user_id
-        )
-
-        from service.AuthorizationClient import get_authorization_client
-
-        if await get_authorization_client().has_permission(
-            permission_user_id,
-            permission,
-            user.access_token,
-        ):
-            return user
-
-        raise ForbiddenError(
-            message=t("auth.missing_permission", permission=permission),
-        )
-
-    return _check_permission
-
-
-async def require_user_or_internal_service_token(
-    request: Request,
-    http_auth: Annotated[
-        HTTPAuthorizationCredentials | None,
-        Depends(HTTPBearer(description="Please provide a bearer token", auto_error=False)),
-    ],
-) -> AuthenticatedUser:
-    """Like require_user, but also accepts the INTERNAL_SERVICE_TOKEN header."""
-    if _has_valid_internal_service_token(request):
-        return _internal_service_user(settings.INTERNAL_SERVICE_TOKEN)
-
-    return await require_user(request=request, http_auth=http_auth)
-
-
-# ------------------------------------------------------------------
-# Backward-compatible aliases (deprecated — use require_user instead)
-# ------------------------------------------------------------------
-
-
-def verify_bearer(
-    request: Request,
-    http_auth: Annotated[
-        HTTPAuthorizationCredentials | None,
-        Depends(HTTPBearer(description="Please provide a bearer token", auto_error=False)),
-    ],
-) -> None:
-    """Deprecated: use require_user instead."""
-    token = _extract_auth_token(http_auth, request)
-
-    if _is_keycloak_enabled():
-        if not token:
-            raise UnauthorizedError(
-                message=t("auth.missing_bearer_token"),
-            )
-        _decode_keycloak_token(token)
-        return
-
-    valid_keys = _get_valid_api_keys()
-    if not valid_keys:
-        return
-
-    if token:
-        if token in valid_keys:
-            return
-        uid = extract_user_id_from_token(token)
-        if uid in valid_keys:
-            return
-
-    raise UnauthorizedError(
-        message=t("auth.invalid_bearer_token"),
-    )
-
-
-def verify_api_key(
-    request: Request,
-    http_auth: Annotated[
-        HTTPAuthorizationCredentials | None,
-        Depends(HTTPBearer(description="Please provide API key", auto_error=False)),
-    ],
-) -> str | None:
-    """Deprecated: use require_user instead."""
-    if _is_keycloak_enabled():
-        candidate_tokens = _extract_auth_tokens(http_auth, request)
-        if not candidate_tokens:
-            return None
-        for token in candidate_tokens:
-            try:
-                claims = _decode_keycloak_token(token)
-                return claims.get("sub") or claims.get("preferred_username") or claims.get("email")
-            except ApplicationError:
-                continue
-        raise UnauthorizedError(
-            message=t("auth.invalid_bearer_token"),
-        )
-
-    token = _extract_auth_token(http_auth, request)
-    valid_keys = _get_valid_api_keys()
-    if not valid_keys:
-        return "dev-user"
-    if not token:
-        return None
-    if token in valid_keys:
-        return extract_user_id_from_token(token)
-    uid = extract_user_id_from_token(token)
-    if uid in valid_keys:
-        return uid
-    raise UnauthorizedError(
-        message=t("auth.invalid_api_key"),
-    )
-
-
-def verify_bearer_or_internal_service_token(
-    request: Request,
-    http_auth: Annotated[
-        HTTPAuthorizationCredentials | None,
-        Depends(HTTPBearer(description="Please provide a bearer token", auto_error=False)),
-    ],
-) -> None:
-    """Deprecated: use require_user_or_internal_service_token instead."""
-    if _has_valid_internal_service_token(request):
-        return
-
-    verify_bearer(request=request, http_auth=http_auth)
+        known = [str(candidate) for candidate in identity.get("known_user_ids") or [] if candidate]
+    except Exception as exc:  # noqa: BLE001 - never let identity resolution break a lookup
+        logger.warning("Failed to resolve known user ids for %s: %s", raw, exc)
+        known = []
+    if raw not in known:
+        known.append(raw)
+    return known

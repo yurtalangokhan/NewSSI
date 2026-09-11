@@ -19,15 +19,14 @@ Memory model:
 
 from __future__ import annotations
 
-import logging
-
 from fastapi import APIRouter, Depends
 
 from api.dependencies import require_user_or_internal_service_token
 from controller import IngestController, get_ingest_controller
+from core.logger import get_logger
 from models.ingest import BatchRequest, BatchResponse, SourcePreviewRequest
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(
     tags=["ingestion"],

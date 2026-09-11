@@ -4,7 +4,6 @@ import { toast } from "@/hooks/useToast";
 import { getErrorMsg } from "@/lib/fetchUtils";
 import { requestEmailVerification } from "../lib";
 import { useTranslation } from "react-i18next";
-import { Spinner } from "@/components/Spinner";
 import { useState, JSX } from "react";
 
 export function RequestNewVerificationEmail({
@@ -38,7 +37,6 @@ export function RequestNewVerificationEmail({
         }
       }}
     >
-      {isRequestingVerification && <Spinner />}
       {children}
     </button>
   );

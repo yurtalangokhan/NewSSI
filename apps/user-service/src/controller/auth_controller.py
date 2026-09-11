@@ -1,16 +1,26 @@
-import logging
+import base64
+import binascii
+import json
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import Request, Response
 
+from src.core.observability import get_logger
 from src.service import get_auth_service
 
 from .base import BaseController
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 MAX_AUTH_SET_COOKIE_HEADER_BYTES = 3900
 MAX_ID_TOKEN_COOKIE_VALUE_BYTES = 3800
+
+# Used only when the identity provider does not tell us how long a token is
+# good for. Real lifetimes come from the token response (`expires_in` /
+# `refresh_expires_in`) so the cookie expires with the token it carries.
+DEFAULT_ACCESS_TOKEN_MAX_AGE = 3600
+DEFAULT_REFRESH_TOKEN_MAX_AGE = 30 * 86400
 
 
 class AuthController(BaseController):
@@ -30,6 +40,7 @@ class AuthController(BaseController):
                 result.get("access_token", ""),
                 result.get("refresh_token", ""),
                 result.get("id_token"),
+                **self._set_cookie_kwargs(result),
             )
             return result
         except ValueError as e:
@@ -54,6 +65,7 @@ class AuthController(BaseController):
                 result.get("access_token", ""),
                 result.get("refresh_token") or "",
                 result.get("id_token"),
+                **self._set_cookie_kwargs(result),
             )
             return result
         except ValueError as e:
@@ -80,6 +92,7 @@ class AuthController(BaseController):
                 result.get("access_token", ""),
                 result.get("refresh_token", ""),
                 result.get("id_token"),
+                **self._set_cookie_kwargs(result),
             )
             return result
         except ValueError as e:
@@ -120,6 +133,7 @@ class AuthController(BaseController):
                 result.get("access_token", ""),
                 result.get("refresh_token", ""),
                 result.get("id_token"),
+                **self._set_cookie_kwargs(result),
             )
             return result
         except Exception as e:
@@ -131,13 +145,17 @@ class AuthController(BaseController):
         access_token: str,
         refresh_token: str,
         id_token: str | None = None,
+        expires_in: int | None = None,
+        refresh_expires_in: int | None = None,
     ):
+        access_max_age = self._cookie_max_age(expires_in, DEFAULT_ACCESS_TOKEN_MAX_AGE)
+        session_max_age = self._cookie_max_age(refresh_expires_in, DEFAULT_REFRESH_TOKEN_MAX_AGE)
         response.set_cookie(
             key="access_token",
             value=access_token,
             httponly=True,
             samesite="lax",
-            max_age=3600,
+            max_age=access_max_age,
             secure=False,
         )
         if refresh_token:
@@ -146,20 +164,41 @@ class AuthController(BaseController):
                 value=refresh_token,
                 httponly=True,
                 samesite="lax",
-                max_age=30 * 86400,
+                max_age=session_max_age,
                 secure=False,
             )
-        if id_token and self._can_set_id_token_cookie(response, id_token):
+        if id_token and self._can_set_id_token_cookie(response, id_token, session_max_age):
             response.set_cookie(
                 key="id_token",
                 value=id_token,
                 httponly=True,
                 samesite="lax",
-                max_age=30 * 86400,
+                max_age=session_max_age,
                 secure=False,
             )
 
-    def _can_set_id_token_cookie(self, response: Response, id_token: str) -> bool:
+    @staticmethod
+    def _cookie_max_age(raw: Any, fallback: int) -> int:
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            return fallback
+        return value if value > 0 else fallback
+
+    @staticmethod
+    def _set_cookie_kwargs(result: dict[str, Any]) -> dict[str, Any]:
+        """Cookie lifetimes for a token payload returned by the auth service."""
+        return {
+            "expires_in": result.get("expires_in"),
+            "refresh_expires_in": result.get("refresh_expires_in"),
+        }
+
+    def _can_set_id_token_cookie(
+        self,
+        response: Response,
+        id_token: str,
+        max_age: int = DEFAULT_REFRESH_TOKEN_MAX_AGE,
+    ) -> bool:
         id_token_bytes = len(id_token.encode("utf-8"))
         if id_token_bytes > MAX_ID_TOKEN_COOKIE_VALUE_BYTES:
             logger.warning(
@@ -171,7 +210,7 @@ class AuthController(BaseController):
         candidate_header_bytes = self._cookie_header_bytes(
             key="id_token",
             value=id_token,
-            max_age=30 * 86400,
+            max_age=max_age,
         )
         total_header_bytes = self._set_cookie_header_bytes(response) + candidate_header_bytes
         if total_header_bytes > MAX_AUTH_SET_COOKIE_HEADER_BYTES:
@@ -228,6 +267,7 @@ class AuthController(BaseController):
                 result.get("access_token", ""),
                 result.get("refresh_token", ""),
                 result.get("id_token"),
+                **self._set_cookie_kwargs(result),
             )
             return result
         except ValueError as e:
@@ -243,6 +283,7 @@ class AuthController(BaseController):
                 result.get("access_token", ""),
                 result.get("refresh_token", ""),
                 result.get("id_token"),
+                **self._set_cookie_kwargs(result),
             )
             return result
         except ValueError as e:
@@ -280,7 +321,72 @@ class AuthController(BaseController):
         user = await get_user_service().get_current_user(user_id)
         if not user:
             self._raise_not_found("user.not_found")
-        return user
+        return {**user, **self._current_token_lifetime(request)}
+
+    @staticmethod
+    def _unverified_jwt_claims(token: str) -> dict[str, Any] | None:
+        """Read a JWT's payload without verifying it.
+
+        This is only used to tell the client how long its own token is good
+        for; the token itself is verified by the auth dependency before the
+        request ever reaches here. Decoding by hand keeps this independent of
+        which JWT library is in play and of whatever `alg` the token declares.
+        """
+        parts = token.split(".")
+        if len(parts) < 2:
+            return None
+
+        payload = parts[1]
+        padded = payload + "=" * (-len(payload) % 4)
+        try:
+            claims = json.loads(base64.urlsafe_b64decode(padded).decode("utf-8"))
+        except (binascii.Error, ValueError, UnicodeDecodeError):
+            return None
+
+        return claims if isinstance(claims, dict) else None
+
+    @staticmethod
+    def _bearer_token_from_request(request: Request) -> str | None:
+        authorization = request.headers.get("authorization") or ""
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() == "bearer" and token.strip():
+            return token.strip()
+        return request.cookies.get("access_token")
+
+    def _current_token_lifetime(self, request: Request) -> dict[str, Any]:
+        """Expose the caller's access-token window on /me.
+
+        The web client arms its proactive session-refresh timer from these
+        fields; without them `getSecondsUntilExpiration` returns null and the
+        timer never runs, so the session is only ever renewed reactively (and
+        never at all on a server-rendered page load).
+        """
+        token = self._bearer_token_from_request(request)
+        if not token:
+            return {}
+
+        claims = self._unverified_jwt_claims(token)
+        if claims is None:
+            return {}
+
+        exp = claims.get("exp")
+        if not isinstance(exp, int | float):
+            return {}
+
+        iat = claims.get("iat")
+        if not isinstance(iat, int | float):
+            # Tokens without `iat` still carry `exp`; anchor the window at now
+            # so the client computes a sane countdown.
+            iat = datetime.now(UTC).timestamp()
+
+        expiry_length = int(exp - iat)
+        if expiry_length <= 0:
+            return {}
+
+        return {
+            "current_token_created_at": datetime.fromtimestamp(iat, UTC).isoformat(),
+            "current_token_expiry_length": expiry_length,
+        }
 
 
 _auth_controller: AuthController | None = None

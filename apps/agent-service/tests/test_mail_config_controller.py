@@ -47,3 +47,24 @@ class TestMailConfigNotFoundIsTranslated:
 
         assert exc.value.status_code == 404
         assert exc.value.detail == "Posta yapılandırması bulunamadı"
+
+
+@pytest.mark.asyncio
+async def test_list_configs_returns_paginated_structure():
+    service = AsyncMock()
+    service.list_configs_paginated.return_value = (
+        [{"id": "cfg-1", "name": "Work SMTP"}],
+        15,
+    )
+    controller = MailConfigController(service=service)
+
+    result = await controller.list_configs("user-1", search="work", page=2, page_size=10)
+
+    assert result["items"] == [{"id": "cfg-1", "name": "Work SMTP"}]
+    assert result["total_items"] == 15
+    assert result["page"] == 2
+    assert result["page_size"] == 10
+    assert result["total_pages"] == 2
+    service.list_configs_paginated.assert_awaited_once_with(
+        "user-1", search="work", page=2, page_size=10
+    )

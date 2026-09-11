@@ -10,6 +10,7 @@ import {
 import { FiExternalLink } from "react-icons/fi";
 import CardSection from "../admin/CardSection";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 export function ModelPreview({
   model,
@@ -196,7 +197,9 @@ export function ModelOption({
       }`}
     >
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-bold text-lg">{model.model_name}</h3>
+        <Text as="h3" className="font-bold text-lg">
+          {model.model_name}
+        </Text>
 
         {model.link && (
           <a
@@ -210,11 +213,14 @@ export function ModelOption({
           </a>
         )}
       </div>
-      <p className="text-sm k text-text-600 dark:text-neutral-400 text-left mb-2">
+      <Text
+        as="p"
+        className="text-sm k text-text-600 dark:text-neutral-400 text-left mb-2"
+      >
         {model.description ||
           currentModelCopy?.description ||
           t("embeddings.modelDescriptionFallback")}
-      </p>
+      </Text>
       <div className="text-xs text-text-500">
         {model.isDefault ? t("embeddings.default") : t("embeddings.selfHosted")}
       </div>
@@ -276,9 +282,9 @@ export function ModelSelector({
           <div key={type}>
             <div className="flex items-center mb-2">
               {getIconForRerankType(type)}
-              <h2 className="ml-2 mt-2 text-xl font-bold">
+              <Text as="h2" className="ml-2 mt-2 text-xl font-bold">
                 {getTitleForRerankType(type)}
-              </h2>
+              </Text>
             </div>
 
             <div className="flex mt-4 flex-wrap gap-4">

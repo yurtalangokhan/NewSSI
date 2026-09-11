@@ -266,8 +266,16 @@ export default function UserLibraryModal({
                     icon={SvgUploadCloud}
                     onClick={() => handleUploadToFolder("/")}
                     disabled={isUploading}
-                    tooltip={isUploading ? t("userLibraryModal.uploading") : t("userLibraryModal.upload")}
-                    aria-label={isUploading ? t("userLibraryModal.uploading") : t("userLibraryModal.upload")}
+                    tooltip={
+                      isUploading
+                        ? t("userLibraryModal.uploading")
+                        : t("userLibraryModal.upload")
+                    }
+                    aria-label={
+                      isUploading
+                        ? t("userLibraryModal.uploading")
+                        : t("userLibraryModal.upload")
+                    }
                     secondary
                   />
                 </Section>

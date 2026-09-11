@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import {
   DiscordBotConfig,
   DiscordGuildConfig,
@@ -22,7 +23,7 @@ export async function fetchBotConfig(): Promise<DiscordBotConfig> {
 export async function createBotConfig(
   botToken: string
 ): Promise<DiscordBotConfig> {
-  const response = await fetch(`${BASE_URL}/config`, {
+  const response = await authenticatedFetch(`${BASE_URL}/config`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ bot_token: botToken }),
@@ -35,7 +36,9 @@ export async function createBotConfig(
 }
 
 export async function deleteBotConfig(): Promise<void> {
-  const response = await fetch(`${BASE_URL}/config`, { method: "DELETE" });
+  const response = await authenticatedFetch(`${BASE_URL}/config`, {
+    method: "DELETE",
+  });
   if (!response.ok) {
     throw new Error("Failed to delete bot config");
   }
@@ -52,7 +55,9 @@ export async function fetchGuildConfigs(): Promise<DiscordGuildConfig[]> {
 }
 
 export async function createGuildConfig(): Promise<DiscordGuildConfigCreateResponse> {
-  const response = await fetch(`${BASE_URL}/guilds`, { method: "POST" });
+  const response = await authenticatedFetch(`${BASE_URL}/guilds`, {
+    method: "POST",
+  });
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.detail || "Failed to create guild config");
@@ -74,7 +79,7 @@ export async function updateGuildConfig(
   configId: number,
   update: DiscordGuildConfigUpdate
 ): Promise<DiscordGuildConfig> {
-  const response = await fetch(`${BASE_URL}/guilds/${configId}`, {
+  const response = await authenticatedFetch(`${BASE_URL}/guilds/${configId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(update),
@@ -87,7 +92,7 @@ export async function updateGuildConfig(
 }
 
 export async function deleteGuildConfig(configId: number): Promise<void> {
-  const response = await fetch(`${BASE_URL}/guilds/${configId}`, {
+  const response = await authenticatedFetch(`${BASE_URL}/guilds/${configId}`, {
     method: "DELETE",
   });
   if (!response.ok) {
@@ -112,7 +117,7 @@ export async function updateChannelConfig(
   channelConfigId: number,
   update: DiscordChannelConfigUpdate
 ): Promise<DiscordChannelConfig> {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `${BASE_URL}/guilds/${guildConfigId}/channels/${channelConfigId}`,
     {
       method: "PATCH",

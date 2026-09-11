@@ -143,7 +143,10 @@ def test_unhandled_errors_are_safe_and_logged(caplog):
         "field_errors": [],
         "request_id": None,
     }
-    assert "database password leaked" in caplog.text
+    assert "Unhandled test-service request failed" in caplog.text
+    assert "GET /boom" in caplog.text
+    assert "internal.server_error" in caplog.text
+    assert "database password leaked" not in caplog.text
     assert "database password leaked" not in response.text
 
 

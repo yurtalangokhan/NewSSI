@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import { toast } from "@/hooks/useToast";
 import Button from "@/refresh-components/buttons/Button";
 import { useRef, useState } from "react";
@@ -57,7 +58,7 @@ export default function KickoffCSVExport({
         buttonName: PREVIOUS_CSV_TASK_BUTTON_NAME,
       })
     );
-    const response = await fetch(withDateRange(dateRange), {
+    const response = await authenticatedFetch(withDateRange(dateRange), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

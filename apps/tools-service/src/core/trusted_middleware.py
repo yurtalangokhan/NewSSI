@@ -25,13 +25,13 @@ import anything from agent-service.
 from __future__ import annotations
 
 import json
-import logging
 from typing import Any
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
+from .observability import get_logger
 from .settings import optional_env
 from .trusted import (
     INTERNAL_AUTH_HEADER,
@@ -45,7 +45,7 @@ from .trusted_context import (
     set_current_trusted_context,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _TRUSTED_HEADER_NAMES = {
     INTERNAL_AUTH_HEADER,

@@ -25,6 +25,7 @@ import {
   SvgUser,
 } from "@opal/icons";
 import Tag from "@/refresh-components/buttons/Tag";
+import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import * as ExpandableCard from "@/layouts/expandable-card-layouts";
 import * as ActionsLayouts from "@/layouts/actions-layouts";
 import useMcpServersForAgentEditor from "@/hooks/useMcpServersForAgentEditor";
@@ -46,6 +47,9 @@ import { getAgentAvailabilityIssues } from "@/lib/agentAvailability";
 import { useLLMProviders } from "@/hooks/useLLMProviders";
 import { Interactive } from "@opal/core";
 import { useTranslation } from "react-i18next";
+import { useUser } from "@/providers/UserProvider";
+import { checkUserOwnsAgent } from "@/lib/agents";
+import { FlowAgentPreview } from "@/components/flow-canvas/components/FlowAgentPreview";
 import { buildAppPath } from "@/hooks/appNavigation";
 import { saveAppDraftCommand } from "@/app/app/services/draftCommand";
 
@@ -59,19 +63,23 @@ function MemorySection({
   longTermMemoryEnabled: boolean;
 }) {
   const { t } = useTranslation();
+  const memoryLabel = longTermMemoryEnabled
+    ? t("agentViewer.memoryTypeLongTerm")
+    : t("agentViewer.memoryTypeStandard");
+  const memoryTooltip = longTermMemoryEnabled
+    ? t("agentViewer.memoryTypeLongTermTooltip")
+    : t("agentViewer.memoryTypeStandardTooltip");
+
   return (
     <div className="flex flex-row items-center gap-2 px-0.5 py-1">
       <Text mainUiBody text02 className="shrink-0">
         {t("agentViewer.memoryTitle")}
       </Text>
-      <Tag
-        icon={SvgClock}
-        label={
-          longTermMemoryEnabled
-            ? t("agentViewer.memoryTypeLongTerm")
-            : t("agentViewer.memoryTypeStandard")
-        }
-      />
+      <SimpleTooltip tooltip={memoryTooltip} side="top">
+        <span className="inline-flex cursor-help">
+          <Tag icon={SvgClock} label={memoryLabel} />
+        </span>
+      </SimpleTooltip>
     </div>
   );
 }
@@ -167,6 +175,7 @@ interface AgentChatInputProps {
 function AgentChatInput({ agent, onSubmit }: AgentChatInputProps) {
   const llmManager = useLlmManager(undefined, agent);
   const filterManager = useFilters();
+  const isFlowAgent = agent.graph_schema === "flow";
 
   return (
     <AppInputBar
@@ -186,6 +195,7 @@ function AgentChatInput({ agent, onSubmit }: AgentChatInputProps) {
       deepResearchEnabled={false}
       toggleDeepResearch={() => {}}
       disabled={false}
+      hideLlmPicker={isFlowAgent}
     />
   );
 }
@@ -213,14 +223,44 @@ function AgentChatInput({ agent, onSubmit }: AgentChatInputProps) {
  */
 export interface AgentViewerModalProps {
   agent: FullPersona;
+  isLoading?: boolean;
 }
-export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
+export default function AgentViewerModal({
+  agent,
+  isLoading = false,
+}: AgentViewerModalProps) {
   const agentViewerModal = useModal();
   const router = useRouter();
   const { t } = useTranslation();
+  const { user, isAdmin } = useUser();
   const { allRecentFiles } = useProjectsContext();
   const { llmProviders } = useLLMProviders(agent.id);
   const routeAgentId = agent.external_id ?? agent.id;
+  const isOwnedByUser = checkUserOwnsAgent(user, agent);
+  const ownerEmail = useMemo(() => {
+    if (
+      (isOwnedByUser ||
+        (agent.owner?.id && user?.id && agent.owner.id === user.id)) &&
+      user?.email
+    ) {
+      return user.email;
+    }
+    return resolveAgentOwnerEmail(agent.owner?.email, t);
+  }, [
+    agent.owner?.email,
+    agent.owner?.id,
+    user?.email,
+    user?.id,
+    isOwnedByUser,
+    t,
+  ]);
+  const canEdit = isOwnedByUser || isAdmin;
+  const isFlowAgent = agent.graph_schema === "flow";
+  const agentDefId =
+    agent.agent_definition_id ||
+    (agent.graph_schema === "flow" && typeof agent.external_id === "string"
+      ? agent.external_id
+      : null);
 
   const handleStartChat = useCallback(
     (message: string) => {
@@ -272,7 +312,8 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
   );
 
   // Fetch MCP server metadata for display
-  const { mcpData } = useMcpServersForAgentEditor();
+  const { mcpData, isLoading: isMcpLoading } = useMcpServersForAgentEditor();
+  const isActionsLoading = isLoading || isMcpLoading;
   const mcpServers = mcpData?.mcp_servers ?? [];
 
   const mcpServersWithTools = useMemo(
@@ -320,13 +361,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
           title={agent.name}
           tag={<AgentAvailabilityBadge agent={agent} showLabel />}
           onClose={() => agentViewerModal.toggle(false)}
-        >
-          <AgentAvailabilityBadge
-            agent={agent}
-            showLabel
-            className="ml-8 w-fit"
-          />
-        </Modal.Header>
+        />
 
         <Modal.Body>
           {/* Metadata */}
@@ -341,7 +376,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
             )}
             <Content
               icon={SvgUser}
-              title={resolveAgentOwnerEmail(agent.owner?.email, t)}
+              title={ownerEmail}
               sizePreset="main-ui"
               variant="body"
               prominence="muted"
@@ -387,175 +422,254 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
             </div>
           )}
 
-          {/* Knowledge */}
-          <Separator noPadding />
-          <Section gap={0.5} alignItems="start">
-            <Content
-              title={t("agentViewer.knowledgeSectionTitle")}
-              sizePreset="main-content"
-              variant="section"
-            />
-            {hasKnowledge ? (
-              <Section
-                gap={0.5}
-                flexDirection="row"
-                justifyContent="start"
-                wrap
-                alignItems="start"
-              >
-                {agent.document_sets?.map((docSet) => (
-                  <DocumentSetCard key={docSet.id} documentSet={docSet} />
-                ))}
-                {agent.user_file_ids?.map((fileId) => {
-                  const file = allRecentFiles.find((f) => f.id === fileId);
-                  if (!file) return null;
-                  return <FileCard key={fileId} file={file} />;
-                })}
-                {ragDocumentCollections > 0 && (
-                  <Content
-                    icon={SvgActions}
-                    title={t("agentViewer.documentProcessingLabel")}
-                    description={t(
-                      "agentViewer.documentProcessingDescription",
-                      { count: ragDocumentCollections }
-                    )}
-                    sizePreset="main-ui"
-                    variant="section"
-                  />
-                )}
-                {ragGraphCollections > 0 && (
-                  <Content
-                    icon={SvgActions}
-                    title={t("agentViewer.knowledgeGraphLabel")}
-                    description={t("agentViewer.knowledgeGraphDescription", {
-                      count: ragGraphCollections,
-                    })}
-                    sizePreset="main-ui"
-                    variant="section"
-                  />
-                )}
-              </Section>
-            ) : (
-              <EmptyMessage title={t("agentViewer.noKnowledgeMessage")} />
-            )}
-          </Section>
-
-          {/* Actions & Tools */}
-          <SimpleCollapsible>
-            <SimpleCollapsible.Header
-              title={t("agentViewer.actionsAndToolsTitle")}
-            />
-            <SimpleCollapsible.Content>
-              {hasActions ? (
-                <Section gap={0.5} alignItems="start">
-                  {mcpServersWithTools.map(({ server, tools }) => (
-                    <ViewerMCPServerCard
-                      key={server.id}
-                      server={server}
-                      tools={tools}
-                    />
-                  ))}
-                  {openApiTools.map((tool) => (
-                    <ViewerOpenApiToolCard key={tool.id} tool={tool} />
-                  ))}
-                  {builtInTools.map((tool) => (
-                    <ViewerOpenApiToolCard
-                      key={`builtin-${tool.id}`}
-                      tool={tool}
-                    />
-                  ))}
-                  {unknownMcpToolNames.map((toolName) => (
-                    <ExpandableCard.Root key={`mcp-name-${toolName}`}>
-                      <ExpandableCard.Header>
-                        <div className="p-2">
-                          <Content
-                            icon={SvgActions}
-                            title={toolName}
-                            description={t("agentViewer.mcpToolDescription")}
-                            sizePreset="main-ui"
-                            variant="section"
-                          />
-                        </div>
-                      </ExpandableCard.Header>
-                    </ExpandableCard.Root>
-                  ))}
-
-                  <Separator noPadding />
-                  <MemorySection
-                    longTermMemoryEnabled={longTermMemoryEnabled}
-                  />
-                </Section>
-              ) : (
-                <Section gap={0.5} alignItems="start">
-                  <EmptyMessage title={t("agentViewer.noActionsMessage")} />
-                  <MemorySection
-                    longTermMemoryEnabled={longTermMemoryEnabled}
-                  />
-                </Section>
-              )}
-            </SimpleCollapsible.Content>
-          </SimpleCollapsible>
-
-          {/* More Info (Collapsible) */}
-          <Separator noPadding />
-          <SimpleCollapsible>
-            <SimpleCollapsible.Header title={t("agentViewer.moreInfoTitle")} />
-            <SimpleCollapsible.Content>
-              <Section gap={0.5} alignItems="start">
-                {agent.system_prompt && (
-                  <Content
-                    title={t("agentViewer.instructionsLabel")}
-                    description={agent.system_prompt}
-                    sizePreset="main-ui"
-                    variant="section"
-                  />
-                )}
-                {defaultModel && (
-                  <Horizontal
-                    title={t("agentViewer.defaultModelLabel")}
-                    description={t("agentViewer.defaultModelDescription")}
-                    nonInteractive
-                    sizePreset="main-ui"
-                  >
-                    <Text>{defaultModel}</Text>
-                  </Horizontal>
-                )}
-                {agent.search_start_date && (
-                  <Horizontal
-                    title={t("agentViewer.knowledgeCutoffLabel")}
-                    description={t("agentViewer.knowledgeCutoffDescription")}
-                    nonInteractive
-                    sizePreset="main-ui"
-                  >
-                    <Text mainUiMono>
-                      {formatMmDdYyyy(agent.search_start_date)}
-                    </Text>
-                  </Horizontal>
-                )}
-                <Horizontal
-                  title={t("agentViewer.overwriteSystemPromptsLabel")}
-                  description={t(
-                    "agentViewer.overwriteSystemPromptsDescription"
-                  )}
-                  nonInteractive
-                  sizePreset="main-ui"
-                >
-                  <Switch disabled checked={agent.replace_base_system_prompt} />
-                </Horizontal>
-              </Section>
-            </SimpleCollapsible.Content>
-          </SimpleCollapsible>
-
-          {/* Prompt Reminders */}
-          {agent.task_prompt && (
+          {/* Flow Preview */}
+          {isFlowAgent && agentDefId && (
             <>
               <Separator noPadding />
-              <Content
-                title={t("agentViewer.promptRemindersLabel")}
-                description={agent.task_prompt}
-                sizePreset="main-content"
-                variant="section"
-              />
+              <Section gap={0.5} alignItems="start">
+                <Content
+                  title={t("agentViewer.flowPreviewTitle")}
+                  sizePreset="main-content"
+                  variant="section"
+                />
+                <FlowAgentPreview
+                  definitionId={agentDefId}
+                  agentId={agent.id}
+                  canEdit={canEdit}
+                  onEdit={() => {
+                    agentViewerModal.toggle(false);
+                    router.push(`/app/flows/${agentDefId}` as Route);
+                  }}
+                />
+              </Section>
+            </>
+          )}
+
+          {!isFlowAgent && (
+            <>
+              {/* Knowledge */}
+              <Separator noPadding />
+              <Section gap={0.5} alignItems="start">
+                <Content
+                  title={t("agentViewer.knowledgeSectionTitle")}
+                  sizePreset="main-content"
+                  variant="section"
+                />
+                {isLoading ? (
+                  <div className="flex flex-wrap gap-2 w-full py-1">
+                    <div className="h-12 w-48 rounded-08 border border-border-01 bg-background-tint-02 dark:bg-background-tint-03 animate-pulse" />
+                    <div className="h-12 w-40 rounded-08 border border-border-01 bg-background-tint-02 dark:bg-background-tint-03 animate-pulse" />
+                  </div>
+                ) : hasKnowledge ? (
+                  <Section
+                    gap={0.5}
+                    flexDirection="row"
+                    justifyContent="start"
+                    wrap
+                    alignItems="start"
+                  >
+                    {agent.document_sets?.map((docSet) => (
+                      <DocumentSetCard key={docSet.id} documentSet={docSet} />
+                    ))}
+                    {agent.user_file_ids?.map((fileId) => {
+                      const file = allRecentFiles.find((f) => f.id === fileId);
+                      if (!file) return null;
+                      return <FileCard key={fileId} file={file} />;
+                    })}
+                    {ragDocumentCollections > 0 && (
+                      <Content
+                        icon={SvgActions}
+                        title={t("agentViewer.documentProcessingLabel")}
+                        description={t(
+                          "agentViewer.documentProcessingDescription",
+                          { count: ragDocumentCollections }
+                        )}
+                        sizePreset="main-ui"
+                        variant="section"
+                      />
+                    )}
+                    {ragGraphCollections > 0 && (
+                      <Content
+                        icon={SvgActions}
+                        title={t("agentViewer.knowledgeGraphLabel")}
+                        description={t(
+                          "agentViewer.knowledgeGraphDescription",
+                          { count: ragGraphCollections }
+                        )}
+                        sizePreset="main-ui"
+                        variant="section"
+                      />
+                    )}
+                  </Section>
+                ) : (
+                  <EmptyMessage title={t("agentViewer.noKnowledgeMessage")} />
+                )}
+              </Section>
+
+              {/* Actions & Tools */}
+              <SimpleCollapsible>
+                <SimpleCollapsible.Header
+                  title={t("agentViewer.actionsAndToolsTitle")}
+                />
+                <SimpleCollapsible.Content>
+                  {isActionsLoading ? (
+                    <Section gap={0.5} alignItems="start">
+                      <div className="flex flex-col gap-2 w-full">
+                        <div className="h-14 w-full rounded-08 border border-border-01 bg-background-tint-02 dark:bg-background-tint-03 animate-pulse" />
+                        <div className="h-14 w-full rounded-08 border border-border-01 bg-background-tint-02 dark:bg-background-tint-03 animate-pulse" />
+                      </div>
+                      <Separator noPadding />
+                      <div className="flex flex-row items-center gap-2 px-0.5 py-1">
+                        <Text mainUiBody text02 className="shrink-0">
+                          {t("agentViewer.memoryTitle")}
+                        </Text>
+                        <div className="h-6 w-24 rounded-08 bg-background-tint-02 dark:bg-background-tint-03 animate-pulse" />
+                      </div>
+                    </Section>
+                  ) : hasActions ? (
+                    <Section gap={0.5} alignItems="start">
+                      {mcpServersWithTools.map(({ server, tools }) => (
+                        <ViewerMCPServerCard
+                          key={server.id}
+                          server={server}
+                          tools={tools}
+                        />
+                      ))}
+                      {openApiTools.map((tool) => (
+                        <ViewerOpenApiToolCard key={tool.id} tool={tool} />
+                      ))}
+                      {builtInTools.map((tool) => (
+                        <ViewerOpenApiToolCard
+                          key={`builtin-${tool.id}`}
+                          tool={tool}
+                        />
+                      ))}
+                      {unknownMcpToolNames.map((toolName) => (
+                        <ExpandableCard.Root key={`mcp-name-${toolName}`}>
+                          <ExpandableCard.Header>
+                            <div className="p-2">
+                              <Content
+                                icon={SvgActions}
+                                title={toolName}
+                                description={t(
+                                  "agentViewer.mcpToolDescription"
+                                )}
+                                sizePreset="main-ui"
+                                variant="section"
+                              />
+                            </div>
+                          </ExpandableCard.Header>
+                        </ExpandableCard.Root>
+                      ))}
+
+                      <Separator noPadding />
+                      <MemorySection
+                        longTermMemoryEnabled={longTermMemoryEnabled}
+                      />
+                    </Section>
+                  ) : (
+                    <Section gap={0.5} alignItems="start">
+                      <EmptyMessage title={t("agentViewer.noActionsMessage")} />
+                      <MemorySection
+                        longTermMemoryEnabled={longTermMemoryEnabled}
+                      />
+                    </Section>
+                  )}
+                </SimpleCollapsible.Content>
+              </SimpleCollapsible>
+
+              {/* More Info (Collapsible) */}
+              <Separator noPadding />
+              <SimpleCollapsible>
+                <SimpleCollapsible.Header
+                  title={t("agentViewer.moreInfoTitle")}
+                />
+                <SimpleCollapsible.Content>
+                  {isLoading ? (
+                    <Section gap={1} alignItems="start">
+                      <div className="flex flex-col gap-1.5 w-full">
+                        <div className="h-4 w-28 rounded bg-background-tint-02 dark:bg-background-tint-03 animate-pulse" />
+                        <div className="h-16 w-full rounded-08 border border-border-01 bg-background-tint-02 dark:bg-background-tint-03 animate-pulse" />
+                      </div>
+                      <div className="flex items-center justify-between w-full py-1">
+                        <div className="flex flex-col gap-1">
+                          <div className="h-4 w-28 rounded bg-background-tint-02 dark:bg-background-tint-03 animate-pulse" />
+                          <div className="h-3 w-44 rounded bg-background-tint-02 dark:bg-background-tint-03 animate-pulse opacity-70" />
+                        </div>
+                        <div className="h-4 w-24 rounded bg-background-tint-02 dark:bg-background-tint-03 animate-pulse" />
+                      </div>
+                      <div className="flex items-center justify-between w-full py-1">
+                        <div className="flex flex-col gap-1">
+                          <div className="h-4 w-52 rounded bg-background-tint-02 dark:bg-background-tint-03 animate-pulse" />
+                          <div className="h-3 w-72 rounded bg-background-tint-02 dark:bg-background-tint-03 animate-pulse opacity-70" />
+                        </div>
+                        <div className="h-5 w-9 rounded-full bg-background-tint-02 dark:bg-background-tint-03 animate-pulse" />
+                      </div>
+                    </Section>
+                  ) : (
+                    <Section gap={0.5} alignItems="start">
+                      {agent.system_prompt && (
+                        <Content
+                          title={t("agentViewer.instructionsLabel")}
+                          description={agent.system_prompt}
+                          sizePreset="main-ui"
+                          variant="section"
+                        />
+                      )}
+                      {defaultModel && (
+                        <Horizontal
+                          title={t("agentViewer.defaultModelLabel")}
+                          description={t("agentViewer.defaultModelDescription")}
+                          nonInteractive
+                          sizePreset="main-ui"
+                        >
+                          <Text>{defaultModel}</Text>
+                        </Horizontal>
+                      )}
+                      {agent.search_start_date && (
+                        <Horizontal
+                          title={t("agentViewer.knowledgeCutoffLabel")}
+                          description={t(
+                            "agentViewer.knowledgeCutoffDescription"
+                          )}
+                          nonInteractive
+                          sizePreset="main-ui"
+                        >
+                          <Text mainUiMono>
+                            {formatMmDdYyyy(agent.search_start_date)}
+                          </Text>
+                        </Horizontal>
+                      )}
+                      <Horizontal
+                        title={t("agentViewer.overwriteSystemPromptsLabel")}
+                        description={t(
+                          "agentViewer.overwriteSystemPromptsDescription"
+                        )}
+                        nonInteractive
+                        sizePreset="main-ui"
+                      >
+                        <Switch
+                          disabled
+                          checked={agent.replace_base_system_prompt}
+                        />
+                      </Horizontal>
+                    </Section>
+                  )}
+                </SimpleCollapsible.Content>
+              </SimpleCollapsible>
+
+              {/* Prompt Reminders */}
+              {agent.task_prompt && (
+                <>
+                  <Separator noPadding />
+                  <Content
+                    title={t("agentViewer.promptRemindersLabel")}
+                    description={agent.task_prompt}
+                    sizePreset="main-content"
+                    variant="section"
+                  />
+                </>
+              )}
             </>
           )}
 

@@ -151,6 +151,26 @@ export const isLongTermMemoryPackets = (packets: Packet[]): boolean =>
       p.obj.type === PacketType.LONG_TERM_MEMORY_SAVE
   );
 
+// Packet types that mark the start of a real tool invocation — as opposed to
+// reasoning / plan / report / answer steps. Used to count only tool calls in a
+// flow stage's header badge (thinking steps must not inflate it).
+const TOOL_INVOCATION_START_TYPES = new Set<PacketType>([
+  PacketType.SEARCH_TOOL_START,
+  PacketType.IMAGE_GENERATION_TOOL_START,
+  PacketType.PYTHON_TOOL_START,
+  PacketType.FETCH_TOOL_START,
+  PacketType.CUSTOM_TOOL_START,
+  PacketType.FILE_READER_START,
+  PacketType.DOCUMENT_GENERATION_START,
+  PacketType.MEMORY_TOOL_START,
+]);
+
+// Check if a step is a tool invocation (has a recognised tool start packet)
+export const isToolInvocationPackets = (packets: Packet[]): boolean =>
+  packets.some((p) =>
+    TOOL_INVOCATION_START_TYPES.has(p.obj.type as PacketType)
+  );
+
 // Check if step packets have completed execution (has SECTION_END, ERROR, STOP, or REASONING_DONE)
 export const stepIsComplete = (packets: Packet[]): boolean =>
   packets.some(

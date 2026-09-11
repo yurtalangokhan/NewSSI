@@ -2,10 +2,9 @@
 
 Canonical agent construction now flows through ``agent_composition``
 (``AgentFactory`` -> ``AgentComposer`` -> ``ComposedAgent``). This package keeps
-the backward-compatible static registry facade (``agents.agents``) plus the
-retained storage contracts. The legacy reflection factory, registry, configs,
-managers, runtime, base, impl, and perceptron islands were removed during the
-composition/simplification closeout.
+the backward-compatible static registry facade (``agents.agents``). Persistence,
+database models, and external tool implementations live outside this runtime
+package.
 
 Backward Compatibility:
 - Provides the same public facade exports as the original agents.agents module.
@@ -22,12 +21,6 @@ from agents.agents import (
     load_agent,
 )
 
-# Storage
-from agents.storage import (
-    AgentDefinitionModel,
-    AgentDefinitionRepository,
-)
-
 __all__ = [
     # Backward compatibility
     "get_agent",
@@ -37,7 +30,4 @@ __all__ = [
     "DEFAULT_AGENT",
     "AgentGraph",
     "AgentGraphLike",
-    # Storage
-    "AgentDefinitionModel",
-    "AgentDefinitionRepository",
 ]

@@ -5,6 +5,7 @@ import type { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import type { ChatState } from "@/app/app/interfaces";
 
 jest.mock("react-i18next", () => ({
+  initReactI18next: { type: "3rdParty", init: jest.fn() },
   useTranslation: () => ({
     t: (key: string) => key,
   }),

@@ -4,6 +4,11 @@ import { DocumentSetSummary, MinimalUserSnapshot } from "@/lib/types";
 
 export type AgentId = number | string;
 
+export interface ConnectorBinding {
+  datasource_id: string;
+  operations: string[];
+}
+
 // Represents a hierarchy node (folder, space, channel, etc.) attached to a persona
 export interface HierarchyNodeSnapshot {
   id: number;
@@ -47,12 +52,25 @@ export interface MinimalPersonaSnapshot {
   external_id?: string | null;
   is_dynamic?: boolean;
   graph_schema?: string | null;
+  /** The `agent_definitions.id` (UUID) this persona is fronting for, when
+   * `graph_schema === "flow"` — needed to call the flow draft/versions/
+   * publish endpoints, which key on that id, not this persona's own
+   * numeric one. Populated backend-side by `_merge_dynamic_definition`
+   * (P4 Task 28); absent for non-dynamic personas. */
+  agent_definition_id?: string | null;
+  /** Card-level flow metadata, served by the catalog for flow-backed
+   * personas only (persona_controller.flow_meta_fields). Absent on every
+   * non-flow agent. */
+  flow_published_version_no?: number | null;
+  flow_has_draft?: boolean;
+  flow_updated_at?: string | null;
   stages?: Array<Record<string, unknown>>;
   sub_agents?: Array<Record<string, unknown>>;
   sub_agent_ids?: string[];
   brain_type?: string | null;
   mcp_tools?: string[];
   mcp_tool_configs?: Record<string, Record<string, string>>;
+  connector_bindings?: ConnectorBinding[];
   name: string;
   description: string;
   tools: ToolSnapshot[];
@@ -102,6 +120,7 @@ export interface Persona extends MinimalPersonaSnapshot {
 
   base_agent?: string;
   mcp_tools?: string[];
+  connector_bindings?: ConnectorBinding[];
   rag_config?: {
     document_processing: string[];
     knowledge_graph: string[];

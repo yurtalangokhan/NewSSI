@@ -6,14 +6,13 @@ schemas with ``x_oap_ui_config`` metadata consumed by
 Open Agent Platform.
 """
 
-import logging
-
 from fastapi import APIRouter, Depends
 
 from api.dependencies import require_permission, require_user
 from controller import AssistantSchemasController, get_assistant_schemas_controller
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(dependencies=[Depends(require_user)])
 

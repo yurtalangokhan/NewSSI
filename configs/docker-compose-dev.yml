@@ -32,6 +32,10 @@ services:
       - ../apps/agent-service/.env
     environment:
       AIRBYTE_LOCAL_OUTPUT_PATH: /tmp/airbyte_local
+      AIRBYTE_CONFIG_DATABASE_URL: ${AIRBYTE_DATABASE_URL}
+      AIRBYTE_CONFIG_DATABASE_USER: ${AIRBYTE_DB_USER}
+      AIRBYTE_CONFIG_DATABASE_PASSWORD: ${AIRBYTE_DB_PASSWORD}
+      AIRBYTE_SECRET_PERSISTENCE: ${AIRBYTE_SECRET_PERSISTENCE}
       LANGCHAIN_PROJECT: agent-service
       TOOLS_SERVICE_URL: http://kong:8000/internal/tools-service/mcp
       MCP_SERVER_URL: http://kong:8000/internal/tools-service/mcp
@@ -88,6 +92,7 @@ services:
     environment:
       MCP_HOST: "0.0.0.0"
       MCP_PORT: "8003"
+      AGENT_SERVICE_URL: http://kong:8000/internal/agent-service/api/v1
       USER_SERVICE_URL: http://kong:8000/internal/user-service
       RAG_SERVICE_API_URL: http://kong:8000/internal/rag-service
     volumes:

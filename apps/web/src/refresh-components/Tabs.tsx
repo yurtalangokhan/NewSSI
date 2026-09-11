@@ -77,7 +77,7 @@ const listVariants = {
 
 /** Base style classes for TabsTrigger variants */
 const triggerBaseStyles = {
-  contained: "p-2 gap-2",
+  contained: "p-2 gap-2 transition-all duration-200 ease-out",
   pill: "p-1 font-secondary-action transition-all duration-200 ease-out",
 } as const;
 

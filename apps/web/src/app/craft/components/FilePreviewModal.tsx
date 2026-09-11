@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import Modal from "@/refresh-components/Modal";
 import Text from "@/refresh-components/texts/Text";
 import Button from "@/refresh-components/buttons/Button";
-import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import { SvgFileText, SvgDownloadCloud, SvgImage } from "@opal/icons";
 import { getArtifactUrl, FileSystemEntry } from "@/lib/build/client";
 
@@ -67,8 +66,9 @@ export default function FilePreviewModal({
         />
         <Modal.Body>
           {isLoading ? (
-            <div className="flex items-center justify-center p-8">
-              <SimpleLoader />
+            <div className="flex flex-col gap-3 p-6 w-full">
+              <div className="h-4 w-1/3 rounded bg-background-tint-02 animate-pulse" />
+              <div className="h-64 w-full rounded-08 bg-background-neutral-01 animate-pulse border border-border-01" />
             </div>
           ) : error ? (
             <Text secondaryBody className="text-status-error-01">

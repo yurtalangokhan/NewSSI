@@ -7,6 +7,7 @@ import Text from "@/refresh-components/texts/Text";
 import { SvgHardDrive } from "@opal/icons";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import {
   useCollections,
   useGraphBuildStatus,
@@ -29,8 +30,9 @@ function RagManagementSection() {
     string | null
   >(null);
   const [selectedIsDatasource, setSelectedIsDatasource] = useState(false);
-  const { collections } = useCollections();
-  const { datasources } = useAirbyteDatasources();
+  const { collections, isLoading: isCollectionsLoading } = useCollections();
+  const { datasources, isLoading: isDatasourcesLoading } =
+    useAirbyteDatasources();
   const { graphCollections } = useGraphCollections();
   const { status: buildStatus } = useGraphBuildStatus(
     selectedCollectionId,
@@ -56,6 +58,7 @@ function RagManagementSection() {
     <div className="flex flex-col gap-4">
       <AdminOverviewPanel
         icon={route.icon}
+        isLoading={isCollectionsLoading || isDatasourcesLoading}
         title={t("admin.documentProcessing.pipelineTitle")}
         description={t("admin.documentProcessing.pipelineDescription")}
         metrics={[
@@ -79,43 +82,72 @@ function RagManagementSection() {
             tone: isCollectionMutationLocked ? "warning" : "neutral",
           },
         ]}
-        actions={[
-          {
-            label: t("admin.navigation.routes.knowledgeGraph.sidebar"),
-            href: ADMIN_PATHS.KNOWLEDGE_GRAPH,
-          },
-          {
-            label: t("admin.indexingStatus.addConnector"),
-            href: ADMIN_PATHS.ADD_CONNECTOR,
-            primary: true,
-          },
-        ]}
       />
 
-      <CollectionsPanel
-        selectedCollectionId={selectedCollectionId}
-        onCollectionSelect={handleCollectionSelect}
-        isCollectionMutationLocked={isCollectionMutationLocked}
-      />
+      {isCollectionsLoading || isDatasourcesLoading ? (
+        <>
+          {/* Collections Selector Panel Skeleton */}
+          <CardSection className="flex flex-col gap-4">
+            <div className="flex items-center gap-2 border-b border-border-01 pb-3">
+              <div className="h-4 w-4 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+              <div className="h-5 w-40 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+            </div>
+            <div className="h-4 w-3/4 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+            <div className="h-10 w-full rounded-08 border border-border-01 bg-background-neutral-01 animate-pulse" />
+          </CardSection>
 
-      {selectedCollectionId ? (
-        <DocumentsPanel
-          collectionId={selectedCollectionId}
-          readOnly={selectedIsDatasource}
-          isCollectionMutationLocked={isCollectionMutationLocked}
-        />
-      ) : (
-        <CardSection>
-          <div className="flex flex-col items-center gap-2 py-8 text-center">
-            <SvgHardDrive
-              className="h-8 w-8 stroke-text-03 opacity-40"
-              aria-hidden
+          {/* Documents Panel / Table Skeleton */}
+          <CardSection className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-border-01">
+              <div className="flex flex-col gap-1.5">
+                <div className="h-5 w-32 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                <div className="h-3.5 w-60 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-9 w-48 rounded-08 border border-border-01 bg-background-neutral-01 animate-pulse" />
+                <div className="h-9 w-28 rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+              </div>
+            </div>
+            <TableSkeleton
+              rowCount={4}
+              columns={[
+                { type: "icon-text", width: "w-44", headerWidth: "w-20" },
+                { type: "badge", width: "w-20", headerWidth: "w-16" },
+                { type: "text", width: "w-24", headerWidth: "w-20" },
+                { type: "text", width: "w-32", headerWidth: "w-24" },
+                { type: "actions", width: "w-16", headerWidth: "w-16" },
+              ]}
             />
-            <Text as="p" mainContentMuted text03>
-              {t("admin.documentProcessing.selectOrCreateCollection")}
-            </Text>
-          </div>
-        </CardSection>
+          </CardSection>
+        </>
+      ) : (
+        <>
+          <CollectionsPanel
+            selectedCollectionId={selectedCollectionId}
+            onCollectionSelect={handleCollectionSelect}
+            isCollectionMutationLocked={isCollectionMutationLocked}
+          />
+
+          {selectedCollectionId ? (
+            <DocumentsPanel
+              collectionId={selectedCollectionId}
+              readOnly={selectedIsDatasource}
+              isCollectionMutationLocked={isCollectionMutationLocked}
+            />
+          ) : (
+            <CardSection>
+              <div className="flex flex-col items-center gap-2 py-8 text-center">
+                <SvgHardDrive
+                  className="h-8 w-8 stroke-text-03 opacity-40"
+                  aria-hidden
+                />
+                <Text as="p" mainContentMuted text03>
+                  {t("admin.documentProcessing.selectOrCreateCollection")}
+                </Text>
+              </div>
+            </CardSection>
+          )}
+        </>
       )}
     </div>
   );

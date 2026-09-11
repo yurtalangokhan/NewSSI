@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
+import time
 import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -15,6 +15,8 @@ from typing import Any
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 
+from core.logger import get_logger
+from core.run_kinds import RunKind
 from service.ActiveRunsService import (
     RunContext,
     get_run_context,
@@ -25,8 +27,46 @@ from service.ActiveRunsService import (
     cancel_run as active_cancel_run,
 )
 from service.CheckpointerService import get_checkpointer
+from service.message_conversion import (
+    extract_reasoning_from_metadata,
+    split_message_content_reasoning,
+)
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
+
+
+_TOOL_PAYLOAD_CHAR_CAP = 10_000
+
+
+def _cap_str(value: str) -> str:
+    if len(value) > _TOOL_PAYLOAD_CHAR_CAP:
+        return value[:_TOOL_PAYLOAD_CHAR_CAP] + "…"
+    return value
+
+
+def _json_safe(value: Any) -> Any:
+    """Best-effort reduction of an arbitrary tool input/output to something
+    ``json.dumps`` can serialize, with a size cap so a huge blob can't blow
+    up the SSE frame."""
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    if isinstance(value, str):
+        return _cap_str(value)
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in list(value.items())[:200]}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in list(value)[:200]]
+    return _cap_str(str(value))
+
+
+def _serialize_tool_output(output: Any) -> Any:
+    """A tool's result arrives as a ToolMessage, a raw string, or an
+    arbitrary Python object depending on the tool — normalize to a
+    JSON-serializable, size-capped shape."""
+    content = getattr(output, "content", None)
+    if content is not None:
+        return _json_safe(content)
+    return _json_safe(output)
 
 
 class RunService:
@@ -143,6 +183,43 @@ class RunService:
             logger.error("Exception during persist: %s", exc)
 
     @staticmethod
+    def _extract_final_message_text(output: Any) -> str | None:
+        """Pull a human-readable reply out of a root run's ``on_chain_end``
+        output.
+
+        For a compiled LangGraph, that output is the graph's whole final
+        state (``{"messages": [...], ...other state keys}``), not a plain
+        string — blindly ``str()``-ing it used to leak the raw Python repr
+        of the state dict (and, for nested sub-chains before the
+        parent_ids filter was added, of individual BaseMessage objects
+        like the system prompt) straight into the chat transcript.
+        """
+        messages: Any = None
+        if isinstance(output, dict):
+            messages = output.get("messages")
+        elif isinstance(output, list):
+            messages = output
+        elif hasattr(output, "content"):
+            content = output.content
+            return content if isinstance(content, str) and content else None
+        elif isinstance(output, str):
+            return output or None
+
+        if not messages:
+            return None
+
+        for message in reversed(messages):
+            msg_type = (
+                message.get("type") if isinstance(message, dict) else getattr(message, "type", None)
+            )
+            if msg_type != "ai":
+                continue
+            content = message.get("content") if isinstance(message, dict) else message.content
+            if isinstance(content, str) and content:
+                return content
+        return None
+
+    @staticmethod
     def _serialize_message_for_sdk(message: Any) -> dict[str, Any]:
         if hasattr(message, "model_dump"):
             return message.model_dump()
@@ -167,6 +244,17 @@ class RunService:
         stage_names = self._extract_stage_names(config)
         stage_name_set = set(stage_names)
         active_stage_name: str | None = None
+        reasoning_active = False
+
+        # The flow-canvas playground wants Langflow-style extras — per-tool
+        # call blocks and a token/duration footer. The raw material already
+        # flows through astream_events; forward it as dedicated SSE events,
+        # but ONLY for playground runs so the SDK RunRoute stream stays
+        # byte-for-byte unchanged.
+        configurable = config.get("configurable", {}) if config else {}
+        emit_rich_events = configurable.get("run_kind") == RunKind.PLAYGROUND
+        run_started = time.monotonic()
+        usage_totals = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
 
         ctx = get_run_context(thread_id, run_id_str)
         if ctx:
@@ -174,16 +262,27 @@ class RunService:
             ctx.config = config
             ctx.checkpointer = getattr(agent, "checkpointer", None)
 
-        if input_messages and isinstance(input_messages[0], dict):
-            input_messages = [HumanMessage(**msg) for msg in input_messages]
+        if isinstance(input_messages, dict):
+            # Already a state dict (e.g. {"messages": [...]}); pass through.
+            graph_input = input_messages
+        else:
+            if input_messages and isinstance(input_messages[0], dict):
+                input_messages = [HumanMessage(**msg) for msg in input_messages]
+            # Compiled LangGraph state graphs require dict input; a bare message
+            # list raises InvalidUpdateError on the __start__ write. Wrap it in
+            # the canonical "messages" state shape (same as AgentHelpers._handle_input).
+            graph_input = {"messages": input_messages}
 
         if not hasattr(agent, "astream_events"):
             raise RuntimeError("Agent does not support streaming")
 
         async def stream_producer() -> AsyncGenerator[str, None]:
+            # Stage tracking lives in the enclosing scope so the finally-block
+            # below can close a stage left open by an error mid-run.
+            nonlocal active_stage_name, reasoning_active
             try:
                 async for event in agent.astream_events(
-                    input_messages, config, stream_mode=stream_mode, version="v2"
+                    graph_input, config, stream_mode=stream_mode, version="v2"
                 ):
                     if cancel_event.is_set():
                         break
@@ -221,18 +320,87 @@ class RunService:
                         if isinstance(payload, dict):
                             yield f"data: {json.dumps(payload)}\n\n"
                         continue
+
+                    if emit_rich_events and event_type == "on_tool_start":
+                        yield f"data: {json.dumps({'type': 'tool_call_start', 'call_id': event.get('run_id'), 'name': event.get('name') or 'tool', 'input': _json_safe(event.get('data', {}).get('input'))})}\n\n"
+                        continue
+                    if emit_rich_events and event_type == "on_tool_end":
+                        yield f"data: {json.dumps({'type': 'tool_call_end', 'call_id': event.get('run_id'), 'name': event.get('name') or 'tool', 'output': _serialize_tool_output(event.get('data', {}).get('output'))})}\n\n"
+                        continue
+                    if emit_rich_events and event_type == "on_chat_model_end":
+                        model_out = event.get("data", {}).get("output")
+                        usage = getattr(model_out, "usage_metadata", None) or {}
+                        if not usage:
+                            resp_meta = getattr(model_out, "response_metadata", {}) or {}
+                            token_usage = (
+                                resp_meta.get("token_usage") or resp_meta.get("usage") or {}
+                            )
+                            usage = {
+                                "input_tokens": token_usage.get("prompt_tokens")
+                                or token_usage.get("input_tokens")
+                                or 0,
+                                "output_tokens": token_usage.get("completion_tokens")
+                                or token_usage.get("output_tokens")
+                                or 0,
+                                "total_tokens": token_usage.get("total_tokens") or 0,
+                            }
+                        input_tokens = int(usage.get("input_tokens") or 0)
+                        output_tokens = int(usage.get("output_tokens") or 0)
+                        total_tokens = int(
+                            usage.get("total_tokens") or (input_tokens + output_tokens)
+                        )
+                        if input_tokens or output_tokens or total_tokens:
+                            usage_totals["input_tokens"] += input_tokens
+                            usage_totals["output_tokens"] += output_tokens
+                            usage_totals["total_tokens"] += total_tokens
+                            yield f"data: {json.dumps({'type': 'usage', **usage_totals})}\n\n"
+                        continue
+
                     if event_type == "on_chat_model_stream":
                         chunk = event.get("data", {}).get("chunk")
-                        if chunk and chunk.content:
-                            yield f"data: {json.dumps({'type': 'token', 'content': chunk.content})}\n\n"
-                    elif event_type == "on_chain_end" and event.get("run_id"):
+                        if chunk is None:
+                            continue
+                        # Reasoning-capable models surface "thinking" text in one
+                        # of two shapes: some Ollama/DeepSeek variants attach it to
+                        # a chunk's additional_kwargs; Anthropic and Gemini stream
+                        # it inline as `content` blocks alongside the visible
+                        # answer. Pull both out and surface a reasoning_start/
+                        # reasoning_delta/reasoning_done trio so the client can
+                        # show a live "Thinking…" block, same as the main chat.
+                        block_reasoning, visible_content = split_message_content_reasoning(
+                            chunk.content
+                        )
+                        reasoning_piece = (
+                            extract_reasoning_from_metadata(chunk, strip=False) or block_reasoning
+                        )
+                        if reasoning_piece:
+                            if not reasoning_active:
+                                reasoning_active = True
+                                yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
+                            yield f"data: {json.dumps({'type': 'reasoning_delta', 'reasoning': reasoning_piece})}\n\n"
+                        if visible_content:
+                            if reasoning_active:
+                                reasoning_active = False
+                                yield f"data: {json.dumps({'type': 'reasoning_done'})}\n\n"
+                            yield f"data: {json.dumps({'type': 'token', 'content': visible_content})}\n\n"
+                    elif (
+                        event_type == "on_chain_end"
+                        and event.get("run_id")
+                        # astream_events v2 fires on_chain_end for every
+                        # nested runnable (prompt templates, tool calls,
+                        # individual graph nodes), not just the graph's own
+                        # completion — only the root run (empty parent_ids)
+                        # is a candidate for "the assistant's reply".
+                        and not event.get("parent_ids")
+                    ):
                         output = event.get("data", {}).get("output")
-                        if output:
-                            yield f"data: {json.dumps({'type': 'message', 'content': str(output)})}\n\n"
+                        text = self._extract_final_message_text(output)
+                        if text:
+                            yield f"data: {json.dumps({'type': 'message', 'content': text})}\n\n"
             except Exception as exc:
                 logger.error("stream_producer error: %s", exc)
-            finally:
-                return
+                # Surface the failure to the client instead of a silent empty stream.
+                yield f"data: {json.dumps({'type': 'error', 'content': str(exc)})}\n\n"
 
         try:
             async for line in stream_producer():
@@ -254,6 +422,10 @@ class RunService:
                     logger.error("Persist error: %s", exc)
             if active_stage_name:
                 yield f"data: {json.dumps({'type': 'graph_stage_end', 'stage_name': active_stage_name})}\n\n"
+            if reasoning_active:
+                yield f"data: {json.dumps({'type': 'reasoning_done'})}\n\n"
+            if emit_rich_events:
+                yield f"data: {json.dumps({'type': 'run_end', 'duration_ms': int((time.monotonic() - run_started) * 1000)})}\n\n"
             unregister_run(thread_id, run_id_str)
             yield "data: [DONE]\n\n"
 

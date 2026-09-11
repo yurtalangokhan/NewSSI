@@ -1,5 +1,6 @@
 "use client";
 
+import DropzoneInput from "./DropzoneInput";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { cn, noProp } from "@/lib/utils";
@@ -183,7 +184,7 @@ export default function InputImage({
       {...dropzoneProps}
     >
       {/* Hidden input for file selection */}
-      {onDrop && <input {...getInputProps()} />}
+      {onDrop && <DropzoneInput {...getInputProps()} />}
 
       {/* Main container */}
       <button

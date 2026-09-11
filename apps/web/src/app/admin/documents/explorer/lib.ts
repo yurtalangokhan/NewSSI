@@ -1,7 +1,8 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import { Filters } from "@/lib/search/interfaces";
 
 export const adminSearch = async (query: string, filters: Filters) => {
-  const response = await fetch("/api/admin/search", {
+  const response = await authenticatedFetch("/api/admin/search", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

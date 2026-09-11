@@ -4,7 +4,7 @@
 
 import { act, render } from "@tests/setup/test-utils";
 import AppHealthBanner from "@/sections/AppHealthBanner";
-import { authenticatedFetch } from "@/lib/fetcher";
+import { authenticatedFetch, refreshSessionProactively } from "@/lib/fetcher";
 
 const refreshUser = jest.fn<Promise<void>, []>();
 
@@ -41,11 +41,15 @@ jest.mock("@/lib/fetcher", () => {
     ...actual,
     authenticatedFetch: jest.fn(),
     errorHandlingFetcher: jest.fn(),
+    refreshSessionProactively: jest.fn(),
   };
 });
 
 const mockedAuthenticatedFetch = authenticatedFetch as jest.MockedFunction<
   typeof authenticatedFetch
+>;
+const mockedRefreshSession = refreshSessionProactively as jest.MockedFunction<
+  typeof refreshSessionProactively
 >;
 
 describe("AppHealthBanner", () => {
@@ -58,21 +62,55 @@ describe("AppHealthBanner", () => {
         headers: { "Content-Type": "application/json" },
       })
     );
+    mockedRefreshSession.mockReset().mockResolvedValue(true);
   });
 
   afterEach(() => {
     jest.useRealTimers();
   });
 
-  it("verifies and refreshes the session instead of expiring at the original deadline", async () => {
+  it("renews the session before the token expires instead of waiting for it to die", async () => {
+    render(<AppHealthBanner />);
+
+    // Token was issued 60s ago with a 50s lifetime, so it is already past
+    // expiry and the renewal is scheduled at the 5s floor.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(5_000);
+    });
+
+    expect(mockedRefreshSession).toHaveBeenCalledTimes(1);
+    expect(refreshUser).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to an authenticated probe when the proactive refresh fails", async () => {
+    mockedRefreshSession.mockResolvedValue(false);
+
     render(<AppHealthBanner />);
 
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(10_000);
+      await jest.advanceTimersByTimeAsync(5_000);
     });
 
-    expect(mockedAuthenticatedFetch).toHaveBeenCalledWith("/api/health");
-    expect(refreshUser).toHaveBeenCalledTimes(1);
+    expect(mockedAuthenticatedFetch).toHaveBeenCalledWith("/api/me", {
+      redirectOnAuthError: false,
+    });
+  });
+
+  it("shows the logged-out modal when the session is really gone", async () => {
+    mockedRefreshSession.mockResolvedValue(false);
+    mockedAuthenticatedFetch.mockResolvedValue(
+      new Response(null, { status: 401 })
+    );
+
+    const { queryByText } = render(<AppHealthBanner />);
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(5_000);
+    });
+
+    // `useTranslation` is mocked to echo the key, and the component uses a
+    // keyPrefix, so the rendered text is the bare key.
+    expect(queryByText("sessionExpiredMessage")).toBeTruthy();
   });
 
   it("refreshes user metadata when another request refreshes the session", async () => {

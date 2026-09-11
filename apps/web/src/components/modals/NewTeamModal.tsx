@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -18,6 +20,7 @@ import {
   SvgPlus,
 } from "@opal/icons";
 import Text from "@/refresh-components/texts/Text";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 export interface TenantByDomainResponse {
   tenant_id: string;
   number_of_users: number;
@@ -88,13 +91,16 @@ export default function NewTeamModal() {
     setError(null);
 
     try {
-      const response = await fetch("/api/tenants/users/invite/request", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ tenant_id: existingTenant.tenant_id }),
-      });
+      const response = await authenticatedFetch(
+        "/api/tenants/users/invite/request",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ tenant_id: existingTenant.tenant_id }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -153,9 +159,8 @@ export default function NewTeamModal() {
           </Dialog.Title>
 
           {isLoading ? (
-            <div className="py-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-border-05 mx-auto mb-4"></div>
-              <Text as="p">{t("newTeam.loadingTeamInfo")}</Text>
+            <div className="py-4">
+              <FormSkeleton fieldCount={2} />
             </div>
           ) : error ? (
             <div className="space-y-4">

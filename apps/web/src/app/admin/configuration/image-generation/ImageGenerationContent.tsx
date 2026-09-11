@@ -179,9 +179,7 @@ export default function ImageGenerationContent() {
                     <ProviderIcon provider={provider.provider_name} size={18} />
                   )}
                   title={
-                    provider.titleKey
-                      ? t(provider.titleKey)
-                      : provider.title
+                    provider.titleKey ? t(provider.titleKey) : provider.title
                   }
                   description={
                     provider.descriptionKey

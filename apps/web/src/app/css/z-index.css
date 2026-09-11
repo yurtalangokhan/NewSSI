@@ -6,12 +6,16 @@
   --z-app-layout: 9;
   --z-sticky: 10;
 
-  /* Interactive overlays */
-  --z-modal-overlay: 900;
-  --z-modal: 1000;
-  --z-toast: 1100;
-  --z-popover: 1200;
-  --z-tooltip: 1300;
+  /* Flow canvas fullscreen — above the app layout and sticky headers */
+  --z-canvas-fullscreen: 1050;
+  --z-canvas-fullscreen-modal: 1550;
+
+  /* Interactive overlays — above fullscreen canvas so modals, toasts, popovers, and tooltips are always visible */
+  --z-modal-overlay: 1400;
+  --z-modal: 1500;
+  --z-toast: 1600;
+  --z-popover: 1700;
+  --z-tooltip: 1800;
 }
 
 /* Base layers */
@@ -46,4 +50,11 @@
 }
 .z-tooltip {
   z-index: var(--z-tooltip);
+}
+
+.z-canvas-fullscreen {
+  z-index: var(--z-canvas-fullscreen);
+}
+.z-canvas-fullscreen-modal {
+  z-index: var(--z-canvas-fullscreen-modal);
 }

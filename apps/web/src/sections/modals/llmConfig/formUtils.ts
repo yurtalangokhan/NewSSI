@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import {
   LLMProviderView,
   ModelConfiguration,
@@ -214,7 +215,7 @@ export const submitLLMProvider = async <T extends BaseLLMFormValues>({
   if (!isEqual(finalValues, initialValues)) {
     setIsTesting(true);
 
-    const response = await fetch("/api/admin/llm/test", {
+    const response = await authenticatedFetch("/api/admin/llm/test", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -236,7 +237,7 @@ export const submitLLMProvider = async <T extends BaseLLMFormValues>({
     }
   }
 
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `${LLM_PROVIDERS_ADMIN_URL}${
       existingLlmProvider ? "" : "?is_creation=true"
     }`,
@@ -264,16 +265,19 @@ export const submitLLMProvider = async <T extends BaseLLMFormValues>({
 
   if (shouldMarkAsDefault) {
     const newLlmProvider = (await response.json()) as LLMProviderView;
-    const setDefaultResponse = await fetch(`${LLM_ADMIN_URL}/default`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        provider_id: newLlmProvider.id,
-        model_name: finalDefaultModelName,
-      }),
-    });
+    const setDefaultResponse = await authenticatedFetch(
+      `${LLM_ADMIN_URL}/default`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider_id: newLlmProvider.id,
+          model_name: finalDefaultModelName,
+        }),
+      }
+    );
     if (!setDefaultResponse.ok) {
       const errorMsg = (await setDefaultResponse.json()).detail;
       toast.error(`Failed to set provider as default: ${errorMsg}`);

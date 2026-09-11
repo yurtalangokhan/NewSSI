@@ -25,7 +25,9 @@
   "persona": {
     "not_found": "Persona not found",
     "cannot_update_builtin": "Cannot update built-in agents",
-    "cannot_delete_builtin": "Cannot delete built-in agents"
+    "cannot_delete_builtin": "Cannot delete built-in agents",
+    "image_must_be_an_image": "The avatar must be an image file",
+    "image_is_empty": "The uploaded image is empty"
   },
   "file": {
     "not_found": "File not found.",
@@ -106,19 +108,20 @@
   "mailConfig": {
     "notFound": "Mail config not found",
     "attachedToAgent": "Mail config is attached to an agent",
-    "attachmentRequired": "Attachment filename and content are required.",
-    "recipientSubjectBodyRequired": "Recipient, subject, and body are required before sending email.",
-    "attachmentInvalid": "Email attachment payload is invalid.",
     "smtpAuthFailedDetail": "SMTP authentication failed: {detail}",
-    "smtpAuthFailed": "SMTP authentication failed.",
     "smtpConnectionFailed": "SMTP server could not be reached: {error}",
     "recipientsRejected": "SMTP server rejected one or more recipients.",
-    "testRecipientRejected": "SMTP server rejected the test recipient.",
     "messageRejected": "SMTP server rejected the message: {error}",
-    "testMessageRejected": "SMTP server rejected the test message: {error}",
     "emailSent": "Email sent.",
     "testEmailSent": "Test email sent.",
     "emailFailed": "Email failed: {detail}",
-    "testEmailFailed": "Test email failed: {detail}"
+    "testEmailFailed": "Test email failed: {detail}",
+    "personalVerificationSubject": "Agentic AI SMTP Verification",
+    "personalVerificationBody": "This test email confirms that your personal SMTP credentials are valid and can send mail.",
+    "personalVerificationSent": "Test email sent successfully!",
+    "personalVerificationFailed": "Failed to send test email: {detail}",
+    "adminTestSubject": "Agentic AI SMTP test",
+    "adminTestBody": "This test email confirms that your SMTP configuration can send mail.",
+    "selectionUnavailable": "The selected mail configuration is unavailable. Select an active mail configuration in Settings > Email."
   }
 }

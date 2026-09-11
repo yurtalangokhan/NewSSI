@@ -15,6 +15,8 @@ import { useBuildConnectors } from "@/app/craft/hooks/useBuildConnectors";
 import { BuildLLMPopover } from "@/app/craft/components/BuildLLMPopover";
 import Text from "@/refresh-components/texts/Text";
 import Card from "@/refresh-components/cards/Card";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
+import CardGridSkeleton from "@/refresh-components/skeletons/CardGridSkeleton";
 import {
   SvgPlug,
   SvgSettings,
@@ -398,11 +400,13 @@ export default function BuildConfigPage() {
         />
         <SettingsLayouts.Body>
           {isLoading ? (
-            <Card variant="tertiary">
-              <Section alignItems="center" gap={0.5} height="fit">
-                <Text mainContentBody>{t("craft.loading")}</Text>
-              </Section>
-            </Card>
+            <Section flexDirection="column" gap={2}>
+              <FormSkeleton fieldCount={2} hasSubmitButton={false} />
+              <CardGridSkeleton
+                cardCount={6}
+                columnsClassName="grid-cols-1 md:grid-cols-2"
+              />
+            </Section>
           ) : (
             <Section flexDirection="column" gap={2}>
               <Section

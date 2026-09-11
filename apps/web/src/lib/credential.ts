@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import {
   CredentialBase,
   CredentialWithPrivateKey,
@@ -14,7 +15,7 @@ import {
 } from "./constants";
 
 export async function createCredential(credential: CredentialBase<any>) {
-  return await fetch(`/api/manage/credential`, {
+  return await authenticatedFetch(`/api/manage/credential`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -48,26 +49,29 @@ export async function createCredentialWithPrivateKey(
       credential.private_key.typeDefinition.category
     );
   }
-  return await fetch(`/api/manage/credential/private-key`, {
+  return await authenticatedFetch(`/api/manage/credential/private-key`, {
     method: "POST",
     body: formData,
   });
 }
 
 export async function adminDeleteCredential<T>(credentialId: number) {
-  return await fetch(`/api/manage/admin/credential/${credentialId}`, {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+  return await authenticatedFetch(
+    `/api/manage/admin/credential/${credentialId}`,
+    {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
 }
 
 export async function deleteCredential<T>(
   credentialId: number,
   force?: boolean
 ) {
-  return await fetch(`/api/manage/credential/${credentialId}`, {
+  return await authenticatedFetch(`/api/manage/credential/${credentialId}`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
@@ -76,12 +80,15 @@ export async function deleteCredential<T>(
 }
 
 export async function forceDeleteCredential<T>(credentialId: number) {
-  return await fetch(`/api/manage/credential/force/${credentialId}`, {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+  return await authenticatedFetch(
+    `/api/manage/credential/force/${credentialId}`,
+    {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
 }
 
 export function linkCredential(
@@ -93,7 +100,7 @@ export function linkCredential(
   autoSyncOptions?: Record<string, any>,
   processingMode?: ProcessingMode
 ) {
-  return fetch(
+  return authenticatedFetch(
     `/api/manage/connector/${connectorId}/credential/${credentialId}`,
     {
       method: "PUT",
@@ -118,7 +125,7 @@ export function updateCredential(credentialId: number, newDetails: any) {
       ([key, value]) => key !== CREDENTIAL_NAME && value !== ""
     )
   );
-  return fetch(`/api/manage/admin/credential/${credentialId}`, {
+  return authenticatedFetch(`/api/manage/admin/credential/${credentialId}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -150,10 +157,13 @@ export function updateCredentialWithPrivateKey(
     CREDENTIAL_TYPE_DEFINITION_KEY,
     privateKey.typeDefinition.category
   );
-  return fetch(`/api/manage/admin/credential/private-key/${credentialId}`, {
-    method: "PUT",
-    body: formData,
-  });
+  return authenticatedFetch(
+    `/api/manage/admin/credential/private-key/${credentialId}`,
+    {
+      method: "PUT",
+      body: formData,
+    }
+  );
 }
 
 export function swapCredential(
@@ -161,7 +171,7 @@ export function swapCredential(
   connectorId: number,
   accessType: AccessType
 ) {
-  return fetch(`/api/manage/admin/credential/swap`, {
+  return authenticatedFetch(`/api/manage/admin/credential/swap`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",

@@ -104,6 +104,10 @@ COMPONENT_CATALOG: dict[str, ComponentDescriptor] = {
     ),
     "plan_and_execute": _strategy("plan_and_execute", "Plan then execute strategy."),
     "self_reflect": _strategy("self_reflect", "Self-reflection strategy."),
+    # The flow canvas is a graph strategy like any other from the catalog's
+    # point of view: the agent editor lists it, and a flow-backed definition
+    # carries its own flow_spec instead of nested definitions.
+    "flow": _strategy("flow", "Visual flow canvas compiled into a LangGraph graph."),
     # Runtime policies
     "memory_persistence": _policy(
         "memory_persistence", "Post-run memory extraction and persistence."

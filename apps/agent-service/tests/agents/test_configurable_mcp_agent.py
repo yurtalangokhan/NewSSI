@@ -44,7 +44,7 @@ class TestConfigurableMCPAgent:
         ):
             with (
                 patch(
-                    "agents.configurable_mcp_agent.KnowledgeToolSelector.select_tools",
+                    "agents.configurable_mcp_agent.KnowledgeToolSelector.select_tool_names",
                     return_value=[],
                 ),
                 patch.object(agent, "_create_agent_graph", return_value=DummyStreamGraph()),
@@ -173,6 +173,55 @@ class TestConfigurableMCPAgent:
         assert fake_tool in captured["tools"]
         assert document_tools.DOCUMENT_TOOL_PROMPT in captured["prompt"].content
 
+    def test_create_agent_graph_adds_ask_user_when_a_checkpointer_is_present(self, monkeypatch):
+        captured = {}
+
+        def fake_create_react_agent(**kwargs):
+            captured.update(kwargs)
+            return object()
+
+        monkeypatch.setattr(
+            "agents.configurable_mcp_agent.create_react_agent", fake_create_react_agent
+        )
+        monkeypatch.setattr("agents.configurable_mcp_agent.get_model", lambda _model: object())
+        monkeypatch.setattr("agents.configurable_mcp_agent.get_document_tools", lambda: [])
+
+        from agents.clarification.middleware import ask_user_alone_post_model_hook
+        from agents.clarification.prompt import ASK_USER_PROMPT
+
+        agent = ConfigurableMCPAgent()
+        agent._create_agent_graph(
+            system_prompt="Be helpful.",
+            mcp_tool_names=[],
+            checkpointer=object(),
+        )
+
+        assert any(getattr(t, "name", None) == "ask_user" for t in captured["tools"])
+        assert ASK_USER_PROMPT in captured["prompt"].content
+        assert captured["post_model_hook"] is ask_user_alone_post_model_hook
+
+    def test_create_agent_graph_omits_ask_user_without_a_checkpointer(self, monkeypatch):
+        captured = {}
+
+        def fake_create_react_agent(**kwargs):
+            captured.update(kwargs)
+            return object()
+
+        monkeypatch.setattr(
+            "agents.configurable_mcp_agent.create_react_agent", fake_create_react_agent
+        )
+        monkeypatch.setattr("agents.configurable_mcp_agent.get_model", lambda _model: object())
+        monkeypatch.setattr("agents.configurable_mcp_agent.get_document_tools", lambda: [])
+
+        from agents.clarification.prompt import ASK_USER_PROMPT
+
+        agent = ConfigurableMCPAgent()
+        agent._create_agent_graph(system_prompt="Be helpful.", mcp_tool_names=[])
+
+        assert not any(getattr(t, "name", None) == "ask_user" for t in captured["tools"])
+        assert ASK_USER_PROMPT not in captured["prompt"].content
+        assert captured["post_model_hook"] is None
+
     def test_create_agent_graph_skips_document_tools_when_disabled(self, monkeypatch):
         captured = {}
 
@@ -195,3 +244,192 @@ class TestConfigurableMCPAgent:
 
         assert captured["tools"] == []
         assert document_tools.DOCUMENT_TOOL_PROMPT not in captured["prompt"].content
+
+
+class TestExternalMcpToolMerge:
+    @pytest.mark.asyncio
+    async def test_resolve_pool_merges_external_without_touching_shared_cache(self, monkeypatch):
+        from unittest.mock import MagicMock
+
+        agent = ConfigurableMCPAgent()
+        builtin = MagicMock()
+        agent._mcp_tools = {"builtin_tool": builtin}
+
+        ext = MagicMock()
+        collided = MagicMock()
+        load = AsyncMock(return_value={"ext_tool": ext, "builtin_tool": collided})
+        monkeypatch.setattr("agents.mcp_external.load_external_mcp_tools", load)
+
+        pool = await agent._resolve_mcp_tool_pool(["ext_tool", "builtin_tool"], "u1")
+
+        assert pool["builtin_tool"] is builtin  # built-in wins on collision
+        assert pool["ext_tool"] is ext
+        assert "ext_tool" not in agent._mcp_tools  # shared cache untouched
+        load.assert_awaited_once_with("u1", {"ext_tool", "builtin_tool"})
+
+    @pytest.mark.asyncio
+    async def test_resolve_pool_skips_external_when_no_tool_names(self, monkeypatch):
+        agent = ConfigurableMCPAgent()
+        agent._mcp_tools = {}
+        load = AsyncMock(return_value={})
+        monkeypatch.setattr("agents.mcp_external.load_external_mcp_tools", load)
+
+        pool = await agent._resolve_mcp_tool_pool([], "u1")
+
+        assert pool == {}
+        load.assert_not_awaited()
+
+
+class TestConnectorToolSelection:
+    def test_resolve_config_selects_tools_from_saved_connector_operations(self):
+        agent = ConfigurableMCPAgent()
+        config = {
+            "configurable": {
+                "system_prompt": "Use assigned sources.",
+                "mcp_tools": ["web_search"],
+                "connector_bindings": [
+                    {
+                        "datasource_id": "9d1ebcbc-9205-4bb0-99aa-5911a13a79b7",
+                        "operations": ["list_resources"],
+                    },
+                    {
+                        "datasource_id": "ec8d21d0-3b84-422c-a4f5-a1df45e6b55a",
+                        "operations": ["read"],
+                    },
+                ],
+            }
+        }
+
+        configurable, prompt, tool_names, _tool_configs = agent._resolve_config(config, "")
+
+        assert configurable["mcp_tools"] == ["web_search"]
+        assert tool_names == [
+            "web_search",
+            "connector_list_resources",
+            "connector_read",
+        ]
+        assert "datasource_id=9d1ebcbc-9205-4bb0-99aa-5911a13a79b7): list_resources" in prompt
+        assert "datasource_id=ec8d21d0-3b84-422c-a4f5-a1df45e6b55a): read" in prompt
+
+    def test_resolve_config_does_not_select_unassigned_connector_tools(self):
+        agent = ConfigurableMCPAgent()
+
+        _configurable, prompt, tool_names, _tool_configs = agent._resolve_config(
+            {
+                "configurable": {
+                    "mcp_tools": ["web_search"],
+                    "connector_bindings": [],
+                }
+            },
+            "",
+        )
+
+        assert tool_names == ["web_search"]
+        assert "Assigned connector data sources" not in prompt
+
+    def test_gateway_tools_are_limited_to_selected_names(self):
+        agent = ConfigurableMCPAgent()
+        web = SimpleNamespace(name="web_search")
+        connector_list = SimpleNamespace(name="connector_list_resources")
+        connector_read = SimpleNamespace(name="connector_read")
+        agent._gateway_tools = [web, connector_list, connector_read]
+
+        selected = agent._select_gateway_tools(["web_search", "connector_read"])
+
+        assert selected == [web, connector_read]
+
+    def test_gateway_tool_takes_precedence_over_same_named_legacy_tool(self, monkeypatch):
+        captured = {}
+
+        def fake_create_react_agent(**kwargs):
+            captured.update(kwargs)
+            return object()
+
+        monkeypatch.setattr(
+            "agents.configurable_mcp_agent.create_react_agent", fake_create_react_agent
+        )
+        monkeypatch.setattr("agents.configurable_mcp_agent.get_model", lambda _model: object())
+        monkeypatch.setattr("agents.configurable_mcp_agent.get_document_tools", lambda: [])
+        legacy = SimpleNamespace(name="connector_read")
+        gateway = SimpleNamespace(name="connector_read")
+
+        ConfigurableMCPAgent()._create_agent_graph(
+            system_prompt="Use assigned sources.",
+            mcp_tool_names=["connector_read"],
+            mcp_tools_override={"connector_read": legacy},
+            gateway_tools=[gateway],
+        )
+
+        assert captured["tools"] == [gateway]
+
+    @pytest.mark.asyncio
+    async def test_gateway_email_keeps_saved_config_and_attachments_with_connectors(
+        self, monkeypatch
+    ):
+        captured = {}
+
+        def fake_create_react_agent(**kwargs):
+            captured.update(kwargs)
+            return object()
+
+        monkeypatch.setattr(
+            "agents.configurable_mcp_agent.create_react_agent", fake_create_react_agent
+        )
+        monkeypatch.setattr("agents.configurable_mcp_agent.get_model", lambda _model: object())
+        monkeypatch.setattr("agents.configurable_mcp_agent.get_document_tools", lambda: [])
+
+        gateway_call = AsyncMock(return_value="sent")
+        gateway_email = SimpleNamespace(name="send_email", ainvoke=gateway_call)
+        connector_read = SimpleNamespace(name="connector_read")
+        mail_service = SimpleNamespace(
+            get_effective_user_smtp_config=AsyncMock(
+                return_value={"host": "smtp.example.test", "password": "stored-secret"}
+            )
+        )
+        monkeypatch.setattr(
+            "service.MailConfigService.get_mail_config_service", lambda: mail_service
+        )
+
+        ConfigurableMCPAgent()._create_agent_graph(
+            system_prompt="Use assigned tools.",
+            mcp_tool_names=["send_email", "connector_read"],
+            mcp_tool_configs={"send_email": {"mail_config_id": "mail-7"}},
+            user_id="request-user",
+            mail_config_user_id="owner-user",
+            mail_attachments=[
+                {
+                    "filename": "report.csv",
+                    "mime_type": "text/csv",
+                    "content_base64": "cmVwb3J0",
+                }
+            ],
+            gateway_tools=[gateway_email, connector_read],
+        )
+
+        wrapped_email = next(tool for tool in captured["tools"] if tool.name == "send_email")
+        assert wrapped_email is not gateway_email
+        assert connector_read in captured["tools"]
+        result = await wrapped_email.ainvoke(
+            {
+                "to": ["reader@example.test"],
+                "subject": "Report",
+                "body": "Attached.",
+                "attachments": ["report.csv"],
+            }
+        )
+
+        assert result == "sent"
+        mail_service.get_effective_user_smtp_config.assert_awaited_once_with(
+            user_id="request-user",
+            mail_config_id="mail-7",
+            owner_user_id="owner-user",
+        )
+        payload = gateway_call.await_args.args[0]
+        assert payload["smtp_config"]["password"] == "stored-secret"
+        assert payload["attachments"] == [
+            {
+                "filename": "report.csv",
+                "mime_type": "text/csv",
+                "content_base64": "cmVwb3J0",
+            }
+        ]

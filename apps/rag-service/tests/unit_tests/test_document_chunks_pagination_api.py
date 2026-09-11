@@ -14,7 +14,7 @@ async def test_chunks_endpoint_paginates_large_files() -> None:
         col_resp = await client.post(
             "/api/v1/collections",
             json={"name": "chunk_pagination_test", "metadata": {}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "chunks-pagination-col"),
         )
         assert col_resp.status_code == 201
         collection_id = col_resp.json()["uuid"]

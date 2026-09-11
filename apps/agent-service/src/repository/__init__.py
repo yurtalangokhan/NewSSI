@@ -6,11 +6,13 @@ this package provides the canonical import location for repository
 facades that callers should use.
 """
 
+from repository.agent_definition_repository import AgentDefinitionRepository
 from repository.airbyte_mapping_repository import AirbyteMappingDB
 from repository.persona_repository import PersonaDB
 from repository.schedule_repository import ScheduleDBManager
 
 __all__ = [
+    "AgentDefinitionRepository",
     "AirbyteMappingDB",
     "PersonaDB",
     "ScheduleDBManager",

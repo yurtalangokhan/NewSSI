@@ -1,7 +1,7 @@
 import type { AuthTypeMetadata } from "@/lib/userSS";
 
 export const getLoginPath = (
-  authTypeMetadata?: AuthTypeMetadata | null | undefined,
+  authTypeMetadata?: AuthTypeMetadata | null | undefined
 ) =>
   authTypeMetadata?.externalKeycloak
     ? ("/auth/ee/login" as const)

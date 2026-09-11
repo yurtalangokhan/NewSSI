@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n/config";
@@ -29,12 +31,15 @@ const fetchStripePublishableKey = async (): Promise<string> => {
 };
 
 const fetchResubscriptionSession = async () => {
-  const response = await fetch("/api/tenants/create-subscription-session", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+  const response = await authenticatedFetch(
+    "/api/tenants/create-subscription-session",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
   if (!response.ok) {
     throw new Error(i18n.t("errors.accessRestricted.fetchResubFailed"));
   }

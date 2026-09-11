@@ -177,7 +177,7 @@ class AssistantAgentService:
                     rag_config = persona.get("rag_config") or {}
 
                     if base_agent == "dynamic-agent":
-                        from agents.storage.repository import AgentDefinitionRepository
+                        from repository.agent_definition_repository import AgentDefinitionRepository
 
                         definition = await AgentDefinitionRepository().get_by_persona_id(
                             int(agent_id)
@@ -362,7 +362,7 @@ class AssistantAgentService:
     async def _get_agent_definition(self, definition_id):
         """Fetch AgentDefinitionModel from DB by UUID."""
         try:
-            from agents.storage.repository import AgentDefinitionRepository
+            from repository.agent_definition_repository import AgentDefinitionRepository
 
             repo = AgentDefinitionRepository()
             return await repo.get_by_id(definition_id)
@@ -372,17 +372,22 @@ class AssistantAgentService:
 
     async def _get_or_create_dynamic_agent(self, definition):
         """
-        Return a loaded DynamicAgent for the given definition.
+        Return a loaded agent (DynamicAgent or FlowAgent) for the given
+        definition — the class depends on definition.graph_schema, decided
+        once by agents/agent_factory.py.
 
-        Uses a per-definition cache so MCP tools are only loaded once.
-        Cache is invalidated on definition update/delete via AgentDefinitionService.
+        Uses a per-definition cache so MCP tools/flow graphs are only loaded
+        once. Cache is invalidated on definition update/delete via
+        AgentDefinitionService. Flow-backed and classic definitions keep
+        separate caches (agents/flow_agent.py vs agents/dynamic_agent.py).
         """
-        from agent_composition.application.compose_agent import AgentFactory
-        from agents.dynamic_agent import (
-            cache_agent,
-            get_cached_agent,
-        )
         from service.CheckpointerService import get_checkpointer
+
+        is_flow = getattr(definition, "graph_schema", None) == "flow"
+        if is_flow:
+            from agents.flow_agent import cache_agent, get_cached_agent
+        else:
+            from agents.dynamic_agent import cache_agent, get_cached_agent
 
         definition_id = str(definition.id)
         checkpointer = get_checkpointer()
@@ -399,26 +404,36 @@ class AssistantAgentService:
 
             if cached_load_failed:
                 logger.warning(
-                    "Recreating DynamicAgent '%s' (id=%s) because previous load fell back",
+                    "Recreating agent '%s' (id=%s) because previous load fell back",
                     getattr(definition, "name", definition_id),
                     definition_id,
                 )
             elif checkpointer is not None and cached_checkpointer is None:
                 logger.warning(
-                    "Recreating DynamicAgent '%s' (id=%s) because cached graph has no checkpointer",
+                    "Recreating agent '%s' (id=%s) because cached graph has no checkpointer",
                     getattr(definition, "name", definition_id),
                     definition_id,
                 )
             else:
                 return cached
 
-        config = definition.to_config()
-        # Resolve through the canonical AgentFactory facade (ASC-5). The factory
-        # validates the definition, assembles the runtime via AgentComposer, and
-        # returns a loaded DynamicAgent behind the existing cache contract.
-        agent = await AgentFactory.create(definition_config=config, checkpointer=checkpointer)
+        from agents.agent_factory import create_agent_for_definition
+
+        agent = await create_agent_for_definition(definition, checkpointer=checkpointer)
+
+        # A classic definition comes back already loaded — AgentFactory loads
+        # it while composing the runtime. Only a FlowAgent still needs it;
+        # loading a DynamicAgent twice would re-resolve its tools and rebuild
+        # the graph for nothing.
+        if is_flow:
+            await agent.load()
         cache_agent(definition_id, agent)
-        logger.info("DynamicAgent '%s' created and cached (id=%s)", definition.name, definition_id)
+        logger.info(
+            "%s '%s' created and cached (id=%s)",
+            "FlowAgent" if is_flow else "DynamicAgent",
+            definition.name,
+            definition_id,
+        )
         return agent
 
 

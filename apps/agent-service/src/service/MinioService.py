@@ -13,16 +13,16 @@ This allows easy retrieval by file_id and scoping by user.
 from __future__ import annotations
 
 import io
-import logging
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
+from core.logger import get_logger
 from core.settings import settings
 
 if TYPE_CHECKING:
     from minio import Minio
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _build_object_key(user_id: str, file_id: str, filename: str) -> str:

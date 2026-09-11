@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from models.connector_tools import ConnectorBinding
+
 
 class PersonaUpsertRequest(BaseModel):
     name: str
@@ -39,5 +41,6 @@ class PersonaUpsertRequest(BaseModel):
     max_iterations: int = 3
     mcp_tools: list[str] = Field(default_factory=list)
     mcp_tool_configs: dict = Field(default_factory=dict)
+    connector_bindings: list[ConnectorBinding] = Field(default_factory=list, max_length=32)
     rag_config: dict | None = None
     long_term_memory: bool = False

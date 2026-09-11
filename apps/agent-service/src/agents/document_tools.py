@@ -17,7 +17,6 @@ restart.
 from __future__ import annotations
 
 import json
-import logging
 import re
 import uuid
 from typing import Annotated, Any
@@ -26,10 +25,11 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool, InjectedToolArg, tool
 
+from core.logger import get_logger
 from core.settings import settings
 from service import DocumentGenerationService as docgen
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 DOCUMENT_FORMATS = ("pdf", "docx", "md", "txt", "json")
 SPREADSHEET_FORMATS = ("xlsx", "csv")

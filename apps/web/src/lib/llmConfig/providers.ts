@@ -77,7 +77,12 @@ const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   [LLMProviderName.CUSTOM]: "Other providers or self-hosted",
 };
 
-export const URL_PROVIDER_TYPES = ["ollama", "vllm", "openai_compatible", "litellm"];
+export const URL_PROVIDER_TYPES = [
+  "ollama",
+  "vllm",
+  "openai_compatible",
+  "litellm",
+];
 
 export function getProviderProductName(providerName: string): string {
   return PROVIDER_PRODUCT_NAMES[providerName] ?? providerName;

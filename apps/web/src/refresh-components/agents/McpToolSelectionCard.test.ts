@@ -94,3 +94,35 @@ describe("McpToolSelectionCard helpers", () => {
     ]);
   });
 });
+
+describe("countSelectedTools with nested children", () => {
+  test("counts tools inside nested children groups", () => {
+    const groups = [
+      {
+        id: "builtin-root",
+        title: "Built-in Tools",
+        children: [
+          {
+            id: "service-docker",
+            title: "Docker",
+            tools: [{ name: "docker_ps" }],
+          },
+          { id: "service-fs", title: "Files", tools: [{ name: "read_file" }] },
+        ],
+      },
+      {
+        id: "mcp-1001",
+        title: "Microsoft",
+        tools: [{ name: "get_recent_azure_updates" }],
+      },
+    ];
+
+    expect(
+      countSelectedTools(groups, [
+        "docker_ps",
+        "get_recent_azure_updates",
+        "nope",
+      ])
+    ).toBe(2);
+  });
+});

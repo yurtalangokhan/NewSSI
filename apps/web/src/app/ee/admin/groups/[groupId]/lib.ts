@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import { UserGroupUpdate, SetCuratorRequest } from "../types";
 
 export const updateUserGroup = async (
@@ -5,7 +6,7 @@ export const updateUserGroup = async (
   userGroup: UserGroupUpdate
 ) => {
   const url = `/api/manage/admin/user-group/${groupId}`;
-  return await fetch(url, {
+  return await authenticatedFetch(url, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -19,7 +20,7 @@ export const updateCuratorStatus = async (
   curatorRequest: SetCuratorRequest
 ) => {
   const url = `/api/manage/admin/user-group/${groupId}/set-curator`;
-  return await fetch(url, {
+  return await authenticatedFetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 /**
  * Hook to fetch agents available for composition.
  * Filters agents based on schema compatibility.
@@ -14,6 +15,7 @@ interface AvailableAgent {
   graph_schema: string;
   depth: number;
   status: "active" | "inactive";
+  preview: string;
 }
 
 interface UseAvailableAgentsOptions {
@@ -22,20 +24,16 @@ interface UseAvailableAgentsOptions {
   enabled?: boolean;
 }
 
-export function useAvailableAgents(
-  options: UseAvailableAgentsOptions = {}
-) {
+export function useAvailableAgents(options: UseAvailableAgentsOptions = {}) {
   const { schema, excludeIds = [], enabled = true } = options;
 
   // Build cache key based on parameters
-  const cacheKey = enabled
-    ? JSON.stringify({ schema, excludeIds })
-    : null;
+  const cacheKey = enabled ? JSON.stringify({ schema, excludeIds }) : null;
 
   const { data, error, isLoading, mutate } = useSWR<AvailableAgent[]>(
     cacheKey,
     async () => {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         "/api/agent-definitions/available-for-composition",
         {
           method: "POST",

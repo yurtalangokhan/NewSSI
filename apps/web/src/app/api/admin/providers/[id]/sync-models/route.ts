@@ -6,5 +6,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  return proxyToBackend(request, `/api/admin/providers/${id}/sync-models`, { method: "POST" });
+  return proxyToBackend(request, `/api/admin/providers/${id}/sync-models`, {
+    method: "POST",
+  });
 }

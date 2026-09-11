@@ -9,6 +9,10 @@ USER_2_HEADERS = {
 }
 
 
+def idempotency_headers(base_headers: dict[str, str], key: str) -> dict[str, str]:
+    return {**base_headers, "Idempotency-Key": key}
+
+
 async def test_knowledge_selector_only_returns_current_user_visible_collections(
     monkeypatch,
 ) -> None:
@@ -26,14 +30,14 @@ async def test_knowledge_selector_only_returns_current_user_visible_collections(
         user1_resp = await client.post(
             "/api/v1/collections",
             json={"name": "visible-user1", "metadata": {}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "datasources-col-user1"),
         )
         assert user1_resp.status_code == 201
 
         user2_resp = await client.post(
             "/api/v1/collections",
             json={"name": "hidden-user2", "metadata": {}},
-            headers=USER_2_HEADERS,
+            headers=idempotency_headers(USER_2_HEADERS, "datasources-col-user2"),
         )
         assert user2_resp.status_code == 201
 
@@ -56,7 +60,7 @@ async def test_knowledge_selector_omits_orphan_graph_collections(
         create_resp = await client.post(
             "/api/v1/collections",
             json={"name": "live-graph", "metadata": {}},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "datasources-col-live-graph"),
         )
         assert create_resp.status_code == 201
         live_id = create_resp.json()["uuid"]

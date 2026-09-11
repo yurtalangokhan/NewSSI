@@ -10,7 +10,6 @@ import { Form, Formik } from "formik";
 import * as Yup from "yup";
 import { TextFormField } from "@/components/Field";
 import { toast } from "@/hooks/useToast";
-import { Spinner } from "@/components/Spinner";
 import { redirect } from "next/navigation";
 import { NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED } from "@/lib/constants";
 import { useTranslation } from "react-i18next";
@@ -27,9 +26,11 @@ const ForgotPasswordPage: React.FC = () => {
     <AuthFlowContainer>
       <div className="flex flex-col w-full justify-center">
         <div className="flex">
-          <Title className="mb-2 mx-auto font-bold">{t("auth.forgotPassword.title")}</Title>
+          <Title className="mb-2 mx-auto font-bold">
+            {t("auth.forgotPassword.title")}
+          </Title>
         </div>
-        {isWorking && <Spinner />}
+
         <Formik
           initialValues={{
             email: "",

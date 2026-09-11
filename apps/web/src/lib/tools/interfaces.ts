@@ -107,6 +107,14 @@ export interface ToolSnapshot {
   chat_selectable: boolean;
   agent_creation_selectable: boolean;
   default_enabled: boolean;
+
+  // JSON Schema for the tool's arguments (MCP tools; used by the playground)
+  input_schema?: Record<string, any>;
+
+  // Server-scoped identity for external MCP tools (`<serverSlug>__<name>`).
+  // Agent tool selection keys on this so tools with the same raw name on
+  // different servers stay distinct; `name` remains the raw name.
+  qualified_name?: string;
 }
 
 export enum MCPAuthenticationType {

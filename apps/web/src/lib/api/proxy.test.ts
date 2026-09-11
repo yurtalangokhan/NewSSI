@@ -342,6 +342,31 @@ describe("proxyToBackend", () => {
     );
   });
 
+  it("does not clear rotated cookies when a stale refresh request fails", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: "invalid refresh token" }), {
+        status: 401,
+        headers: { "content-type": "application/json" },
+      })
+    );
+
+    const request = new NextRequest("http://localhost/api/auth/refresh", {
+      method: "POST",
+      headers: {
+        cookie: "access_token=fresh-access; refresh_token=fresh-refresh",
+      },
+    });
+
+    const response = await proxyToBackend(request, "/api/auth/refresh", {
+      method: "POST",
+      backendUrl: "http://kong:8000",
+      backendService: "user",
+    });
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
   it("forwards the incoming X-Language header to the backend", async () => {
     fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
 

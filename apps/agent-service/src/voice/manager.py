@@ -4,15 +4,15 @@ This module provides Streamlit-specific UI integration for voice features.
 All Streamlit dependencies are isolated here.
 """
 
-import logging
 from typing import Optional
 
 import streamlit as st
 
+from core.logger import get_logger
 from voice.stt import SpeechToText
 from voice.tts import TextToSpeech
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class VoiceManager:

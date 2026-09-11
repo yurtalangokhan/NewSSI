@@ -1,13 +1,19 @@
 """Session, persona, and LLM provider controller."""
 
-import logging
 import re
 from typing import Any
 
 from i18n import t
 
 from controller.base import BaseController
-from core.env import env
+from controller.session_helpers import (
+    get_llm_built_in_options,
+    get_llm_providers,
+    get_ollama_models,
+    serialize_builtin_persona,
+    serialize_custom_persona,
+)
+from core.logger import get_logger
 from repository.persona_repository import PersonaDB
 from service.CheckpointerService import get_checkpointer
 from service.StoreService import (
@@ -18,7 +24,7 @@ from service.StoreService import (
     update_thread_in_store,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 AGENT_TO_PERSONA_ID: dict[str, int] = {
@@ -457,49 +463,12 @@ class SessionController(BaseController):
 
         for i, agent in enumerate(agents):
             persona_id = AGENT_TO_PERSONA_ID.get(agent.key, i)
-            personas.append(
-                {
-                    "id": persona_id,
-                    "name": agent.key.replace("-", " ").title(),
-                    "description": agent.description,
-                    "tools": [],
-                    "starter_messages": None,
-                    "document_sets": [],
-                    "is_public": True,
-                    "is_visible": True,
-                    "display_priority": None,
-                    "featured": False,
-                    "builtin_persona": True,
-                    "labels": [],
-                    "owner": {"id": "system", "email": "System"},
-                }
-            )
+            personas.append(serialize_builtin_persona(agent, persona_id))
 
         try:
             custom_personas = await PersonaDB.list_all(include_builtin=False)
             for persona in custom_personas:
-                personas.append(
-                    {
-                        "id": persona["id"],
-                        "name": persona["name"],
-                        "description": persona["description"],
-                        "tools": [],
-                        "starter_messages": persona.get("starter_messages"),
-                        "document_sets": [],
-                        "is_public": persona.get("is_public", True),
-                        "is_visible": True,
-                        "display_priority": None,
-                        "featured": False,
-                        "builtin_persona": False,
-                        "labels": persona.get("labels", []),
-                        "owner": {
-                            "id": persona.get("user_id", self._user_id),
-                            "email": "dev@local.dev",
-                        },
-                        "base_agent": persona.get("base_agent"),
-                        "mcp_tools": persona.get("mcp_tools", []),
-                    }
-                )
+                personas.append(serialize_custom_persona(persona, self._user_id))
         except Exception:
             pass
 
@@ -537,23 +506,7 @@ class SessionController(BaseController):
                 base_agent=base_agent,
                 mcp_tools=mcp_tools or [],
             )
-            return {
-                "id": persona["id"],
-                "name": persona["name"],
-                "description": persona["description"],
-                "tools": [],
-                "starter_messages": persona.get("starter_messages"),
-                "document_sets": [],
-                "is_public": persona.get("is_public", True),
-                "is_visible": True,
-                "display_priority": None,
-                "featured": False,
-                "builtin_persona": False,
-                "labels": persona.get("labels", []),
-                "owner": {"id": self._user_id, "email": "dev@local.dev"},
-                "base_agent": persona.get("base_agent"),
-                "mcp_tools": persona.get("mcp_tools", []),
-            }
+            return serialize_custom_persona(persona, self._user_id)
         except Exception as e:
             return {"error": str(e)}, 500
 
@@ -594,23 +547,7 @@ class SessionController(BaseController):
                 mcp_tools=mcp_tools or [],
             )
             if persona:
-                return {
-                    "id": persona["id"],
-                    "name": persona["name"],
-                    "description": persona["description"],
-                    "tools": [],
-                    "starter_messages": persona.get("starter_messages"),
-                    "document_sets": [],
-                    "is_public": persona.get("is_public", True),
-                    "is_visible": True,
-                    "display_priority": None,
-                    "featured": False,
-                    "builtin_persona": False,
-                    "labels": persona.get("labels", []),
-                    "owner": {"id": self._user_id, "email": "dev@local.dev"},
-                    "base_agent": persona.get("base_agent"),
-                    "mcp_tools": persona.get("mcp_tools", []),
-                }
+                return serialize_custom_persona(persona, self._user_id)
             return {"error": t("persona.not_found")}, 404
         except Exception as e:
             return {"error": str(e)}, 500
@@ -626,75 +563,13 @@ class SessionController(BaseController):
         return {"success": True}
 
     async def get_llm_providers(self) -> dict[str, Any]:
-        from core.providers.registry import provider_registry
-
-        provider_registry.initialize()
-        provider_infos = await provider_registry.get_provider_infos()
-
-        providers = []
-        for i, info in enumerate(provider_infos):
-            model_configs = [
-                {
-                    "name": m.name,
-                    "is_visible": m.is_visible,
-                    "max_input_tokens": m.max_input_tokens,
-                    "supports_image_input": m.supports_image_input,
-                    "supports_reasoning": m.supports_reasoning,
-                }
-                for m in info.models
-            ]
-            providers.append(
-                {
-                    "id": i + 1,
-                    "name": info.name,
-                    "provider": info.provider_type,
-                    "provider_display_name": info.display_name,
-                    "model_configurations": model_configs,
-                }
-            )
-
-        default_model = env.DEFAULT_MODEL or None
-        if not default_model and provider_infos:
-            for info in provider_infos:
-                if info.is_available and info.models:
-                    default_model = info.models[0].name
-                    break
-
-        return {
-            "providers": providers,
-            "selected_provider": providers[0]["name"] if providers else None,
-            "default_text": default_model,
-            "default_vision": None,
-        }
+        return await get_llm_providers()
 
     async def get_llm_built_in_options(self) -> list[dict[str, Any]]:
-        from core.providers.registry import provider_registry
-
-        provider_registry.initialize()
-        provider_infos = await provider_registry.get_provider_infos()
-
-        result = []
-        for info in provider_infos:
-            for model in info.models:
-                result.append(
-                    {
-                        "name": model.name,
-                        "is_visible": model.is_visible,
-                        "max_input_tokens": model.max_input_tokens,
-                        "supports_image_input": model.supports_image_input,
-                        "supports_reasoning": model.supports_reasoning,
-                        "provider": info.name,
-                    }
-                )
-
-        return result
+        return await get_llm_built_in_options()
 
     async def get_ollama_models(self) -> list[dict[str, Any]]:
-        from core.providers.ollama import OllamaProvider
-
-        provider = OllamaProvider()
-        models = await provider.get_available_models()
-        return [{"name": m.name, "display_name": m.display_name} for m in models]
+        return await get_ollama_models()
 
 
 _session_controller: SessionController | None = None

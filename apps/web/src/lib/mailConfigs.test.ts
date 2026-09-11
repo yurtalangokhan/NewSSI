@@ -98,4 +98,81 @@ describe("mail config MCP tool payloads", () => {
       }
     );
   });
+
+  it("sends PUT request to save user mail settings", async () => {
+    authenticatedFetchMock().mockResolvedValueOnce(
+      new Response(JSON.stringify({ username: "jdoe@company.com" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    const { saveUserMailSettings } = await import("./mailConfigs");
+    await saveUserMailSettings({
+      mail_config_id: "config-1",
+      username: "jdoe@company.com",
+      password: "secretpassword",
+      from_email: "jdoe@company.com",
+      from_name: "John Doe",
+    });
+
+    expect(authenticatedFetchMock()).toHaveBeenCalledWith(
+      "/api/mail-configs/user-credentials",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "X-Language": "en" },
+        body: JSON.stringify({
+          mail_config_id: "config-1",
+          username: "jdoe@company.com",
+          password: "secretpassword",
+          from_email: "jdoe@company.com",
+          from_name: "John Doe",
+        }),
+      }
+    );
+  });
+
+  it("sends DELETE request to remove user mail settings", async () => {
+    authenticatedFetchMock().mockResolvedValueOnce(
+      new Response(null, {
+        status: 200,
+      })
+    );
+
+    const { deleteUserMailSettings } = await import("./mailConfigs");
+    await deleteUserMailSettings();
+
+    expect(authenticatedFetchMock()).toHaveBeenCalledWith(
+      "/api/mail-configs/user-credentials",
+      {
+        method: "DELETE",
+        headers: { "X-Language": "en" },
+        body: undefined,
+      }
+    );
+  });
+
+  it("sends POST request to test user mail settings", async () => {
+    authenticatedFetchMock().mockResolvedValueOnce(
+      new Response(JSON.stringify({ success: true, message: "OK" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    const { testUserMailSettings } = await import("./mailConfigs");
+    await testUserMailSettings("config-1", "recipient@company.com");
+
+    expect(authenticatedFetchMock()).toHaveBeenCalledWith(
+      "/api/mail-configs/user-credentials/test",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Language": "en" },
+        body: JSON.stringify({
+          mail_config_id: "config-1",
+          to_email: "recipient@company.com",
+        }),
+      }
+    );
+  });
 });

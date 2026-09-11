@@ -361,8 +361,10 @@ export default function GraphSchemaPreview({
                 <div
                   key={`${graphSchema}-${nodeKey}`}
                   className={cn(
-                    "relative flex min-h-16 min-w-[10rem] items-center",
-                    isHero ? "md:min-w-[11rem]" : "md:min-w-[9.5rem]"
+                    "relative flex min-h-16 flex-1 items-center",
+                    isHero
+                      ? "min-w-[7.5rem] md:min-w-[8rem]"
+                      : "min-w-[6.5rem] md:min-w-[7.5rem]"
                   )}
                 >
                   {index > 0 && (
@@ -373,7 +375,7 @@ export default function GraphSchemaPreview({
                   <div
                     className={cn(
                       "flex h-full w-full items-center gap-2 rounded-08 border border-border-01 bg-background-tint-00",
-                      isHero ? "px-3 py-3" : "px-2.5 py-2"
+                      isHero ? "px-2.5 py-2.5" : "px-2 py-2"
                     )}
                   >
                     <div

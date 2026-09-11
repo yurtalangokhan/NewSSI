@@ -23,7 +23,7 @@ import CreateCredential from "@/components/credentials/actions/CreateCredential"
 import { CreateStdOAuthCredential } from "@/components/credentials/actions/CreateStdOAuthCredential";
 import { GmailMain } from "@/app/admin/connectors/[connector]/pages/gmail/GmailPage";
 import CardSection from "@/components/admin/CardSection";
-import { Spinner } from "@/components/Spinner";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import {
   NEXT_PUBLIC_CLOUD_ENABLED,
   NEXT_PUBLIC_TEST_ENV,
@@ -275,7 +275,9 @@ export default function CredentialStep({
                   />
                   <Modal.Body>
                     {oauthDetailsLoading ? (
-                      <Spinner />
+                      <div className="py-6">
+                        <FormSkeleton fieldCount={3} hasSubmitButton={false} />
+                      </div>
                     ) : (
                       <>
                         {oauthDetails && oauthDetails.oauth_enabled ? (

@@ -1,7 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { parseLlmDescriptor, structureValue } from "@/lib/llmConfig/utils";
+import {
+  parseLlmDescriptor,
+  structureValue,
+  isEmbeddingModel,
+} from "@/lib/llmConfig/utils";
 import { DefaultModel, LLMProviderDescriptor } from "@/interfaces/llm";
 import { getProviderIcon } from "@/app/admin/configuration/llm/utils";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
@@ -58,6 +62,9 @@ export default function LLMSelector({
 
     llmProviders.forEach((provider) => {
       provider.model_configurations.forEach((modelConfiguration) => {
+        if (isEmbeddingModel(modelConfiguration)) {
+          return;
+        }
         // Use the display name if it is available, otherwise use the model name
         const displayName =
           modelConfiguration.display_name || modelConfiguration.name;
@@ -125,15 +132,19 @@ export default function LLMSelector({
     >();
 
     llmOptions.forEach((option) => {
-      const providerKey = `${option.provider.toLowerCase()}/${option.providerId}`;
+      const providerKey = `${option.provider.toLowerCase()}/${
+        option.providerId
+      }`;
       if (!groups.has(providerKey)) {
         // For cloud-based providers, use the custom provider name
         // For URL-based providers (self-hosted), use the provider type display name
-        const isUrlBased = URL_PROVIDER_TYPES.includes(option.provider.toLowerCase());
+        const isUrlBased = URL_PROVIDER_TYPES.includes(
+          option.provider.toLowerCase()
+        );
         const displayName = isUrlBased
           ? option.providerDisplayName
           : option.name;
-        
+
         groups.set(providerKey, {
           displayName,
           options: [],

@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import {
   ApiSessionResponse,
   ApiDetailedSessionResponse,
@@ -106,7 +107,7 @@ export interface CreateSessionOptions {
 export async function createSession(
   options?: CreateSessionOptions
 ): Promise<ApiDetailedSessionResponse> {
-  const res = await fetch(`${API_BASE}/sessions`, {
+  const res = await authenticatedFetch(`${API_BASE}/sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -154,10 +155,13 @@ export async function fetchSessionHistory(): Promise<SessionHistoryItem[]> {
 }
 
 export async function generateSessionName(sessionId: string): Promise<string> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}/generate-name`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-  });
+  const res = await authenticatedFetch(
+    `${API_BASE}/sessions/${sessionId}/generate-name`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    }
+  );
 
   if (!res.ok) {
     throw new Error(`Failed to generate session name: ${res.status}`);
@@ -177,7 +181,7 @@ export async function generateFollowupSuggestions(
   userMessage: string,
   agentMessage: string
 ): Promise<SuggestionBubble[]> {
-  const res = await fetch(
+  const res = await authenticatedFetch(
     `${API_BASE}/sessions/${sessionId}/generate-suggestions`,
     {
       method: "POST",
@@ -201,11 +205,14 @@ export async function updateSessionName(
   sessionId: string,
   name: string | null
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}/name`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
-  });
+  const res = await authenticatedFetch(
+    `${API_BASE}/sessions/${sessionId}/name`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }
+  );
 
   if (!res.ok) {
     throw new Error(`Failed to update session name: ${res.status}`);
@@ -216,11 +223,14 @@ export async function setSessionSharing(
   sessionId: string,
   sharingScope: SharingScope
 ): Promise<{ session_id: string; sharing_scope: SharingScope }> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}/public`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sharing_scope: sharingScope }),
-  });
+  const res = await authenticatedFetch(
+    `${API_BASE}/sessions/${sessionId}/public`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sharing_scope: sharingScope }),
+    }
+  );
 
   if (!res.ok) {
     throw new Error(`Failed to update session sharing: ${res.status}`);
@@ -230,7 +240,7 @@ export async function setSessionSharing(
 }
 
 export async function deleteSession(sessionId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+  const res = await authenticatedFetch(`${API_BASE}/sessions/${sessionId}`, {
     method: "DELETE",
   });
 
@@ -252,10 +262,13 @@ export async function deleteSession(sessionId: string): Promise<void> {
 export async function restoreSession(
   sessionId: string
 ): Promise<ApiDetailedSessionResponse> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}/restore`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-  });
+  const res = await authenticatedFetch(
+    `${API_BASE}/sessions/${sessionId}/restore`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    }
+  );
 
   if (!res.ok) {
     await throwApiError(res, `Failed to restore session: ${res.status}`);
@@ -350,12 +363,15 @@ export async function sendMessageStream(
   content: string,
   signal?: AbortSignal
 ): Promise<Response> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}/send-message`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content }),
-    signal,
-  });
+  const res = await authenticatedFetch(
+    `${API_BASE}/sessions/${sessionId}/send-message`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+      signal,
+    }
+  );
 
   if (!res.ok) {
     // Handle rate limit errors specifically so UI can show upsell modal
@@ -593,10 +609,13 @@ export async function uploadFile(
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}/upload`, {
-    method: "POST",
-    body: formData,
-  });
+  const res = await authenticatedFetch(
+    `${API_BASE}/sessions/${sessionId}/upload`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
 
   if (!res.ok) {
     await throwApiError(res, `Failed to upload file: ${res.status}`);
@@ -618,7 +637,7 @@ export async function deleteFile(
     .map((segment) => encodeURIComponent(segment))
     .join("/");
 
-  const res = await fetch(
+  const res = await authenticatedFetch(
     `${API_BASE}/sessions/${sessionId}/files/${encodedPath}`,
     {
       method: "DELETE",
@@ -696,7 +715,7 @@ export async function deleteConnector(
   connectorId: number,
   credentialId: number
 ): Promise<void> {
-  const res = await fetch("/api/manage/admin/deletion-attempt", {
+  const res = await authenticatedFetch("/api/manage/admin/deletion-attempt", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -748,7 +767,7 @@ export async function uploadLibraryFiles(
     formData.append("files", file);
   }
 
-  const res = await fetch(`${USER_LIBRARY_BASE}/upload`, {
+  const res = await authenticatedFetch(`${USER_LIBRARY_BASE}/upload`, {
     method: "POST",
     body: formData,
   });
@@ -771,7 +790,7 @@ export async function uploadLibraryZip(
   formData.append("path", path);
   formData.append("file", file);
 
-  const res = await fetch(`${USER_LIBRARY_BASE}/upload-zip`, {
+  const res = await authenticatedFetch(`${USER_LIBRARY_BASE}/upload-zip`, {
     method: "POST",
     body: formData,
   });
@@ -789,7 +808,7 @@ export async function uploadLibraryZip(
 export async function createLibraryDirectory(
   request: CreateDirectoryRequest
 ): Promise<LibraryEntry> {
-  const res = await fetch(`${USER_LIBRARY_BASE}/directories`, {
+  const res = await authenticatedFetch(`${USER_LIBRARY_BASE}/directories`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
@@ -809,7 +828,7 @@ export async function toggleLibraryFileSync(
   documentId: string,
   enabled: boolean
 ): Promise<void> {
-  const res = await fetch(
+  const res = await authenticatedFetch(
     `${USER_LIBRARY_BASE}/files/${encodeURIComponent(
       documentId
     )}/toggle?enabled=${enabled}`,
@@ -827,7 +846,7 @@ export async function toggleLibraryFileSync(
  * Delete a file/directory from the user library.
  */
 export async function deleteLibraryFile(documentId: string): Promise<void> {
-  const res = await fetch(
+  const res = await authenticatedFetch(
     `${USER_LIBRARY_BASE}/files/${encodeURIComponent(documentId)}`,
     {
       method: "DELETE",

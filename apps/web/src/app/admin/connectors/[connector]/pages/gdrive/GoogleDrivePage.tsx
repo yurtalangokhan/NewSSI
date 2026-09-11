@@ -3,7 +3,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorCallout } from "@/components/ErrorCallout";
-import { LoadingAnimation } from "@/components/Loading";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import { ValidSources } from "@/lib/types";
 import { usePublicCredentials } from "@/lib/hooks";
 import Title from "@/components/ui/title";
@@ -97,8 +97,8 @@ const GDriveMain = () => {
     (!googleDriveConnectors && isGoogleDriveConnectorsLoading)
   ) {
     return (
-      <div className="mx-auto">
-        <LoadingAnimation text="" />
+      <div className="mx-auto w-full max-w-4xl p-6">
+        <FormSkeleton fieldCount={4} />
       </div>
     );
   }

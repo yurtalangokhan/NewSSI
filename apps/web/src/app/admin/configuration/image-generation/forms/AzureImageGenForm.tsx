@@ -117,7 +117,9 @@ function AzureFormFields(props: ImageGenFormChildProps<AzureFormValues>) {
                   options={apiKeyOptions}
                   placeholder={
                     isLoadingCredentials
-                      ? t("admin.imageGeneration.forms.apiKeyPlaceholderLoading")
+                      ? t(
+                          "admin.imageGeneration.forms.apiKeyPlaceholderLoading"
+                        )
                       : t("admin.imageGeneration.forms.apiKeyPlaceholderSelect")
                   }
                   disabled={disabled || !formikProps.values.target_uri?.trim()}
@@ -132,7 +134,9 @@ function AzureFormFields(props: ImageGenFormChildProps<AzureFormValues>) {
                   }}
                   placeholder={
                     isLoadingCredentials
-                      ? t("admin.imageGeneration.forms.apiKeyPlaceholderLoading")
+                      ? t(
+                          "admin.imageGeneration.forms.apiKeyPlaceholderLoading"
+                        )
                       : t("admin.imageGeneration.forms.apiKeyPlaceholder")
                   }
                   showClearButton={false}
@@ -150,7 +154,8 @@ function AzureFormFields(props: ImageGenFormChildProps<AzureFormValues>) {
                   }),
                   success: t("admin.imageGeneration.forms.apiKeyValid"),
                   error:
-                    errorMessage || t("admin.imageGeneration.forms.apiKeyInvalid"),
+                    errorMessage ||
+                    t("admin.imageGeneration.forms.apiKeyInvalid"),
                 }}
               />
             ) : (

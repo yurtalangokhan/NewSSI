@@ -8,7 +8,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import CenteredPageSelector from "@/components/admin/users/CenteredPageSelector";
-import { ThreeDotsLoader } from "@/components/Loading";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import { InvitedUserSnapshot } from "@/lib/types";
 import { TableHeader } from "@/components/ui/table";
 import { InviteUserButton } from "@/components/admin/users/buttons/InviteUserButton";
@@ -48,16 +48,25 @@ function InvitedUserTable({ users, mutate, error, isLoading, q }: Props) {
     currentPageNum * USERS_PER_PAGE
   );
 
+  if (isLoading) {
+    return (
+      <TableSkeleton
+        rowCount={4}
+        columns={[
+          { type: "text", width: "w-48", headerWidth: "w-20" },
+          { type: "badge", width: "w-24", headerWidth: "w-16" },
+          { type: "actions", width: "w-20", headerWidth: "w-16" },
+        ]}
+      />
+    );
+  }
+
   if (!users.length) {
     return (
       <Text as="p" mainUiMuted text03>
         {t("admin.users.invitedEmptyState")}
       </Text>
     );
-  }
-
-  if (isLoading) {
-    return <ThreeDotsLoader />;
   }
 
   if (error) {

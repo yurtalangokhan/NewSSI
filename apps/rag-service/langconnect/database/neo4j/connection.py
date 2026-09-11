@@ -6,13 +6,12 @@ Repositories obtain sessions from this driver to execute Cypher queries.
 
 from __future__ import annotations
 
-import logging
-
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
 from langconnect import config
+from langconnect.observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _driver: AsyncDriver | None = None
 

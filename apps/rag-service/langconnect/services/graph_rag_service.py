@@ -8,7 +8,6 @@ Coordinates the pipeline:
 """
 
 import asyncio
-import logging
 from http import HTTPStatus
 from typing import Any
 
@@ -25,10 +24,11 @@ from langconnect.models.graph import (
     GraphNode,
     GraphSearchResult,
 )
+from langconnect.observability import get_logger
 from langconnect.services.collections import Collection
 from langconnect.services.entity_extractor import EntityExtractor
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # In-memory build progress tracking (per collection)
 _build_progress: dict[str, BuildProgress] = {}

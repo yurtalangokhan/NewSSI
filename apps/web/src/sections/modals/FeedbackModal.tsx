@@ -85,7 +85,11 @@ export default function FeedbackModal({
                   >
                     <InputTextAreaField
                       name="additional_feedback"
-                      placeholder={feedbackType === "like" ? t("modals.feedback.likePlaceholder") : t("modals.feedback.dislikePlaceholder")}
+                      placeholder={
+                        feedbackType === "like"
+                          ? t("modals.feedback.likePlaceholder")
+                          : t("modals.feedback.dislikePlaceholder")
+                      }
                     />
                   </InputLayouts.Vertical>
                 </Modal.Body>
@@ -105,7 +109,9 @@ export default function FeedbackModal({
                       (feedbackType === "dislike" && (!dirty || !isValid))
                     }
                   >
-                    {isSubmitting ? t("modals.feedback.submittingButton") : t("modals.feedback.submitButton")}
+                    {isSubmitting
+                      ? t("modals.feedback.submittingButton")
+                      : t("modals.feedback.submitButton")}
                   </Button>
                 </Modal.Footer>
               </>

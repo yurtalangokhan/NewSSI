@@ -19,6 +19,8 @@ import { PythonToolRenderer } from "./timeline/renderers/code/PythonToolRenderer
 import { ReasoningRenderer } from "./timeline/renderers/reasoning/ReasoningRenderer";
 import CustomToolRenderer from "./renderers/CustomToolRenderer";
 import GeneratedFileRenderer from "./renderers/GeneratedFileRenderer";
+import { HumanInputRenderer } from "./renderers/HumanInputRenderer";
+import { UserClarificationRenderer } from "./renderers/UserClarificationRenderer";
 import { FileReaderToolRenderer } from "./timeline/renderers/filereader/FileReaderToolRenderer";
 import { FetchToolRenderer } from "./timeline/renderers/fetch/FetchToolRenderer";
 import { MemoryToolRenderer } from "./timeline/renderers/memory/MemoryToolRenderer";
@@ -119,6 +121,19 @@ function isGeneratedFilePacket(packet: Packet) {
   );
 }
 
+function isHumanInputPacket(packet: Packet) {
+  return packet.obj.type === PacketType.HUMAN_INPUT;
+}
+
+function isUserClarificationPacket(packet: Packet) {
+  // The question and the packet that locks it are one card, so they share
+  // a renderer as well as a turn.
+  return (
+    packet.obj.type === PacketType.USER_CLARIFICATION ||
+    packet.obj.type === PacketType.USER_CLARIFICATION_ANSWERED
+  );
+}
+
 function isReasoningPacket(packet: Packet): packet is ReasoningPacket {
   return (
     packet.obj.type === PacketType.REASONING_START ||
@@ -162,6 +177,18 @@ export function findRenderer(
   }
   if (groupedPackets.packets.some((packet) => isResearchAgentPacket(packet))) {
     return ResearchAgentRenderer;
+  }
+
+  // A paused run outranks everything else in its group: the buttons are the
+  // only way forward, so they must never be hidden behind another renderer.
+  if (groupedPackets.packets.some((packet) => isHumanInputPacket(packet))) {
+    return HumanInputRenderer;
+  }
+
+  if (
+    groupedPackets.packets.some((packet) => isUserClarificationPacket(packet))
+  ) {
+    return UserClarificationRenderer;
   }
 
   if (groupedPackets.packets.some((packet) => isGeneratedFilePacket(packet))) {

@@ -1476,4 +1476,42 @@ describe("packetProcessor", () => {
       expect(result.streamSilentSeconds).toBeNull();
     });
   });
+
+  describe("flow_stage_* packets", () => {
+    test("are not grouped — the stage-grouping layer consumes them off the raw list", () => {
+      const state = createInitialState(1);
+      const result = processPackets(state, [
+        createPacket(
+          PacketType.FLOW_STAGE_START,
+          { turn_index: 0, stage_key: "A#1" },
+          {
+            stage_key: "A#1",
+            label: "Analiz",
+            stage_order: 1,
+            iteration: 1,
+          }
+        ),
+        createPacket(
+          PacketType.FLOW_STAGE_OUTPUT_DELTA,
+          { turn_index: 0, stage_key: "A#1" },
+          {
+            stage_key: "A#1",
+            content: "ara",
+          }
+        ),
+        createPacket(
+          PacketType.FLOW_STAGE_END,
+          { turn_index: 0, stage_key: "A#1" },
+          {
+            stage_key: "A#1",
+            status: "done",
+          }
+        ),
+      ]);
+
+      expect(result.groupedPacketsMap.size).toBe(0);
+      expect(result.toolGroups).toEqual([]);
+      expect(result.potentialDisplayGroups).toEqual([]);
+    });
+  });
 });

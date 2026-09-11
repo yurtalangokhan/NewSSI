@@ -7,7 +7,7 @@ import Card from "@/refresh-components/cards/Card";
 import Button from "@/refresh-components/buttons/Button";
 import { Badge } from "@/components/ui/badge";
 import PasswordInputTypeIn from "@/refresh-components/inputs/PasswordInputTypeIn";
-import { ThreeDotsLoader } from "@/components/Loading";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import {
   useDiscordBotConfig,
@@ -51,7 +51,9 @@ export function BotConfigCard() {
             {t("admin.discord.botTokenTitle")}
           </Text>
         </Section>
-        <ThreeDotsLoader />
+        <div className="py-3">
+          <FormSkeleton fieldCount={2} hasSubmitButton={false} />
+        </div>
       </Card>
     );
   }
@@ -73,7 +75,9 @@ export function BotConfigCard() {
       toast.success(t("admin.discord.botTokenSaved"));
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : t("admin.discord.botTokenSaveFailed")
+        err instanceof Error
+          ? err.message
+          : t("admin.discord.botTokenSaveFailed")
       );
     } finally {
       setIsSubmitting(false);
@@ -88,7 +92,9 @@ export function BotConfigCard() {
       toast.success(t("admin.discord.botTokenDeleted"));
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : t("admin.discord.botTokenDeleteFailed")
+        err instanceof Error
+          ? err.message
+          : t("admin.discord.botTokenDeleteFailed")
       );
     } finally {
       setIsSubmitting(false);

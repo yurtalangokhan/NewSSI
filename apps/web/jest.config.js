@@ -36,7 +36,15 @@ const sharedConfig = {
     "^@opal/(.*)$": "<rootDir>/lib/opal/src/$1",
   },
 
-  testPathIgnorePatterns: ["/node_modules/", "/tests/e2e/", "/.next/"],
+  // "/vendor/" holds an unmodified Langflow reference copy (see
+  // vendor/langflow/NOTICE.md). It targets Vite + react-router and does not
+  // compile here; it exists for diffing ported files against their origin.
+  testPathIgnorePatterns: [
+    "/node_modules/",
+    "/tests/e2e/",
+    "/.next/",
+    "/vendor/",
+  ],
 
   // Transform ES Modules in node_modules to CommonJS for Jest compatibility
   // Add packages here when you encounter: "SyntaxError: Unexpected token 'export'"
@@ -50,6 +58,10 @@ const sharedConfig = {
         "@radix-ui",
         "@headlessui",
         "@phosphor-icons",
+        // Flow canvas (P4) — ships ESM ("@xyflow/react" itself needed no
+        // entry here — its build is already jest-compatible, confirmed by
+        // Task 20's xyflowLoads.test.tsx passing with no config change)
+        "react-hotkeys-hook",
         // Testing & Mocking
         "msw",
         "until-async",
@@ -144,8 +156,21 @@ module.exports = {
         "**/src/app/**/utils/*.test.ts",
         "**/src/app/**/hooks/*.test.ts", // Pure packet processor tests
         "**/src/app/**/renderers/**/*.test.ts", // Pure timeline renderer state helpers
+        // Pure timeline parsing helpers (node-type classification, stage
+        // ordering) — no DOM. The timeline's component tests sit alongside
+        // as .test.tsx and belong to the "integration" project below.
+        "**/src/app/**/timeline/**/*.test.ts",
         "**/src/refresh-components/**/*.test.ts",
         "**/src/sections/**/*.test.ts",
+        // Next.js route handlers (no DOM needed) — P4 Task 28's new
+        // /api/flow-components proxy and the existing catch-all's own
+        // coverage-confirmation test.
+        "**/src/app/api/**/*.test.ts",
+        "**/src/refresh-components/**/*.test.ts",
+        // Flow-canvas pure-logic tests (port triage, handle types, FlowSpec
+        // serialization) — no DOM needed. Component tests live alongside as
+        // .test.tsx and are picked up by the "integration" project below.
+        "**/src/components/flow-canvas/**/*.test.ts",
         // Add more patterns here as you add more unit tests
       ],
     },
@@ -161,8 +186,13 @@ module.exports = {
         "**/src/lib/**/*.test.tsx",
         "**/src/providers/**/*.test.tsx",
         "**/src/refresh-components/**/*.test.tsx",
+        // P4 Task 28's mount point (flow-vs-form mode branch).
+        "**/src/refresh-pages/**/*.test.tsx",
         "**/src/sections/input/**/*.test.tsx",
         "**/src/sections/AppHealthBanner.test.tsx",
+        // Flow list surface: FlowCard, FlowSettingsModal (agents/flows split).
+        "**/src/sections/cards/**/*.test.tsx",
+        "**/src/sections/modals/**/*.test.tsx",
         // Add more patterns here as you add more integration tests
       ],
     },

@@ -259,20 +259,18 @@ export default function FileBrowser({ sessionId }: FileBrowserProps) {
     <>
       <div className="border border-border-01 rounded-08 overflow-hidden">
         <Collapsible open={isOpen} onOpenChange={handleToggleRoot}>
-          <CollapsibleTrigger asChild>
-            <button className="w-full flex flex-row items-center gap-2 p-2 bg-background-neutral-01 hover:bg-background-neutral-02 transition-colors">
-              {isLoading ? (
-                <SvgLoader className="size-4 stroke-text-03 animate-spin" />
-              ) : isOpen ? (
-                <SvgChevronDown className="size-4 stroke-text-03" />
-              ) : (
-                <SvgChevronRight className="size-4 stroke-text-03" />
-              )}
-              <SvgHardDrive className="size-4 stroke-text-03" />
-              <Text mainUiAction text03>
-                Workspace Files
-              </Text>
-            </button>
+          <CollapsibleTrigger className="w-full flex flex-row items-center gap-2 p-2 bg-background-neutral-01 hover:bg-background-neutral-02 transition-colors">
+            {isLoading ? (
+              <SvgLoader className="size-4 stroke-text-03 animate-spin" />
+            ) : isOpen ? (
+              <SvgChevronDown className="size-4 stroke-text-03" />
+            ) : (
+              <SvgChevronRight className="size-4 stroke-text-03" />
+            )}
+            <SvgHardDrive className="size-4 stroke-text-03" />
+            <Text mainUiAction text03>
+              Workspace Files
+            </Text>
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="p-1 max-h-[50vh] overflow-auto">

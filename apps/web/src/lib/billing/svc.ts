@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 /**
  * Billing action functions for mutations.
  *
@@ -29,11 +30,14 @@ function getBillingBaseUrl(): string {
 }
 
 async function billingPost<T>(endpoint: string, body?: unknown): Promise<T> {
-  const response = await fetch(`${getBillingBaseUrl()}${endpoint}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body ?? {}),
-  });
+  const response = await authenticatedFetch(
+    `${getBillingBaseUrl()}${endpoint}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+    }
+  );
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -73,7 +77,7 @@ async function selfHostedPost<T>(endpoint: string): Promise<T> {
     throw new Error(`${endpoint} is only available for self-hosted`);
   }
 
-  const response = await fetch(`/api/license${endpoint}`, {
+  const response = await authenticatedFetch(`/api/license${endpoint}`, {
     method: "POST",
   });
 
@@ -120,7 +124,7 @@ export async function uploadLicense(
   const formData = new FormData();
   formData.append("license_file", blob, "license.txt");
 
-  const response = await fetch("/api/license/upload", {
+  const response = await authenticatedFetch("/api/license/upload", {
     method: "POST",
     body: formData,
   });

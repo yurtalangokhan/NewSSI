@@ -42,6 +42,7 @@ export default function AgentAvatar({
       }
       iconName={agent.icon_name}
       size={size}
+      variant={agent.graph_schema === "flow" ? "flow" : "agent"}
       {...props}
     />
   );

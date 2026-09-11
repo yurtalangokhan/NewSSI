@@ -1,4 +1,5 @@
-import { User } from "./types";
+import { User } from "@/lib/types";
+import { idempotentFetch } from "@/lib/api/idempotency";
 import { authenticatedFetch } from "@/lib/fetcher";
 import i18n from "@/i18n/config";
 
@@ -123,7 +124,7 @@ export const basicSignup = async (
     body.captcha_token = captchaToken;
   }
 
-  const response = await fetch("/api/auth/register", {
+  const response = await idempotentFetch("/api/auth/register", {
     method: "POST",
     credentials: "include",
     headers,

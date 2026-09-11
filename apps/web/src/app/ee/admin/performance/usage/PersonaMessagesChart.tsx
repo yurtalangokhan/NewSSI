@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { ThreeDotsLoader } from "@/components/Loading";
+import ChartSkeleton from "@/refresh-components/skeletons/ChartSkeleton";
 import { X, Search } from "lucide-react";
 import {
   getDatesList,
@@ -7,7 +7,7 @@ import {
   usePersonaUniqueUsers,
 } from "../lib";
 import { DateRangePickerValue } from "@/components/dateRangeSelectors/AdminDateRangeSelector";
-import Text from "@/components/ui/text";
+import Text from "@/refresh-components/texts/Text";
 import Title from "@/components/ui/title";
 import CardSection from "@/components/admin/CardSection";
 import { AreaChartDisplay } from "@/components/ui/areaChart";
@@ -127,8 +127,10 @@ export function PersonaMessagesChart({
       const uniqueUserData = uniqueUsersMap.get(dateStr);
       return {
         [t("performanceCharts.dayLabel")]: dateStr,
-        [t("performanceCharts.messagesLabel")]: messageData?.total_messages || 0,
-        [t("performanceCharts.uniqueUsersLabel")]: uniqueUserData?.unique_users || 0,
+        [t("performanceCharts.messagesLabel")]:
+          messageData?.total_messages || 0,
+        [t("performanceCharts.uniqueUsersLabel")]:
+          uniqueUserData?.unique_users || 0,
       };
     });
   }, [
@@ -141,29 +143,29 @@ export function PersonaMessagesChart({
 
   let content;
   if (isLoading) {
-    content = (
-      <div className="h-80 flex flex-col">
-        <ThreeDotsLoader />
-      </div>
-    );
+    content = <ChartSkeleton height="h-64" barCount={8} />;
   } else if (!availablePersonas || hasError) {
     content = (
       <div className="h-80 text-red-600 text-bold flex flex-col">
-        <p className="m-auto">{t("performanceCharts.failedFetchData")}</p>
+        <Text as="p" className="m-auto">
+          {t("performanceCharts.failedFetchData")}
+        </Text>
       </div>
     );
   } else if (selectedPersonaId === undefined) {
     content = (
       <div className="h-80 text-text-500 flex flex-col">
-        <p className="m-auto">{t("performanceCharts.selectAgentToView")}</p>
+        <Text as="p" className="m-auto">
+          {t("performanceCharts.selectAgentToView")}
+        </Text>
       </div>
     );
   } else if (!personaMessagesData?.length) {
     content = (
       <div className="h-80 text-text-500 flex flex-col">
-        <p className="m-auto">
+        <Text as="p" className="m-auto">
           {t("performanceCharts.noDataForAgent")}
-        </p>
+        </Text>
       </div>
     );
   } else if (chartData) {
@@ -171,7 +173,10 @@ export function PersonaMessagesChart({
       <AreaChartDisplay
         className="mt-4"
         data={chartData}
-        categories={[t("performanceCharts.messagesLabel"), t("performanceCharts.uniqueUsersLabel")]}
+        categories={[
+          t("performanceCharts.messagesLabel"),
+          t("performanceCharts.uniqueUsersLabel"),
+        ]}
         index={t("performanceCharts.dayLabel")}
         colors={["indigo", "fuchsia"]}
         yAxisWidth={60}
@@ -183,7 +188,9 @@ export function PersonaMessagesChart({
     <CardSection className="mt-8">
       <Title>{t("performanceCharts.agentAnalyticsTitle")}</Title>
       <div className="flex flex-col gap-4">
-        <Text>{t("performanceCharts.messagesPerDay")}</Text>
+        <Text as="p" className="text-sm">
+          {t("performanceCharts.messagesPerDay")}
+        </Text>
         <div className="flex items-center gap-4">
           <Select
             value={selectedPersonaId?.toString() ?? ""}

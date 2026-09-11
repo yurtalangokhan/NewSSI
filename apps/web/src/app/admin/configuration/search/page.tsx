@@ -1,10 +1,10 @@
 "use client";
 
 import { notFound } from "next/navigation";
-import { ThreeDotsLoader } from "@/components/Loading";
+import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import Text from "@/components/ui/text";
+import Text from "@/refresh-components/texts/Text";
 import Title from "@/components/ui/title";
 import Button from "@/refresh-components/buttons/Button";
 import useSWR from "swr";
@@ -74,7 +74,17 @@ function Main() {
     isLoadingFutureModel ||
     isLoadingSearchSettings
   ) {
-    return <ThreeDotsLoader />;
+    return (
+      <div className="flex flex-col gap-6">
+        <AdminOverviewPanel
+          icon={route.icon}
+          title={t("admin.search.pageTitle")}
+          description={t("admin.search.pageDescription")}
+          isLoading={true}
+        />
+        <FormSkeleton fieldCount={3} />
+      </div>
+    );
   }
 
   if (
@@ -92,7 +102,9 @@ function Main() {
       {!futureEmbeddingModel ? (
         <>
           {settings?.settings.needs_reindexing && (
-            <p className="max-w-3xl">{t("admin.search.reindexWarning")}</p>
+            <Text as="p" className="max-w-3xl">
+              {t("admin.search.reindexWarning")}
+            </Text>
           )}
           <Title className="mb-6 mt-8 !text-2xl">
             {t("admin.search.embeddingModelTitle")}
@@ -116,10 +128,10 @@ function Main() {
                 <div className="px-1 w-full rounded-lg">
                   <div className="space-y-4">
                     <div>
-                      <Text className="font-semibold">
+                      <Text as="p" className="text-sm font-semibold">
                         {t("admin.search.multipassIndexing")}
                       </Text>
-                      <Text className="text-text-700">
+                      <Text as="p" className="text-sm text-text-700">
                         {searchSettings.multipass_indexing
                           ? t("admin.search.enabled")
                           : t("admin.search.disabled")}
@@ -127,10 +139,10 @@ function Main() {
                     </div>
 
                     <div>
-                      <Text className="font-semibold">
+                      <Text as="p" className="text-sm font-semibold">
                         {t("admin.search.contextualRag")}
                       </Text>
-                      <Text className="text-text-700">
+                      <Text as="p" className="text-sm text-text-700">
                         {searchSettings.enable_contextual_rag
                           ? t("admin.search.enabled")
                           : t("admin.search.disabled")}
@@ -163,6 +175,11 @@ export default function Page() {
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         title={t(route.titleKey || "", { defaultValue: route.title })}
+        description={
+          t(route.descriptionKey ?? "", {
+            defaultValue: route.description ?? "",
+          }) || undefined
+        }
         icon={route.icon}
         separator
       />
@@ -201,21 +218,6 @@ export default function Page() {
               value: t("admin.navigation.routes.documentProcessing.sidebar", {
                 defaultValue: "Document Processing",
               }),
-            },
-          ]}
-          actions={[
-            {
-              label: t("admin.navigation.routes.documentProcessing.sidebar", {
-                defaultValue: "Document Processing",
-              }),
-              href: ADMIN_PATHS.DOCUMENT_PROCESSING,
-            },
-            {
-              label: t("admin.search.updateButton", {
-                defaultValue: "Update",
-              }),
-              href: "/admin/embeddings",
-              primary: true,
             },
           ]}
         />

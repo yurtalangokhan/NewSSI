@@ -16,6 +16,7 @@ import {
 import { useUser } from "@/providers/UserProvider";
 import useChatSessions from "./useChatSessions";
 import useAppFocus from "@/hooks/useAppFocus";
+import { filterChatReadyAgents, isFlowChatReady } from "@/lib/flows/flowAgent";
 
 export function agentIdsMatch(
   left: AgentId | MinimalPersonaSnapshot | null | undefined,
@@ -84,8 +85,17 @@ export function useAgents() {
     return [...personaAgents].sort(sortAgents);
   }, [data]);
 
+  // A flow with no published version has nothing to run — chat surfaces
+  // (agent picker, sidebar/pinned, @mention) must never offer it. The
+  // Flows tab lists every flow regardless, so it reads `agents` directly.
+  const chatReadyAgents = useMemo(
+    () => filterChatReadyAgents(agents),
+    [agents]
+  );
+
   return {
     agents,
+    chatReadyAgents,
     isLoading: !error && !data,
     error,
     refresh: async () => {
@@ -166,12 +176,15 @@ export function usePinnedAgents() {
     // If it's an empty array (user explicitly unpinned all), show nothing
     const pinnedIds = user?.preferences?.pinned_assistants;
     if (pinnedIds === null || pinnedIds === undefined) {
-      return agents.filter((agent) => agent.featured && agent.id !== 0);
+      return agents.filter(
+        (agent) => agent.featured && agent.id !== 0 && isFlowChatReady(agent)
+      );
     }
 
     return pinnedIds
       .map((id) => agents.find((agent) => agentIdsMatch(agent, id)))
-      .filter((agent): agent is MinimalPersonaSnapshot => !!agent);
+      .filter((agent): agent is MinimalPersonaSnapshot => !!agent)
+      .filter(isFlowChatReady);
   }, [agents, user?.preferences?.pinned_assistants]);
 
   // Toggle pin status - updates UserProvider context optimistically AND persists to server

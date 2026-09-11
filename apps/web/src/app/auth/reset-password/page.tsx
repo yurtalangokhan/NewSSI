@@ -10,7 +10,6 @@ import { Form, Formik } from "formik";
 import * as Yup from "yup";
 import { TextFormField } from "@/components/Field";
 import { toast } from "@/hooks/useToast";
-import { Spinner } from "@/components/Spinner";
 import { redirect, useSearchParams } from "next/navigation";
 import {
   NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED,
@@ -43,18 +42,25 @@ const ResetPasswordPage: React.FC = () => {
     <AuthFlowContainer>
       <div className="flex flex-col w-full justify-center">
         <div className="flex">
-          <Title className="mb-2 mx-auto font-bold">{t("auth.resetPassword.title")}</Title>
+          <Title className="mb-2 mx-auto font-bold">
+            {t("auth.resetPassword.title")}
+          </Title>
         </div>
-        {isWorking && <Spinner />}
+
         <Formik
           initialValues={{
             password: "",
             confirmPassword: "",
           }}
           validationSchema={Yup.object().shape({
-            password: Yup.string().required(t("auth.resetPassword.passwordRequired")),
+            password: Yup.string().required(
+              t("auth.resetPassword.passwordRequired")
+            ),
             confirmPassword: Yup.string()
-              .oneOf([Yup.ref("password"), undefined], t("auth.resetPassword.confirmPasswordMismatch"))
+              .oneOf(
+                [Yup.ref("password"), undefined],
+                t("auth.resetPassword.confirmPasswordMismatch")
+              )
               .required(t("auth.resetPassword.confirmPasswordRequired")),
           })}
           onSubmit={async (values) => {

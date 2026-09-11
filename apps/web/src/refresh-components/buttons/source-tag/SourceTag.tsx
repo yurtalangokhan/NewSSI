@@ -154,29 +154,33 @@ const IconStack = ({
   isQuery,
   isOpen,
   showDetailsCard,
-}: IconStackProps) => (
-  <div className="flex items-center -space-x-1.5">
-    {sources.slice(0, 3).map((source, index) => (
-      <div
-        key={source.id ?? `source-${index}`}
-        className={cn(
-          "relative flex items-center justify-center p-0.5 rounded-04",
-          !isQuery && "bg-background-tint-00",
-          "border transition-colors duration-150",
-          isOpen
-            ? "border-background-tint-inverted-03"
-            : "border-background-tint-02",
-          !showDetailsCard &&
-            !isQuery &&
-            "group-hover:border-background-tint-inverted-03"
-        )}
-        style={{ zIndex: sources.length - index }}
-      >
-        <SourceIconRenderer source={source} />
-      </div>
-    ))}
-  </div>
-);
+}: IconStackProps) => {
+  if (sources.length === 0) return null;
+
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-1 py-0.5 px-1 rounded-08 transition-colors duration-150",
+        !isQuery && "bg-background-tint-00 border",
+        isOpen
+          ? "border-background-tint-inverted-03"
+          : "border-background-tint-02",
+        !showDetailsCard &&
+          !isQuery &&
+          "group-hover:border-background-tint-inverted-03"
+      )}
+    >
+      {sources.slice(0, 3).map((source, index) => (
+        <div
+          key={source.id ?? `source-${index}`}
+          className="relative flex items-center justify-center shrink-0 bg-transparent"
+        >
+          <SourceIconRenderer source={source} />
+        </div>
+      ))}
+    </div>
+  );
+};
 
 /**
  * Shared text styling props passed to Text and Truncated components.

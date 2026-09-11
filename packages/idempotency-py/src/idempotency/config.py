@@ -1,6 +1,13 @@
+from __future__ import annotations
+
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from idempotency.models import IdempotencyPolicyConfig
+
+if TYPE_CHECKING:
+    from fastapi import Request
 
 
 @dataclass
@@ -28,3 +35,4 @@ class IdempotencyConfig:
         "X-Internal-Service-Token",
     )
     policy: IdempotencyPolicyConfig = field(default_factory=IdempotencyPolicyConfig)
+    principal_extractor: Callable[[Request], Awaitable[str | None]] | None = None

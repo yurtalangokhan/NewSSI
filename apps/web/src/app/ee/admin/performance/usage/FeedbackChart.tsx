@@ -1,6 +1,6 @@
-import { ThreeDotsLoader } from "@/components/Loading";
+import ChartSkeleton from "@/refresh-components/skeletons/ChartSkeleton";
 import { getDatesList, useQueryAnalytics } from "../lib";
-import Text from "@/components/ui/text";
+import Text from "@/refresh-components/texts/Text";
 import Title from "@/components/ui/title";
 
 import { DateRangePickerValue } from "@/components/dateRangeSelectors/AdminDateRangeSelector";
@@ -22,11 +22,7 @@ export function FeedbackChart({
 
   let chart;
   if (isQueryAnalyticsLoading) {
-    chart = (
-      <div className="h-80 flex flex-col">
-        <ThreeDotsLoader />
-      </div>
-    );
+    chart = <ChartSkeleton height="h-64" barCount={8} />;
   } else if (
     !queryAnalyticsData ||
     queryAnalyticsData[0] === undefined ||
@@ -34,9 +30,9 @@ export function FeedbackChart({
   ) {
     chart = (
       <div className="h-80 text-red-600 text-bold flex flex-col">
-        <p className="m-auto">
+        <Text as="p" className="m-auto">
           {t("admin.performance.usage.feedbackFetchFailed")}
-        </p>
+        </Text>
       </div>
     );
   } else {
@@ -77,7 +73,9 @@ export function FeedbackChart({
   return (
     <CardSection className="mt-8">
       <Title>{t("admin.performance.usage.feedbackTitle")}</Title>
-      <Text>{t("admin.performance.usage.feedbackDescription")}</Text>
+      <Text as="p" className="text-sm">
+        {t("admin.performance.usage.feedbackDescription")}
+      </Text>
       {chart}
     </CardSection>
   );

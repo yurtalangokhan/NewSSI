@@ -43,7 +43,9 @@ export default function InputDatePicker({
     <Popover open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild id={name} name={name}>
         <Button leftIcon={SvgCalendar} secondary disabled={disabled}>
-          {selectedDate ? selectedDate.toLocaleDateString() : t("common.selectDate")}
+          {selectedDate
+            ? selectedDate.toLocaleDateString()
+            : t("common.selectDate")}
         </Button>
       </Popover.Trigger>
       <Popover.Content>

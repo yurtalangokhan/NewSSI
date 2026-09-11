@@ -31,6 +31,7 @@ import { toast } from "@/hooks/useToast";
 import _ from "lodash";
 import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
+import Skeleton from "@/refresh-components/skeletons/Skeleton";
 
 interface ToolPlaygroundProps {
   tool: ToolWithCategory;
@@ -267,9 +268,9 @@ function ResponseViewer({
   const { t } = useTranslation();
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="size-6 animate-spin mr-2" />
-        <span>{t("toolPlayground.executingTool")}</span>
+      <div className="p-4 flex flex-col gap-3">
+        <Skeleton className="h-4 w-32 rounded-08" />
+        <Skeleton className="h-24 w-full rounded-08" />
       </div>
     );
   }

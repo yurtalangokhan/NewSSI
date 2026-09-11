@@ -34,7 +34,7 @@ def test_alembic_revision_graph_has_unique_revisions_and_single_head():
             referenced_revisions.add(down_revision)
 
     heads = sorted(set(revisions) - referenced_revisions)
-    assert heads == ["0030"]
+    assert heads == ["0045"]
 
 
 def test_sub_agent_ids_migration_uses_jsonb_for_gin_index():
@@ -43,6 +43,40 @@ def test_sub_agent_ids_migration_uses_jsonb_for_gin_index():
     )
 
     assert "postgresql.JSONB()" in migration.read_text()
+
+
+def test_agents_migration_uses_existing_uuid_function_without_extension_ddl():
+    migration = (
+        Path(__file__).parents[1] / "src/core/db/migrations/versions/0036_merge_agent_tables.py"
+    ).read_text()
+
+    assert "gen_random_uuid()" in migration
+    assert "CREATE EXTENSION" not in migration
+
+
+def test_agents_migration_casts_legacy_json_columns_to_jsonb():
+    migration = (
+        Path(__file__).parents[1] / "src/core/db/migrations/versions/0036_merge_agent_tables.py"
+    ).read_text()
+
+    for column in (
+        "rag_config",
+        "mcp_tools",
+        "mcp_tool_configs",
+        "sub_agents",
+        "stages",
+        "tags",
+    ):
+        assert f"COALESCE({column}::jsonb," in migration
+
+
+def test_agent_definition_rows_do_not_reuse_unique_persona_identity():
+    migration = (
+        Path(__file__).parents[1] / "src/core/db/migrations/versions/0036_merge_agent_tables.py"
+    ).read_text()
+
+    assert "legacy_definition_id, legacy_persona_id, name" not in migration
+    assert "id, persona_id, name, description, agent_type" not in migration
 
 
 def test_alembic_metadata_registers_all_service_owned_tables():
@@ -54,7 +88,6 @@ def test_alembic_metadata_registers_all_service_owned_tables():
         "agent_definitions",
         "providers",
         "user_provider_configs",
-        "user_memory",
     }.issubset(Base.metadata.tables)
 
 
@@ -91,6 +124,14 @@ def test_run_startup_migrations_ensures_database_before_alembic(monkeypatch):
         "upgrade",
         lambda config, revision: events.append(f"upgrade:{revision}"),
     )
+    monkeypatch.setattr(
+        startup,
+        "retry_sync",
+        lambda operation, *, operation_name, dependency: (
+            events.append(f"retry:{dependency}:{operation_name}"),
+            operation(),
+        )[1],
+    )
     revision_states = iter([("0027", "0028"), ("0028", "0028")])
     monkeypatch.setattr(startup, "_migration_revision_state", lambda config: next(revision_states))
     monkeypatch.setattr(
@@ -101,7 +142,12 @@ def test_run_startup_migrations_ensures_database_before_alembic(monkeypatch):
 
     startup.run_startup_migrations()
 
-    assert events == ["ensure", "upgrade:head"]
+    assert events == [
+        "retry:postgres:ensure_database",
+        "ensure",
+        "retry:postgres:run_migrations",
+        "upgrade:head",
+    ]
     assert options["script_location"].endswith("apps/agent-service/src/core/db/migrations")
     assert options["prepend_sys_path"].endswith("apps/agent-service/src")
     assert startup._build_alembic_config().attributes["configure_logger"] is False
@@ -152,3 +198,21 @@ def test_ensure_database_exists_creates_missing_database(monkeypatch):
     assert statements[0]["dbname"] == "postgres"
     sql_statements = [statement for statement in statements if isinstance(statement, tuple)]
     assert any("CREATE DATABASE" in str(statement[0]) for statement in sql_statements)
+
+
+def test_redis_connect_is_wrapped_in_retry_async():
+    app_py = (Path(__file__).parents[1] / "src/app.py").read_text()
+
+    assert "retry_async" in app_py
+    assert 'dependency="redis"' in app_py
+    assert "AsyncRedisPool.connect" in app_py
+    assert 'operation_name="connect"' in app_py
+
+
+def test_tools_service_init_is_degraded_not_fatal():
+    app_py = (Path(__file__).parents[1] / "src/app.py").read_text()
+
+    assert "initialize_builtin" in app_py
+    assert 'record_degraded(\n                        "tools-service"' in app_py
+    assert "startup.dependency.degraded" in app_py
+    assert "tools-service is unavailable; tool execution will be degraded." in app_py

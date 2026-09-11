@@ -43,12 +43,14 @@ function getDisplayName(email?: string, personalName?: string): string {
   return email.substring(0, atIndex);
 }
 
-function getPreferredName(user: {
-  email?: string;
-  first_name?: string | null;
-  full_name?: string | null;
-  personalization?: { name?: string };
-} | null): string {
+function getPreferredName(
+  user: {
+    email?: string;
+    first_name?: string | null;
+    full_name?: string | null;
+    personalization?: { name?: string };
+  } | null
+): string {
   if (!user) return ANONYMOUS_USER_NAME;
   if (user.full_name && user.full_name.trim()) return user.full_name.trim();
   if (user.first_name && user.first_name.trim()) return user.first_name.trim();
@@ -114,7 +116,9 @@ function SettingsPopover({
             onClick={onOpenNotifications}
           >
             {undismissedCount > 0
-              ? t("userMenu.notificationsWithCount", { count: undismissedCount })
+              ? t("userMenu.notificationsWithCount", {
+                  count: undismissedCount,
+                })
               : t("userMenu.notifications")}
           </LineItem>,
           <LineItem

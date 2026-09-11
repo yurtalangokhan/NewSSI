@@ -19,7 +19,12 @@ from fastapi import (
 )
 from i18n import t
 
-from api.dependencies import AuthenticatedUser, require_permission, require_user
+from api.dependencies import (
+    AuthenticatedUser,
+    extract_auth_token_from_request,
+    require_permission,
+    require_user,
+)
 from controller import UserController, get_user_controller
 from models.users import (
     FileStatusesPayload,
@@ -42,7 +47,7 @@ async def _resolve_project_identity(
 ) -> tuple[str, list[str]]:
     controller = _get_controller()
     identity = await get_auth_service().resolve_user_identity(
-        request=request,
+        token=extract_auth_token_from_request(request),
         user_id=user.user_id,
         user=user,
     )

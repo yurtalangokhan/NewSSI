@@ -1,4 +1,3 @@
-import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -6,6 +5,7 @@ from pathlib import Path
 from error_contract import register_error_handlers
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from i18n import I18nMiddleware, init_service_i18n
 from idempotency import AsyncRedisPool, IdempotencyMiddleware
 
@@ -17,21 +17,29 @@ from langconnect.api import (
     retrieval_router,
 )
 from langconnect.api_versioning import API_PREFIX
-from langconnect.config import ALLOWED_ORIGINS
+from langconnect.config import ALLOWED_ORIGINS, LOG_FORMAT, LOG_LEVEL
 from langconnect.database.postgres.schema_bootstrap import ensure_schema
 from langconnect.idempotency import (
     build_idempotency_config,
     build_idempotency_exclude_paths,
 )
+from langconnect.observability import (
+    DependencyPolicy,
+    configure_logging,
+    dependency_error_fields,
+    dependency_registry,
+    get_logger,
+    readiness_payload,
+    retry_async,
+)
 from langconnect.services.collections import CollectionsManager
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+configure_logging(
+    service_name="rag-service",
+    log_level=LOG_LEVEL,
+    log_format=LOG_FORMAT,
 )
-
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # Initialize FastAPI app
@@ -44,8 +52,27 @@ _idempotency_config = build_idempotency_config()
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Lifespan context manager for FastAPI application."""
     logger.info("App is starting up. Creating background worker...")
-    await AsyncRedisPool.connect(_idempotency_config)
-    await ensure_schema()
+    await retry_async(
+        lambda: AsyncRedisPool.connect(_idempotency_config),
+        operation_name="connect",
+        dependency="redis",
+    )
+    dependency_registry.record_ok("redis", policy=DependencyPolicy.REQUIRED)
+    logger.info(
+        "Redis idempotency pool connected.",
+        extra={
+            "event": "startup.dependency.ok",
+            "dependency": "redis",
+            "operation": "connect",
+            "status": "ok",
+        },
+    )
+    await retry_async(
+        ensure_schema,
+        operation_name="bootstrap_schema",
+        dependency="postgres",
+    )
+    dependency_registry.record_ok("postgres", policy=DependencyPolicy.REQUIRED)
     await CollectionsManager.setup()
 
     # Initialize Neo4j connection (best-effort - graph features degrade gracefully)
@@ -53,9 +80,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from langconnect.database.neo4j.connection import get_neo4j_driver
 
         await get_neo4j_driver()
+        dependency_registry.record_ok("neo4j", policy=DependencyPolicy.DEGRADED)
         logger.info("Neo4j connection established.")
-    except Exception:
-        logger.warning("Neo4j is not available - graph features will be disabled.")
+    except Exception as exc:
+        dependency_registry.record_degraded(
+            "neo4j", hint="Graph features are disabled until Neo4j is reachable."
+        )
+        logger.warning(
+            "Neo4j is not available - graph features will be disabled.",
+            extra={
+                **dependency_error_fields(exc, dependency="neo4j"),
+                "event": "startup.dependency.degraded",
+                "dependency": "neo4j",
+                "operation": "connect",
+                "status": "degraded",
+            },
+        )
 
     yield
 
@@ -66,15 +106,33 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from langconnect.database.neo4j.connection import close_neo4j_driver
 
         await close_neo4j_driver()
-    except Exception:
-        logger.warning("Failed to close Neo4j driver.", exc_info=True)
+    except Exception as exc:
+        logger.warning(
+            "neo4j shutdown cleanup failed.",
+            extra={
+                **dependency_error_fields(exc, dependency="neo4j"),
+                "event": "shutdown.dependency.cleanup_failed",
+                "dependency": "neo4j",
+                "operation": "close_driver",
+                "status": "degraded",
+            },
+        )
 
     try:
         from langconnect.database.postgres.engine import close_db_engine
 
         await close_db_engine()
-    except Exception:
-        logger.warning("Failed to close Postgres engine.", exc_info=True)
+    except Exception as exc:
+        logger.warning(
+            "postgres shutdown cleanup failed.",
+            extra={
+                **dependency_error_fields(exc, dependency="postgres"),
+                "event": "shutdown.dependency.cleanup_failed",
+                "dependency": "postgres",
+                "operation": "close_engine",
+                "status": "degraded",
+            },
+        )
 
     logger.info("App is shutting down. Stopping background worker...")
 
@@ -124,6 +182,15 @@ APP.include_router(retrieval_router, prefix=API_PREFIX)
 async def api_health_check() -> dict:
     """Versioned health check endpoint."""
     return {"status": "ok"}
+
+
+@APP.get(f"{API_PREFIX}/health/ready")
+async def api_readiness_check() -> JSONResponse:
+    """Readiness endpoint reporting dependency state."""
+    payload = readiness_payload(service_name="rag-service")
+    if payload["status"] != "ready":
+        return JSONResponse(status_code=503, content=payload)
+    return JSONResponse(content=payload)
 
 
 if __name__ == "__main__":

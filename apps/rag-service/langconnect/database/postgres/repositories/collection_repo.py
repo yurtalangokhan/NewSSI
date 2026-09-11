@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import uuid
 from typing import Any
 
@@ -15,8 +14,9 @@ from langconnect import config
 from langconnect.database.postgres.models import PgCollection
 from langconnect.database.postgres.repositories.base import BaseRepository
 from langconnect.models.collection import CollectionDetails
+from langconnect.observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class CollectionRepository(BaseRepository):

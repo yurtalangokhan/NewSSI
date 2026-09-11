@@ -11,12 +11,13 @@ import { useTranslation } from "react-i18next";
 import { useAvailableAgents } from "@/hooks/useAvailableAgents";
 import Button from "@/refresh-components/buttons/Button";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
+import SimpleTooltip from "@/refresh-components/SimpleTooltip";
+import AgentPreviewTooltip from "@/refresh-components/agents/AgentPreviewTooltip";
 import InputTextArea from "@/refresh-components/inputs/InputTextArea";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { Card } from "@/refresh-components/cards";
 import Modal from "@/refresh-components/Modal";
 import Text from "@/refresh-components/texts/Text";
-import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import SquareButton from "@/refresh-components/buttons/SquareButton";
 import * as InputLayouts from "@/layouts/input-layouts";
 import {
@@ -34,6 +35,7 @@ interface AvailableAgent {
   graph_schema: string;
   depth: number;
   status: "active" | "inactive";
+  preview: string;
 }
 
 export interface SubAgentConfiguration {
@@ -69,8 +71,7 @@ function createConfig(
   graphSchema: string,
   index: number
 ): SubAgentConfiguration {
-  const role =
-    graphSchema === "pipeline" ? `stage_${index + 1}` : "specialist";
+  const role = graphSchema === "pipeline" ? `stage_${index + 1}` : "specialist";
 
   return {
     agent_id: agent.id,
@@ -296,22 +297,25 @@ export default function SubAgentSelector({
             <div className="border-t border-border bg-background-neutral-02 px-3 py-2">
               <div className="flex flex-wrap gap-1.5">
                 {selectedRows.slice(0, 5).map(({ agent, config }, index) => (
-                  <div
+                  <SimpleTooltip
                     key={agent.id}
-                    className="flex max-w-full items-center gap-1.5 rounded-08 border border-border bg-background-neutral-00 px-2 py-1"
+                    tooltip={<AgentPreviewTooltip preview={agent.preview} />}
+                    side="top"
                   >
-                    {graphSchema === "pipeline" && (
-                      <Text mainUiMuted text04>
-                        {index + 1}
+                    <div className="flex max-w-full items-center gap-1.5 rounded-08 border border-border bg-background-neutral-00 px-2 py-1">
+                      {graphSchema === "pipeline" && (
+                        <Text mainUiMuted text04>
+                          {index + 1}
+                        </Text>
+                      )}
+                      <Text mainUiAction text04 className="truncate">
+                        {config.role}
                       </Text>
-                    )}
-                    <Text mainUiAction text04 className="truncate">
-                      {config.role}
-                    </Text>
-                    <Text mainUiMuted text04 className="truncate">
-                      {agent.name}
-                    </Text>
-                  </div>
+                      <Text mainUiMuted text04 className="truncate">
+                        {agent.name}
+                      </Text>
+                    </div>
+                  </SimpleTooltip>
                 ))}
                 {selectedRows.length > 5 && (
                   <div className="rounded-08 border border-border bg-background-neutral-00 px-2 py-1">
@@ -356,8 +360,9 @@ export default function SubAgentSelector({
 
                 <div className="flex min-h-0 flex-1 flex-col gap-3 p-3">
                   {isLoading ? (
-                    <div className="flex flex-1 items-center justify-center">
-                      <SimpleLoader />
+                    <div className="flex flex-col gap-2 p-2 w-full">
+                      <div className="h-9 w-full rounded-08 bg-background-neutral-01 border border-border-01 animate-pulse" />
+                      <div className="h-16 w-full rounded-08 bg-background-neutral-01 border border-border-01 animate-pulse" />
                     </div>
                   ) : availableAgents.length > 0 ? (
                     <>
@@ -367,38 +372,57 @@ export default function SubAgentSelector({
                         />
                         <InputSelect.Content>
                           {availableAgents.map((agent) => (
-                            <InputSelect.Item key={agent.id} value={agent.id}>
-                              <div className="flex min-w-0 items-center gap-2">
-                                <Text mainUiBody text03 className="truncate">
-                                  {agent.name}
-                                </Text>
-                                <Text mainUiMuted text04 className="shrink-0">
-                                  {agent.graph_schema}
-                                </Text>
-                              </div>
-                            </InputSelect.Item>
+                            <SimpleTooltip
+                              key={agent.id}
+                              tooltip={
+                                <AgentPreviewTooltip preview={agent.preview} />
+                              }
+                              side="right"
+                            >
+                              <InputSelect.Item value={agent.id}>
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <Text mainUiBody text03 className="truncate">
+                                    {agent.name}
+                                  </Text>
+                                  <Text mainUiMuted text04 className="shrink-0">
+                                    {agent.graph_schema}
+                                  </Text>
+                                </div>
+                              </InputSelect.Item>
+                            </SimpleTooltip>
                           ))}
                         </InputSelect.Content>
                       </InputSelect>
 
                       <div className="flex min-h-0 flex-col gap-1.5 overflow-y-auto pr-1">
                         {availableAgents.map((agent) => (
-                          <button
+                          <SimpleTooltip
                             key={agent.id}
-                            type="button"
-                            className="flex w-full items-start justify-between gap-2 rounded-08 border border-border bg-background-neutral-02 p-2 text-left hover:bg-background-neutral-03"
-                            onClick={() => handleSelectAgent(agent.id)}
+                            tooltip={
+                              <AgentPreviewTooltip preview={agent.preview} />
+                            }
+                            side="right"
                           >
-                            <span className="min-w-0">
-                              <Text mainUiAction text03 className="block truncate">
-                                {agent.name}
-                              </Text>
-                              <Text mainUiMuted text04>
-                                {formatAgentMeta(agent)}
-                              </Text>
-                            </span>
-                            <SvgPlus className="mt-0.5 h-4 w-4 shrink-0 stroke-text-03" />
-                          </button>
+                            <button
+                              type="button"
+                              className="flex w-full items-start justify-between gap-2 rounded-08 border border-border bg-background-neutral-02 p-2 text-left hover:bg-background-neutral-03"
+                              onClick={() => handleSelectAgent(agent.id)}
+                            >
+                              <span className="min-w-0">
+                                <Text
+                                  mainUiAction
+                                  text03
+                                  className="block truncate"
+                                >
+                                  {agent.name}
+                                </Text>
+                                <Text mainUiMuted text04>
+                                  {formatAgentMeta(agent)}
+                                </Text>
+                              </span>
+                              <SvgPlus className="mt-0.5 h-4 w-4 shrink-0 stroke-text-03" />
+                            </button>
+                          </SimpleTooltip>
                         ))}
                       </div>
                     </>
@@ -462,14 +486,27 @@ export default function SubAgentSelector({
                                   <SvgCheck className="h-4 w-4 stroke-text-02" />
                                 )}
                               </div>
-                              <div className="min-w-0">
-                                <Text mainUiAction text03 className="truncate">
-                                  {agent.name}
-                                </Text>
-                                <Text mainUiMuted text04 className="block">
-                                  {formatAgentMeta(agent)}
-                                </Text>
-                              </div>
+                              <SimpleTooltip
+                                tooltip={
+                                  <AgentPreviewTooltip
+                                    preview={agent.preview}
+                                  />
+                                }
+                                side="top"
+                              >
+                                <div className="min-w-0">
+                                  <Text
+                                    mainUiAction
+                                    text03
+                                    className="truncate"
+                                  >
+                                    {agent.name}
+                                  </Text>
+                                  <Text mainUiMuted text04 className="block">
+                                    {formatAgentMeta(agent)}
+                                  </Text>
+                                </div>
+                              </SimpleTooltip>
                             </div>
 
                             <div className="flex shrink-0 items-center gap-1">
@@ -483,9 +520,7 @@ export default function SubAgentSelector({
                                   />
                                   <SquareButton
                                     icon={SvgArrowUpDot}
-                                    disabled={
-                                      index === selectedRows.length - 1
-                                    }
+                                    disabled={index === selectedRows.length - 1}
                                     onClick={() => handleMove(agent.id, 1)}
                                     title={t("agentEditor.moveSubAgentDown")}
                                     className="rotate-180"
@@ -553,11 +588,7 @@ export default function SubAgentSelector({
           </Modal.Body>
 
           <Modal.Footer>
-            <Button
-              type="button"
-              secondary
-              onClick={() => setIsOpen(false)}
-            >
+            <Button type="button" secondary onClick={() => setIsOpen(false)}>
               {t("agentEditor.applySubAgentChanges")}
             </Button>
           </Modal.Footer>

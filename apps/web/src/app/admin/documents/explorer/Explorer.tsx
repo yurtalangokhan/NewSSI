@@ -18,7 +18,7 @@ import { SourceIcon } from "@/components/SourceIcon";
 import { Connector } from "@/lib/connectors/connectors";
 import { HorizontalFilters } from "@/components/filters/SourceSelector";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
-import { ThreeDotsLoader } from "@/components/Loading";
+import ListSkeleton from "@/refresh-components/skeletons/ListSkeleton";
 import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
 
@@ -214,7 +214,11 @@ export function Explorer({
           })}
         </div>
       )}
-      {isLoading && <ThreeDotsLoader />}
+      {isLoading && (
+        <div className="mt-3">
+          <ListSkeleton itemCount={4} hasIcon={true} />
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,10 @@
 import i18n from "@/i18n/config";
 
 import { ParsedApiError, parseApiErrorResponse } from "@/lib/api/errors";
-import { createIdempotencyKey } from "@/lib/api/idempotency";
+import {
+  attachIdempotencyKey,
+  refreshIdempotencyKey,
+} from "@/lib/api/idempotency";
 
 export class FetchError extends Error {
   status: number;
@@ -66,103 +69,186 @@ interface AuthenticatedFetchOptions extends RequestInit {
 
 let refreshTokenPromise: Promise<RefreshTokenResult> | null = null;
 let loginPathPromise: Promise<string> | null = null;
-let authRefreshFailed = false;
-const AUTH_REFRESH_FAILED_KEY = "auth_refresh_failed";
+let authRefreshFailedUntil = 0;
+const AUTH_REFRESH_FAILED_KEY = "auth_refresh_failed_until";
+const AUTH_REFRESH_LOCK_KEY = "auth_refresh_lock";
 export const AUTH_SESSION_REFRESHED_EVENT = "auth:session-refreshed";
 
-const IDEMPOTENT_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const IDEMPOTENCY_EXCLUDED_PREFIXES = [
-  "/api/auth/login",
-  "/api/auth/ldap/login",
-  "/api/auth/external/login",
-  "/api/auth/refresh",
-  "/api/auth/logout",
-  "/api/auth/oidc",
-];
-
-function inputUrl(input: RequestInfo | URL): string {
-  if (typeof input === "string") {
-    return input;
-  }
-  if (input instanceof URL) {
-    return input.toString();
-  }
-  return input.url;
-}
+/**
+ * How long a failed refresh suppresses further attempts.
+ *
+ * This used to be a permanent, session-long flag. A single transient failure
+ * - a backend blip, or losing a rotation race with another tab - therefore
+ * disabled refresh for the rest of the tab's life, and every later 401 went
+ * straight to the login screen. A short cooldown keeps the "don't hammer a
+ * dead session" property without making one bad response terminal.
+ */
+const AUTH_REFRESH_COOLDOWN_MS = 15_000;
 
 /**
- * Attach an Idempotency-Key to mutating, non-auth requests when the caller has
- * not already supplied one. The key is generated once per operation so a retry
- * after a token refresh reuses the same key and can be deduplicated upstream.
+ * How long another tab's in-flight refresh is trusted before we assume it
+ * died and take the lock ourselves.
  */
-function attachIdempotencyKey(
-  input: RequestInfo | URL,
-  init: AuthenticatedFetchOptions
-): AuthenticatedFetchOptions {
-  const method = (init.method ?? "GET").toUpperCase();
-  if (!IDEMPOTENT_METHODS.has(method)) {
-    return init;
+const AUTH_REFRESH_LOCK_TTL_MS = 10_000;
+
+function now(): number {
+  return Date.now();
+}
+
+function readSessionNumber(key: string): number {
+  if (typeof window === "undefined") {
+    return 0;
   }
-  const url = inputUrl(input);
-  if (IDEMPOTENCY_EXCLUDED_PREFIXES.some((prefix) => url.startsWith(prefix))) {
-    return init;
+  try {
+    return Number(window.sessionStorage.getItem(key)) || 0;
+  } catch {
+    return 0;
   }
-  const headers = new Headers(init.headers);
-  if (headers.has("idempotency-key")) {
-    return init;
-  }
-  headers.set("Idempotency-Key", createIdempotencyKey());
-  return { ...init, headers };
 }
 
 function hasAuthRefreshFailed(): boolean {
   if (typeof window === "undefined") {
-    return authRefreshFailed;
+    return authRefreshFailedUntil > now();
   }
 
-  authRefreshFailed =
-    window.sessionStorage.getItem(AUTH_REFRESH_FAILED_KEY) === "true";
-  return authRefreshFailed;
+  authRefreshFailedUntil = readSessionNumber(AUTH_REFRESH_FAILED_KEY);
+  return authRefreshFailedUntil > now();
 }
 
 function markAuthRefreshFailed() {
-  authRefreshFailed = true;
+  authRefreshFailedUntil = now() + AUTH_REFRESH_COOLDOWN_MS;
   if (typeof window !== "undefined") {
-    window.sessionStorage.setItem(AUTH_REFRESH_FAILED_KEY, "true");
+    try {
+      window.sessionStorage.setItem(
+        AUTH_REFRESH_FAILED_KEY,
+        String(authRefreshFailedUntil)
+      );
+    } catch {
+      // Storage unavailable (private mode, blocked cookies) - the in-memory
+      // cooldown still applies for this tab.
+    }
   }
 }
 
 export function clearAuthRefreshFailed() {
-  authRefreshFailed = false;
+  authRefreshFailedUntil = 0;
   if (typeof window !== "undefined") {
-    window.sessionStorage.removeItem(AUTH_REFRESH_FAILED_KEY);
+    try {
+      window.sessionStorage.removeItem(AUTH_REFRESH_FAILED_KEY);
+    } catch {
+      // Nothing to clear.
+    }
   }
 }
 
-async function tryRefreshToken(): Promise<RefreshTokenResult> {
-  if (hasAuthRefreshFailed()) {
+/**
+ * Claim the cross-tab refresh lock.
+ *
+ * Keycloak rotates refresh tokens, so two tabs refreshing at once means one
+ * of them presents a token the other already consumed and gets a 400 - which
+ * previously logged that tab out even though the session was fine. Only the
+ * lock holder calls the refresh endpoint; the others wait for the shared
+ * cookie to be replaced and simply retry their request.
+ */
+function acquireRefreshLock(): boolean {
+  if (typeof window === "undefined") {
+    return true;
+  }
+
+  try {
+    const heldSince = Number(
+      window.localStorage.getItem(AUTH_REFRESH_LOCK_KEY)
+    );
+    if (heldSince && now() - heldSince < AUTH_REFRESH_LOCK_TTL_MS) {
+      return false;
+    }
+    window.localStorage.setItem(AUTH_REFRESH_LOCK_KEY, String(now()));
+    return true;
+  } catch {
+    // Without storage we cannot coordinate; refreshing is still better than
+    // not refreshing.
+    return true;
+  }
+}
+
+function releaseRefreshLock() {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.removeItem(AUTH_REFRESH_LOCK_KEY);
+  } catch {
+    // Nothing to release.
+  }
+}
+
+function refreshLockIsHeld(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  try {
+    const heldSince = Number(
+      window.localStorage.getItem(AUTH_REFRESH_LOCK_KEY)
+    );
+    return Boolean(heldSince) && now() - heldSince < AUTH_REFRESH_LOCK_TTL_MS;
+  } catch {
+    return false;
+  }
+}
+
+/** Wait for whichever tab holds the lock to finish its refresh. */
+async function waitForRefreshLock(): Promise<void> {
+  const deadline = now() + AUTH_REFRESH_LOCK_TTL_MS;
+  while (refreshLockIsHeld() && now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
+async function performRefresh(): Promise<RefreshTokenResult> {
+  try {
+    const res = await fetch("/api/auth/refresh", {
+      method: "POST",
+      credentials: "include",
+    });
+    if (res.ok) {
+      clearAuthRefreshFailed();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event(AUTH_SESSION_REFRESHED_EVENT));
+      }
+    } else if (res.status === 400 || res.status === 401) {
+      // Only a rejected refresh should start the cooldown; a 5xx or a proxy
+      // hiccup must not lock the session out of retrying.
+      markAuthRefreshFailed();
+    }
+    return { ok: res.ok, status: res.status };
+  } catch {
+    markAuthRefreshFailed();
+    return { ok: false, status: null };
+  } finally {
+    releaseRefreshLock();
+  }
+}
+
+async function tryRefreshToken(
+  options: { ignoreCooldown?: boolean } = {}
+): Promise<RefreshTokenResult> {
+  if (!options.ignoreCooldown && hasAuthRefreshFailed()) {
     return { ok: false, status: null };
   }
 
   if (!refreshTokenPromise) {
     refreshTokenPromise = (async () => {
       try {
-        const res = await fetch("/api/auth/refresh", {
-          method: "POST",
-          credentials: "include",
-        });
-        if (res.ok) {
+        if (!acquireRefreshLock()) {
+          // Another tab is refreshing the shared cookie right now. Wait it
+          // out and let the caller retry rather than racing it into a
+          // rotation failure.
+          await waitForRefreshLock();
           clearAuthRefreshFailed();
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new Event(AUTH_SESSION_REFRESHED_EVENT));
-          }
-        } else {
-          markAuthRefreshFailed();
+          return { ok: true, status: null };
         }
-        return { ok: res.ok, status: res.status };
-      } catch {
-        markAuthRefreshFailed();
-        return { ok: false, status: null };
+
+        return await performRefresh();
       } finally {
         refreshTokenPromise = null;
       }
@@ -170,6 +256,17 @@ async function tryRefreshToken(): Promise<RefreshTokenResult> {
   }
 
   return await refreshTokenPromise;
+}
+
+/**
+ * Renew the session ahead of expiry, bypassing the failure cooldown.
+ *
+ * Used by the app shell's expiry timer, which fires on a schedule rather
+ * than in response to a 401 and should not be gated by an earlier failure.
+ */
+export async function refreshSessionProactively(): Promise<boolean> {
+  const result = await tryRefreshToken({ ignoreCooldown: true });
+  return result.ok;
 }
 
 async function getLoginPath(): Promise<string> {
@@ -270,10 +367,8 @@ export async function authenticatedFetch(
   input: RequestInfo | URL,
   init?: AuthenticatedFetchOptions
 ): Promise<Response> {
-  const { redirectOnAuthError = true, ...fetchInit } = attachIdempotencyKey(
-    input,
-    init ?? {}
-  );
+  const { redirectOnAuthError = true, ...requestInit } = init ?? {};
+  let fetchInit = attachIdempotencyKey(input, requestInit);
   const execute = () =>
     fetch(input, {
       credentials: "include",
@@ -282,29 +377,42 @@ export async function authenticatedFetch(
 
   let res = await execute();
 
-  if (!redirectOnAuthError && (res.status === 401 || res.status === 403)) {
-    return res;
-  }
-
   if (res.status === 401) {
     const refreshed = await tryRefreshToken();
-    if (!refreshed.ok) {
-      console.error("[Auth] Session expired, redirecting to login");
-      await redirectToLogin(401);
+
+    if (refreshed.ok) {
+      console.log("[Auth] Token refreshed successfully");
     }
 
-    console.log("[Auth] Token refreshed successfully");
+    fetchInit = refreshIdempotencyKey(fetchInit);
     res = await execute();
 
     if (res.status === 401) {
-      console.error("[Auth] Unauthorized after token refresh");
+      console.error(
+        refreshed.ok
+          ? "[Auth] Unauthorized after token refresh"
+          : "[Auth] Session expired, redirecting to login"
+      );
       await redirectToLogin(401);
+    }
+
+    if (!refreshed.ok && res.ok) {
+      // A concurrent refresh can rotate the cookies while this request receives
+      // a stale-token failure. A successful retry proves the cookie jar now
+      // contains a valid session, so release the refresh-failure cooldown.
+      clearAuthRefreshFailed();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event(AUTH_SESSION_REFRESHED_EVENT));
+      }
     }
   }
 
   if (res.status === 403) {
-    console.error("[Auth] Access forbidden (403), redirecting to error page");
-    await handleAuthError(403);
+    if (redirectOnAuthError) {
+      console.error("[Auth] Access forbidden (403), redirecting to error page");
+      await handleAuthError(403);
+    }
+    return res;
   }
 
   return res;

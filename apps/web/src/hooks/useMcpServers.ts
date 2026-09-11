@@ -3,6 +3,7 @@
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import { MCPServersResponse } from "@/lib/tools/interfaces";
 import useSWR from "swr";
+import { useTranslation } from "react-i18next";
 
 /**
  * Fetches MCP (Model Context Protocol) servers configuration.
@@ -22,14 +23,15 @@ import useSWR from "swr";
  * return <MCPServersList servers={mcpData} />;
  */
 export default function useMcpServers() {
+  const { i18n } = useTranslation();
   const {
     data: mcpData,
     error,
     isLoading: isMcpLoading,
     mutate: mutateMcpServers,
   } = useSWR<MCPServersResponse>(
-    "/api/admin/mcp/servers",
-    errorHandlingFetcher
+    ["/api/admin/mcp/servers", i18n.language],
+    ([url]) => errorHandlingFetcher<MCPServersResponse>(url)
   );
 
   return {

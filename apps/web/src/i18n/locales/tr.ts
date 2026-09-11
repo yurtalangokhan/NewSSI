@@ -1,5 +1,54 @@
 const tr = {
   chat: {
+    copied: "Kopyalandı",
+    stageFailed: "Hata",
+    nodeDrawer: {
+      thinking: "Düşünce",
+      tools: "Araçlar",
+      toolsCount: "araç",
+      output: "Çıktı",
+      expand: "Detaylar",
+      collapse: "Kapat",
+      words: "kelime",
+      copyThinking: "Düşünceyi Kopyala",
+      copyOutput: "Çıktıyı Kopyala",
+      maximize: "Büyüt",
+      noThinking: "Bu aşama için düşünce kaydı bulunmuyor.",
+      noTools: "Bu aşamada harici araç çağrılmadı.",
+      noOutput: "Henüz çıktı üretilmedi.",
+      toolInput: "Girdi",
+      toolOutput: "Sonuç",
+    },
+    graphStages: "Grafik Aşamaları",
+    listView: "Liste Görünümü",
+    canvasView: "Tuval Görünümü",
+    toolsUsed: "Kullanılan Araçlar",
+    stageCompleted: "Tamamlandı",
+    stageRunning: "Çalışıyor",
+    stagePending: "Bekliyor",
+    executionTime: "Çalışma Süresi",
+    callBreakdown: "Çağrı Detayları",
+    calls: "çağrı",
+    callIndex: "Çağrı #{{index}}",
+    totalDuration: "Toplam Süre",
+    stages: {
+      chatinput: "Sohbet Girişi",
+      chatoutput: "Sohbet Çıkışı",
+      reactagent: "ReAct Ajanı",
+      loop: "Döngü",
+      merge: "Birleştirme",
+      research: "Araştırma",
+      analysis: "Analiz",
+      synthesis: "Sentez",
+      review: "İnceleme",
+      plan: "Planlama",
+      execution: "Yürütme",
+    },
+    flowTimeline: {
+      loopLabel: "{{name}} Döngüsü",
+      iterationCount: "{{count}} tur",
+      iteration: "Tur {{turn}}",
+    },
     fileFailed: "Dosya başarısız oldu ve kaldırıldı: {{name}}",
     filesFailed: "Dosyalar başarısız oldu ve kaldırıldı: {{names}}",
     noPreviousMessage: "Daha önce gönderilmiş kullanıcı mesajı bulunamadı.",
@@ -129,7 +178,7 @@ const tr = {
       capabilityVision: "Görsel",
       agentSectionTitle: "Ajanlar",
       defaultAgentLabel: "Varsayılan",
-      temperatureLabel: "Sıcaklık (yaratıcılık)",
+      temperatureLabel: "Temperature (yaratıcılık)",
       cloudBadge: "Bulut",
     },
     greetings: {
@@ -477,7 +526,7 @@ const tr = {
     recentsEmptyState:
       "Bir mesaj gönderin! Sohbet geçmişiniz burada görünecek.",
     recentsEmpty: "Bir mesaj gönderin! Sohbet geçmişiniz burada görünecek.",
-    agentsSectionTitle: "Ajanlar",
+    agentsSectionTitle: "Ajanlar ve Flow'lar",
     projectsSectionTitle: "Projeler",
     recentsSectionTitle: "Son Sohbetler",
     newSessionButton: "Yeni Oturum",
@@ -704,6 +753,8 @@ const tr = {
     },
     chatHistory: {
       selectedCount: "{{count}} seçildi",
+      selectedCount_one: "{{count}} öğe seçildi",
+      selectedCount_other: "{{count}} öğe seçildi",
       selectPlaceholder: "Sohbet seç",
       title: "Sohbet Geçmişi",
       chatCountSuffix: "{{count}} sohbet",
@@ -858,6 +909,15 @@ const tr = {
     retry: "Yeniden dene",
   },
   agentViewer: {
+    flowPreviewTitle: "Akış Önizlemesi",
+    flowPreviewDescription:
+      "Bu ajanın görsel iş akışı mimarisi ve bağlantıları.",
+    flowNodesCount_one: "{{count}} düğüm",
+    flowNodesCount_other: "{{count}} düğüm",
+    flowEdgesCount_one: "{{count}} bağlantı",
+    flowEdgesCount_other: "{{count}} bağlantı",
+    openFlowEditor: "Akış Düzenleyicisini Aç",
+    noFlowDesigned: "Bu ajan için henüz bir akış tasarlanmamış.",
     featuredLabel: "Öne Çıkan",
     publicToOrgLabel: "Organizasyonunuza açık",
     knowledgeSectionTitle: "Bilgi",
@@ -866,6 +926,10 @@ const tr = {
     memoryTitle: "Bellek",
     memoryTypeLongTerm: "Uzun Süreli",
     memoryTypeStandard: "Standart",
+    memoryTypeLongTermTooltip:
+      "Konuşmalardan bilgileri otomatik olarak hatırlar ve gelecekteki sohbetlerde bağlamı korur.",
+    memoryTypeStandardTooltip:
+      "Yalnızca mevcut konuşma oturumu sırasındaki mesajları hatırlar; oturumlar arasında bilgi saklanmaz.",
     documentProcessingLabel: "Belge İşleme Koleksiyonları",
     documentProcessingDescription_one: "{{count}} bağlı koleksiyon",
     documentProcessingDescription_other: "{{count}} bağlı koleksiyon",
@@ -908,6 +972,12 @@ const tr = {
       "Oluşturulmuş bilgi grafiği olan koleksiyon yok. Önce Bilgi Grafiği sayfasından bir bilgi grafiği oluşturun.",
   },
   documentSidebar: {
+    allSourcesHeader_one: "{{count}} Kaynak",
+    allSourcesHeader_other: "{{count}} Kaynak",
+    readPagesHeader_one: "{{count}} Okunan Sayfa",
+    readPagesHeader_other: "{{count}} Okunan Sayfa",
+    searchResultsHeader_one: "{{count}} Arama Sonucu",
+    searchResultsHeader_other: "{{count}} Arama Sonucu",
     citedSourcesHeader: "Alıntı Kaynaklar",
     moreSourcesHeader: "Daha Fazla",
     foundSourcesHeader: "Bulunan Kaynaklar",
@@ -976,10 +1046,12 @@ const tr = {
     updatedAt: "Güncellendi: {{date}}",
   },
   agentsPage: {
-    title: "Ajanlar",
+    title: "Ajanlar ve Flow'lar",
     description:
       "Siz ve ekibinizin kullanım durumları için yapay zeka davranışını ve bilgisini özelleştirin.",
     newAgentButton: "Yeni Ajan",
+    agentsSurfaceTab: "Ajanlar",
+    flowsSurfaceTab: "Flow'lar",
     searchAgentsPlaceholder: "Ajan ara...",
     allAgentsTab: "Tüm Ajanlar",
     yourAgentsTab: "Ajanlarım",
@@ -1001,6 +1073,7 @@ const tr = {
     actionsCount_one: "{{count}} Eylem",
     actionsCount_other: "{{count}} Eylem",
     noActions: "Eylem Yok",
+    flowAgent: "Flow Agent",
     unknownOwner: "Silinmiş Kullanıcı",
     longTermMemoryEnabled: "Uzun Süreli Bellek: Açık",
     longTermMemoryDisabled: "Uzun Süreli Bellek: Kapalı",
@@ -1021,16 +1094,74 @@ const tr = {
     shareError: "Ajan paylaşılamadı: {{error}}",
     featuredError: "Öne çıkan durumu güncellenemedi: {{error}}",
   },
+  flowsPage: {
+    newFlowButton: "Yeni Flow",
+    searchFlowsPlaceholder: "Flow ara...",
+    noFlowsFound: "Henüz flow yok",
+    versionChip: "v{{version}}",
+    notPublished: "Yayınlanmadı",
+    notPublishedTooltip:
+      "Bu flow henüz yayınlanmadı. Sohbet başlatmak için açıp Yayınla'ya basın.",
+    draftAhead: "Taslak var",
+    updatedAt: "{{date}} güncellendi",
+    startChat: "Sohbet başlat",
+    edit: "Düzenle",
+  },
+  flowSettings: {
+    createTitle: "Yeni flow",
+    editTitle: "Flow ayarları",
+    avatarLabel: "Flow avatarı",
+    nameLabel: "Ad",
+    descriptionLabel: "Açıklama",
+    namePlaceholder: "Fatura ayrıştırma",
+    descriptionPlaceholder: "Bu flow'un ne yaptığını bir cümleyle anlatın.",
+    starterMessagesLabel: "Konuşma başlatma mesajları",
+    starterMessagesDescription:
+      "Bu flow açıldığında önerilen ilk mesajlar olarak gösterilir.",
+    createSubmit: "Oluştur",
+    saveSubmit: "Kaydet",
+    nameTakenError: "Bu adda bir flow zaten var.",
+    createFailedError: "Flow oluşturulamadı. Lütfen tekrar deneyin.",
+    shareThisAgentLabel: "Bu flow'u paylaş",
+    shareThisAgentDescription:
+      "Diğer kullanıcılar, gruplar veya kurumunuzdaki herkes ile.",
+    featureThisAgentLabel: "Bu flow'u öne çıkar",
+    featureThisAgentDescription:
+      "Flow listesinin en üstünde göster ve erişimi olan yeni kullanıcılar için kenar çubuğuna sabitle.",
+    agentPrivateWarning: "Gizli bir flow, paylaşılmadan öne çıkarılamaz.",
+  },
+  flowStudio: {
+    exitToFlows: "Flow'lara dön",
+    settings: "Ayarlar",
+    publishMenu: "Diğer yayınlama seçenekleri",
+    saveDraftNow: "Taslağı şimdi kaydet",
+    discardDraft: "Taslağı at",
+    publishModalTitle: "Flow'u yayınla",
+    publishFirst: "{{next}}. sürüm yayınlanacak — ilk yayınlanan sürüm.",
+    publishReplacing:
+      "{{next}}. sürüm yayınlanacak, v{{current}} yerini alacak.",
+    publishNotesPlaceholder: "Ne değişti? (isteğe bağlı)",
+    publishConfirm: "Yayınla",
+    exitTitle: "Yayınlanmamış bir taslağın var",
+    exitKeepsPublished:
+      "v{{version}} bu flow'la sohbet eden herkes için yayında kalır.",
+    exitNothingPublished: "Atarsan bu flow'da hiç içerik kalmaz.",
+    exitKeep: "Taslağı sakla",
+    exitDiscard: "Değişiklikleri at",
+  },
   settingsLayout: {
     title: "Ayarlar",
     generalTab: "Genel",
     chatPreferencesTab: "Sohbet Tercihleri",
+    emailTab: "E-posta Ayarları",
   },
   settings: {
     general: {
       profileTitle: "Profil",
       fullNameLabel: "Tam Ad",
       fullNameDescription: "Bu adı uygulamada göstereceğiz.",
+      fullNameLdapManagedDescription:
+        "Bu kullanıcı adı kurumunuzun dizini (LDAP/SSO) tarafından yönetilmektedir ve buradan değiştirilemez.",
       fullNamePlaceholder: "Adınız",
       workRoleLabel: "İş Rolü",
       workRoleDescription:
@@ -1087,6 +1218,8 @@ const tr = {
       updateMemoriesLabel: "Belleği Güncelle",
       updateMemoriesDescription:
         "ATLAS'ın depolanan belleği oluşturmasına ve güncellemesine izin verin.",
+      updateMemoriesRequiresReference:
+        'Bu ayarı kullanmak için önce "Depolanan Belleğe Başvur" seçeneğini açın.',
       longTermMemoryLabel: "Uzun Süreli Bellek",
       longTermMemoryDescription:
         "Konuşmalardan otomatik olarak gerçekleri çıkarın ve hatırlayın.",
@@ -1157,6 +1290,48 @@ const tr = {
       toastTokenDeleted: "Token başarıyla silindi",
       toastTokenDeleteFailed: "Token silinemedi",
       toastTokenDeleteError: "Token silinirken ağ hatası",
+      emailConfigTitle: "E-posta Yapılandırması",
+      emailConfigDescription:
+        "Ajanların sizin adınıza e-posta gönderebilmesi için kişisel SMTP e-posta bilgilerinizi yapılandırın.",
+      mailConfigLabel: "E-posta yapılandırması",
+      mailConfigDescription:
+        "Yöneticiniz tarafından tanımlanan SMTP sunucusu yapılandırmasını seçin.",
+      mailConfigPlaceholder: "E-posta yapılandırması seçin",
+      mailConfigLoading: "E-posta yapılandırmaları yükleniyor...",
+      mailConfigRequired: "Bir e-posta yapılandırması seçin.",
+      emailUsernameLabel: "Kullanıcı Adı",
+      emailUsernameDescription:
+        "SMTP sunucusu kimlik doğrulaması için e-posta adresiniz veya kullanıcı adınız.",
+      emailUsernamePlaceholder: "kullanici@kurum.com",
+      emailPasswordLabel: "Şifre",
+      emailPasswordDescription:
+        "E-posta hesabınızın veya uygulamaya özel şifreniz.",
+      emailPasswordConfiguredHint:
+        "Şifre güvenli bir şekilde saklanıyor. Yalnızca değiştirmek istiyorsanız yeni bir şifre girin.",
+      emailPasswordPlaceholder: "Şifrenizi girin",
+      emailPasswordPlaceholderConfigured: "•••••••• (Şifre tanımlı)",
+      fromEmailLabel: "Gönderen E-posta",
+      fromEmailDescription: "'Kimden' başlığında gösterilecek e-posta adresi.",
+      fromEmailPlaceholder: "kullanici@kurum.com",
+      fromNameLabel: "Gönderen Adı",
+      fromNameDescription: "Giden e-postalarda görünecek isteğe bağlı ad.",
+      fromNamePlaceholder: "Ad Soyad",
+      saveEmailButton: "E-posta Ayarlarını Kaydet",
+      savingEmailButton: "Kaydediliyor...",
+      removeEmailConfigButton: "Kaldır",
+      emailConfigEntity: "E-posta ayarları",
+      testEmailButton: "Bağlantıyı Test Et",
+      testingEmailButton: "Test Ediliyor...",
+      emailLastTested: "Son test: {{date}}",
+      emailNotTestedYet: "Henüz test edilmedi",
+      toastEmailConfigSaved: "E-posta kimlik bilgileri başarıyla kaydedildi.",
+      toastEmailConfigSaveFailed:
+        "E-posta kimlik bilgileri kaydedilemedi: {{error}}",
+      toastEmailConfigDeleted: "E-posta kimlik bilgileri kaldırıldı.",
+      toastEmailConfigDeleteFailed:
+        "E-posta kimlik bilgileri kaldırılamadı: {{error}}",
+      toastEmailTestSuccess: "Test e-postası başarıyla gönderildi.",
+      toastEmailTestFailed: "E-posta bağlantı testi başarısız oldu: {{error}}",
     },
     pat: {
       title: "Erişim Tokenı Oluştur",
@@ -1330,6 +1505,13 @@ const tr = {
     expandTimeline: "Zaman akışını genişlet",
     collapseTimeline: "Zaman akışını daralt",
   },
+  duration: {
+    none: "—",
+    ms: "{{value}} ms",
+    seconds: "{{value}} sn",
+    minutesSeconds: "{{minutes}} dk {{seconds}} sn",
+    minutes: "{{minutes}} dk",
+  },
   messageSwitcher: {
     waitForCompletion: "Ajan mesajının tamamlanmasını bekleyin",
     previous: "Önceki",
@@ -1339,6 +1521,26 @@ const tr = {
     editTooltip: "Düzenle",
   },
   agentEditor: {
+    connectors: {
+      operationRequired: "En az bir işlem seçin veya bu bağlayıcıyı kaldırın.",
+      title: "Bağlayıcılar",
+      description:
+        "Kayıtlı bağlantıları ve ajanın her bağlantıda kullanabileceği işlemleri seçin.",
+      listResources: "Kaynakları listele",
+      read: "Oku",
+      loadError:
+        "Bağlayıcı seçenekleri yüklenemedi. Kayıtlı seçimler korunuyor.",
+      loading: "Bağlayıcılar yükleniyor…",
+      empty: "Kullanılabilir kayıtlı bağlayıcı bulunamadı.",
+      remove: "Kaldır",
+      removeNamed: "{{name}} bağlantısını kaldır",
+      saved: "Kayıtlı bağlayıcı ({{id}})",
+      deleted: "Silinmiş bağlayıcı ({{id}})",
+      unavailable:
+        "Bu kayıtlı bağlantı kullanılamıyor. Artık gerekli değilse kaydetmeden önce kaldırın.",
+    },
+    formTab: "Form",
+    flowTab: "Akış",
     searchToolsPlaceholder: "Araçlarda ara...",
     expandButton: "Genişlet",
     foldButton: "Daralt",
@@ -1387,6 +1589,20 @@ const tr = {
     graphSchemaLabel: "Graf Şeması",
     graphSchemaDescription: "Dinamik graf çalıştırma modelini seçin.",
     selectGraphSchemaPlaceholder: "Graf şeması seçin",
+    flowCanvasSaveNoticeTitle: "Akışınızı burada tasarlayın",
+    flowCanvasNoticeBadge: "Taslak",
+    flowCanvasSaveNotice:
+      "Burada oluşturduğunuz akış ajanı kaydettiğinizde saklanacaktır. Ajan oluşturulduktan sonra düzenlemelere devam edebilirsiniz.",
+    flowCanvasTestButton: "Test Et",
+    flowCanvasTestDisabledTooltip:
+      "Bu akışı test etmek için bir Chat Input veya Chat Output düğümü ekleyin",
+    flowChatInputNode: "Chat Input",
+    flowChatOutputNode: "Chat Output",
+    flowMissingChatNodes:
+      "Bir akış ajanı oluşturulabilmesi için bir Chat Input ve bir Chat Output düğümü gerekir. Ekleyin: {{nodes}}.",
+    flowValidationFailed: "Bu akış henüz oluşturulamıyor: {{issues}}",
+    strategyFlow: "Görsel Akış",
+    convertToFlow: "Görsel Akışa Dönüştür",
     graphPreviewTitle: "{{schema}} grafı",
     graphPreviewHeroEyebrow: "Ajan mimarisi önizlemesi",
     graphPreviewButtonTitle: "Ajan grafını önizle",
@@ -1639,6 +1855,7 @@ const tr = {
     noMailConfigsAvailable:
       "Kullanılabilir e-posta yapılandırması bulunamadı. Lütfen önce Admin paneli üzerinden bir SMTP hesabı ekleyin.",
     mcpToolsChecking: "MCP araçları kontrol ediliyor...",
+    builtInToolsGroup: "Yerleşik Araçlar",
     selectToolsButton: "Araçları Seç",
     noMcpToolsTitle: "MCP Aracı Bulunamadı",
     noMcpToolsDescription:
@@ -1811,6 +2028,21 @@ const tr = {
     downloadButton: "İndir",
     waitingForResponse: "Yanıt bekleniyor...",
     queryLabel: "Sorgu",
+  },
+  humanInput: {
+    waiting: "Kararınız bekleniyor",
+    picked: "Seçiminiz: {{decision}}",
+  },
+  clarification: {
+    asking: "Doğru anladığımdan emin olayım",
+    askingAgent: "{{agent}} soruyor",
+    defer: "Sen karar ver",
+    continue: "Devam",
+    skipped: "Soruları yanıtlamak yerine yazdınız.",
+    typeInstead:
+      "Yazmayı tercih ederseniz sorular atlanır ve yazdığınız metin doğrudan iletilir.",
+    unsupported:
+      "Bu soru bu sürümde gösterilemiyor. Ne yapmak istediğinizi yazarak devam edebilirsiniz.",
   },
   generatedFile: {
     openAriaLabel: "{{filename}} dosyasını aç",
@@ -2178,10 +2410,21 @@ const tr = {
       editButton: "Düzenle",
       testButton: "Test Et",
       deleteButton: "Sil",
+      deleteEntity: "E-posta yapılandırması",
       lastTested: "Son test: {{date}}",
       notTestedYet: "Henüz test edilmedi",
+      testStatusSuccess: "Başarılı",
+      testStatusFailed: "Başarısız",
+      searchPlaceholder: "E-posta yapılandırmalarında ara...",
+      searchResultCount_one: "{{count}} sonuç bulundu",
+      searchResultCount_other: "{{count}} sonuç bulundu",
+      noSearchResults: "Aramanıza uygun yapılandırma bulunamadı.",
+      clearSearch: "Aramayı temizle",
+      paginationInfo: "{{total}} kayıttan {{from}} - {{to}} arası gösteriliyor",
       editConfigTitle: "Yapılandırmayı düzenle",
       addConfigTitle: "Yapılandırma ekle",
+      serverSettingsNote:
+        "Genel SMTP ağ geçidi sunucusunu yapılandırın. Son kullanıcılar kendi kimlik doğrulama bilgilerini Kullanıcı Ayarları sayfasından yapılandıracaktır.",
       passwordsEncryptedNote:
         "Şifreler agent-service tarafından şifrelenir ve asla ajan istemlerine gönderilmez.",
       nameLabel: "Ad",
@@ -2192,7 +2435,7 @@ const tr = {
       securityLabel: "Güvenlik",
       securityPlaceholder: "Güvenlik",
       usernameLabel: "Kullanıcı adı",
-      usernamePlaceholder: "smtp-kullanici",
+      usernamePlaceholder: "SMTP kullanıcı adı",
       passwordLabelOptional: "Şifre (isteğe bağlı)",
       passwordLabel: "Şifre",
       passwordLeaveBlankHint:
@@ -2201,9 +2444,6 @@ const tr = {
       passwordPlaceholder: "SMTP şifresi",
       fromEmailLabel: "Gönderen e-posta",
       fromNameLabel: "Gönderen adı",
-      testRecipientLabel: "Test alıcısı",
-      testRecipientHint:
-        "Bu yapılandırma için Test eylemi tarafından kullanılır.",
       cancelButton: "İptal",
       saveButton: "Kaydet",
       createButton: "Oluştur",
@@ -2219,6 +2459,10 @@ const tr = {
       toastDeleted: "E-posta yapılandırması silindi.",
       toastDeleteFailed: "E-posta yapılandırması silinemedi: {{error}}",
       toastTestFailed: "Test e-postası gönderilemedi: {{error}}",
+      deleteConfirmTitle: "E-posta yapılandırmasını sil",
+      deleteConfirmDescription:
+        '"{{name}}" yapılandırmasını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+      testingButton: "Test ediliyor...",
     },
     agentAccessGroups: {
       groupNameRequired: "Grup adı zorunludur",
@@ -2275,6 +2519,10 @@ const tr = {
         revealLoading: "Organizasyon hiyerarşisi yükleniyor",
         searchEmpty: "Eşleşen organizasyon bulunamadı",
         searchCount: "{{count}} sonuç",
+        searchCount_one: "{{count}} sonuç",
+        searchCount_other: "{{count}} sonuç",
+        moreMembers_one: "+{{count}} üye daha",
+        moreMembers_other: "+{{count}} üye daha",
         searchLimited: "İlk 100 sonuç gösteriliyor",
         searchFailed: "Organizasyon araması tamamlanamadı",
         revealFailed: "Organizasyon hiyerarşisi gösterilemedi",
@@ -2373,6 +2621,8 @@ const tr = {
         childCount_one: "{{count}} alt birim",
         childCount_other: "{{count}} alt birim",
         positionLocked: "Konum kilitli",
+        collapseSubtree: "Alt ağacı daralt",
+        expandSubtree: "Alt ağacı genişlet",
       },
       inspector: {
         label: "Organizasyon denetçisi",
@@ -2428,6 +2678,8 @@ const tr = {
         searchResources: "{{resource}} ara",
         selectedOnly: "Yalnızca seçilenler",
         selectedCount: "{{count}} seçili",
+        selectedCount_one: "{{count}} öğe seçildi",
+        selectedCount_other: "{{count}} öğe seçildi",
         clearVisible: "Görünenleri temizle",
         selectVisible: "Görünenleri seç",
         noFilterMatches: "Geçerli filtrelerle eşleşen {{resource}} yok",
@@ -2450,8 +2702,12 @@ const tr = {
       accessModelLabel: "Erişim modeli",
       catalogTitle: "Ajan Kataloğu",
       createButton: "Ajan Oluştur",
+      createFlowButton: "Flow Oluştur",
       catalogDescription:
         "Organizasyonunuzdaki tüm ajanları göz atın ve yönetin.",
+      flowCatalogTitle: "Flow Kataloğu",
+      flowCatalogDescription:
+        "Organizasyonunuzdaki tüm flow'ları görüntüleyin ve yönetin.",
       searchPlaceholder: "Ajan ara...",
       noSearchResults: "Aramanızla eşleşen ajan bulunamadı.",
       errorTitle: "Ajanlar yüklenemedi",
@@ -2491,7 +2747,10 @@ const tr = {
       hidden: "Gizli",
       visible: "Görünür",
       agentsTab: "Ajanlar",
+      flowsTab: "Flow'lar",
       accessGroupsTab: "Erişim Grupları",
+      totalFlowsLabel: "Toplam flow",
+      publishedFlowsLabel: "Yayınlanmış flow",
     },
     search: {
       workspaceTitle: "Arama kalitesi çalışma alanı",
@@ -3044,8 +3303,13 @@ const tr = {
       accessModelLabel: "Erişim modeli",
       exportLabel: "Dışa aktarım",
       matchingUsersLabel: "Eşleşen kullanıcılar",
+      userStatusLabel: "Kullanıcı durumu",
       pendingRequestsLabel: "Bekleyen istekler",
       rolesAvailableLabel: "Tanımlı roller",
+      topRoleLabel: "En yaygın rol",
+      roleDistributionLabel: "Rol dağılımı",
+      rolesInUseLabel: "Kullanılan rol sayısı",
+      noRoleData: "Veri yok",
       notAvailable: "Mevcut değil",
       addUserWorkspaceTitle: "Kullanıcı oluştur",
       addUserWorkspaceDescription:
@@ -3208,6 +3472,9 @@ const tr = {
       roles: "Roller",
       permissionCatalogLabel: "İzin kataloğu",
       permissions: "İzinler",
+      builtInRolesLabel: "Yerleşik roller",
+      topRoleLabel: "En çok kullanılan rol",
+      noRoleData: "Veri yok",
       roleLayerLabel: "Rol katmanı",
       compositeLayerLabel: "Bileşik katman",
       compositeRoles: "Bileşik Roller",
@@ -3215,6 +3482,7 @@ const tr = {
       services: "Servisler",
     },
     rolesPage: {
+      noRolesMatchSearch: "Aramayla eşleşen rol bulunamadı",
       roleNameRequired: "Rol adı gereklidir",
       compositeRoleNameRequired: "Bileşik rol adı gereklidir",
       unknownError: "Bilinmeyen hata",
@@ -3510,6 +3778,8 @@ const tr = {
         "Bağlı kaynakları izleyin, bağlayıcı türüne göre genişletin ve sıradaki veri kaynağını eklemeye hızlıca geçin.",
       connectedSourcesLabel: "Bağlı kaynaklar",
       connectorTypesLabel: "Bağlayıcı türleri",
+      totalDocumentsLabel: "Toplam indexlenen doküman",
+      erroredSourcesLabel: "Hatalı senkronizasyon",
       viewModeLabel: "Görünüm modu",
       groupedByType: "Türe göre gruplanmış",
       connectorCreated: "Bağlayıcı başarıyla oluşturuldu",
@@ -3521,6 +3791,11 @@ const tr = {
       collapseAll: "Tümünü Daralt",
       loading: "Yükleniyor…",
       noDataSources: "Veri kaynağı bulunamadı.",
+      noDataSourcesDescription:
+        "Ajanlarınız için belge indekslemeye başlamak üzere yeni bir veri kaynağı bağlayın.",
+      noMatchingDataSources: "Eşleşen veri kaynağı bulunamadı",
+      noMatchingDataSourcesDescription:
+        "Farklı bir arama terimi veya bağlayıcı türü deneyin.",
       addConnectorLinkText: "Bağlayıcı ekle",
       toGetStarted: "ile başlayın.",
       columns: {
@@ -3555,6 +3830,8 @@ const tr = {
         syncing: "Eşitleniyor",
         completed: "Tamamlandı",
         error: "Hata",
+        tokens_one: "{{count}} tok",
+        tokens_other: "{{count}} tok",
         succeeded: "Başarılı",
         failed: "Başarısız",
         cancelled: "İptal Edildi",
@@ -3610,7 +3887,6 @@ const tr = {
         },
         removing: "Kaldırılıyor…",
         removeSchedule: "Zamanlamayı Kaldır",
-        close: "Kapat",
         cancel: "İptal",
         saving: "Kaydediliyor…",
         saveChanges: "Değişiklikleri Kaydet",
@@ -3988,6 +4264,8 @@ const tr = {
       entities: "Varlıklar",
       relations: "İlişkiler",
       error: "Hata",
+      tokens_one: "{{count}} tok",
+      tokens_other: "{{count}} tok",
       graphSearchFailed: "Grafik araması başarısız oldu",
       graphSearchTitle: "Grafik Arama",
       graphSearchDescription:
@@ -4190,6 +4468,10 @@ const tr = {
       notConfigured: "Yapılandırılmadı",
       validationLabel: "Doğrulama",
       crawlerTestValue: "Tarayıcı testi",
+      lastTestLabel: "Son doğrulama",
+      testPassed: "Başarılı",
+      testFailed: "Başarısız",
+      testNotRun: "Henüz test edilmedi",
       pageDescription: "İnternet üzerinden harici arama için arama ayarları.",
       checkingConnection: "Bağlantı kontrol ediliyor...",
       pasteApiKeyPrefix: "Arama motorunuza erişmek için",
@@ -4323,6 +4605,9 @@ const tr = {
       catalogDescription:
         "Mevcut bağlayıcılarda arama yapın, ilk eşleşmeyi açmak için Enter'a basın veya kategoriye göre göz atın.",
       categoriesLabel: "Kategoriler",
+      totalConnectorsLabel: "Toplam bağlayıcı",
+      connectedSourcesLabel: "Bağlı kaynaklar",
+      erroredSourcesLabel: "Hatalı kaynaklar",
       searchStateLabel: "Arama Durumu",
       filtered: "Filtrelendi",
       browseAll: "Tümüne Göz At",
@@ -4374,6 +4659,10 @@ const tr = {
       workspaceDescription:
         "Plan durumunu, lisans etkinleştirmeyi ve fatura detaylarını admin konsolundan ayrılmadan inceleyin.",
       currentViewLabel: "Geçerli görünüm",
+      planLabel: "Plan",
+      noActivePlan: "Plan yok",
+      renewalDateLabel: "Yenileme tarihi",
+      noRenewalDate: "Belirtilmemiş",
       subscriptionLabel: "Abonelik",
       active: "Aktif",
       review: "İncele",
@@ -4515,6 +4804,8 @@ const tr = {
         starting: "Başlatılıyor",
         completed: "Tamamlandı",
         error: "Hata",
+        tokens_one: "{{count}} tok",
+        tokens_other: "{{count}} tok",
         succeeded: "Başarılı",
         failed: "Başarısız",
         cancelled: "İptal edildi",
@@ -4616,6 +4907,8 @@ const tr = {
       accessTokenLifespanLabel: "Erişim jetonu ömrü (saniye)",
       ssoIdleTimeoutLabel: "SSO boşta zaman aşımı (saniye)",
       ssoMaxLifespanLabel: "SSO azami ömür (saniye)",
+      clientSessionMaxLifespanLabel:
+        "İstemci oturumu azami ömrü (saniye, 0 SSO azami ömrünü devralır)",
       saveSessionSettingsButton: "Oturum ayarlarını kaydet",
       refreshStatusButton: "Durumu yenile",
       startupBehaviorTitle: "Başlangıç davranışı",
@@ -4705,6 +4998,9 @@ const tr = {
       workspaceTitle: "Slack bot çalışma alanı",
       workspaceDescription:
         "Çalışma alanı kullanıcıları için Slack bot bağlantılarını, kanal yönlendirmelerini ve sohbet giriş noktalarını yönetin.",
+      totalBotsLabel: "Toplam bot",
+      activeBotsLabel: "Aktif bot",
+      configuredChannelsLabel: "Yapılandırılmış kanal",
       integrationLabel: "Entegrasyon",
       routingLabel: "Yönlendirme",
       channels: "Kanallar",
@@ -4770,6 +5066,11 @@ const tr = {
       workspaceTitle: "Discord bot çalışma alanı",
       workspaceDescription:
         "Discord sunucularını kaydedin, bot tokenlarını yönetin ve kanalları doğru varsayılan ajana yönlendirin.",
+      totalServersLabel: "Toplam sunucu",
+      registeredServersLabel: "Kayıtlı sunucu",
+      botStatusLabel: "Bot durumu",
+      botAvailable: "Kullanılabilir",
+      botUnavailable: "Yapılandırılmadı",
       integrationLabel: "Entegrasyon",
       registrationLabel: "Kayıt",
       agentLayerLabel: "Ajan katmanı",
@@ -4893,148 +5194,217 @@ const tr = {
         indexingStatus: {
           title: "Mevcut Bağlayıcılar",
           sidebar: "Mevcut Bağlayıcılar",
+          description:
+            "Yapılandırılmış veri bağlayıcılarınızı ve indeksleme durumunu görüntüleyin ve yönetin.",
         },
         addConnector: {
           title: "Bağlayıcı Ekle",
           sidebar: "Bağlayıcı Ekle",
+          description:
+            "Ajanlarınız için bilgi almak üzere yeni veri kaynaklarını ve harici servisleri bağlayın.",
         },
         documentSets: {
           title: "Belge Setleri",
           sidebar: "Belge Setleri",
+          description:
+            "Ajanlar ve arama için bilgi kapsamını belirlemek amacıyla belgeleri setler halinde gruplayın.",
         },
         documentExplorer: {
           title: "Belge Gezgini",
           sidebar: "Belge Gezgini",
+          description:
+            "İndekslenmiş belgeleri ve bunların parçalanmış içeriklerini arayın, inceleyin ve doğrulayın.",
         },
         mcpActions: {
           title: "MCP Aksiyonları",
           sidebar: "MCP Aksiyonları",
+          description:
+            "Ajanlarınıza özel aksiyonlar ve araçlar eklemek için MCP (Model Context Protocol) sunucularını bağlayın.",
         },
         agents: {
           title: "Ajanlar",
-          sidebar: "Ajanlar",
+          sidebar: "Ajanlar ve Flow'lar",
+          description:
+            "Özel talimatlar, araçlar ve bilgi kaynaklarıyla donatılmış yapay zeka ajanları oluşturun ve yönetin.",
         },
         chatPreferences: {
           title: "Sohbet Tercihleri",
           sidebar: "Sohbet Tercihleri",
+          description:
+            "Kuruluşunuz için varsayılan yapay zeka davranışını, takım bağlamını ve sohbet tercihlerini yapılandırın.",
         },
         llmModels: {
           title: "LLM Modelleri",
           sidebar: "LLM Modelleri",
+          description:
+            "Sistem genelinde kullanılacak LLM sağlayıcılarını, API anahtarlarını ve varsayılan modelleri yapılandırın.",
         },
         webSearch: {
           title: "Web Arama",
           sidebar: "Web Arama",
+          description: "İnternet üzerinden harici arama için arama ayarları.",
         },
         imageGeneration: {
           title: "Görsel Üretimi",
           sidebar: "Görsel Üretimi",
+          description:
+            "Kullanıcıların sohbet arayüzünden doğrudan görseller oluşturması için görüntü oluşturma modellerini yapılandırın.",
         },
         codeInterpreter: {
           title: "Kod Çalıştırıcı",
           sidebar: "Kod Çalıştırıcı",
+          description:
+            "LLM'niz için kullanılabilir, güvenli ve yalıtılmış Python çalışma zamanı. Daha fazla ayrıntı için belgelere bakın.",
         },
         searchSettings: {
           title: "Arama Ayarları",
           sidebar: "Arama Ayarları",
+          description:
+            "Gömme (embedding) modellerini, yeniden indeksleme ihtiyaçlarını ve arama kalitesi ayarlarını yapılandırın.",
         },
         documentProcessing: {
           title: "Belge İşleme",
           sidebar: "Belge İşleme",
+          description:
+            "Belge işleme ve RAG ardışık düzeni için ayarları yapılandırın.",
         },
         knowledgeGraph: {
           title: "Bilgi Grafiği",
           sidebar: "Bilgi Grafiği",
+          description:
+            "İndekslenmiş bilgi kaynaklarınızda entity grafiklerini oluşturun, inceleyin ve arayın.",
         },
         organizations: {
           title: "Organizasyonu Yönet",
           sidebar: "Organizasyon",
+          description:
+            "Kuruluşunuzun hiyerarşik birimlerini, departman ağacını ve kullanıcı atamalarını yönetin.",
         },
         users: {
           title: "Kullanıcıları Yönet",
           sidebar: "Kullanıcılar",
+          description:
+            "Kullanıcı hesaplarını yönetin, davetler gönderin ve kullanıcı rollerini yapılandırın.",
         },
         apiKeys: {
           title: "API Anahtarları",
           sidebar: "API Anahtarları",
+          description:
+            "Platform servislerine programatik erişim sağlamak için API anahtarları oluşturun ve yönetin.",
         },
         roles: {
           title: "Roller ve İzinler",
           sidebar: "Roller ve İzinler",
+          description:
+            "Kullanıcılar ve ekipler için erişim rollerini ve ayrıntılı yetki izinlerini yapılandırın.",
         },
         tokenRateLimits: {
           title: "Token Hız Sınırları",
           sidebar: "Token Hız Sınırları",
+          description:
+            "Kullanıcılar ve gruplar için token kullanım kotalarını ve hız sınırlarını yönetin.",
         },
         systemSettings: {
           title: "Sistem Ayarları",
           sidebar: "Sistem Ayarları",
+          description:
+            "Genel sistem yapılandırmasını, oturum ayarlarını ve kimlik doğrulama tercihlerini yönetin.",
         },
         documentFeedback: {
           title: "Belge Geri Bildirimi",
           sidebar: "Geri Bildirim",
+          description:
+            "Belge uygunluğu ve yanıt kalitesi hakkındaki kullanıcı geri bildirimlerini inceleyin.",
         },
         systemInfo: {
           title: "Sistem Bilgisi",
           sidebar: "Sistem Bilgisi",
+          description:
+            "Sistem sürüm bilgilerini ve çalışma ortamı detaylarını görüntüleyin.",
         },
         mailConfigs: {
           title: "E-posta Yapılandırmaları",
           sidebar: "E-posta Yapılandırmaları",
+          description:
+            "Ajanların send_email ile kullanabileceği SMTP hesaplarını yönetin.",
         },
         slackBots: {
           title: "Slack Botları",
           sidebar: "Slack Botları",
+          description:
+            "ATLAS'ı Slack çalışma alanınıza bağlayın ve kullanıcıların doğrudan Slack kanallarından sorular sormasını sağlayın.",
         },
         discordBots: {
           title: "Discord Botları",
           sidebar: "Discord Botları",
+          description:
+            "ATLAS'ı Discord sunucularınıza bağlayın. Kullanıcılar soruları doğrudan Discord kanallarında sorabilir.",
         },
         openapiActions: {
           title: "OpenAPI Aksiyonları",
           sidebar: "OpenAPI Aksiyonları",
+          description:
+            "Ajanlarınıza özel aksiyonlar ve araçlar eklemek için OpenAPI sunucularını bağlayın.",
         },
         standardAnswers: {
           title: "Standart Yanıtlar",
           sidebar: "Standart Yanıtlar",
+          description:
+            "Kullanıcı sorularına otomatik olarak eşleşecek önceden tanımlanmış standart yanıtlar oluşturun ve yönetin.",
         },
         groups: {
           title: "Kullanıcı Gruplarını Yönet",
           sidebar: "Gruplar",
+          description:
+            "İzinleri ve belge erişimini toplu olarak yönetmek için kullanıcı grupları oluşturun ve düzenleyin.",
         },
         usage: {
           title: "Kullanım İstatistikleri",
           sidebar: "Kullanım İstatistikleri",
+          description:
+            "Sorgu hacimlerini, kullanıcı etkinliğini ve sistem kullanım istatistiklerini izleyin.",
         },
         queryHistory: {
           title: "Sorgu Geçmişi",
           sidebar: "Sorgu Geçmişi",
+          description:
+            "Kullanıcılar tarafından gerçekleştirilen geçmiş arama ve sohbet sorgularını inceleyin.",
         },
         customAnalytics: {
           title: "Özel Analitik",
           sidebar: "Özel Analitik",
+          description:
+            "Kullanıcı etkileşimlerini ve kullanım olaylarını izlemek için üçüncü taraf analitik aracınızı entegre edin.",
         },
         theme: {
           title: "Görünüm ve Tema",
           sidebar: "Görünüm ve Tema",
+          description:
+            "Uygulamanın kuruluşunuz genelinde kullanıcılara nasıl görüneceğini özelleştirin.",
         },
         billing: {
           title: "Planlar ve Faturalandırma",
           sidebar: "Planlar ve Faturalandırma",
+          description:
+            "Abonelik planınızı, lisanslarınızı ve fatura bilgilerinizi yönetin.",
         },
         indexMigration: {
           title: "Belge Dizini Taşıma",
           sidebar: "Belge Dizini Taşıma",
+          description:
+            "Vespa'dan OpenSearch'e geçişi izleyin ve aktif alım kaynağını kontrol edin.",
         },
         debug: {
           title: "Hata Ayıklama Günlükleri",
           sidebar: "Hata Ayıklama Günlükleri",
+          description:
+            "Sistem hata ayıklama günlüklerini inceleyin ve tanılama paketlerini indirin.",
         },
       },
       sections: {
         connectors: "Bağlayıcılar",
         documentManagement: "Belge Yönetimi",
-        customAgents: "Özel Ajanlar",
+        customAgents: "Özel Ajanlar ve Flow'lar",
         configuration: "Yapılandırma",
         userManagement: "Kullanıcı Yönetimi",
         performance: "Performans",
@@ -5346,6 +5716,8 @@ const tr = {
       loadingConnectorConfiguration: "Bağlayıcı yapılandırması yükleniyor...",
       retrievingConnectorDetails: "Bağlayıcı detayları alınıyor...",
       error: "Hata",
+      tokens_one: "{{count}} tok",
+      tokens_other: "{{count}} tok",
       noCredentialSchema:
         "Bu bağlayıcı türü için kimlik bilgisi şeması mevcut değil.",
       noSearchConfig:
@@ -5435,6 +5807,8 @@ const tr = {
       deleting: "Siliniyor",
       paused: "Duraklatıldı",
       error: "Hata",
+      tokens_one: "{{count}} tok",
+      tokens_other: "{{count}} tok",
       indexing: "İndeksleniyor",
       indexed: "İndekslendi",
       initialIndexing: "İlk İndeksleme",
@@ -5693,6 +6067,8 @@ const tr = {
       "Desteklenmeyen alan türü. Buraya ham JSON girebilirsiniz.",
     executingTool: "Araç çalıştırılıyor...",
     error: "Hata",
+    tokens_one: "{{count}} tok",
+    tokens_other: "{{count}} tok",
     runToSeeResults: "Sonuçları görmek için aracı çalıştırın",
     result: "Sonuç",
     executedSuccessfully: "Araç başarıyla çalıştırıldı",
@@ -5864,6 +6240,8 @@ const tr = {
     today: "Bugün",
     loading: "Yükleniyor...",
     error: "Hata",
+    tokens_one: "{{count}} tok",
+    tokens_other: "{{count}} tok",
     success: "Başarılı",
     manage: "Yönet",
     optional: "İsteğe Bağlı",
@@ -6660,6 +7038,8 @@ const tr = {
   },
   federated: {
     error: "Hata",
+    tokens_one: "{{count}} tok",
+    tokens_other: "{{count}} tok",
   },
   embeddings: {
     default: "Varsayılan",
@@ -6668,6 +7048,8 @@ const tr = {
     failed: "Başarısız",
     none: "Yok",
     error: "Hata",
+    tokens_one: "{{count}} tok",
+    tokens_other: "{{count}} tok",
   },
   providerModal: {
     cancel: "İptal",
@@ -6759,6 +7141,1338 @@ const tr = {
       "Küratörler, bu {{objectName}} için erişim vermek üzere bir veya daha fazla grup seçmelidir",
     publicDisabledMessage:
       "Bu {{objectName}} herkese açık ve tüm kullanıcılar tarafından erişilebilir.",
+  },
+  urlMustStartWithHttp: "URL http:// veya https:// ile başlamalıdır",
+  lines_one: "{{count}} satır",
+  lines_other: "{{count}} satır",
+  flowCanvas: {
+    importJson: "JSON Yükle",
+    importJsonTooltip: "JSON dosyasından akış yükle",
+    importModalTitle: "Akış İçe Aktar (JSON)",
+    importModalDescription:
+      "JSON dosyası yükleyerek veya JSON metnini doğrudan yapıştırarak akışı içe aktarın.",
+    uploadTab: "Dosya Yükle",
+    pasteTab: "JSON Metni",
+    dragDropTitle: "JSON dosyasını buraya sürükleyip bırakın",
+    dragDropSubtitle:
+      "veya dosya seçmek için tıklayın (.json dosyaları desteklenir)",
+    dragDropActive: "Dosyayı buraya bırakın...",
+    dropJsonHere: "JSON akış dosyasını buraya bırakın",
+    dropJsonDescription: "Akışınızı tuvale yüklemek için bırakın",
+    fileUnreadable: "Dosya okunamadı",
+    fileSelected: "Seçilen Dosya",
+    changeFile: "Dosyayı Değiştir",
+    removeFile: "Kaldır",
+    editInCodeEditor: "Editörde Düzenle",
+    editorPlaceholder: "Flow JSON verisini buraya yapıştırın veya yazın...",
+    formatJson: "Biçimlendir",
+    clearJson: "Temizle",
+    copyJson: "Kopyala",
+    copied: "Kopyalandı!",
+    loadSample: "Örnek Şablon",
+    validFlow: "Geçerli Akış ({{nodes}} düğüm, {{edges}} bağlantı)",
+    invalidJson: "Geçersiz JSON: {{error}}",
+    invalidFlow: "Geçersiz Akış: {{error}}",
+    noContent: "Henüz bir dosya yüklenmedi veya JSON girilmedi",
+    importAction: "Akışı İçe Aktar",
+    cancel: "İptal",
+    importSuccess:
+      "Akış başarıyla yüklendi ({{nodes}} düğüm, {{edges}} bağlantı)",
+    importError: "Akış yüklenemedi: {{error}}",
+    importErrors: {
+      invalidJson: "Dosya geçerli bir JSON değil.",
+      notAnObject:
+        "JSON içeriği bir nesne ya da geçerli bir JSON metni olmalı.",
+      missingSpec: "JSON içinde bir akış tanımı bulunamadı.",
+      noNodes: "Akış JSON'unda hiç düğüm veya bağlantı yok.",
+    },
+    tools: {
+      calculate: {
+        label: "Hesapla",
+        description: "Güvenli matematiksel ifade hesaplama",
+      },
+      execute_python_code: {
+        label: "Python Kodu Çalıştır",
+        description: "Güvenli bir sanal alanda Python kodu çalıştırın",
+      },
+      execute_bash_command: {
+        label: "Bash Komutu Çalıştır",
+        description: "Güvenli bir sanal alanda bash komutu çalıştırın",
+      },
+      validate_python_syntax: {
+        label: "Python Sözdizimini Doğrula",
+        description: "Python kodunu sözdizimi hatalarına karşı kontrol edin",
+      },
+      format_python_code: {
+        label: "Python Kodunu Biçimlendir",
+        description: "Black kullanarak Python kodunu biçimlendirin",
+      },
+      install_package: {
+        label: "Paket Yükle",
+        description: "Pip ile bir Python paketi yükleyin",
+      },
+      list_installed_packages: {
+        label: "Yüklü Paketleri Listele",
+        description: "Yüklü tüm Python paketlerini listeleyin",
+      },
+      execute_command: {
+        label: "Komut Çalıştır",
+        description: "Sistem komutu çalıştırın",
+      },
+      ping_host: {
+        label: "Ana Bilgisayara Ping At",
+        description: "Ağ üzerindeki bir sunucuya ping gönderin",
+      },
+      get_system_info: {
+        label: "Sistem Bilgisini Al",
+        description: "Sistem donanım ve işletim sistemi bilgilerini alın",
+      },
+      list_containers: {
+        label: "Konteynerleri Listele",
+        description: "Docker konteynerlerini listeleyin",
+      },
+      inspect_container: {
+        label: "Konteyneri İncele",
+        description: "Ayrıntılı konteyner bilgilerini alın",
+      },
+      get_container_logs: {
+        label: "Konteyner Günlüklerini Al",
+        description: "Bir konteynerin günlük kayıtlarını alın",
+      },
+      start_container: {
+        label: "Konteyneri Başlat",
+        description: "Durdurulmuş bir konteyneri başlatın",
+      },
+      stop_container: {
+        label: "Konteyneri Durdur",
+        description: "Çalışan bir konteyneri durdurun",
+      },
+      restart_container: {
+        label: "Konteyneri Yeniden Başlat",
+        description: "Bir konteyneri yeniden başlatın",
+      },
+      list_images: {
+        label: "İmajları Listele",
+        description: "Yerel Docker imajlarını listeleyin",
+      },
+      read_file: {
+        label: "Dosya Oku",
+        description: "Bir dosyanın içeriğini okuyun",
+      },
+      write_file: {
+        label: "Dosya Yaz",
+        description: "Bir dosyaya içerik yazın",
+      },
+      append_to_file: {
+        label: "Dosyaya Ekle",
+        description: "Bir dosyaya içerik ekleyin",
+      },
+      list_directory: {
+        label: "Dizini Listele",
+        description: "Bir dizindeki dosya ve klasörleri listeleyin",
+      },
+      file_exists: {
+        label: "Dosya Varlığını Kontrol Et",
+        description: "Bir dosya veya dizinin var olup olmadığını kontrol edin",
+      },
+      delete_file: { label: "Dosya Sil", description: "Bir dosyayı silin" },
+      create_directory: {
+        label: "Dizin Oluştur",
+        description: "Yeni bir dizin oluşturun",
+      },
+      get_file_info: {
+        label: "Dosya Bilgisini Al",
+        description: "Dosya veya dizin meta verilerini alın",
+      },
+      search_files: {
+        label: "Dosyalarda Ara",
+        description: "Bir kalıpla eşleşen dosyaları arayın",
+      },
+      git_status: {
+        label: "Git Durumu",
+        description: "Mevcut çalışma ağacı durumunu alın",
+      },
+      git_diff: {
+        label: "Git Değişiklikleri (Diff)",
+        description:
+          "Commitler ve çalışma ağacı arasındaki değişiklikleri gösterin",
+      },
+      git_log: {
+        label: "Git Günlüğü (Log)",
+        description: "Commit geçmişini gösterin",
+      },
+      git_add: {
+        label: "Git Ekle (Add)",
+        description: "Dosya içeriklerini hazırlık alanına ekleyin",
+      },
+      git_commit: {
+        label: "Git İşle (Commit)",
+        description: "Değişiklikleri depoya kaydedin",
+      },
+      git_checkout: {
+        label: "Git Dal Değiştir (Checkout)",
+        description: "Dallar arasında geçiş yapın veya dosyaları geri yükleyin",
+      },
+      git_branch: {
+        label: "Git Dalları (Branch)",
+        description: "Dalları listeleyin, oluşturun veya silin",
+      },
+      git_clone: {
+        label: "Git Depo Klonla (Clone)",
+        description: "Bir depoyu yeni bir dizine klonlayın",
+      },
+      git_pull: {
+        label: "Git Çek (Pull)",
+        description: "Başka bir depodan değişiklikleri çekin ve birleştirin",
+      },
+      compile_java: {
+        label: "Java Derle",
+        description: "Java kaynak dosyalarını derleyin",
+      },
+      run_java_class: {
+        label: "Java Sınıfı Çalıştır",
+        description: "Derlenmiş bir Java sınıfını çalıştırın",
+      },
+      run_jar: {
+        label: "JAR Çalıştır",
+        description: "Çalıştırılabilir bir JAR dosyasını yürütün",
+      },
+      inspect_class: {
+        label: "Sınıfı İncele",
+        description: "Bir Java sınıfını ayrıştırın/inceleyin",
+      },
+      get_jvm_info: {
+        label: "JVM Bilgisi Al",
+        description: "Java Sanal Makinesi bilgilerini alın",
+      },
+      list_classpath: {
+        label: "Classpath Listele",
+        description: "Classpath üzerindeki JAR ve sınıfları listeleyin",
+      },
+      parse_json: {
+        label: "JSON Çözümle",
+        description: "Bir JSON metnini yapılandırılmış nesneye dönüştürün",
+      },
+      validate_json: {
+        label: "JSON Doğrula",
+        description: "JSON sözdizimini ve yapısını doğrulayın",
+      },
+      format_json: {
+        label: "JSON Biçimlendir",
+        description: "JSON içeriğini girintili biçimde güzelce yazdırın",
+      },
+      query_json: {
+        label: "JSON Sorgula",
+        description: "JSONPath ifadelerini kullanarak JSON sorgulayın",
+      },
+      json_diff: {
+        label: "JSON Karşılaştır",
+        description: "İki JSON nesnesini karşılaştırıp farkları bulun",
+      },
+      send_email: {
+        label: "E-posta Gönder",
+        description: "Yapılandırılmış SMTP üzerinden e-posta gönderin",
+      },
+      draft_email: {
+        label: "E-posta Taslağı Oluştur",
+        description: "Yeni bir e-posta taslağı oluşturun",
+      },
+      search_emails: {
+        label: "E-posta Ara",
+        description: "E-posta gelen kutusunda arama yapın",
+      },
+      read_email: {
+        label: "E-posta Oku",
+        description: "E-posta içeriğini ve eklerini okuyun",
+      },
+      extract_text: {
+        label: "Metin Çıkar",
+        description: "PDF belgesinden tüm metni çıkarın",
+      },
+      extract_pages: {
+        label: "Sayfaları Çıkar",
+        description: "PDF'ten belirli sayfa aralığını çıkarın",
+      },
+      get_metadata: {
+        label: "Meta Veri Al",
+        description: "PDF başlık, yazar ve sayfa sayısı bilgilerini alın",
+      },
+      render_page_as_image: {
+        label: "Sayfa Görseli Oluştur",
+        description: "Bir PDF sayfasını PNG/JPEG olarak işleyin",
+      },
+      search_pdf: {
+        label: "PDF'te Ara",
+        description: "PDF içinde metin araması yapın",
+      },
+      check_health: {
+        label: "Sağlık Kontrolü",
+        description: "Bir web servisinin sağlık durumunu kontrol edin",
+      },
+      list_endpoints: {
+        label: "Uç Noktaları Listele",
+        description: "Keşfedilen REST uç noktalarını listeleyin",
+      },
+      call_endpoint: {
+        label: "Uç Noktayı Çağır",
+        description: "Servis uç noktasına HTTP isteği yapın",
+      },
+      count_words: {
+        label: "Kelime Say",
+        description: "Kelime, karakter ve cümleleri sayın",
+      },
+      summarize_text: {
+        label: "Metni Özetle",
+        description: "Metnin kısa bir özetini oluşturun",
+      },
+      regex_match: {
+        label: "Düzenli İfade Eşleştir",
+        description: "Metin üzerinde düzenli ifade eşleştirmesi yapın",
+      },
+      regex_replace: {
+        label: "Düzenli İfade Değiştir",
+        description: "Düzenli ifadeleri kullanarak kalıpları değiştirin",
+      },
+      convert_case: {
+        label: "Harf Boyutu Dönüştür",
+        description: "Metin harf boyutunu dönüştürün (büyük, küçük, başlık)",
+      },
+      split_text: {
+        label: "Metni Böl",
+        description: "Metni parçalara veya belirteçlere ayırın",
+      },
+      get_current_time: {
+        label: "Geçerli Zamanı Al",
+        description: "Saat dilimi ile geçerli tarih ve saati alın",
+      },
+      format_date: {
+        label: "Tarih Biçimlendir",
+        description: "Zaman damgalarını standart metin biçimlerine dönüştürün",
+      },
+      calculate_duration: {
+        label: "Süre Hesapla",
+        description: "İki tarih arasındaki farkı hesaplayın",
+      },
+      generate_uuid: {
+        label: "UUID Oluştur",
+        description: "Rastgele UUID v4 dizgisi oluşturun",
+      },
+      hash_text: {
+        label: "Metin Özeti (Hash) Al",
+        description: "Metnin SHA-256 veya MD5 özetini hesaplayın",
+      },
+      base64_encode: {
+        label: "Base64 Kodla",
+        description: "Metni veya baytları base64 olarak kodlayın",
+      },
+      base64_decode: {
+        label: "Base64 Çöz",
+        description: "Base64 metnini orijinal metne dönüştürün",
+      },
+      random_number: {
+        label: "Rastgele Sayı Üret",
+        description: "Kriptografik olarak güvenli rastgele sayı üretin",
+      },
+      web_search: {
+        label: "Web'de Ara",
+        description:
+          "Yapılandırılmış arama sağlayıcısını kullanarak web'de arama yapın",
+      },
+      fetch_webpage: {
+        label: "Web Sayfası Getir",
+        description: "Web sayfası URL'sinden metin çekin ve ayıklayın",
+      },
+      scrape_content: {
+        label: "İçerik Kazı",
+        description: "Web sayfasından yapılandırılmış veri çıkarın",
+      },
+      crawl_sitemap: {
+        label: "Site Haritası Tara",
+        description: "Site haritasındaki bağlantıları ayrıştırın ve tarayın",
+      },
+      equals: { label: "eşittir", description: "" },
+      not_equals: { label: "eşit değildir", description: "" },
+      contains: { label: "içerir", description: "" },
+      not_contains: { label: "içermez", description: "" },
+      starts_with: { label: "ile başlar", description: "" },
+      ends_with: { label: "ile biter", description: "" },
+      regex: { label: "regex ile eşleşir", description: "" },
+      less_than: { label: "küçüktür", description: "" },
+      less_than_or_equal: { label: "küçük veya eşittir", description: "" },
+      greater_than: { label: "büyüktür", description: "" },
+      greater_than_or_equal: { label: "büyük veya eşittir", description: "" },
+    },
+    components: {
+      Agent: {
+        name: "Ajan",
+        description:
+          "Araçları ve modelleri kullanarak otonom görev yürüten ajan.",
+      },
+      AgentRef: {
+        name: "Ajan Referansı",
+        description: "Mevcut sistemde tanımlı bir ajana referans verir.",
+      },
+      AirbyteDatasource: {
+        name: "Airbyte Veri Kaynağı",
+        description:
+          "Airbyte bağlayıcıları aracılığıyla harici verileri bağlar.",
+      },
+      BuiltinTool: {
+        name: "Yerleşik Araç",
+        description: "Sistemde tanımlı yerel araçları çalıştırır.",
+      },
+      CalculatorTools: {
+        name: "Hesap Makinesi Araçları",
+        description: "Matematiksel hesaplamalar ve ifade değerlendirmesi.",
+      },
+      ChatInput: {
+        name: "Sohbet Girişi",
+        description: "Sohbet arayüzünden kullanıcı girdisini alır.",
+      },
+      ChatOutput: {
+        name: "Sohbet Çıkışı",
+        description: "Son yanıtı kullanıcıya geri gönderir.",
+      },
+      BatchRun: {
+        name: "Toplu Çalıştır",
+        description:
+          "Bir tablonun her satırı için modeli çalıştırır ve yanıtları yeni bir kolona yazar.",
+      },
+      Chatbot: {
+        name: "Sohbet Botu",
+        description: "Kullanıcıyla etkileşimli sohbet yürüten temel bot.",
+      },
+      CitationFormatter: {
+        name: "Alıntı Biçimlendirici",
+        description: "Yanıtlara kaynak alıntılarını ekler.",
+      },
+      CodeTools: {
+        name: "Kod Araçları",
+        description:
+          "Farklı dillerde kod parçacıklarını çalıştırın ve inceleyin.",
+      },
+      CommandTools: {
+        name: "Komut Araçları",
+        description: "Sistem komutları ve kabuk işlemlerini çalıştırın.",
+      },
+      Connector: {
+        name: "Bağlayıcı",
+        description: "Üçüncü taraf servis ve veri tabanı entegrasyonu.",
+      },
+      ConditionalRouter: {
+        name: "Eğer-Değilse",
+        description:
+          "Son mesajı sabit bir kurala göre karşılaştırıp doğru/yanlış dalına yönlendirir. Bir dalı yukarı geri bağlayarak koşula dayalı döngü kurun.",
+      },
+      ContentCrawl: {
+        name: "İçerik Tarama",
+        description:
+          "Alan adlarını belirtilen derinliğe kadar özyinelemeli tarar.",
+      },
+      ConversationMemory: {
+        name: "Konuşma Belleği",
+        description: "Mevcut oturumdaki konuşma mesajlarını tutar.",
+      },
+      CustomTools: {
+        name: "Özel Araçlar",
+        description: "Seçili yerleşik ve MCP araçlarını bağlar.",
+      },
+      DataSource: {
+        name: "Veri Kaynağı",
+        description: "Bağlı veri kaynaklarından bilgi çeker.",
+      },
+      DockerTools: {
+        name: "Docker Araçları",
+        description:
+          "Docker konteynerlerini, imajlarını ve birimlerini yönetin.",
+      },
+      DocumentContext: {
+        name: "Belge Bağlamı",
+        description: "Seçili belgelerden bağlam metni çıkarır.",
+      },
+      DocumentFilter: {
+        name: "Belge Filtresi",
+        description: "Arama sonuçlarını meta verilere göre filtreler.",
+      },
+      DocumentSearch: {
+        name: "Belge Arama",
+        description:
+          "İndekslenmiş belge koleksiyonlarında anlamsal arama yapar.",
+      },
+      ExternalMCPServer: {
+        name: "Harici MCP Sunucusu",
+        description: "Harici Model Context Protocol sunucusuna bağlanır.",
+      },
+      FetchWebpage: {
+        name: "Web Sayfası Getir",
+        description: "Belirtilen URL'deki web sayfasının içeriğini çeker.",
+      },
+      FileInput: {
+        name: "Dosya Girdisi",
+        description: "Kullanıcıdan dosya yüklemesini kabul eder.",
+      },
+      FileTools: {
+        name: "Dosya Araçları",
+        description:
+          "Yerel dosya sistemindeki dosyaları okuyun, yazın ve yönetin.",
+      },
+      GitTools: {
+        name: "Git Araçları",
+        description:
+          "Git depolarını klonlayın, commit yapın, push edin ve inceleyin.",
+      },
+      GraphEntitySearch: {
+        name: "Grafik Varlık Arama",
+        description: "Bilgi grafiğindeki belirli varlıkları arar.",
+      },
+      GraphNeighborhood: {
+        name: "Grafik Komşuluk Arama",
+        description: "Bir varlığın komşu düğümlerini ve ilişkilerini getirir.",
+      },
+      GraphSearch: {
+        name: "Grafik Arama",
+        description: "Bilgi grafiği varlıklarını ve ilişkilerini arar.",
+      },
+      GraphStats: {
+        name: "Grafik İstatistikleri",
+        description: "Bilgi grafiğinin genel istatistiklerini görüntüler.",
+      },
+      HumanInput: {
+        name: "İnsan Girdisi",
+        description:
+          "Akışı duraklatır, bir kişiden bir aksiyon seçmesini ister ve o daldan devam eder.",
+      },
+      HybridSearch: {
+        name: "Hibrit Arama",
+        description: "Anahtar kelime ve vektör aramasını birleştirir.",
+      },
+      JavaTools: {
+        name: "Java Araçları",
+        description: "Java geliştirme araçları ve çalışma zamanı denetimi.",
+      },
+      JsonTools: {
+        name: "JSON Araçları",
+        description: "JSON verilerini ayrıştırın, doğrulayın ve işleyin.",
+      },
+      KnowledgeBase: {
+        name: "Bilgi Bankası",
+        description: "Belge ve bilgi koleksiyonlarına erişim sağlar.",
+      },
+      LLMModel: {
+        name: "Dil Modeli (LLM)",
+        description: "İstemleri işlemek için bir dil modelini yapılandırır.",
+      },
+      LongTermMemory: {
+        name: "Uzun Süreli Bellek",
+        description:
+          "Kalıcı kullanıcı ve konuşma hafızalarını saklar ve getirir.",
+      },
+      Loop: {
+        name: "Döngü",
+        description:
+          "Bir listedeki her öğe için bir dalı çalıştırır, sonra toplanan sonuçları Bitti dalına gönderir.",
+      },
+      MCPTool: {
+        name: "MCP Aracı",
+        description:
+          "Model Context Protocol sunucusu üzerinden araç çalıştırır.",
+      },
+      MailConfig: {
+        name: "E-posta Yapılandırması",
+        description: "SMTP e-posta sunucusu bağlantı ayarlarını yapılandırın.",
+      },
+      MailTools: {
+        name: "E-posta Araçları",
+        description:
+          "E-postaları okuyun, arayın, taslak oluşturun ve gönderin.",
+      },
+      Memory: {
+        name: "Bellek",
+        description: "Konuşma geçmişini ve bağlamı saklar.",
+      },
+      Merge: {
+        name: "Birleştirme",
+        description: "Farklı akış kollarından gelen sonuçları birleştirir.",
+      },
+      Note: {
+        name: "Yapışkan Not",
+        description: "Tuval üzerine açıklamalar ve notlar ekler.",
+      },
+      Operations: {
+        name: "Veri İşlemleri",
+        description:
+          "Metin, JSON ve tablolar üzerinde tek bileşenden otuz işlem yapar.",
+      },
+      OllamaModel: {
+        name: "Ollama Modeli",
+        description: "Yerel Ollama modellerini çalıştırır ve yapılandırır.",
+      },
+      PdfTools: {
+        name: "PDF Araçları",
+        description:
+          "PDF belgelerinden metin ve meta veri çıkarın, analiz edin.",
+      },
+      Parser: {
+        name: "Ayrıştırıcı",
+        description:
+          "Yapılandırılmış veriyi bir şablonla okunur metne çevirir.",
+      },
+      PipelineStage: {
+        name: "Ardışık Düzen Aşaması",
+        description:
+          "Çok adımlı bir işlem hattında sıralı bir aşamayı yürütür.",
+      },
+      PlanExecuteAgent: {
+        name: "Planla & Yürüt Ajanı",
+        description:
+          "Araç adımlarını yürütmeden önce yapılandırılmış plan oluşturur.",
+      },
+      Prompt: {
+        name: "İstem",
+        description: "Değişkenlerle zenginleştirilmiş istem şablonu oluşturur.",
+      },
+      PromptTemplate: {
+        name: "İstem Şablonu",
+        description: "Değişkenlerle zenginleştirilmiş istem şablonu oluşturur.",
+      },
+      RAGSearch: {
+        name: "RAG Arama",
+        description: "Gelişmiş hibrit arama ile alakalı bağlamı getirir.",
+      },
+      ReActAgent: {
+        name: "ReAct Ajanı",
+        description:
+          "Görevleri çözmek için mantık yürütür ve araçları çağırır.",
+      },
+      Router: {
+        name: "Yönlendirici",
+        description: "Koşullara göre akışı farklı yollara yönlendirir.",
+      },
+      RunFlow: {
+        name: "Akış Çalıştır",
+        description:
+          "Yayınlanmış başka bir akışı çalıştırır ve yanıtını akışa aktarır.",
+      },
+      SelfReflectAgent: {
+        name: "Öz Değerlendirme Ajanı",
+        description:
+          "Bir yanıt taslağı oluşturur, eleştirir ve yinelemeli olarak geliştirir.",
+      },
+      ServiceTools: {
+        name: "Servis Araçları",
+        description: "Sistem servislerini inceleyin ve etkileşime geçin.",
+      },
+      SetVariable: {
+        name: "Değişken Ata",
+        description:
+          "Bir değeri, sonraki Prompt Template'in {ad} olarak okuyabileceği bir adla saklar.",
+      },
+      SmartRouter: {
+        name: "Akıllı Yönlendirici",
+        description:
+          "Mesajı bir LLM ile tanımladığınız kategorilerden birine ayırıp o dala yönlendirir.",
+      },
+      SplitText: {
+        name: "Metni Böl",
+        description: "Metni belirlediğiniz ölçütlere göre parçalara ayırır.",
+      },
+      StickyNote: {
+        name: "Yapışkan Not",
+        description: "Tuval üzerine açıklamalar ve notlar ekler.",
+      },
+      StructuredOutput: {
+        name: "Yapılandırılmış Çıktı",
+        description:
+          "Bir modeli, sizin tanımladığınız şemaya uygun kayıtlar çıkarmaya zorlar.",
+      },
+      Supervisor: {
+        name: "Süpervizör Ajan",
+        description:
+          "Çoklu ajan ekiplerini koordine eder ve görevleri devreder.",
+      },
+      SyncTrigger: {
+        name: "Senkronizasyon Tetikleyici",
+        description: "Veri kaynakları için isteğe bağlı eşitleme başlatır.",
+      },
+      TextInput: {
+        name: "Metin Girdisi",
+        description: "Akış için statik veya dinamik metin girdisi sağlar.",
+      },
+      TextTools: {
+        name: "Metin Araçları",
+        description: "Metin işleme, biçimlendirme ve dönüştürme işlemleri.",
+      },
+      ThreadCheckpointer: {
+        name: "Konuşma Kontrol Noktası",
+        description: "Konuşma oturumunun durumunu ve geçmişini kaydeder.",
+      },
+      TimeTools: {
+        name: "Zaman Araçları",
+        description: "Saat, tarih ve zamanlama yardımcı işlevleri.",
+      },
+      UtilityTools: {
+        name: "Yardımcı Araçlar",
+        description: "Genel yardımcı araçlar ve destek işlevleri.",
+      },
+      VectorSearch: {
+        name: "Vektör Arama",
+        description: "Vektör gömmeleri üzerinden benzerlik araması yapar.",
+      },
+      WebContentExtractor: {
+        name: "Web İçerik Çıkarıcı",
+        description: "HTML sayfalarından temiz metin ve veri çıkarır.",
+      },
+      TypeConverter: {
+        name: "Tip Dönüştür",
+        description: "Message, JSON ve Table tipleri arasında dönüştürür.",
+      },
+      WebSearch: {
+        name: "Web Araması",
+        description:
+          "Yapılandırılmış arama sağlayıcılarıyla internette arama yapar.",
+      },
+      WebTools: {
+        name: "Web Araçları",
+        description:
+          "Web sayfalarını getirin, içerik kazıyın ve web'de arama yapın.",
+      },
+      While: {
+        name: "While",
+        description:
+          "Bir koşul doğru olduğu sürece veya maksimum yineleme sınırına ulaşana dek bir dalı tekrarlar.",
+      },
+      Guardrails: {
+        name: "Güvenlik Kuralları (Guardrails)",
+        description:
+          "Metni bir LLM ile güvenlik ve gizlilik kurallarına göre denetler, ardından Başarılı veya Başarısız dalına yönlendirir.",
+      },
+      ZeroShotAgent: {
+        name: "Zero-Shot Ajanı",
+        description:
+          "Sistem istemiyle tek turlu model çağrısı yapar. Araçsızdır.",
+      },
+    },
+    sidebar: {
+      title: "Bileşenler",
+      collapsePanel: "Bileşen panelini daralt",
+      openPanel: "Bileşen panelini aç",
+      searchPlaceholder: "Bileşenleri ara...",
+      searchAriaLabel: "Bileşenleri ara",
+      clearSearchAriaLabel: "Aramayı temizle",
+      recentlyUsed: "Son Kullanılanlar",
+      noComponentsFound: "Bileşen bulunamadı",
+      noComponentsFoundDescription: "Farklı bir arama terimi deneyin.",
+      loadError: "Bileşenler yüklenemedi",
+      loadErrorDescription: "Sayfayı yeniden yüklemeyi deneyin.",
+      categories: {
+        all: "Tümü",
+        core: "Temel",
+        agents: "Ajanlar",
+        models: "Modeller",
+        tools: "Araçlar",
+        memory: "Bellek",
+        rag: "Bilgi & RAG",
+        knowledge: "Bilgi Bankası",
+        datasources: "Veri Kaynakları",
+        io: "Girdi / Çıktı",
+        triggers: "Tetikleyiciler",
+        logic: "Mantık",
+        web: "Web",
+        websearch: "Web Araması",
+        bundles: "Paketler",
+      },
+    },
+    versionBar: {
+      run: "Çalıştır",
+      draftSaveBeforePublishFailed:
+        "Yayınlamadan önce taslak kaydedilemedi; son kaydedilen sürüm yayınlanacak",
+      publishedConcurrently: "Akış eşzamanlı olarak yayınlandı.",
+      nodeIssue: "Düğüm {{id}}: {{message}}",
+      reloadAndRetry: "Yeniden yükle ve tekrar dene",
+      draft: "Taslak",
+      published: "Yayında (v{{version}})",
+      draftAhead: "v{{version}} önündeki taslak",
+      publish: "Yayınla",
+      publishing: "Yayınlanıyor...",
+      restore: "Geri Yükle",
+      restoring: "Geri yükleniyor...",
+      history: "Sürüm Geçmişi",
+      draftSaved: "Taslak kaydedildi",
+      savingDraft: "Taslak kaydediliyor...",
+      savedAt: "Kaydedildi: {{time}}",
+      unsavedChanges: "Kaydedilmemiş değişiklikler",
+      backToAgents: "Ajanlara Dön",
+    },
+    versionHistory: {
+      retry: "Tekrar Dene",
+      title: "Sürüm Geçmişi",
+      description: "Önceki sürümleri inceleyin ve geri yükleyin.",
+      currentVersion: "Mevcut Sürüm",
+      backToDraft: "Taslağa Dön",
+      publishedVersion: "Yayınlanan Sürüm",
+      revertToVersion: "Bu Sürüme Geri Yükle",
+      revertConfirmTitle: "Sürümü Geri Yükle?",
+      revertConfirmDescription:
+        "Bu işlem mevcut taslağı seçilen sürümle değiştirecektir. Devam etmek istiyor musunuz?",
+      noVersions: "Henüz kaydedilmiş sürüm geçmişi bulunmuyor.",
+      versionNumber: "Sürüm {{version}}",
+      compare: "Karşılaştır",
+      close: "Sürüm geçmişini kapat",
+      currentDraft: "Mevcut taslak",
+      draftSummary: "Çalışma sürümü · v{{version}} taslak halinde",
+      noDraftYet:
+        "Henüz taslak yok — bir sonraki düzenlemeniz taslağı oluşturur",
+      loading: "Sürümler yükleniyor…",
+      loadFailed: "Sürümler yüklenemedi.",
+      noPublishedVersions: "Henüz yayınlanmış sürüm yok.",
+      versionUnavailable: "Sürüm {{version}} artık kullanılamıyor.",
+      loadVersionFailed: "Sürüm {{version}} yüklenemedi.",
+      previewBanner: "v{{version}} görüntüleniyor — salt okunur önizleme",
+      versionActions: "Sürüm işlemleri",
+      versionActionsFor: "v{{version}} için sürüm işlemleri",
+      previewOnCanvas: "Canvas'ta önizle",
+      exportJson: "JSON Olarak Dışa Aktar",
+      exportFailed: "v{{version}} dışa aktarılamadı.",
+      restoreConfirmTitle: "v{{version}} geri yüklensin mi?",
+      restoreConfirmBody:
+        "Akış yeni bir sürüm olarak yeniden yayınlanacak. Mevcut taslağınız korunur.",
+      cancel: "Vazgeç",
+      restore: "Geri Yükle",
+      restoring: "Geri Yükleniyor…",
+      restoreSuccess:
+        "v{{from}} geri yüklendi — şimdi v{{to}} olarak yayınlandı.",
+      restoreFailed: "v{{version}} geri yüklenemedi.",
+      statusPublished: "Yayınlandı",
+      statusDraft: "Taslak",
+      statusArchived: "Arşivlendi",
+      compareWithPrevious: "Bir öncekiyle karşılaştır",
+      diff: {
+        loading: "Değişiklikler yükleniyor…",
+        noChanges: "Değişiklik yok.",
+        emptyValue: "(boş)",
+        nodeAdded: "{{type}} düğümü eklendi",
+        nodeRemoved: "{{type}} düğümü kaldırıldı",
+        connectionAdded: "Bağlantı eklendi:",
+        connectionRemoved: "Bağlantı kaldırıldı:",
+        templateUpgraded:
+          "{{type}} şablonu v{{oldVersion}}'dan v{{newVersion}}'a güncellendi",
+        fieldChanged: "{{field}} değişti",
+        closeOverlay: "Farkı kapat",
+        compareTwoVersions: "İki sürümü karşılaştır",
+        compareHintFirst: "Karşılaştırmak için bir sürüm seçin.",
+        compareHintSecond: "İkinci bir sürüm seçin.",
+        selectForCompare: "Karşılaştırmak için v{{version}} seç",
+        draftChangesTitle: "v{{version}}'dan bu yana değişiklikler",
+        draftChangesTitleNoPublish: "Taslaktaki değişiklikler",
+        versionCompareTitle: "v{{from}} → v{{to}}",
+        firstVersionTitle: "v{{version}} (ilk sürüm)",
+      },
+    },
+    inspector: {
+      title: "Düğüm Yapılandırması",
+      noSelectionTitle: "Düğüm Seçilmedi",
+      noSelectionDescription:
+        "Ayarlarını yapılandırmak için tuvalde bir düğüm seçin.",
+      nodeName: "Düğüm Adı",
+      nodeType: "Tür",
+      description: "Açıklama",
+      descriptionPlaceholder: "Bileşen açıklamasını girin...",
+      saveDescription: "Kaydet",
+      deleteNode: "Düğümü Sil",
+      duplicateNode: "Düğümü Çoğalt",
+      documentation: "Belgeler",
+      inputs: "Girdiler",
+      outputs: "Çıktılar",
+      parameters: "Parametreler",
+      advanced: "Gelişmiş",
+      advancedSettings: "Gelişmiş Ayarlar",
+      itemsSelected_one: "{{count}} öğe seçildi",
+      itemsSelected_other: "{{count}} öğe seçildi",
+      connectionSelected: "1 bağlantı seçildi",
+      unknownComponent: "Bilinmeyen bileşen: {{type}}",
+      unknownComponentDesc:
+        "Bu bileşen kayıtlı değil. Kaydedilen değerleri korunur.",
+    },
+    node: {
+      noDescription: "Açıklama yok.",
+    },
+    nodeToolbar: {
+      toolMode: "Ajan aracı olarak kullan",
+      expandAgent: "Akışa genişlet",
+      parameters: "Parametreler",
+      showDetails: "Düğüm detaylarını göster",
+      hideDetails: "Düğüm detaylarını gizle",
+      run: "Çalıştır",
+      moreActions: "Diğer eylemler",
+      expand: "Genişlet",
+      minimize: "Daralt",
+      running: "Çalışıyor...",
+      duplicate: "Çoğalt",
+      delete: "Sil",
+      freeze: "Dondur",
+      unfreeze: "Dondurmayı Kaldır",
+      copy: "Kopyala",
+      documentation: "Belgeler",
+      editDescription: "Açıklamayı Düzenle",
+    },
+    nodeStatus: {
+      idle: "Boşta",
+      running: "Çalışıyor…",
+      success: "Tamamlandı",
+      error: "Hata",
+      failed: "Başarısız",
+      queued: "Sırada",
+      tokens_one: "{{count}} tok",
+      tokens_other: "{{count}} tok",
+    },
+    stickyNote: {
+      placeholder: "Notunuzu buraya yazın...",
+      color: "Renk",
+      changeColor: "Rengi Değiştir",
+      delete: "Notu Sil",
+      duplicate: "Notu Çoğalt",
+      colors: {
+        yellow: "Sarı",
+        blue: "Mavi",
+        green: "Yeşil",
+        pink: "Pembe",
+        purple: "Mor",
+      },
+    },
+    playground: {
+      title: "Akış Test Alanı",
+      clearChat: "Sohbeti Temizle",
+      close: "Test Alanını Kapat",
+      emptyState: "Bu akışı gerçek zamanlı test etmek için bir mesaj gönderin.",
+      thinking: "Düşünülüyor",
+      thinkingActive: "Düşünülüyor...",
+      placeholder: "Bir mesaj yazın...",
+      send: "Gönder",
+      draftBannerNew:
+        "Test Alanı — Kaydedilmemiş akış test ediliyor, veriler saklanmaz",
+      draftBannerDraft:
+        "Test Alanı — Taslak akış çalıştırılıyor, yayınlanan sürüm değil",
+      testButton: "Test Et",
+      testDisabledTooltip:
+        "Bu akışı test etmek için bir Chat Input veya Chat Output düğümü ekleyin",
+      attachFile: "Dosya Ekle",
+      removeAttachment: "Eki Kaldır",
+      toolArguments: "Argümanlar",
+      toolOutput: "Çıktı",
+      tokens: "token",
+      tokensInputLabel: "Girdi",
+      tokensOutputLabel: "Çıktı",
+      tokensTotalLabel: "Toplam",
+      copy: "Kopyala",
+      copied: "Kopyalandı",
+      retry: "Yeniden Dene",
+      runFailedWithStatus: "Çalıştırma {{status}} durumuyla başarısız oldu",
+      noResponseStream: "Yanıt akışı alınamadı",
+      networkError: "Ağ hatası",
+    },
+    validation: {
+      validFlow: "Akış geçerli ve yayınlanmaya hazır.",
+      noEntry: "Akışın en az bir giriş düğümü olmalıdır (örn. ChatInput).",
+      noExit: "Akışın en az bir çıkış düğümü olmalıdır (örn. ChatOutput).",
+      missingInput: '"{{node}}" düğümünde gerekli "{{input}}" girdisi eksik.',
+      typeMismatch:
+        '"{{source}}" ({{sourceType}}) ile "{{target}}" ({{targetType}}) arasında uyumsuz bağlantı.',
+      cycleDetected: "Yürütme grafiğinde döngü tespit edildi.",
+      isolatedNode: '"{{node}}" düğümünün ana akışla bağlantısı yok.',
+    },
+    handles: {
+      input: "Girdi",
+      output: "Çıktı",
+      model: "Model",
+      tools: "Araçlar",
+      memory: "Bellek",
+      message: "Mesaj",
+      text: "Metin",
+      data: "Veri",
+      variables: "Değişkenler",
+      routes: "Yollar",
+      continue: "Devam",
+      exit: "Çıkış",
+      trigger: "Tetikleyici",
+      result: "Sonuç",
+      results: "Sonuçlar",
+      checkpointer: "Kontrol Noktası",
+      query: "Sorgu",
+      documents: "Belgeler",
+      context: "Bağlam",
+      graph_data: "Grafik Verisi",
+      entities: "Varlıklar",
+      entity_id: "Varlık ID",
+      subgraph: "Alt Grafik",
+      stats: "İstatistikler",
+      mail_config: "E-posta Yapılandırması",
+      url: "URL",
+      urls: "URL'ler",
+      content: "İçerik",
+      condition: "Devam Koşulu",
+      max_iterations: "Maksimum Yineleme",
+      name: "Aşama Adı",
+      stage_name: "Aşama Adı",
+      datasource_id: "Veri Kaynağı",
+      reflection_prompt: "Öz Değerlendirme İstemi",
+      supervisor_prompt: "Yönetici İstemi",
+      sub_agents: "Alt Ajanlar",
+      strategy: "Strateji",
+      collection: "Koleksiyon",
+      provider: "Sağlayıcı",
+      limit: "Limit",
+      depth: "Derinlik",
+      entity_type: "Varlık Türü",
+      items: "Öğeler",
+      input_text: "Karşılaştırılacak",
+      true_case_message: "Doğru dalı mesajı",
+      false_case_message: "Yanlış dalı mesajı",
+      unmatched: "Eşleşmeyen",
+      item: "Öğe",
+      done: "Bitti",
+      true_result: "Doğru",
+      false_result: "Yanlış",
+      else: "Diğer",
+      decisions: "Aksiyonlar",
+    },
+    nodeHandle: {
+      receiving: "{{label}} alınıyor",
+      connectSource: "Bir {{types}} kaynağı bağlayın",
+    },
+    controls: {
+      zoomIn: "Yakınlaştır",
+      zoomOut: "Uzaklaştır",
+      fitView: "Tuvale Sığdır",
+      autoLayout: "Otomatik Düzen",
+      addNote: "Yapışkan Not Ekle",
+      toggleMinimap: "Haritayı Aç/Kapat",
+      runTest: "Akışı Test Et",
+      clearCanvas: "Tuvali Temizle",
+      fullscreen: "Tam Ekran",
+      exitFullscreen: "Tam Ekrandan Çık (Esc)",
+      lockCanvas: "Tuvali Kilitle",
+      unlockCanvas: "Tuval Kilidini Aç",
+      zoomTooltip: "Düzenlemek için tıklayın, %100 için çift tıklayın",
+      setZoomAria: "Yakınlaştırma yüzdesini ayarla",
+      zoomPercentageAria: "Yakınlaştırma yüzdesi",
+      zoomFormat: "%{{value}}",
+    },
+    fields: {
+      infos: {
+        system_prompt: "Bu ajanın nasıl davranacağını belirleyen talimatlar.",
+        template:
+          "Yukarı akış değerlerine {değişken} yer tutucuları ile başvurun.",
+        routes: "Her satır bir koşul ve seçtiği dal etiketidir.",
+        condition: "Döngü bu koşul sağlandığı sürece tekrarlanır.",
+        max_iterations:
+          "Kesin sınır. Koşul sağlansa bile döngü bu sayıda sonlanır.",
+        operator:
+          "Gelen mesajın Eşleşme metni ile nasıl karşılaştırılacağı. 'regex ile eşleşir' baştan sabitlenir ve Büyük/küçük harf duyarlı ayarını yok sayar; sayısal işleçler iki tarafı da sayıya çevirir.",
+        match_text:
+          "Son mesajın karşılaştırılacağı metin, sayı veya regex deseni.",
+        case_sensitive: "'regex ile eşleşir' işleci için yok sayılır.",
+        strip_match:
+          "Mesaj bir dala devam etmeden önce Eşleşme metnini mesajdan kaldırır. Eşleşme metni kullanıcının görmemesi gereken bir tamamlanma işaretiyse bunu açın.",
+        default_route:
+          "Maksimum yinelemeye ulaşıldığında seçilen dal. Bir döngüde bu, döngüden çıkan dal olmalıdır.",
+        datasource_id:
+          "Başvurulacak veya senkronize edilecek yapılandırılmış veri kaynağı.",
+        stage_name:
+          "İzlerde ve tuvalde bu adımı etiketler; yürütmeyi etkilemez.",
+        name: "İzlerde ve tuvalde bu adımı etiketler; yürütmeyi etkilemez.",
+        collection: "Sorgulanacak bilgi tabanı koleksiyonu.",
+        query:
+          "Arama sorgu metni. Gelen sorgu bağlantı noktasından da sağlanabilir.",
+        top_k: "Getirilecek ilgili parça sayısı (varsayılan 4).",
+        threshold: "Minimum benzerlik puanı eşiği (0.0 ile 1.0 arası).",
+        tools: "Yalnızca burada seçilen araçlar ajana bağlanır.",
+        provider: "Arama veya içerik tarayıcı sağlayıcısı (İsteğe bağlı).",
+        max_results:
+          "Döndürülecek maksimum arama sonucu sayısı (varsayılan 5).",
+        url: "Getirilecek web sayfası URL'si. Gelen url bağlantı noktasından da sağlanabilir.",
+        urls: "Getirilecek web sayfası URL'lerinin satırla ayrılmış listesi. Gelen urls bağlantı noktasından da sağlanabilir.",
+        description:
+          "Bu adımı tuvalde ve izlerde etiketler; yürütmeyi etkilemez.",
+        model_name: "Kullanılacak dil modeli.",
+        temperature:
+          "Çıktı rastgeleliğini kontrol eder (0.0 daha belirleyici, 1.0 daha yaratıcı).",
+        base_url: "Özel model uç noktası veya API URL'si.",
+        api_key: "Sağlayıcı kimlik doğrulama API anahtarı.",
+        input_value: "İşlenecek veya şablona aktarılacak metin girdisi.",
+        category: "Araç kategorisi.",
+        search_provider: "Kullanılacak web arama sağlayıcısı.",
+        collection_id: "Bilgi tabanı koleksiyonu.",
+        collection_name: "Bilgi tabanı koleksiyon adı.",
+        provider_id: "Harici araç sağlayıcısı.",
+        agent_id: "Çağrılacak alt ajan.",
+        memory_type: "Kullanılacak bellek türü.",
+        score_threshold: "Minimum benzerlik puanı eşiği.",
+        limit: "Getirilecek maksimum kayıt sayısı.",
+        depth: "Grafik geçiş derinliği.",
+        entity_type: "Filtrelenecek varlık türü.",
+        config_id: "Yapılandırma ID'si.",
+        tool_mode:
+          "Bu bileşeni bir akış adımı olarak çalıştırmak yerine ajana araç olarak teslim edin. Tool çıktısını ajanın Tools bağlantı noktasına bağlayın.",
+        tool_name:
+          "Modelin göreceği araç adı. Boş bırakılırsa düğüm adından türetilir.",
+        input_source:
+          "Son mesaj yerine kullanılacak veya doğrulanacak Değişken Adı. Son mesajı kullanmak için boş bırakın.",
+        heuristic_threshold:
+          "Jailbreak ve Prompt Enjeksiyonu herhangi bir model çağrısından önce puanlanır; bu puan veya üzerindeki metinler anında engellenir. Düşük değer daha katıdır, yüksek değer daha fazla durumu modele iletir.",
+        enabled_guardrails:
+          "Denetimler bu sırayla çalışır ve ilk ihlalde durur; eklediğiniz her denetim sadece öncekiler geçtiğinde model çağrısı yapar. Algılama tavsiye niteliğindedir: model kesin olmadıkça metne izin vermek üzere yönlendirilir.",
+        enable_custom_guardrail:
+          "Kendi cümlelerinizle tanımlayacağınız ekstra bir güvenlik denetimi ekler.",
+        custom_guardrail:
+          "Modelin değerlendireceği özel güvenlik kuralının açıklaması.",
+        enable_else_output:
+          "Mesaj hiçbir kategoriye uymadığında izlenecek bir 'diğer' dalı ekler. Kapalıyken eşleşmeyen kategori hata üretir.",
+        enable_unmatched:
+          "Cevap hiçbir aksiyonla eşleşmediğinde izlenecek 'eşleşmeyen' dalı ekler. Kapalıyken eşleşmeyen cevap hata oluşturur.",
+        prompt: "Kullanıcıya gösterilecek soru metni.",
+        decisions:
+          "Aksiyon başına bir satır: etiketi, akışın devam edeceği dalı belirtir.",
+        flow_id:
+          "Çalıştırılacak akış. Akışın yayınlanmış güncel sürümü kullanılır; orada yapılan güncellemeler bu adımı kullanan tüm akışlara yansır.",
+        value: "Son mesajın metnini saklamak için boş bırakın.",
+        append:
+          "Mevcut değerin üzerine yazmak yerine bu ad altındaki listenin sonuna ekler.",
+        items_source:
+          "Öğeler bağlantı noktasına bir koleksiyon bağlayın veya liste içeren bir Değişken adı girin. İkisi de yoksa son mesajın satırları üzerinde yinelenir.",
+        output_schema:
+          "Çıkarılacak alan başına bir satır: adı, modelin bulmak için okuduğu açıklama, türü ve liste olup olmadığı.",
+        schema_name:
+          "İstem içindeki şema yapısını adlandırır; modelin yapıyı anlamasına yardımcı olur.",
+        operation:
+          "Gerçekleştirilecek işlem. Gereken alanlar ve üretilen çıktı işlem seçildikten sonra görünür.",
+        text_input:
+          "İşlenecek girdi metni. Bağlı bir Metin bağlantı noktası bunu geçersiz kılar.",
+        select_keys_input: "Tutulacak üst düzey anahtarların listesi.",
+        append_update_data: "Üst düzeyde yazılacak anahtar/değer çiftleri.",
+        remove_keys_input: "Tüm derinliklerde kaldırılacak anahtarlar.",
+        rename_keys_input:
+          "Tüm derinliklerde uygulanacak eski-yeni anahtar adları.",
+        selected_key: "Bir jq yolu, örneğin .user.name",
+        merge_on_column: "Satır indeksine göre birleştirmek için boş bırakın.",
+        max_matches: "0 girilirse tüm eşleşmeler döndürülür.",
+        strip_characters:
+          "Boş bırakılırsa baştaki ve sondaki boşluk karakterleri temizlenir.",
+        chunk_size:
+          "Her parçanın maksimum uzunluğu. Metin önce ayırıcıya göre bölünür, ardından bu boyuta kadar birleştirilir.",
+        chunk_overlap:
+          "Parçalar arasında çakışacak (ortak kalacak) karakter sayısı.",
+        separator:
+          "Metnin bölüneceği ayırıcı karakter. '/n' ve '\n' yeni satır anlamına gelir.",
+        text_key: "Bir Tablo bağlandığında metni içeren kolon.",
+        keep_separator:
+          "Ayırıcının parçalarda tutulup tutulmayacağı ve nerede yer alacağı.",
+        output_type: "Dönüştürülecek hedef veri türü.",
+        auto_parse:
+          "JSON veya CSV dizgilerini otomatik olarak algılar ve dönüştürür.",
+        mode: "Metne Dönüştür seçeneği şablon kullanmak yerine tüm değeri doğrudan metin yapar.",
+        pattern:
+          "Tablo kolonunu veya JSON anahtarını çekmek için {süslü parantez} kullanın; örneğin: Ad: {ad}, Puan: {puan}",
+        sep: "Satırlar veya öğeler arasına yerleştirilen ayırıcı metin.",
+        clean_data:
+          "Tablodaki boş satırları kaldırır ve hücrelerdeki fazla boşlukları temizler.",
+        column_name:
+          "Modele gönderilecek kolon. Boş bırakılırsa tüm satır iletilir.",
+        output_column_name: "Modelin cevabının yazılacağı kolon adı.",
+        system_message: "Her satıra uygulanan sistem mesajı.",
+        true_case_message:
+          "Girdi yerine doğru dalından gönderilecek mesaj. Boş bırakılırsa girdi iletilir.",
+        false_case_message:
+          "Girdi yerine yanlış dalından gönderilecek mesaj. Boş bırakılırsa girdi iletilir.",
+        message:
+          "Doldurulduğunda tüm kategoriler için dal mesajının yerine geçer, satırların kendi değerlerini yok sayar.",
+        custom_prompt:
+          "Yerleşik sınıflandırma istemine eklenen ilave rehberliktir — onun yerine geçmez. Mesaj için {input_text} ve kategori listesi için {routes} kullanın.",
+        custom_guardrail_explanation:
+          "Ek denetimin neyi araması gerektiği; örn. 'Girdinin tıbbi veya sağlık bilgisi içerip içermediğini tespit et'. Açık ve net olun: model bu açıklamayı değerlendirecektir.",
+        SetVariable: {
+          name: "Harfler, rakamlar ve alt çizgiler; bir harfle başlamalıdır. Bu adı, İstem Şablonunda {ad} olarak kullanırsınız.",
+          value: "Son mesajın metnini saklamak için boş bırakın.",
+          append:
+            "Mevcut değerin üzerine yazmak yerine bu ad altındaki listenin sonuna ekler.",
+        },
+        Operations: {
+          query: "JSON verisine karşı çalıştırılacak jq programı.",
+        },
+        StructuredOutput: {
+          system_prompt:
+            "Yerleşik ayıklama talimatlarını geçersiz kılar. Boş bırakılırsa yerleşik olanlar kullanılır.",
+          input_source:
+            "Son mesaj yerine ayıklama yapılacak Değişken Adı. Son mesajı kullanmak için boş bırakın.",
+        },
+        SyncTrigger: {
+          datasource_id: "Senkronizasyonun tetikleneceği veri kaynağı.",
+        },
+        ExternalMCPServer: {
+          tools:
+            "Yalnızca burada seçilen araçlar ajana bağlanır. Hiçbirini bağlamamak için boş bırakın.",
+        },
+        WebSearch: {
+          provider:
+            "Arama sağlayıcısı. İsteğe bağlı — varsayılan olarak yerleşik arama kullanılır.",
+        },
+        ContentCrawl: {
+          provider: "İçerik tarayıcı sağlayıcısı.",
+        },
+        Router: {
+          routes:
+            "Her satır bir Kaynağı (bir Değişken adı veya son mesaj için boş) bir İşleçle Eşleşme metnine göre karşılaştırır ve ilk eşleşmede ilgili Rota dalını seçer.",
+        },
+        SmartRouter: {
+          routes:
+            "Kategori başına bir satır: adı (dal etiketi), LLM'in seçim yapmak için kullandığı açıklama ve orijinal girdi yerine bu dala gönderilecek isteğe bağlı bir mesaj.",
+        },
+      },
+      names: {
+        append: "Sona Ekle",
+        append_update_data: "Ekle veya Güncelle",
+        ascending: "Artan Sırada Sırala",
+        auto_parse: "Otomatik Ayrıştır",
+        case_type: "Büyük/Küçük Harf Türü",
+        chunk_overlap: "Parça Çakışması",
+        chunk_size: "Parça Boyutu",
+        clean_data: "Veriyi Temizle",
+        columns_to_select: "Seçilecek Kolonlar",
+        count_characters: "Karakterleri Say",
+        count_lines: "Satırları Say",
+        count_words: "Kelimeleri Say",
+        custom_guardrail_explanation: "Özel Güvenlik Kuralı Açıklaması",
+        custom_prompt: "Ek Talimatlar",
+        decisions: "Aksiyonlar",
+        enable_custom_guardrail: "Özel Güvenlik Kuralını Etkinleştir",
+        enable_else_output: "Else (Diğer) Çıktısını Etkinleştir",
+        enable_unmatched: "Eşleşmeyen Dalı Etkinleştir",
+        enabled_guardrails: "Güvenlik Kuralları",
+        extract_pattern: "Çıkarma Deseni",
+        false_case_message: "Yanlış Dalı Mesajı",
+        filter_operator: "Filtre İşleci",
+        filter_value: "Filtre Değeri",
+        has_header: "Başlık Satırı Var",
+        head_characters: "Baştan Karakter Sayısı",
+        heuristic_threshold: "Kural Tabanlı Algılama Eşiği",
+        items_source: "Öğeler",
+        keep_separator: "Ayırıcıyı Koru",
+        max_matches: "Maksimum Eşleşme",
+        merge_how: "Birleştirme Türü",
+        merge_on_column: "Kolona Göre Birleştir",
+        message: "Çıktıyı Geçersiz Kıl",
+        new_column_name: "Yeni Kolon Adı",
+        new_column_value: "Yeni Kolon Değeri",
+        num_rows: "Satır Sayısı",
+        operation: "İşlem",
+        output_type: "Çıktı Türü",
+        remove_empty_lines: "Boş Satırları Kaldır",
+        remove_extra_spaces: "Fazla Boşlukları Kaldır",
+        remove_keys_input: "Anahtarları Kaldır",
+        remove_special_chars: "Özel Karakterleri Kaldır",
+        rename_keys_input: "Anahtarları Yeniden Adlandır",
+        replace_value: "Değiştirilecek Değer",
+        replacement_text: "Yeni Metin",
+        replacement_value: "Yeni Değer",
+        search_pattern: "Arama Deseni",
+        select_keys_input: "Anahtarları Seç",
+        selected_key: "Yol Seç",
+        separator: "Ayırıcı",
+        strip_characters: "Kırpılacak Karakterler",
+        strip_mode: "Kırpma Modu",
+        system_message: "Talimatlar",
+        table_separator: "Tablo Ayırıcısı",
+        tail_characters: "Sondan Karakter Sayısı",
+        text_input: "Metin",
+        text_input_2: "İkinci Metin Girdisi",
+        text_key: "Metin Anahtarı",
+        true_case_message: "Doğru Dalı Mesajı",
+        use_regex: "Düzenli İfade (Regex) Kullan",
+        pattern: "Şablon",
+        sep: "Ayırıcı",
+        mode: "Mod",
+        output_column_name: "Çıktı Kolonu",
+        tool_mode: "Ajan aracı olarak kullan",
+        tool_name: "Araç adı",
+        output_schema: "Çıktı Şeması",
+        schema_name: "Şema Adı",
+        input_source: "Kaynak",
+        flow_id: "Akış",
+        model_name: "Model Adı",
+        temperature: "Temperature (Yaratıcılık)",
+        system_prompt: "Sistem İstemi",
+        template: "Şablon",
+        input_value: "Girdi Değeri",
+        tools: "Araçlar",
+        enabled_tools: "Etkin Araçlar",
+        category: "Kategori",
+        search_provider: "Arama Sağlayıcısı",
+        max_results: "Maksimum Sonuç",
+        collection_id: "Koleksiyon",
+        collection_name: "Koleksiyon Adı",
+        provider_id: "Sağlayıcı",
+        url: "URL",
+        query: "Sorgu",
+        routes: "Yönlendirme Kuralları",
+        agent_id: "Ajan",
+        memory_type: "Bellek Türü",
+        top_k: "En İyi K Sonuç",
+        score_threshold: "Puan Eşiği",
+        description: "Açıklama",
+        name: "Aşama Adı",
+        stage_name: "Aşama Adı",
+        condition: "Devam Koşulu",
+        max_iterations: "Maksimum Yineleme",
+        operator: "İşleç",
+        match_text: "Eşleşme Metni",
+        case_sensitive: "Büyük/Küçük Harf Duyarlı",
+        strip_match: "Eşleşme Metnini Kaldır",
+        default_route: "Varsayılan Dal",
+        true_result: "Doğru",
+        false_result: "Yanlış",
+        reflection_prompt: "Öz Değerlendirme İstemi",
+        supervisor_prompt: "Yönetici İstemi",
+        sub_agents: "Alt Ajanlar",
+        strategy: "Strateji",
+        text: "Metin",
+        file: "Dosya",
+        model: "Model",
+        depth: "Derinlik",
+        entity_type: "Varlık Türü",
+        limit: "Limit",
+        max_tokens: "Maksimum Belirteç (Token)",
+        config_id: "E-posta Yapılandırması",
+        datasource_id: "Veri Kaynağı",
+        collection: "Koleksiyon",
+        threshold: "Puan Eşiği",
+        provider: "Sağlayıcı",
+        urls: "URL'ler",
+      },
+      multiselect: {
+        add: "Ekle...",
+        noMoreOptions: "Seçenek kalmadı",
+        sourceUnavailable: "Bu seçenek kaynağı şu anda kullanılamıyor.",
+        selectProviderFirst: "Önce bir sağlayıcı seçin",
+      },
+      options: {
+        select: "{{field}} seçin...",
+        noOptions: "Kullanılabilir {{field}} bulunamadı",
+        sourceUnavailable: "Seçenek kaynağı kullanılamıyor",
+      },
+      prompt: {
+        expand: "İstem Düzenleyiciyi Genişlet",
+        cancel: "İptal",
+        apply: "Uygula",
+      },
+      slider: {
+        min: "Min",
+        max: "Maks",
+      },
+      table: {
+        addRow: "Satır Ekle",
+        removeRow: "Satırı Kaldır",
+        choose: "Seçin...",
+      },
+    },
   },
 } as const;
 

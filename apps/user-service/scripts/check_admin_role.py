@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from src.core.database.engine import get_session_factory
 from src.core.database.models import CompositeRoleModel
+from src.core.permissions.admin_roles import is_admin_role_name
 
 
 async def check_admin_role():
@@ -28,7 +29,7 @@ async def check_admin_role():
             return
 
         print(f"✓ Found role: {role.name}")
-        print(f"  Is admin: {role.is_admin}")
+        print(f"  Is admin: {is_admin_role_name(role.name)}")
         print(f"  Is builtin: {role.is_builtin}")
         print(f"  Permissions count: {len(role.permissions)}")
         print("  First 20 permissions:")

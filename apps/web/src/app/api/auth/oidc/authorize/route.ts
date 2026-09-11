@@ -57,7 +57,8 @@ export const GET = async (request: NextRequest) => {
   return new NextResponse(body, {
     status: response.status,
     headers: {
-      "content-type": response.headers.get("content-type") || "application/json",
+      "content-type":
+        response.headers.get("content-type") || "application/json",
     },
   });
 };

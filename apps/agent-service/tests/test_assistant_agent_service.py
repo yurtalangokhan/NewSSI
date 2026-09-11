@@ -63,7 +63,7 @@ async def test_get_graph_and_config_preserves_dynamic_persona_owner_id(
 
     monkeypatch.setattr("repository.persona_repository.PersonaDB.get", fake_get)
     monkeypatch.setattr(
-        "agents.storage.repository.AgentDefinitionRepository",
+        "repository.agent_definition_repository.AgentDefinitionRepository",
         FakeDefinitionRepository,
     )
 

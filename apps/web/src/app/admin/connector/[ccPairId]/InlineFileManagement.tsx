@@ -19,7 +19,7 @@ import {
 import { toast } from "@/hooks/useToast";
 import useSWR from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
-import { ThreeDotsLoader } from "@/components/Loading";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import Modal from "@/refresh-components/Modal";
 import Text from "@/refresh-components/texts/Text";
 import {
@@ -146,8 +146,15 @@ export default function InlineFileManagement({
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-12">
-        <ThreeDotsLoader />
+      <div className="py-2">
+        <TableSkeleton
+          rowCount={3}
+          columns={[
+            { type: "icon-text", width: "w-48", headerWidth: "w-24" },
+            { type: "text", width: "w-24", headerWidth: "w-16" },
+            { type: "actions", width: "w-16", headerWidth: "w-16" },
+          ]}
+        />
       </div>
     );
   }

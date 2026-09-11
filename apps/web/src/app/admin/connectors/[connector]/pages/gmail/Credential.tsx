@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import Button from "@/refresh-components/buttons/Button";
 import { toast } from "@/hooks/useToast";
 import React, { useState, useEffect } from "react";
@@ -28,6 +29,7 @@ import { FiFile, FiCheck, FiLink, FiAlertTriangle } from "react-icons/fi";
 import { cn, truncateString } from "@/lib/utils";
 import { Section } from "@/layouts/general-layouts";
 import { useTranslation } from "react-i18next";
+import Text from "@/refresh-components/texts/Text";
 
 type GmailCredentialJsonTypes = "authorized_user" | "service_account";
 
@@ -71,7 +73,7 @@ const GmailCredentialUpload = ({ onSuccess }: { onSuccess?: () => void }) => {
       }
 
       if (credentialFileType === "authorized_user") {
-        const response = await fetch(
+        const response = await authenticatedFetch(
           "/api/manage/admin/connector/gmail/app-credential",
           {
             method: "PUT",
@@ -96,7 +98,7 @@ const GmailCredentialUpload = ({ onSuccess }: { onSuccess?: () => void }) => {
       }
 
       if (credentialFileType === "service_account") {
-        const response = await fetch(
+        const response = await authenticatedFetch(
           "/api/manage/admin/connector/gmail/service-account-key",
           {
             method: "PUT",
@@ -267,9 +269,9 @@ export const GmailJsonUploadSection = ({
       <div>
         <div className="flex items-start py-3 px-4 bg-yellow-50/30 dark:bg-yellow-900/5 rounded">
           <FiAlertTriangle className="text-yellow-500 h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-          <p className="text-sm">
+          <Text as="p" className="text-sm">
             {t("googleCredentials.curatorsCannotSetupGmail")}
-          </p>
+          </Text>
         </div>
       </div>
     );
@@ -277,7 +279,9 @@ export const GmailJsonUploadSection = ({
 
   return (
     <div>
-      <p className="text-sm mb-3">{t("googleCredentials.connectGmailDesc")}</p>
+      <Text as="p" className="text-sm mb-3">
+        {t("googleCredentials.connectGmailDesc")}
+      </Text>
       <div className="mb-4">
         <a
           className="text-primary hover:text-primary/80 flex items-center gap-1 text-sm"
@@ -329,7 +333,7 @@ export const GmailJsonUploadSection = ({
                       ? "/api/manage/admin/connector/gmail/service-account-key"
                       : "/api/manage/admin/connector/gmail/app-credential";
 
-                  const response = await fetch(endpoint, {
+                  const response = await authenticatedFetch(endpoint, {
                     method: "DELETE",
                   });
 
@@ -475,9 +479,12 @@ export const GmailAuthSection = ({
               <span className="font-medium block">
                 {t("googleCredentials.authenticationComplete")}
               </span>
-              <p className="text-sm mt-1 text-text-500 dark:text-text-400 break-words">
+              <Text
+                as="p"
+                className="text-sm mt-1 text-text-500 dark:text-text-400 break-words"
+              >
                 {t("googleCredentials.gmailAuthenticatedDesc")}
-              </p>
+              </Text>
             </div>
           </div>
           <Section flexDirection="row" justifyContent="between" height="fit">
@@ -521,9 +528,9 @@ export const GmailAuthSection = ({
         <div className="mt-4">
           <div className="flex items-start py-3 px-4 bg-yellow-50/30 dark:bg-yellow-900/5 rounded">
             <FiAlertTriangle className="text-yellow-500 h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-            <p className="text-sm">
+            <Text as="p" className="text-sm">
               {t("googleCredentials.completeStep1Gmail")}
-            </p>
+            </Text>
           </div>
         </div>
       </div>
@@ -546,7 +553,7 @@ export const GmailAuthSection = ({
             onSubmit={async (values, formikHelpers) => {
               formikHelpers.setSubmitting(true);
               try {
-                const response = await fetch(
+                const response = await authenticatedFetch(
                   "/api/manage/admin/connector/gmail/service-account-credential",
                   {
                     method: "PUT",
@@ -607,7 +614,9 @@ export const GmailAuthSection = ({
     return (
       <div>
         <div className="bg-background-50/30 dark:bg-background-900/20 rounded mb-4">
-          <p className="text-sm">{t("googleCredentials.gmailOAuthDesc")}</p>
+          <Text as="p" className="text-sm">
+            {t("googleCredentials.gmailOAuthDesc")}
+          </Text>
         </div>
         <Button
           disabled={isAuthenticating}

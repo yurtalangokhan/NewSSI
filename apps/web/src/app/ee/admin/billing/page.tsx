@@ -27,6 +27,10 @@ export default function page() {
       <SettingsLayouts.Header
         icon={SvgCreditCard}
         title={t("billing.pageTitle")}
+        description={t("billing.description", {
+          defaultValue:
+            "Manage your subscription plan, seat licenses, and billing details.",
+        })}
         separator
       />
       <SettingsLayouts.Body>

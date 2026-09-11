@@ -19,10 +19,6 @@ function authenticatedFetchMock() {
   return authenticatedFetch as jest.MockedFunction<typeof authenticatedFetch>;
 }
 
-function fetchMock() {
-  return global.fetch as jest.MockedFunction<typeof fetch>;
-}
-
 describe("executeBuiltInTool", () => {
   const originalLanguage = i18n.language;
 
@@ -44,7 +40,7 @@ describe("executeBuiltInTool", () => {
       value: "en",
       configurable: true,
     });
-    fetchMock().mockResolvedValueOnce(
+    authenticatedFetchMock().mockResolvedValueOnce(
       new Response(JSON.stringify({ result: "3", error: null }), {
         status: 200,
       })
@@ -52,7 +48,7 @@ describe("executeBuiltInTool", () => {
 
     await executeBuiltInTool("calculate", { expression: "1+2" });
 
-    const [, init] = fetchMock().mock.calls[0]!;
+    const [, init] = authenticatedFetchMock().mock.calls[0]!;
     expect((init?.headers as Record<string, string>)["X-Language"]).toBe("en");
   });
 
@@ -97,16 +93,14 @@ describe("executeBuiltInTool", () => {
   });
 
   it("sends idempotency keys for built-in MCP tool execution", async () => {
-    jest
-      .spyOn(global, "fetch")
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ result: "ok" }), { status: 200 })
-      );
+    authenticatedFetchMock().mockResolvedValueOnce(
+      new Response(JSON.stringify({ result: "ok" }), { status: 200 })
+    );
 
     await executeBuiltInTool("read_file", { path: "/tmp/example.txt" });
 
     expect(createIdempotencyKey).toHaveBeenCalledTimes(1);
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(authenticatedFetchMock()).toHaveBeenCalledWith(
       "/api/proxy/mcp/execute",
       expect.objectContaining({
         method: "POST",

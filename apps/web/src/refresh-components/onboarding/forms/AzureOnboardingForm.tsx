@@ -197,7 +197,9 @@ export function AzureOnboardingForm({
   );
 
   const validationSchema = Yup.object().shape({
-    [FIELD_API_KEY]: Yup.string().required(t("llmOnboardingForms.apiKeyRequired")),
+    [FIELD_API_KEY]: Yup.string().required(
+      t("llmOnboardingForms.apiKeyRequired")
+    ),
     [FIELD_TARGET_URI]: Yup.string()
       .required(t("llmOnboardingForms.targetUriRequired"))
       .test(
@@ -205,7 +207,9 @@ export function AzureOnboardingForm({
         t("llmOnboardingForms.targetUriValidation"),
         (value) => (value ? isValidAzureTargetUri(value) : false)
       ),
-    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(t("llmOnboardingForms.modelNameRequired")),
+    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(
+      t("llmOnboardingForms.modelNameRequired")
+    ),
   });
 
   const icon = () => (

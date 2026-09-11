@@ -2,7 +2,7 @@
 
 import BackButton from "@/refresh-components/buttons/BackButton";
 import { ErrorCallout } from "@/components/ErrorCallout";
-import { ThreeDotsLoader } from "@/components/Loading";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import { SourceIcon } from "@/components/SourceIcon";
 import { CCPairStatus, PermissionSyncStatus } from "@/components/Status";
 import { toast } from "@/hooks/useToast";
@@ -50,7 +50,6 @@ import {
 import IndexAttemptErrorsModal from "./IndexAttemptErrorsModal";
 import usePaginatedFetch from "@/hooks/usePaginatedFetch";
 import { IndexAttemptSnapshot } from "@/lib/types";
-import { Spinner } from "@/components/Spinner";
 import { Callout } from "@/components/ui/callout";
 import { Card } from "@/components/ui/card";
 import {
@@ -340,7 +339,26 @@ function Main({ ccPairId }: { ccPairId: number }) {
   };
 
   if (isLoadingCCPair || isLoadingIndexAttempts) {
-    return <ThreeDotsLoader />;
+    return (
+      <div className="flex flex-col gap-6 p-6">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-08 bg-background-tint-02 animate-pulse shrink-0" />
+          <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+            <div className="h-5 w-48 rounded bg-background-tint-02 animate-pulse" />
+            <div className="h-3.5 w-32 rounded bg-background-tint-02 animate-pulse opacity-70" />
+          </div>
+        </div>
+        <TableSkeleton
+          rowCount={4}
+          columns={[
+            { type: "text", width: "w-36", headerWidth: "w-20" },
+            { type: "badge", width: "w-24", headerWidth: "w-16" },
+            { type: "text", width: "w-24", headerWidth: "w-16" },
+            { type: "text", width: "w-24", headerWidth: "w-16" },
+          ]}
+        />
+      </div>
+    );
   }
 
   if (!ccPair || (!hasLoadedOnce && ccPairError)) {
@@ -366,7 +384,6 @@ function Main({ ccPairId }: { ccPairId: number }) {
 
   return (
     <>
-      {showIsResolvingKickoffLoader && !isResolvingErrors && <Spinner />}
       {ReIndexModal}
       {ConfirmModal}
 

@@ -137,7 +137,9 @@ export const SlackTokensForm = ({
                 !values.name
               }
             >
-              {isUpdate ? t("admin.bots.updateButton") : t("admin.bots.createButton")}
+              {isUpdate
+                ? t("admin.bots.updateButton")
+                : t("admin.bots.createButton")}
             </Button>
           </div>
         </Form>

@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import logging
 import time
 from dataclasses import dataclass
 
 import httpx
 
 from .api_versioning import USER_SERVICE_API_PREFIX
+from .observability import get_logger
 from .settings import get_settings
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _PERMISSION_CACHE: dict[str, tuple[float, list[str]]] = {}
 

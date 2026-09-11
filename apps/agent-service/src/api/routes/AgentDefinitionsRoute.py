@@ -5,6 +5,7 @@ Endpoints:
   GET    /agent-definitions                    - List all agent definitions
   POST   /agent-definitions/validate-composition     - Validate agent composition
   POST   /agent-definitions/available-for-composition - List agents for composition (with schema filter)
+  POST   /agent-definitions/validate-flow            - Validate a FlowSpec without persisting
   GET    /agent-definitions/{id}/composition-info    - Get hierarchical composition structure
   PUT    /agent-definitions/{id}/sub-agents          - Update sub-agents with validation
   GET    /agent-definitions/{id}               - Get a single agent definition
@@ -18,33 +19,36 @@ IMPORTANT: Route order matters! Specific literal routes MUST come before generic
 - Metadata routes: schemas/list, brains/list, memory/list
 - CRUD routes: POST "", GET ""
 - Specific composition routes: validate-composition, available-for-composition
+- Flow routes: validate-flow
 - Routes with path params but specific: {id}/composition-info, {id}/sub-agents
 - Generic routes: {id}, {id}, {id}
 """
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from i18n import t
+from pydantic import ValidationError
 
-from agents.storage.repository import AgentDefinitionRepository
 from api.dependencies import require_permission, require_user
+from core.logger import get_logger
 from domain.agents.service import (
     AgentDefinitionService,
     BrainTypeService,
     GraphSchemaService,
     MemoryTypeService,
 )
+from domain.flows.agent_expansion import AgentExpansionError, expand_agent_definition
 from models.agent_definitions import (
     CreateAgentDefinitionRequest,
     UpdateAgentDefinitionRequest,
 )
+from repository.agent_definition_repository import AgentDefinitionRepository
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(
     prefix="/agent-definitions",
@@ -87,6 +91,28 @@ def _get_service() -> AgentDefinitionService:
     return AgentDefinitionService(AgentDefinitionRepository())
 
 
+def _serialize_definition_for_composition(
+    d, depth: int, persona_names: dict[int, str]
+) -> dict[str, Any]:
+    """Serialize an agent definition for the composition picker.
+
+    Prefers the linked persona's real display name over the internal
+    ``AgentDefinitionModel.name`` placeholder (e.g. "persona-15"), and
+    includes a compact ``preview`` string for hover tooltips.
+    """
+    from domain.agents.service import build_agent_preview_text
+
+    display_name = persona_names.get(d.persona_id, d.name) if d.persona_id else d.name
+    return {
+        "id": str(d.id),
+        "name": display_name,
+        "graph_schema": d.graph_schema,
+        "status": "active" if d.is_active else "inactive",
+        "depth": depth,
+        "preview": build_agent_preview_text(d),
+    }
+
+
 def _normalize_schema_name(schema: str | None) -> str | None:
     """Normalize schema names for case-insensitive comparisons."""
     if not schema:
@@ -98,7 +124,15 @@ def _filter_available_agents_by_schema(
     agents: list[dict[str, Any]],
     schema: str | None,
 ) -> list[dict[str, Any]]:
-    """Filter available agents by target composition schema."""
+    """Filter available agents by target composition schema.
+
+    Flow-backed agents are excluded unconditionally, even when no schema
+    filter is requested — flows are not composable as sub-agents (design
+    spec 5.4). This keeps classic-agent composition acyclic by construction:
+    a flow can reference a classic agent, never the reverse.
+    """
+    agents = [a for a in agents if str(a.get("graph_schema", "")).upper() != "FLOW"]
+
     normalized_schema = _normalize_schema_name(schema)
     if not normalized_schema:
         return agents
@@ -152,7 +186,7 @@ async def list_memory_types(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_agent_definition(
     body: CreateAgentDefinitionRequest,
-    _user=Depends(require_permission("agent:create")),
+    user=Depends(require_permission("agent:create")),
 ) -> dict[str, Any]:
     """Create a new agent definition."""
     service = _get_service()
@@ -179,6 +213,16 @@ async def create_agent_definition(
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    if body.graph_schema == "flow":
+        from domain.flows.audit import get_flow_audit_emitter
+
+        await get_flow_audit_emitter().emit(
+            "flow:created",
+            definition.id,
+            user=user,
+            details={"node_count": 0, "edge_count": 0},
+        )
 
     return _definition_to_dict(definition)
 
@@ -285,11 +329,14 @@ async def get_available_for_composition(
             "name": str,
             "graph_schema": str,
             "status": "active" | "inactive",
-            "depth": int
+            "depth": int,
+            "preview": str
         }
     ]
     """
     try:
+        from core.db.repositories.persona_repo import PersonaRepository
+
         schema = body.get("schema")
         exclude_ids_raw = body.get("exclude_ids", [])
         exclude_ids = set()
@@ -304,6 +351,7 @@ async def get_available_for_composition(
 
         # Get all active agents
         definitions = await service.list_agent_definitions(active_only=True)
+        persona_names = {p["id"]: p["name"] for p in await PersonaRepository().list_all()}
 
         result = []
         for d in definitions:
@@ -318,15 +366,7 @@ async def get_available_for_composition(
             except Exception:
                 depth = 0
 
-            result.append(
-                {
-                    "id": str(d.id),
-                    "name": d.name,
-                    "graph_schema": d.graph_schema,
-                    "status": "active" if d.is_active else "inactive",
-                    "depth": depth,
-                }
-            )
+            result.append(_serialize_definition_for_composition(d, depth, persona_names))
 
         # Filter by schema if provided.
         # SUPERVISOR: only tool-capable single agents (REACT, PLAN_EXECUTE).
@@ -338,6 +378,43 @@ async def get_available_for_composition(
     except Exception as e:
         logger.error(f"Available agents error: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+# =========================================================================
+# FLOW VALIDATION (specific literal path - must come BEFORE generic /{id})
+# =========================================================================
+
+
+@router.post("/validate-flow")
+async def validate_flow(
+    body: dict[str, Any],
+    user=Depends(require_permission("flow:read")),
+) -> dict[str, Any]:
+    """
+    Validate a FlowSpec without persisting it.
+
+    Request body: {"flow_spec": <FlowSpec JSON>}
+
+    Returns: {"valid": bool, "errors": [{code, message, node_id, edge_id}], "warnings": [...]}
+    """
+    from domain.flows.resolvers import ResolverContext
+    from domain.flows.service import FlowService
+    from models.flows import FlowSpec
+
+    try:
+        spec = FlowSpec.model_validate(body.get("flow_spec", body))
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    service = FlowService()
+    context = ResolverContext(user_id=user.user_id, access_token=user.access_token)
+    result = await service.validate_flow(spec, context)
+
+    return {
+        "valid": result.valid,
+        "errors": [e.to_dict() for e in result.errors],
+        "warnings": [w.to_dict() for w in result.warnings],
+    }
 
 
 # =========================================================================
@@ -435,6 +512,30 @@ async def update_sub_agents(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
+@router.post("/{definition_id}/expand")
+async def expand_agent_definition_route(
+    definition_id: UUID,
+    _user=Depends(require_permission("agent:create")),
+) -> dict[str, Any]:
+    """Materialize an existing agent onto a flow canvas as separate
+    model/tools/memory/input nodes (single-brain and Pipeline sources) or a
+    detached Supervisor node (Supervisor sources) — design spec
+    .tmp/2026-08-27-agent-flow-expansion-design.md §7.3.
+    """
+    try:
+        nodes, edges = await expand_agent_definition(definition_id, AgentDefinitionRepository())
+    except AgentExpansionError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Agent expansion error: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+    return {
+        "nodes": [n.model_dump(by_alias=True) for n in nodes],
+        "edges": [e.model_dump(by_alias=True) for e in edges],
+    }
+
+
 # =========================================================================
 # GENERIC CRUD (get, update, delete by ID - must come LAST)
 # =========================================================================
@@ -488,14 +589,40 @@ async def update_agent_definition(
 @router.delete("/{definition_id}", status_code=status.HTTP_200_OK)
 async def delete_agent_definition(
     definition_id: UUID,
-    _user=Depends(require_permission("agent:delete")),
+    user=Depends(require_permission("agent:delete")),
 ) -> dict[str, str]:
     """Delete an agent definition."""
     service = _get_service()
+
+    existing_definition = await service.get_agent_definition(definition_id)
+    is_flow_backed = bool(existing_definition and existing_definition.graph_schema == "flow")
+
+    last_version_no = None
+    if is_flow_backed:
+        # agent_flow_versions cascades on delete (Task 14) — the version
+        # history is gone the moment delete_agent_definition succeeds below,
+        # so the last version number must be read before that call.
+        from repository.flow_version_repository import FlowVersionRepository
+
+        versions = await FlowVersionRepository().list_versions(definition_id)
+        if versions:
+            last_version_no = versions[0].version_no  # list_versions orders newest first
+
     deleted = await service.delete_agent_definition(definition_id)
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=t("agent.definition_not_found", definition_id=definition_id),
         )
+
+    if is_flow_backed:
+        from domain.flows.audit import get_flow_audit_emitter
+
+        await get_flow_audit_emitter().emit(
+            "flow:deleted",
+            definition_id,
+            user=user,
+            details={"last_version_no": last_version_no},
+        )
+
     return {"status": "deleted", "id": str(definition_id)}

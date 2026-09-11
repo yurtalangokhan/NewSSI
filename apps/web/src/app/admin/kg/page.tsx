@@ -23,12 +23,12 @@ import {
 import { useAirbyteDatasources } from "@/lib/airbyte";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
+import AdminOverviewPanelSkeleton from "@/refresh-components/skeletons/AdminOverviewPanelSkeleton";
 import GraphBuildPanel from "@/app/admin/kg/components/GraphBuildPanel";
 import GraphSearchPanel from "@/app/admin/kg/components/GraphSearchPanel";
 import GraphExplorer from "@/app/admin/kg/components/GraphExplorer";
 import GraphStatsCard from "@/app/admin/kg/components/GraphStatsCard";
 import EntityPreview from "@/app/admin/kg/components/EntityPreview";
-import { ThreeDotsLoader } from "@/components/Loading";
 import { SvgActivity, SvgSearch, SvgNetworkGraph } from "@opal/icons";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import { useTranslation } from "react-i18next";
@@ -103,8 +103,10 @@ function CollectionSelector({
 
   if (isLoading) {
     return (
-      <CardSection>
-        <ThreeDotsLoader />
+      <CardSection className="flex flex-col gap-3">
+        <div className="h-5 w-36 rounded bg-background-tint-02 animate-pulse" />
+        <div className="h-3.5 w-72 rounded bg-background-tint-02 animate-pulse opacity-70" />
+        <div className="h-10 w-full max-w-sm rounded-08 bg-background-neutral-01 border border-border-01 animate-pulse" />
       </CardSection>
     );
   }
@@ -423,8 +425,9 @@ function Main({
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
   );
-  const { collections } = useCollections();
-  const { datasources } = useAirbyteDatasources();
+  const { collections, isLoading: isCollectionsLoading } = useCollections();
+  const { datasources, isLoading: isDatasourcesLoading } =
+    useAirbyteDatasources();
   const { graphCollections } = useGraphCollections();
 
   // Derived from the shared SWR-backed `graphCollections` list (not local
@@ -487,11 +490,59 @@ function Main({
   const handleBuildComplete = useCallback(() => {}, []);
 
   const isExplorer = activeTab === "explorer";
+  const isDataLoading = isCollectionsLoading || isDatasourcesLoading;
+
+  if (isDataLoading) {
+    return (
+      <div className="flex flex-col gap-y-6 mx-auto w-full">
+        <AdminOverviewPanel
+          icon={route.icon}
+          isLoading={true}
+          title={t("admin.kg.workspaceTitle")}
+          description={t("admin.kg.workspaceDescription")}
+        />
+
+        <div className="h-4 w-80 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+
+        {/* Collection Selector Skeleton */}
+        <CardSection className="flex flex-col gap-3">
+          <div className="h-5 w-36 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+          <div className="h-3.5 w-72 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+          <div className="h-10 w-full max-w-sm rounded-08 bg-background-neutral-01 border border-border-01 animate-pulse" />
+        </CardSection>
+
+        {/* Tabs Skeleton */}
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-2 border-b border-border-01 pb-2">
+            <div className="h-9 w-36 rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+            <div className="h-9 w-28 rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+            <div className="h-9 w-28 rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+          </div>
+
+          {/* Tab Panel Skeleton */}
+          <CardSection className="flex flex-col gap-6 p-6">
+            <div className="flex flex-col gap-2">
+              <div className="h-5 w-48 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+              <div className="h-3.5 w-96 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="h-24 rounded-08 border border-border-01 bg-background-neutral-01 animate-pulse" />
+              <div className="h-24 rounded-08 border border-border-01 bg-background-neutral-01 animate-pulse" />
+            </div>
+            <div className="flex justify-end">
+              <div className="h-9 w-32 rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+            </div>
+          </CardSection>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-y-6 mx-auto w-full">
       <AdminOverviewPanel
         icon={route.icon}
+        isLoading={false}
         title={t("admin.kg.workspaceTitle")}
         description={t("admin.kg.workspaceDescription")}
         metrics={[
@@ -513,13 +564,6 @@ function Main({
           {
             label: t("admin.kg.dataSourcesMetricLabel"),
             value: String(datasources.length),
-          },
-        ]}
-        actions={[
-          {
-            label: t("admin.navigation.routes.documentProcessing.sidebar"),
-            href: ADMIN_PATHS.DOCUMENT_PROCESSING,
-            primary: true,
           },
         ]}
       />
@@ -594,7 +638,35 @@ export default function Page() {
   const [activeTab, setActiveTab] = useState("build");
   const isExplorer = activeTab === "explorer";
 
-  if (isLoading) return <></>;
+  if (isLoading) {
+    return (
+      <SettingsLayouts.Root width="full">
+        <div
+          className="w-full mx-auto"
+          style={{
+            maxWidth: isExplorer ? "100%" : "54.5rem",
+            transition: "max-width 500ms ease-in-out",
+          }}
+        >
+          <SettingsLayouts.Header
+            icon={route.icon}
+            title={t(route.titleKey || "", { defaultValue: route.title })}
+            description={t("admin.kg.pageDescription", {
+              defaultValue:
+                "Build, inspect, and search entity graphs across your indexed knowledge sources.",
+            })}
+            separator
+          />
+          <SettingsLayouts.Body>
+            <div className="flex flex-col gap-y-6 mx-auto w-full">
+              <AdminOverviewPanelSkeleton metricsCount={4} />
+              <div className="h-64 rounded-08 border border-border-01 bg-background-neutral-01 animate-pulse" />
+            </div>
+          </SettingsLayouts.Body>
+        </div>
+      </SettingsLayouts.Root>
+    );
+  }
   if (!kgExposed) redirect("/");
 
   return (

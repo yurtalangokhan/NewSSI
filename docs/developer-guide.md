@@ -15,6 +15,7 @@ agenticai/
 │   │   │   ├── core/              # Config, exceptions, DB engine
 │   │   │   ├── agents/            # LangGraph agent definitions
 │   │   │   └── app.py             # FastAPI app factory
+│   │   ├── docs/                  # Service-local docs
 │   │   ├── tests/
 │   │   └── pyproject.toml
 │   │
@@ -27,6 +28,7 @@ agenticai/
 │   │   │   ├── schema/            # Pydantic models
 │   │   │   ├── core/              # Config, DB, exceptions
 │   │   │   └── main.py            # FastAPI app entrypoint
+│   │   ├── docs/                  # Service-local docs
 │   │   ├── tests/
 │   │   └── pyproject.toml
 │   │
@@ -37,6 +39,7 @@ agenticai/
 │   │   │   ├── database/          # PG + Neo4j + Milvus access
 │   │   │   ├── models/            # Pydantic models
 │   │   │   └── server.py          # FastAPI app entrypoint
+│   │   ├── docs/                  # Service-local docs
 │   │   ├── tests/
 │   │   └── pyproject.toml
 │   │
@@ -44,8 +47,9 @@ agenticai/
 │   │   ├── server.py              # FastMCP entrypoint
 │   │   ├── src/
 │   │   │   ├── core/              # BaseToolCategory, Registry, Auth
-│   │   │   ├── tools/             # 14 tool category plugins
+│   │   │   ├── tools/             # Tool category plugins
 │   │   │   └── models/            # Permission catalog
+│   │   ├── docs/                  # Service-local docs
 │   │   └── pyproject.toml
 │   │
 │   └── web/                        # Next.js 16 frontend
@@ -59,6 +63,7 @@ agenticai/
 │       │   ├── providers/         # React context providers
 │       │   └── layouts/           # Layout components
 │       ├── lib/opal/              # @onyx/opal workspace (shared components lib)
+│       ├── docs/                  # Service-local docs
 │       ├── tests/
 │       └── tailwind-themes/       # Custom color tokens (no Tailwind defaults)
 │
@@ -75,8 +80,8 @@ agenticai/
 │   ├── env_manager.py             # Env file management
 │   └── install-git-hooks.sh       # Hook installation
 │
-├── docs/                           # Documentation
-│   ├── api/                       # API endpoint docs per service
+├── docs/                           # Global documentation only
+│   ├── README.md                  # Documentation routing map
 │   ├── architecture-overview.md   # System diagrams (Mermaid)
 │   └── development-environment.md # Env setup and startup
 │
@@ -300,7 +305,8 @@ refresh, logout, and OIDC routes.
 
 ### Adding a new agent (agent-service)
 
-The canonical runtime is documented in `docs/agent-composition.md`.
+The canonical runtime is documented in
+`apps/agent-service/docs/agent-composition.md`.
 
 1. Add or reuse component keys in `src/agent_composition/domain/component_catalog.py`.
 2. Define built-in defaults in `src/agent_composition/application/recipes.py`, or persist

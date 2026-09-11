@@ -203,18 +203,21 @@ function Main() {
 
 export default function Page() {
   const { t } = useTranslation();
-  const { data: globalLimits } = useSWR<TokenRateLimit[]>(
-    GLOBAL_TOKEN_FETCH_URL,
-    errorHandlingFetcher
-  );
-  const { data: userLimits } = useSWR<TokenRateLimit[]>(
-    USER_TOKEN_FETCH_URL,
-    errorHandlingFetcher
-  );
-  const { data: groupLimits } = useSWR<Record<string, TokenRateLimit[]>>(
-    USER_GROUP_FETCH_URL,
-    errorHandlingFetcher
-  );
+  const { data: globalLimits, isLoading: isGlobalLimitsLoading } = useSWR<
+    TokenRateLimit[]
+  >(GLOBAL_TOKEN_FETCH_URL, errorHandlingFetcher);
+  const { data: userLimits, isLoading: isUserLimitsLoading } = useSWR<
+    TokenRateLimit[]
+  >(USER_TOKEN_FETCH_URL, errorHandlingFetcher);
+  const { data: groupLimits, isLoading: isGroupLimitsLoading } = useSWR<
+    Record<string, TokenRateLimit[]>
+  >(USER_GROUP_FETCH_URL, errorHandlingFetcher);
+  const isOverviewLoading =
+    isGlobalLimitsLoading ||
+    isUserLimitsLoading ||
+    isGroupLimitsLoading ||
+    globalLimits === undefined ||
+    userLimits === undefined;
   const groupLimitCount = groupLimits
     ? Object.values(groupLimits).reduce((sum, limits) => sum + limits.length, 0)
     : undefined;
@@ -227,12 +230,18 @@ export default function Page() {
             ? t(route.titleKey, { defaultValue: route.title })
             : route.title
         }
+        description={
+          route.descriptionKey
+            ? t(route.descriptionKey, { defaultValue: route.description })
+            : route.description
+        }
         icon={route.icon}
         separator
       />
       <SettingsLayouts.Body>
         <AdminOverviewPanel
           icon={route.icon}
+          isLoading={isOverviewLoading}
           title={t("admin.tokenRateLimits.workspaceTitle", {
             defaultValue: "Token governance workspace",
           })}
@@ -265,21 +274,6 @@ export default function Page() {
                 groupLimitCount === undefined
                   ? "..."
                   : groupLimitCount.toLocaleString(),
-            },
-          ]}
-          actions={[
-            {
-              label: t("admin.navigation.routes.roles.sidebar", {
-                defaultValue: "Roles",
-              }),
-              href: ADMIN_PATHS.ROLES,
-            },
-            {
-              label: t("admin.navigation.routes.users.sidebar", {
-                defaultValue: "Users",
-              }),
-              href: ADMIN_PATHS.USERS,
-              primary: true,
             },
           ]}
         />

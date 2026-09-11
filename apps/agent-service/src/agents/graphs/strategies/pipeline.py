@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
 from langchain_core.messages import SystemMessage
@@ -10,12 +9,13 @@ from langgraph.prebuilt import create_react_agent
 
 from agents.graphs.schemas import GraphSchemaType
 from agents.graphs.strategies.base import GraphSchemaStrategy
+from core.logger import get_logger
 
 if TYPE_CHECKING:
     from langgraph.graph.state import CompiledStateGraph
     from langgraph.pregel import Pregel
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class PipelineGraphStrategy(GraphSchemaStrategy):

@@ -151,6 +151,7 @@ export interface AppInputBarProps {
   tabReadingEnabled?: boolean;
   currentTabUrl?: string | null;
   onToggleTabReading?: () => void;
+  hideLlmPicker?: boolean;
 }
 
 const AppInputBar = React.memo(
@@ -181,6 +182,7 @@ const AppInputBar = React.memo(
     tabReadingEnabled,
     currentTabUrl,
     onToggleTabReading,
+    hideLlmPicker = false,
   }: AppInputBarProps) => {
     // Internal message state - kept local to avoid parent re-renders on every keystroke
     const [message, setMessage] = useState(initialMessage);
@@ -845,19 +847,21 @@ const AppInputBar = React.memo(
               {/* Bottom right controls */}
               <div className="flex flex-row items-center gap-1">
                 {/* Unified selector for agents + models */}
-                <div
-                  data-testid="AppInputBar/llm-popover-trigger"
-                  className={cn(controlsLoading && "invisible")}
-                >
-                  <LLMPopover
-                    llmManager={llmManager}
-                    selectedAgent={selectedAgent}
-                    agents={agents}
-                    onSwitchAgent={onSwitchAgent}
-                    requiresImageInput={hasImageFiles}
-                    disabled={disabled}
-                  />
-                </div>
+                {!hideLlmPicker && (
+                  <div
+                    data-testid="AppInputBar/llm-popover-trigger"
+                    className={cn(controlsLoading && "invisible")}
+                  >
+                    <LLMPopover
+                      llmManager={llmManager}
+                      selectedAgent={selectedAgent}
+                      agents={agents}
+                      onSwitchAgent={onSwitchAgent}
+                      requiresImageInput={hasImageFiles}
+                      disabled={disabled}
+                    />
+                  </div>
+                )}
 
                 {/* Submit button */}
                 <Button

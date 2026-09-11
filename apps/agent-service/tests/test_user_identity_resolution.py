@@ -1,30 +1,8 @@
 import pytest
 from fastapi import HTTPException
-from starlette.requests import Request
 
 from api.routes.ChatRoute import _resolve_effective_chat_user_id
 from service.AuthService import AuthenticatedUser, AuthService, get_primary_user_id
-
-
-def _build_request() -> Request:
-    async def receive() -> dict:
-        return {"type": "http.request", "body": b"", "more_body": False}
-
-    return Request({"type": "http", "method": "GET", "headers": []}, receive)
-
-
-def _build_request_with_access_token(token: str) -> Request:
-    async def receive() -> dict:
-        return {"type": "http.request", "body": b"", "more_body": False}
-
-    return Request(
-        {
-            "type": "http",
-            "method": "GET",
-            "headers": [(b"cookie", f"access_token={token}".encode())],
-        },
-        receive,
-    )
 
 
 def test_get_primary_user_id_prefers_identity_primary() -> None:
@@ -70,7 +48,7 @@ async def test_resolve_user_identity_fetches_local_user_when_keycloak_sub_matche
     )
 
     identity = await AuthService().resolve_user_identity(
-        request=_build_request_with_access_token(token),
+        token=token,
         user_id=keycloak_id,
         user=AuthenticatedUser(
             user_id=keycloak_id,

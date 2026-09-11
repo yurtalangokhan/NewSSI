@@ -6,7 +6,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  return proxyToBackend(request, `/api/admin/user-providers/${id}`, { method: "PUT" });
+  return proxyToBackend(request, `/api/admin/user-providers/${id}`, {
+    method: "PUT",
+  });
 }
 
 export async function DELETE(
@@ -14,5 +16,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  return proxyToBackend(request, `/api/admin/user-providers/${id}`, { method: "DELETE" });
+  return proxyToBackend(request, `/api/admin/user-providers/${id}`, {
+    method: "DELETE",
+  });
 }

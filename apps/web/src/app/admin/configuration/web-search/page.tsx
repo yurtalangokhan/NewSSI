@@ -7,9 +7,13 @@ import Text from "@/refresh-components/texts/Text";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { Content } from "@opal/layouts";
 import useSWR from "swr";
-import { errorHandlingFetcher, FetchError } from "@/lib/fetcher";
+import {
+  errorHandlingFetcher,
+  FetchError,
+  authenticatedFetch,
+} from "@/lib/fetcher";
 import { parseApiErrorPayload } from "@/lib/api/errors";
-import { ThreeDotsLoader } from "@/components/Loading";
+import CardGridSkeleton from "@/refresh-components/skeletons/CardGridSkeleton";
 import { Callout } from "@/components/ui/callout";
 import Button from "@/refresh-components/buttons/Button";
 import { Button as OpalButton } from "@opal/components";
@@ -162,7 +166,7 @@ export default function Page() {
     setOnyxTestResult(null);
     setOnyxTestError(null);
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         "/api/admin/web-search/content-providers/crawl",
         {
           method: "POST",
@@ -529,11 +533,92 @@ export default function Page() {
         <SettingsLayouts.Header
           icon={route.icon}
           title={t(route.titleKey || "", { defaultValue: route.title })}
-          description={t("admin.webSearch.pageDescription")}
+          description={t("admin.webSearch.pageDescription", {
+            defaultValue:
+              "Search settings for external search across the internet.",
+          })}
           separator
         />
         <SettingsLayouts.Body>
-          <ThreeDotsLoader />
+          <div className="flex flex-col gap-6">
+            <AdminOverviewPanel
+              icon={route.icon}
+              title={t("admin.webSearch.workspaceTitle", {
+                defaultValue: "Web retrieval workspace",
+              })}
+              description={t("admin.webSearch.workspaceDescription", {
+                defaultValue:
+                  "Configure how agents find web results, fetch page content, and test crawler quality before users rely on it.",
+              })}
+              isLoading={true}
+            />
+
+            {/* Section 1: Search Providers */}
+            <div className="flex w-full flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <div className="h-5 w-44 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                <div className="h-3.5 w-72 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+              </div>
+
+              {/* Vertical Stack of Search Provider Rows */}
+              <div className="flex flex-col gap-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between rounded-12 border border-border-01 bg-background-neutral-00 p-3.5 shadow-01"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                      <div className="flex flex-col gap-1.5">
+                        <div className="h-4 w-28 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                        <div className="h-3 w-48 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                      </div>
+                    </div>
+                    <div className="h-8 w-24 rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Section 2: Content Providers */}
+            <div className="flex w-full flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <div className="h-5 w-44 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                <div className="h-3.5 w-80 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+              </div>
+
+              {/* Vertical Stack of Content Provider Rows */}
+              <div className="flex flex-col gap-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between rounded-12 border border-border-01 bg-background-neutral-00 p-3.5 shadow-01"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                      <div className="flex flex-col gap-1.5">
+                        <div className="h-4 w-32 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                        <div className="h-3 w-52 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                      </div>
+                    </div>
+                    <div className="h-8 w-24 rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Section 3: Crawler Quality Test Card */}
+            <div className="rounded-12 border border-border-01 bg-background-neutral-00 p-4 shadow-01">
+              <div className="flex flex-col gap-1.5 mb-4">
+                <div className="h-5 w-48 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                <div className="h-3.5 w-96 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+              </div>
+              <div className="flex gap-2">
+                <div className="h-9 flex-1 rounded-08 border border-border-01 bg-background-neutral-01 animate-pulse" />
+                <div className="h-9 w-24 rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+              </div>
+            </div>
+          </div>
         </SettingsLayouts.Body>
       </SettingsLayouts.Root>
     );
@@ -618,7 +703,7 @@ export default function Page() {
     setActivationError(null);
 
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `/api/admin/web-search/search-providers/${providerId}/activate`,
         {
           method: "POST",
@@ -650,7 +735,7 @@ export default function Page() {
     setActivationError(null);
 
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `/api/admin/web-search/search-providers/${providerId}/deactivate`,
         {
           method: "POST",
@@ -686,7 +771,7 @@ export default function Page() {
         provider.provider_type === "atlas_web_crawler" ||
         provider.provider_type === "onyx_web_crawler"
       ) {
-        const response = await fetch(
+        const response = await authenticatedFetch(
           "/api/admin/web-search/content-providers/reset-default",
           {
             method: "POST",
@@ -706,7 +791,7 @@ export default function Page() {
           );
         }
       } else if (provider.id > 0) {
-        const response = await fetch(
+        const response = await authenticatedFetch(
           `/api/admin/web-search/content-providers/${provider.id}/activate`,
           {
             method: "POST",
@@ -739,7 +824,7 @@ export default function Page() {
           activate: true,
         };
 
-        const response = await fetch(
+        const response = await authenticatedFetch(
           "/api/admin/web-search/content-providers",
           {
             method: "POST",
@@ -785,7 +870,7 @@ export default function Page() {
           ? "/api/admin/web-search/content-providers/reset-default"
           : `/api/admin/web-search/content-providers/${providerId}/deactivate`;
 
-      const response = await fetch(endpoint, {
+      const response = await authenticatedFetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -986,27 +1071,29 @@ export default function Page() {
                 tone: currentContentProviderType ? "success" : "warning",
               },
               {
-                label: t("admin.webSearch.validationLabel", {
-                  defaultValue: "Validation",
+                label: t("admin.webSearch.lastTestLabel", {
+                  defaultValue: "Last verification",
                 }),
-                value: t("admin.webSearch.crawlerTestValue", {
-                  defaultValue: "Crawler test",
-                }),
-              },
-            ]}
-            actions={[
-              {
-                label: t("admin.navigation.routes.llmModels.sidebar", {
-                  defaultValue: "LLM Models",
-                }),
-                href: ADMIN_PATHS.LLM_MODELS,
-              },
-              {
-                label: t("admin.navigation.routes.documentProcessing.sidebar", {
-                  defaultValue: "Document Processing",
-                }),
-                href: ADMIN_PATHS.DOCUMENT_PROCESSING,
-                primary: true,
+                value: onyxTestResult
+                  ? onyxTestResult.scrape_successful
+                    ? t("admin.webSearch.testPassed", {
+                        defaultValue: "Passed",
+                      })
+                    : t("admin.webSearch.testFailed", {
+                        defaultValue: "Failed",
+                      })
+                  : onyxTestError
+                    ? t("admin.webSearch.testFailed", {
+                        defaultValue: "Failed",
+                      })
+                    : t("admin.webSearch.testNotRun", {
+                        defaultValue: "Not tested yet",
+                      }),
+                tone: onyxTestResult?.scrape_successful
+                  ? "success"
+                  : onyxTestResult || onyxTestError
+                    ? "warning"
+                    : "neutral",
               },
             ]}
           />

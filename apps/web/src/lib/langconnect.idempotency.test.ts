@@ -7,9 +7,8 @@ import {
 } from "@/lib/langconnect";
 
 jest.mock("@/lib/api/idempotency", () => ({
+  ...jest.requireActual("@/lib/api/idempotency"),
   createIdempotencyKey: jest.fn(() => "rag-operation-key"),
-  withIdempotencyKey: jest.requireActual("@/lib/api/idempotency")
-    .withIdempotencyKey,
 }));
 
 function mockJsonResponse(body: unknown = {}, init: ResponseInit = {}) {

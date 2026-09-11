@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 /**
  * Image Generation Configuration Service
  * API functions for managing image generation configurations
@@ -71,7 +72,7 @@ export async function testImageGenerationApiKey(
   }
 ): Promise<TestApiKeyResult> {
   try {
-    const response = await fetch(IMAGE_GEN_TEST_URL, {
+    const response = await authenticatedFetch(IMAGE_GEN_TEST_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -139,7 +140,7 @@ export async function fetchImageGenerationCredentials(
 export async function createImageGenerationConfig(
   options: ImageGenerationConfigCreateOptions
 ): Promise<ImageGenerationConfigView> {
-  const response = await fetch(IMAGE_GEN_CONFIG_URL, {
+  const response = await authenticatedFetch(IMAGE_GEN_CONFIG_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -193,24 +194,27 @@ export async function updateImageGenerationConfig(
   imageProviderId: string,
   options: ImageGenerationConfigUpdateOptions
 ): Promise<ImageGenerationConfigView> {
-  const response = await fetch(`${IMAGE_GEN_CONFIG_URL}/${imageProviderId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model_name: options.modelName,
-      // Clone mode
-      source_llm_provider_id: options.sourceLlmProviderId,
-      // New credentials mode
-      provider: options.provider,
-      api_key: options.apiKey,
-      api_base: options.apiBase,
-      api_version: options.apiVersion,
-      deployment_name: options.deploymentName,
-      custom_config: options.customConfig,
-      // If false, backend preserves existing API key
-      api_key_changed: options.apiKeyChanged ?? false,
-    }),
-  });
+  const response = await authenticatedFetch(
+    `${IMAGE_GEN_CONFIG_URL}/${imageProviderId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model_name: options.modelName,
+        // Clone mode
+        source_llm_provider_id: options.sourceLlmProviderId,
+        // New credentials mode
+        provider: options.provider,
+        api_key: options.apiKey,
+        api_base: options.apiBase,
+        api_version: options.apiVersion,
+        deployment_name: options.deploymentName,
+        custom_config: options.customConfig,
+        // If false, backend preserves existing API key
+        api_key_changed: options.apiKeyChanged ?? false,
+      }),
+    }
+  );
 
   if (!response.ok) {
     const error = await response.json();
@@ -226,7 +230,7 @@ export async function updateImageGenerationConfig(
 export async function setDefaultImageGenerationConfig(
   imageProviderId: string
 ): Promise<void> {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `${IMAGE_GEN_CONFIG_URL}/${imageProviderId}/default`,
     {
       method: "POST",
@@ -245,7 +249,7 @@ export async function setDefaultImageGenerationConfig(
 export async function unsetDefaultImageGenerationConfig(
   imageProviderId: string
 ): Promise<void> {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `${IMAGE_GEN_CONFIG_URL}/${imageProviderId}/default`,
     {
       method: "DELETE",
@@ -264,9 +268,12 @@ export async function unsetDefaultImageGenerationConfig(
 export async function deleteImageGenerationConfig(
   imageProviderId: string
 ): Promise<void> {
-  const response = await fetch(`${IMAGE_GEN_CONFIG_URL}/${imageProviderId}`, {
-    method: "DELETE",
-  });
+  const response = await authenticatedFetch(
+    `${IMAGE_GEN_CONFIG_URL}/${imageProviderId}`,
+    {
+      method: "DELETE",
+    }
+  );
 
   if (!response.ok) {
     const error = await response.json();

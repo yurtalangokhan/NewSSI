@@ -227,6 +227,17 @@ const ModalContent = React.forwardRef<
     // Handle escape key and outside clicks
     const handleInteractOutside = React.useCallback(
       (e: Event) => {
+        // If this modal is the parent of an active fullscreen flow canvas, never dismiss it
+        if (
+          containerNodeRef.current?.hasAttribute("data-canvas-parent") ||
+          Boolean(
+            containerNodeRef.current?.closest?.('[data-canvas-parent="true"]')
+          )
+        ) {
+          e.preventDefault();
+          return;
+        }
+
         // If preventAccidentalClose is disabled, always allow immediate close
         if (!preventAccidentalClose) {
           setHasAttemptedClose(false);
@@ -299,7 +310,9 @@ const ModalContent = React.forwardRef<
         resetState();
         props.onCloseAutoFocus?.(e);
       },
-      onEscapeKeyDown: handleInteractOutside,
+      onEscapeKeyDown: (e: Event) => {
+        handleInteractOutside(e);
+      },
       onPointerDownOutside: handleInteractOutside,
       ...(!hasDescription && { "aria-describedby": undefined }),
       ...props,
@@ -519,7 +532,7 @@ const ModalBody = React.forwardRef<HTMLDivElement, ModalBodyProps>(
         ref={ref}
         className={cn(
           twoTone && "bg-background-tint-01",
-          "h-full min-h-0 overflow-y-auto w-full"
+          "h-full min-h-0 flex-1 overflow-y-auto w-full"
         )}
       >
         <Section padding={1} gap={1} alignItems="start" {...props}>

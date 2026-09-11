@@ -6,7 +6,6 @@ import Button from "@/refresh-components/buttons/Button";
 import { Form, Formik } from "formik";
 import * as Yup from "yup";
 import { useState } from "react";
-import { Spinner } from "@/components/Spinner";
 import { FormikField } from "@/refresh-components/form/FormikField";
 import { FormField } from "@/refresh-components/form/FormField";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
@@ -48,8 +47,6 @@ export default function LdapLoginForm() {
 
   return (
     <>
-      {isWorking && <Spinner />}
-
       <div className="flex flex-col items-center w-full mb-6">
         <Text as="h1" className="text-xl font-semibold text-white">
           {t("ldapLogin.title")}

@@ -33,12 +33,16 @@ async def test_dynamic_agent_load_uses_async_builder_for_sub_agent_ids(monkeypat
     monkeypatch.setattr("agents.dynamic_agent.GraphBuilder", FakeBuilder)
     monkeypatch.setattr(DynamicAgent, "_load_mcp_tools", fake_load_mcp_tools)
 
+    class FakeRepository:
+        pass
+
     agent = DynamicAgent(
         {
             "name": "team",
             "graph_schema": "supervisor",
             "sub_agent_ids": ["00000000-0000-0000-0000-000000000001"],
-        }
+        },
+        definition_repository=FakeRepository(),
     )
 
     await agent.load()

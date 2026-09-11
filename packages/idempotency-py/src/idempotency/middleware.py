@@ -80,14 +80,17 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         idem_key = request.headers.get("Idempotency-Key")
-        key_required = policy.enforce_missing_key or (
-            self.config.enforce_required_keys
-            and policy.mode
-            in {
-                IdempotencyMode.REQUIRED_REPLAY,
-                IdempotencyMode.DOMAIN_REQUIRED,
-            }
-        )
+        if policy.enforce_missing_key is not None:
+            key_required = policy.enforce_missing_key
+        else:
+            key_required = (
+                self.config.enforce_required_keys
+                and policy.mode
+                in {
+                    IdempotencyMode.REQUIRED_REPLAY,
+                    IdempotencyMode.DOMAIN_REQUIRED,
+                }
+            )
         if not idem_key:
             if key_required:
                 return self._error_response(
@@ -109,7 +112,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
 
         body = await request.body()
         fingerprint = self._fingerprint(request, body)
-        principal_scope = self._principal_scope(request)
+        principal_scope = await self._principal_scope(request)
 
         try:
             redis = await AsyncRedisPool.connect(self.config)
@@ -207,12 +210,18 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                         lock_token=locked,
                     )
                     return self._key_reused_response()
-        except redis_exceptions.RedisError as exc:
+        except redis_exceptions.RedisError:
             logger.warning(
-                "Idempotency store unavailable for %s %s: %s",
+                "Idempotency store unavailable for %s %s",
                 request.method,
                 request.url.path,
-                exc,
+                extra={
+                    "event": "idempotency.store_unavailable",
+                    "dependency": "redis",
+                    "operation": "idempotency",
+                    "error_code": "dependency.connection_failed",
+                    "status": "failed" if key_required else "degraded",
+                },
             )
             if key_required:
                 return self._error_response(
@@ -365,7 +374,22 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             return False
         return all(char in _IDEMPOTENCY_KEY_CHARS for char in idem_key)
 
-    def _principal_scope(self, request: Request) -> str:
+    async def _principal_scope(self, request: Request) -> str:
+        if self.config.principal_extractor is not None:
+            try:
+                identity = await self.config.principal_extractor(request)
+            except Exception:
+                logger.debug(
+                    "principal_extractor failed for %s %s; falling back to anonymous",
+                    request.method,
+                    request.url.path,
+                )
+                identity = None
+            if identity:
+                digest = hashlib.sha256(identity.encode()).hexdigest()
+                return f"user:{digest}"
+            return "anonymous"
+
         for header_name in self.config.principal_header_candidates:
             header_value = request.headers.get(header_name)
             if header_value:

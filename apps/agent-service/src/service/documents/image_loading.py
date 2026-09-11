@@ -5,12 +5,13 @@ image is skipped and a warning is logged."""
 from __future__ import annotations
 
 import base64
-import logging
 import re
 import urllib.error
 import urllib.request
 
-logger = logging.getLogger(__name__)
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 _DATA_URI_RE = re.compile(r"^data:[^;]+;base64,(?P<payload>.+)$", re.DOTALL)
 _MAX_IMAGE_BYTES = 5 * 1024 * 1024

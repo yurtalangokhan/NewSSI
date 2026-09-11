@@ -1,9 +1,14 @@
+import asyncio
+import uuid
+from unittest.mock import AsyncMock
+
 import pytest
 
 from controller.persona_controller import PersonaController, build_agent_availability
 
 
 class _DynamicDefinition:
+    id = uuid.UUID("00000000-0000-0000-0000-000000000001")
     graph_schema = "react"
     brain_type = "llm"
     memory_type = "none"
@@ -399,7 +404,7 @@ async def test_catalog_fetches_rag_payload_once_for_all_agents(monkeypatch) -> N
         fake_list_all,
     )
 
-    async def fake_load_owner_emails(personas):
+    async def fake_load_owner_emails(personas, current_user=None):
         return {}
 
     monkeypatch.setattr(controller, "_load_owner_emails", fake_load_owner_emails)
@@ -463,7 +468,7 @@ async def test_catalog_fetches_mcp_tool_metadata_once_and_uses_real_descriptions
         fake_list_all,
     )
 
-    async def fake_load_owner_emails(personas):
+    async def fake_load_owner_emails(personas, current_user=None):
         return {}
 
     monkeypatch.setattr(controller, "_load_owner_emails", fake_load_owner_emails)
@@ -476,3 +481,31 @@ async def test_catalog_fetches_mcp_tool_metadata_once_and_uses_real_descriptions
     for agent in custom_agents:
         web_search_tool = next(t for t in agent["tools"] if t["name"] == "web_search")
         assert web_search_tool["description"] == "Searches the live web for current information."
+
+
+@pytest.mark.asyncio
+async def test_catalog_returns_builtin_agents_when_availability_lookup_times_out(
+    monkeypatch,
+) -> None:
+    controller = PersonaController()
+
+    async def blocked_lookup():
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(controller, "_get_available_model_names", blocked_lookup)
+    monkeypatch.setattr(controller, "_get_mcp_tool_metadata", blocked_lookup)
+    monkeypatch.setattr(
+        "controller.persona_controller.CATALOG_AVAILABILITY_TIMEOUT_SECONDS",
+        0.01,
+    )
+    monkeypatch.setattr(
+        "controller.persona_controller.PersonaDB.list_all",
+        AsyncMock(return_value=[]),
+    )
+
+    agents = await controller.get_agent_catalog(user=None)
+
+    assert [agent["name"] for agent in agents] == [
+        "Chatbot",
+        "Configurable MCP Agent",
+    ]

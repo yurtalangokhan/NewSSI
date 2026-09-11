@@ -47,7 +47,9 @@ function OpenAIFormFields(props: ImageGenFormChildProps<OpenAIFormValues>) {
           state={apiStatus === "error" ? "error" : state}
           className="w-full"
         >
-          <FormField.Label>{t("admin.imageGeneration.forms.apiKeyLabel")}</FormField.Label>
+          <FormField.Label>
+            {t("admin.imageGeneration.forms.apiKeyLabel")}
+          </FormField.Label>
           <FormField.Control>
             {apiKeyOptions.length > 0 ? (
               <InputComboBox
@@ -96,7 +98,9 @@ function OpenAIFormFields(props: ImageGenFormChildProps<OpenAIFormValues>) {
                   name: imageProvider.title,
                 }),
                 success: t("admin.imageGeneration.forms.apiKeyValid"),
-                error: errorMessage || t("admin.imageGeneration.forms.apiKeyInvalid"),
+                error:
+                  errorMessage ||
+                  t("admin.imageGeneration.forms.apiKeyInvalid"),
               }}
             />
           ) : (
@@ -141,7 +145,9 @@ export function OpenAIImageGenForm(props: ImageGenFormBaseProps) {
   const validationSchema = useMemo(
     () =>
       Yup.object().shape({
-        api_key: Yup.string().required(t("admin.imageGeneration.forms.apiKeyRequired")),
+        api_key: Yup.string().required(
+          t("admin.imageGeneration.forms.apiKeyRequired")
+        ),
       }),
     [t]
   );

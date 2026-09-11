@@ -5,7 +5,7 @@
  * Pattern mirrors lib/hooks.ts and lib/connector.ts from the Onyx codebase.
  */
 import useSWR from "swr";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 import { parseApiErrorPayload } from "@/lib/api/errors";
 
 // ============================================================================
@@ -34,11 +34,13 @@ export interface AirbyteConnectorsResponse {
 const MAX_INLINE_SVG_LENGTH = 24_000;
 
 function isOversizedInlineSvg(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    value.trimStart().startsWith("<svg") &&
-    value.length > MAX_INLINE_SVG_LENGTH
-  );
+  if (typeof value !== "string") return false;
+  const trimmed = value.trimStart();
+  const isSvg =
+    trimmed.startsWith("<svg") ||
+    trimmed.startsWith("<?xml") ||
+    trimmed.includes("<svg");
+  return isSvg && value.length > MAX_INLINE_SVG_LENGTH;
 }
 
 function normalizeConnector(connector: AirbyteConnector): AirbyteConnector {
@@ -304,7 +306,7 @@ export async function validateConnectorConfig(
   connectorName: string,
   config: Record<string, unknown>
 ): Promise<{ valid: boolean; message: string }> {
-  const res = await fetch(
+  const res = await authenticatedFetch(
     `/api/agent/datasources/connectors/${encodeURIComponent(
       connectorName
     )}/validate`,
@@ -321,7 +323,7 @@ export async function fetchConnectorStreams(
   connectorName: string,
   config: Record<string, unknown>
 ): Promise<StreamInfo[]> {
-  const res = await fetch(
+  const res = await authenticatedFetch(
     `/api/agent/datasources/connectors/${encodeURIComponent(
       connectorName
     )}/streams`,
@@ -351,7 +353,7 @@ export class DatasourceConflictError extends Error {
 export async function createDatasource(
   input: CreateDatasourceInput
 ): Promise<AirbyteDatasource> {
-  const res = await fetch("/api/agent/datasources", {
+  const res = await authenticatedFetch("/api/agent/datasources", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -375,7 +377,7 @@ export async function updateDatasource(
   id: string,
   input: UpdateDatasourceInput
 ): Promise<DataSourceDetails> {
-  const res = await fetch(`/api/agent/datasources/${id}`, {
+  const res = await authenticatedFetch(`/api/agent/datasources/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -411,7 +413,7 @@ export async function getDatasourceDetails(
 }
 
 export async function deleteDatasource(id: string): Promise<void> {
-  const res = await fetch(`/api/agent/datasources/${id}`, {
+  const res = await authenticatedFetch(`/api/agent/datasources/${id}`, {
     method: "DELETE",
   });
   if (!res.ok) {
@@ -424,7 +426,7 @@ export async function deleteDatasource(id: string): Promise<void> {
 }
 
 export async function syncDatasource(id: string): Promise<void> {
-  const res = await fetch(`/api/agent/datasources/${id}/sync`, {
+  const res = await authenticatedFetch(`/api/agent/datasources/${id}/sync`, {
     method: "POST",
   });
   if (!res.ok) {
@@ -440,11 +442,14 @@ export async function createSchedule(
   datasourceId: string,
   input: SyncScheduleInput
 ): Promise<ScheduleInfo> {
-  const res = await fetch(`/api/agent/datasources/${datasourceId}/schedule`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
+  const res = await authenticatedFetch(
+    `/api/agent/datasources/${datasourceId}/schedule`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }
+  );
   if (!res.ok) {
     const parsed = parseApiErrorPayload(
       await res.json().catch(() => null),
@@ -459,11 +464,14 @@ export async function updateSchedule(
   datasourceId: string,
   input: Partial<SyncScheduleInput>
 ): Promise<ScheduleInfo> {
-  const res = await fetch(`/api/agent/datasources/${datasourceId}/schedule`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
+  const res = await authenticatedFetch(
+    `/api/agent/datasources/${datasourceId}/schedule`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }
+  );
   if (!res.ok) {
     const parsed = parseApiErrorPayload(
       await res.json().catch(() => null),
@@ -475,9 +483,12 @@ export async function updateSchedule(
 }
 
 export async function deleteSchedule(datasourceId: string): Promise<void> {
-  const res = await fetch(`/api/agent/datasources/${datasourceId}/schedule`, {
-    method: "DELETE",
-  });
+  const res = await authenticatedFetch(
+    `/api/agent/datasources/${datasourceId}/schedule`,
+    {
+      method: "DELETE",
+    }
+  );
   if (!res.ok) {
     const parsed = parseApiErrorPayload(
       await res.json().catch(() => null),

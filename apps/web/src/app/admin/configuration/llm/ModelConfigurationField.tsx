@@ -41,7 +41,9 @@ function ModelConfigurationRow({
         <TextFormField
           name={`${name}[${index}].name`}
           label=""
-          placeholder={t("admin.llm.modelNamePlaceholder", { index: index + 1 })}
+          placeholder={t("admin.llm.modelNamePlaceholder", {
+            index: index + 1,
+          })}
           removeLabel
           hideError
         />

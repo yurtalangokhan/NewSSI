@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import React, { useRef, useState } from "react";
 import Modal from "@/refresh-components/Modal";
 import { Callout } from "@/components/ui/callout";
@@ -89,7 +91,7 @@ export default function ChangeCredentialsModal({
     setDeletionError("");
 
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `${EMBEDDING_PROVIDERS_ADMIN_URL}/${provider.provider_type.toLowerCase()}`,
         {
           method: "DELETE",
@@ -139,17 +141,20 @@ export default function ChangeCredentialsModal({
         throw new Error(errorMsg);
       }
 
-      const updateResponse = await fetch(EMBEDDING_PROVIDERS_ADMIN_URL, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider_type: normalizedProviderType,
-          api_key: apiKey,
-          api_url: apiUrl,
-          is_default_provider: false,
-          is_configured: true,
-        }),
-      });
+      const updateResponse = await authenticatedFetch(
+        EMBEDDING_PROVIDERS_ADMIN_URL,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provider_type: normalizedProviderType,
+            api_key: apiKey,
+            api_url: apiUrl,
+            is_default_provider: false,
+            is_configured: true,
+          }),
+        }
+      );
 
       if (!updateResponse.ok) {
         const errorData = await updateResponse.json();
@@ -213,11 +218,11 @@ export default function ChangeCredentialsModal({
                       className="text-lg w-full p-1"
                     />
                     {fileName && (
-                      <p>
+                      <Text as="p">
                         {t("changeCredentials.uploadedFile", {
                           name: fileName,
                         })}
-                      </p>
+                      </Text>
                     )}
                   </>
                 ) : (

@@ -1,0 +1,407 @@
+[
+  {
+    "source": "Message",
+    "target": "Message",
+    "compatible": true
+  },
+  {
+    "source": "Message",
+    "target": "Text",
+    "compatible": true
+  },
+  {
+    "source": "Message",
+    "target": "Documents",
+    "compatible": false
+  },
+  {
+    "source": "Message",
+    "target": "Tools",
+    "compatible": false
+  },
+  {
+    "source": "Message",
+    "target": "Model",
+    "compatible": false
+  },
+  {
+    "source": "Message",
+    "target": "Memory",
+    "compatible": false
+  },
+  {
+    "source": "Message",
+    "target": "Agent",
+    "compatible": false
+  },
+  {
+    "source": "Message",
+    "target": "Data",
+    "compatible": true
+  },
+  {
+    "source": "Message",
+    "target": "Trigger",
+    "compatible": false
+  },
+  {
+    "source": "Text",
+    "target": "Message",
+    "compatible": false
+  },
+  {
+    "source": "Text",
+    "target": "Text",
+    "compatible": true
+  },
+  {
+    "source": "Text",
+    "target": "Documents",
+    "compatible": false
+  },
+  {
+    "source": "Text",
+    "target": "Tools",
+    "compatible": false
+  },
+  {
+    "source": "Text",
+    "target": "Model",
+    "compatible": false
+  },
+  {
+    "source": "Text",
+    "target": "Memory",
+    "compatible": false
+  },
+  {
+    "source": "Text",
+    "target": "Agent",
+    "compatible": false
+  },
+  {
+    "source": "Text",
+    "target": "Data",
+    "compatible": true
+  },
+  {
+    "source": "Text",
+    "target": "Trigger",
+    "compatible": false
+  },
+  {
+    "source": "Documents",
+    "target": "Message",
+    "compatible": false
+  },
+  {
+    "source": "Documents",
+    "target": "Text",
+    "compatible": false
+  },
+  {
+    "source": "Documents",
+    "target": "Documents",
+    "compatible": true
+  },
+  {
+    "source": "Documents",
+    "target": "Tools",
+    "compatible": false
+  },
+  {
+    "source": "Documents",
+    "target": "Model",
+    "compatible": false
+  },
+  {
+    "source": "Documents",
+    "target": "Memory",
+    "compatible": false
+  },
+  {
+    "source": "Documents",
+    "target": "Agent",
+    "compatible": false
+  },
+  {
+    "source": "Documents",
+    "target": "Data",
+    "compatible": true
+  },
+  {
+    "source": "Documents",
+    "target": "Trigger",
+    "compatible": false
+  },
+  {
+    "source": "Tools",
+    "target": "Message",
+    "compatible": false
+  },
+  {
+    "source": "Tools",
+    "target": "Text",
+    "compatible": false
+  },
+  {
+    "source": "Tools",
+    "target": "Documents",
+    "compatible": false
+  },
+  {
+    "source": "Tools",
+    "target": "Tools",
+    "compatible": true
+  },
+  {
+    "source": "Tools",
+    "target": "Model",
+    "compatible": false
+  },
+  {
+    "source": "Tools",
+    "target": "Memory",
+    "compatible": false
+  },
+  {
+    "source": "Tools",
+    "target": "Agent",
+    "compatible": false
+  },
+  {
+    "source": "Tools",
+    "target": "Data",
+    "compatible": true
+  },
+  {
+    "source": "Tools",
+    "target": "Trigger",
+    "compatible": false
+  },
+  {
+    "source": "Model",
+    "target": "Message",
+    "compatible": false
+  },
+  {
+    "source": "Model",
+    "target": "Text",
+    "compatible": false
+  },
+  {
+    "source": "Model",
+    "target": "Documents",
+    "compatible": false
+  },
+  {
+    "source": "Model",
+    "target": "Tools",
+    "compatible": false
+  },
+  {
+    "source": "Model",
+    "target": "Model",
+    "compatible": true
+  },
+  {
+    "source": "Model",
+    "target": "Memory",
+    "compatible": false
+  },
+  {
+    "source": "Model",
+    "target": "Agent",
+    "compatible": false
+  },
+  {
+    "source": "Model",
+    "target": "Data",
+    "compatible": true
+  },
+  {
+    "source": "Model",
+    "target": "Trigger",
+    "compatible": false
+  },
+  {
+    "source": "Memory",
+    "target": "Message",
+    "compatible": false
+  },
+  {
+    "source": "Memory",
+    "target": "Text",
+    "compatible": false
+  },
+  {
+    "source": "Memory",
+    "target": "Documents",
+    "compatible": false
+  },
+  {
+    "source": "Memory",
+    "target": "Tools",
+    "compatible": false
+  },
+  {
+    "source": "Memory",
+    "target": "Model",
+    "compatible": false
+  },
+  {
+    "source": "Memory",
+    "target": "Memory",
+    "compatible": true
+  },
+  {
+    "source": "Memory",
+    "target": "Agent",
+    "compatible": false
+  },
+  {
+    "source": "Memory",
+    "target": "Data",
+    "compatible": true
+  },
+  {
+    "source": "Memory",
+    "target": "Trigger",
+    "compatible": false
+  },
+  {
+    "source": "Agent",
+    "target": "Message",
+    "compatible": false
+  },
+  {
+    "source": "Agent",
+    "target": "Text",
+    "compatible": false
+  },
+  {
+    "source": "Agent",
+    "target": "Documents",
+    "compatible": false
+  },
+  {
+    "source": "Agent",
+    "target": "Tools",
+    "compatible": false
+  },
+  {
+    "source": "Agent",
+    "target": "Model",
+    "compatible": false
+  },
+  {
+    "source": "Agent",
+    "target": "Memory",
+    "compatible": false
+  },
+  {
+    "source": "Agent",
+    "target": "Agent",
+    "compatible": true
+  },
+  {
+    "source": "Agent",
+    "target": "Data",
+    "compatible": true
+  },
+  {
+    "source": "Agent",
+    "target": "Trigger",
+    "compatible": false
+  },
+  {
+    "source": "Data",
+    "target": "Message",
+    "compatible": false
+  },
+  {
+    "source": "Data",
+    "target": "Text",
+    "compatible": false
+  },
+  {
+    "source": "Data",
+    "target": "Documents",
+    "compatible": false
+  },
+  {
+    "source": "Data",
+    "target": "Tools",
+    "compatible": false
+  },
+  {
+    "source": "Data",
+    "target": "Model",
+    "compatible": false
+  },
+  {
+    "source": "Data",
+    "target": "Memory",
+    "compatible": false
+  },
+  {
+    "source": "Data",
+    "target": "Agent",
+    "compatible": false
+  },
+  {
+    "source": "Data",
+    "target": "Data",
+    "compatible": true
+  },
+  {
+    "source": "Data",
+    "target": "Trigger",
+    "compatible": false
+  },
+  {
+    "source": "Trigger",
+    "target": "Message",
+    "compatible": false
+  },
+  {
+    "source": "Trigger",
+    "target": "Text",
+    "compatible": false
+  },
+  {
+    "source": "Trigger",
+    "target": "Documents",
+    "compatible": false
+  },
+  {
+    "source": "Trigger",
+    "target": "Tools",
+    "compatible": false
+  },
+  {
+    "source": "Trigger",
+    "target": "Model",
+    "compatible": false
+  },
+  {
+    "source": "Trigger",
+    "target": "Memory",
+    "compatible": false
+  },
+  {
+    "source": "Trigger",
+    "target": "Agent",
+    "compatible": false
+  },
+  {
+    "source": "Trigger",
+    "target": "Data",
+    "compatible": false
+  },
+  {
+    "source": "Trigger",
+    "target": "Trigger",
+    "compatible": true
+  }
+]

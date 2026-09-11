@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from langchain_core.tools import BaseTool
 
 from agent_composition import (
     ToolDescriptor,
@@ -158,14 +159,20 @@ class TestFactoryFunctions:
         mock_binding.descriptor = ToolDescriptor(
             key="factory_tool",
             description="Factory test tool",
+            input_schema={
+                "type": "object",
+                "properties": {"datasource_id": {"type": "string"}},
+                "required": ["datasource_id"],
+            },
         )
         mock_binding.invoke = AsyncMock(return_value=ToolResult(output="factory_result"))
 
         tool = tool_binding_to_langchain_tool(mock_binding)
 
-        assert hasattr(tool, "name")
+        assert isinstance(tool, BaseTool)
         assert tool.name == "factory_tool"
         assert tool.description == "Factory test tool"
+        assert tool.tool_call_schema["required"] == ["datasource_id"]
 
     @pytest.mark.asyncio
     async def test_tool_bindings_to_langchain_tools(self) -> None:

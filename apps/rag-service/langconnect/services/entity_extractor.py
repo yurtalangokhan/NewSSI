@@ -4,7 +4,6 @@ Uses LangChain's experimental LLMGraphTransformer to convert unstructured text
 into structured graph triples (subject, predicate, object).
 """
 
-import logging
 from typing import Any
 
 from langchain_core.documents import Document
@@ -15,8 +14,9 @@ from langconnect.models.graph import (
     ExtractedRelation,
     ExtractionResult,
 )
+from langconnect.observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _get_llm() -> Any:

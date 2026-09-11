@@ -18,14 +18,12 @@ class LogLevel(StrEnum):
     CRITICAL = "CRITICAL"
 
     def to_logging_level(self) -> int:
-        import logging
-
         mapping = {
-            LogLevel.DEBUG: logging.DEBUG,
-            LogLevel.INFO: logging.INFO,
-            LogLevel.WARNING: logging.WARNING,
-            LogLevel.ERROR: logging.ERROR,
-            LogLevel.CRITICAL: logging.CRITICAL,
+            LogLevel.DEBUG: 10,
+            LogLevel.INFO: 20,
+            LogLevel.WARNING: 30,
+            LogLevel.ERROR: 40,
+            LogLevel.CRITICAL: 50,
         }
         return mapping[self]
 
@@ -60,6 +58,7 @@ class Settings(BaseSettings):
     # tool calls.
     STREAM_HEARTBEAT_SECONDS: int = 15
     LOG_LEVEL: LogLevel = LogLevel.WARNING
+    LOG_FORMAT: str = "text"
     AUTH_SECRET: str | None = None
 
     # Keycloak / OIDC authentication
@@ -86,6 +85,35 @@ class Settings(BaseSettings):
     COMPATIBLE_MODEL: str | None = None
     COMPATIBLE_API_KEY: str | None = None
     COMPATIBLE_BASE_URL: str | None = None
+
+    # Applied to every provider-backed chat model. The library defaults vary
+    # wildly (langchain-google-genai retries 6x with 2→64s backoff, the OpenAI
+    # client has no read timeout at all), so a stalled upstream can silently
+    # hang an SSE turn for minutes — past the proxy read timeout. Override per
+    # deployment; set the timeout to 0 to fall back to the library default.
+    LLM_MAX_RETRIES: int = 2
+    LLM_REQUEST_TIMEOUT: float = 600.0
+
+    # Provider-specific LLM tuning. Extended-thinking token budgets for the
+    # providers that take an explicit budget (Anthropic also forces
+    # temperature == 1 whenever thinking is on).
+    LLM_ANTHROPIC_THINKING_BUDGET_TOKENS: int = 8_000
+    LLM_GEMINI_THINKING_BUDGET_TOKENS: int = 8_000
+    # reasoning_effort sent to OpenAI/Azure reasoning models when the caller
+    # only knows the model is a reasoning model, not how hard it should think.
+    LLM_OPENAI_REASONING_EFFORT: str = "medium"
+    # TCP connect timeout for the AWS Bedrock client; its read timeout tracks
+    # LLM_REQUEST_TIMEOUT.
+    LLM_BEDROCK_CONNECT_TIMEOUT_SECONDS: int = 10
+    # Default Bedrock read timeout when LLM_REQUEST_TIMEOUT is unset/zero.
+    LLM_BEDROCK_READ_TIMEOUT_SECONDS: int = 60
+    # Azure OpenAI API version used when a provider config doesn't pin one.
+    LLM_AZURE_API_VERSION: str = "2024-10-21"
+    # OpenAI-compatible base URL for Mistral (langchain-mistralai isn't a dep).
+    LLM_MISTRAL_BASE_URL: str = "https://api.mistral.ai/v1"
+    # Comma-separated model-name prefixes to additionally treat as reasoning
+    # models, so a new model family can be enabled without a code change.
+    LLM_EXTRA_REASONING_MODEL_PREFIXES: str = ""
 
     MCP_SERVER_URL: str = Field(
         default="http://localhost:8003/mcp",
@@ -153,7 +181,7 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = ""
     IDEMPOTENCY_TTL: int = 86_400
     IDEMPOTENCY_ENABLED: bool = True
-    IDEMPOTENCY_ENFORCE_REQUIRED_KEYS: bool = False
+    IDEMPOTENCY_ENFORCE_REQUIRED_KEYS: bool = True
     IDEMPOTENCY_LOCK_TTL: int = 10
     IDEMPOTENCY_WAIT_TIMEOUT: float = 10.0
 

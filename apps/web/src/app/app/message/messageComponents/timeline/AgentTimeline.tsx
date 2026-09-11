@@ -15,6 +15,7 @@ import {
   TimelineUIState,
 } from "@/app/app/message/messageComponents/timeline/hooks/useTimelineUIState";
 import {
+  isResearchAgentPackets,
   isSearchToolPackets,
   stepSupportsCollapsedStreaming,
   stepHasCollapsedStreamingContent,
@@ -30,6 +31,11 @@ import { CollapsedStreamingContent } from "./CollapsedStreamingContent";
 import { TimelineRoot } from "@/app/app/message/messageComponents/timeline/primitives/TimelineRoot";
 import { TimelineHeaderRow } from "@/app/app/message/messageComponents/timeline/primitives/TimelineHeaderRow";
 import { useAppBackground } from "@/providers/AppBackgroundProvider";
+import { FlowStageSections } from "@/app/app/message/messageComponents/timeline/FlowStageSections";
+import {
+  getActiveStagePreviewStep,
+  type TimelineSection,
+} from "@/app/app/message/messageComponents/timeline/hooks/flowStageGrouping";
 
 // =============================================================================
 // Private Wrapper Components
@@ -63,6 +69,9 @@ function TimelineContainer({
 export interface AgentTimelineProps {
   /** Turn groups from usePacketProcessor */
   turnGroups: TurnGroup[];
+  /** FlowAgent per-stage timeline sections — rendered inside this same
+   *  timeline card, above the inline steps. Empty for every non-flow agent. */
+  flowStageSections?: TimelineSection[];
   /** Chat state for rendering content */
   chatState: FullChatState;
   /** Whether the stop packet has been seen */
@@ -101,6 +110,7 @@ function areAgentTimelinePropsEqual(
 ): boolean {
   return (
     prev.turnGroups === next.turnGroups &&
+    prev.flowStageSections === next.flowStageSections &&
     prev.stopPacketSeen === next.stopPacketSeen &&
     prev.stopReason === next.stopReason &&
     prev.finalAnswerComing === next.finalAnswerComing &&
@@ -117,6 +127,7 @@ function areAgentTimelinePropsEqual(
 
 export const AgentTimeline = React.memo(function AgentTimeline({
   turnGroups,
+  flowStageSections = [],
   chatState,
   stopPacketSeen = false,
   stopReason,
@@ -132,12 +143,17 @@ export const AgentTimeline = React.memo(function AgentTimeline({
 }: AgentTimelineProps) {
   const { hasBackground } = useAppBackground();
 
+  const hasStageSections = flowStageSections.length > 0;
+
   // Header text and state flags
-  const { headerText, hasPackets, userStopped } = useTimelineHeader(
-    turnGroups,
-    stopReason,
-    isGeneratingImage
-  );
+  const {
+    headerText,
+    hasPackets: hasTurnPackets,
+    userStopped,
+  } = useTimelineHeader(turnGroups, stopReason, isGeneratingImage);
+  // Flow stage sections count as timeline content: their presence keeps the
+  // timeline out of the bare "Düşünüyor…" EMPTY state and gives it a header.
+  const hasPackets = hasTurnPackets || hasStageSections;
 
   // Memoized metrics derived from turn groups
   const {
@@ -160,7 +176,16 @@ export const AgentTimeline = React.memo(function AgentTimeline({
   );
 
   const { isExpanded, handleToggle, parallelActiveTab, setParallelActiveTab } =
-    useTimelineExpansion(stopPacketSeen, lastTurnGroup, hasDisplayContent);
+    useTimelineExpansion(
+      stopPacketSeen,
+      lastTurnGroup,
+      hasDisplayContent,
+      // A finished flow run (a reload, or the run just ended) opens with its
+      // numbered stage sections visible. While it is still streaming the card
+      // stays collapsed and shows a compact live "thinking" peek instead —
+      // see `showFlowCollapsedPreview` below.
+      hasStageSections && stopPacketSeen
+    );
 
   // Streaming duration tracking
   const streamingStartTime = useStreamingStartTime();
@@ -240,11 +265,18 @@ export const AgentTimeline = React.memo(function AgentTimeline({
     }
 
     if (uiState === TimelineUIState.STOPPED) {
-      return stoppedStepsCount > 0;
+      return stoppedStepsCount > 0 || hasStageSections;
     }
 
-    return totalSteps > 0;
-  }, [collapsible, isMemoryOnly, uiState, stoppedStepsCount, totalSteps]);
+    return totalSteps > 0 || hasStageSections;
+  }, [
+    collapsible,
+    isMemoryOnly,
+    uiState,
+    stoppedStepsCount,
+    totalSteps,
+    hasStageSections,
+  ]);
 
   // Determine render type override for collapsed streaming view
   const collapsedRenderTypeOverride = useMemo(() => {
@@ -252,6 +284,33 @@ export const AgentTimeline = React.memo(function AgentTimeline({
     if (lastStepIsSearchTool) return RenderType.INLINE;
     return RenderType.COMPACT;
   }, [lastStepIsResearchAgent, lastStepIsSearchTool]);
+
+  // Collapsed live "thinking" peek for a streaming flow run. Its steps are all
+  // folded into numbered FlowStageSections (shown only when expanded), so the
+  // collapsed card would otherwise be a bare header until the user expands it.
+  // Show the running stage's latest step under the header, exactly the way a
+  // non-flow agent's collapsed streaming view works.
+  const flowPreviewStep = useMemo(
+    () =>
+      hasStageSections
+        ? getActiveStagePreviewStep(flowStageSections)
+        : undefined,
+    [hasStageSections, flowStageSections]
+  );
+  const showFlowCollapsedPreview =
+    !isExpanded &&
+    !stopPacketSeen &&
+    !hasDisplayContent &&
+    !showCollapsedCompact &&
+    !showCollapsedParallel &&
+    !!flowPreviewStep;
+  const flowPreviewRenderTypeOverride = useMemo(() => {
+    const packets = flowPreviewStep?.packets;
+    if (!packets) return RenderType.COMPACT;
+    if (isResearchAgentPackets(packets)) return RenderType.HIGHLIGHT;
+    if (isSearchToolPackets(packets)) return RenderType.INLINE;
+    return RenderType.COMPACT;
+  }, [flowPreviewStep]);
 
   // Header selection based on UI state
   const renderHeader = useCallback(() => {
@@ -291,6 +350,7 @@ export const AgentTimeline = React.memo(function AgentTimeline({
             collapsible={collapsible}
             isExpanded={isExpanded}
             onToggle={handleToggle}
+            hasStageSections={hasStageSections}
           />
         );
 
@@ -311,6 +371,7 @@ export const AgentTimeline = React.memo(function AgentTimeline({
             memoryOperation={memoryOperation}
             memoryId={memoryId}
             memoryIndex={memoryIndex}
+            hasStageSections={hasStageSections}
           />
         );
 
@@ -339,6 +400,7 @@ export const AgentTimeline = React.memo(function AgentTimeline({
     processingDurationSeconds,
     generatedImageCount,
     toolProcessingDuration,
+    hasStageSections,
   ]);
 
   // Empty state: no packets, still streaming, and not stopped
@@ -363,7 +425,7 @@ export const AgentTimeline = React.memo(function AgentTimeline({
   }
 
   // Display content only (no timeline steps) - but show header for image generation
-  if (uiState === TimelineUIState.DISPLAY_CONTENT_ONLY) {
+  if (uiState === TimelineUIState.DISPLAY_CONTENT_ONLY && !hasStageSections) {
     return <TimelineContainer agent={chatState.agent} />;
   }
 
@@ -382,7 +444,7 @@ export const AgentTimeline = React.memo(function AgentTimeline({
               (hasBackground
                 ? "backdrop-blur-md bg-background-tint-00/60"
                 : "bg-background-tint-00"),
-            showRoundedBottom && "rounded-b-12"
+            showRoundedBottom && !showFlowCollapsedPreview && "rounded-b-12"
           )}
         >
           {renderHeader()}
@@ -409,9 +471,30 @@ export const AgentTimeline = React.memo(function AgentTimeline({
         />
       )}
 
+      {/* Collapsed streaming view - flow run: peek the running stage's step */}
+      {showFlowCollapsedPreview && flowPreviewStep && (
+        <CollapsedStreamingContent
+          step={flowPreviewStep}
+          chatState={chatState}
+          stopReason={stopReason}
+          renderTypeOverride={flowPreviewRenderTypeOverride}
+        />
+      )}
+
       {/* Expanded timeline view */}
       {isExpanded && (
         <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+          {/* FlowAgent per-stage sections: numbered, individually-collapsible
+              groups for every stage before the ChatOutput-fed one. Part of
+              the collapsible body so the timeline's own chevron hides them. */}
+          {hasStageSections && (
+            <div className="px-2 pb-1">
+              <FlowStageSections
+                sections={flowStageSections}
+                chatState={chatState}
+              />
+            </div>
+          )}
           <ExpandedTimelineContent
             turnGroups={turnGroups}
             chatState={chatState}

@@ -7,7 +7,7 @@ import Button from "@/refresh-components/buttons/Button";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import InputTextArea from "@/refresh-components/inputs/InputTextArea";
 import Text from "@/refresh-components/texts/Text";
-import { ThreeDotsLoader } from "@/components/Loading";
+import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import { toast } from "@/hooks/useToast";
 import { uploadDocuments } from "@/lib/langconnect";
 
@@ -66,8 +66,7 @@ export default function TextInputPanel({
     <CardSection className="w-full flex flex-col gap-4">
       <Text as="p" mainContentBody text04 className="leading-relaxed">
         {t("admin.documentProcessing.textInput.description", {
-          defaultValue:
-            "Metni doğrudan girerek koleksiyona belge ekleyin.",
+          defaultValue: "Metni doğrudan girerek koleksiyona belge ekleyin.",
         })}
       </Text>
 
@@ -75,18 +74,24 @@ export default function TextInputPanel({
         <InputTypeIn
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder={t("admin.documentProcessing.textInput.titlePlaceholder", {
-            defaultValue: "Belge başlığı (isteğe bağlı)",
-          })}
+          placeholder={t(
+            "admin.documentProcessing.textInput.titlePlaceholder",
+            {
+              defaultValue: "Belge başlığı (isteğe bağlı)",
+            }
+          )}
           variant={isAdding ? "disabled" : "primary"}
         />
 
         <InputTextArea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder={t("admin.documentProcessing.textInput.contentPlaceholder", {
-            defaultValue: "Belge içeriğini buraya girin...",
-          })}
+          placeholder={t(
+            "admin.documentProcessing.textInput.contentPlaceholder",
+            {
+              defaultValue: "Belge içeriğini buraya girin...",
+            }
+          )}
           rows={10}
           variant={isAdding ? "disabled" : "primary"}
         />
@@ -102,7 +107,7 @@ export default function TextInputPanel({
         >
           {isAdding ? (
             <span className="flex items-center gap-2">
-              <ThreeDotsLoader />
+              <SimpleLoader className="h-4 w-4" />
               {t("admin.documentProcessing.textInput.adding", {
                 defaultValue: "Ekleniyor...",
               })}

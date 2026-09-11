@@ -7,9 +7,9 @@ for fast recall performance.
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
 
+from core.logger import get_logger
 from domain.user_memory.cache import LongTermMemoryCache
 from service.UserServiceClient import (
     add_facts_to_user,
@@ -25,7 +25,7 @@ from service.UserServiceClient import (
 if TYPE_CHECKING:
     pass
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class UserMemoryService:

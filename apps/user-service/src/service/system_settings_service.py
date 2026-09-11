@@ -141,6 +141,7 @@ class SystemSettingsService:
             "accessTokenLifespan": payload.access_token_lifespan,
             "ssoSessionIdleTimeout": payload.sso_session_idle_timeout,
             "ssoSessionMaxLifespan": payload.sso_session_max_lifespan,
+            "clientSessionMaxLifespan": payload.client_session_max_lifespan,
         }
         cleaned = {key: value for key, value in updates.items() if value is not None}
         if not cleaned:
@@ -249,6 +250,9 @@ class SystemSettingsService:
             "access_token_lifespan": realm_config.get("accessTokenLifespan"),
             "sso_session_idle_timeout": realm_config.get("ssoSessionIdleTimeout"),
             "sso_session_max_lifespan": realm_config.get("ssoSessionMaxLifespan"),
+            "client_session_max_lifespan": realm_config.get(
+                "clientSessionMaxLifespan"
+            ),
         }
 
     async def _external_identity_provider_status(self) -> dict[str, Any]:

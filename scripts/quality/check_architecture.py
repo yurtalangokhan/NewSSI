@@ -85,10 +85,25 @@ RAG_DATABASE_IMPORTS_SERVICES_RE = re.compile(
 # conventional and allowed). Shims with a removal note are exempt.
 BANNED_BUCKET_RE = re.compile(r"(^|/)(utils|Utils|Helpers|helpers)(\.py)?$")
 
+# Keycloak admin API usage is owned by user-service only. Other services may
+# verify tokens (JWKS/issuer) but must not call the Keycloak admin REST API or
+# instantiate an admin client. Documented compatibility shims are exempt.
+KEYCLOAK_ADMIN_API_RE = re.compile(r"/admin/realms/")
+KEYCLOAK_ADMIN_CLIENT_RE = re.compile(r"\bKeycloakAdmin\b")
+
 # --- Web (TypeScript/React) hard rules ------------------------------------
 RAW_UI_PRIMITIVE_RE = re.compile(
     r"<\s*(p|h[1-6]|input|textarea|button|img)\b(\s|>|/)"
 )
+# The design system itself has to reach for the primitives it wraps: these are
+# the modules feature code is told to use instead ("use @/refresh-components or
+# @opal"), plus the layout/`components/ui` primitive libraries they build on.
+WEB_PRIMITIVE_LIB_RE = re.compile(
+    r"^apps/web/src/(refresh-components/|components/ui/|layouts/[\w-]*layouts\.tsx$)"
+)
+# A primitive named in a doc comment is documentation, not markup: JSDoc usage
+# examples and prose like "a plain `<input>`" are not violations.
+COMMENT_LINE_RE = re.compile(r"^\s*(//|/\*|\*|\{/\*)")
 BANNED_ICON_IMPORT_RE = re.compile(
     r"^\s*import\s+.*\b(from\s+['\"](lucide-react|react-icons|@phosphor-icons/react|phosphor-icons)['\"])\b"
 )
@@ -228,6 +243,7 @@ def check_python(path: str, lines: list[str], hard_enabled: bool) -> list[tuple[
     is_rag_db = bool(RAG_DATABASE_RE.search(path))
     is_persistence = bool(PERSISTENCE_LAYER_RE.search(path))
     is_test = "/tests/" in path
+    is_shim_file = is_shim(Path(path), lines)
 
     for i, ln in enumerate(lines, 1):
         loc = f"{path}:{i}"
@@ -274,6 +290,18 @@ def check_python(path: str, lines: list[str], hard_enabled: bool) -> list[tuple[
                 ("HARD", loc, "Dependency direction: rag database layer imports services.")
             )
 
+        # Rule 5: Keycloak admin API usage outside user-service (skip tests and
+        # documented compatibility shims).
+        if (
+            not path.startswith("apps/user-service/")
+            and not is_test
+            and not is_shim_file
+            and (KEYCLOAK_ADMIN_API_RE.search(ln) or KEYCLOAK_ADMIN_CLIENT_RE.search(ln))
+        ):
+            findings.append(
+                ("HARD", loc, "Keycloak admin API usage outside user-service; resolve identity via user-service.")
+            )
+
     # Rule 4: banned bucket module names (unless shim).
     fname = Path(path).name
     if BANNED_BUCKET_RE.search(path):
@@ -308,9 +336,12 @@ def check_web(path: str, lines: list[str], hard_enabled: bool) -> list[tuple[str
     findings: list[tuple[str, str, str]] = []
     is_test = bool(TEST_FILE_RE.search(path))
     shim = is_shim(Path(path), lines)
+    is_primitive_lib = bool(WEB_PRIMITIVE_LIB_RE.search(path))
     for i, ln in enumerate(lines, 1):
-        # Rule 6/7: raw UI primitives and banned icons (skip test/snapshot files).
-        if not is_test:
+        # Rule 6/7: raw UI primitives and banned icons. Skipped for test and
+        # snapshot files, for the primitive libraries themselves, and for
+        # comment lines.
+        if not is_test and not is_primitive_lib and not COMMENT_LINE_RE.match(ln):
             if RAW_UI_PRIMITIVE_RE.search(ln):
                 findings.append(
                     ("HARD", f"{path}:{i}", "Raw HTML/UI primitive not allowed; use @/refresh-components or @opal.")

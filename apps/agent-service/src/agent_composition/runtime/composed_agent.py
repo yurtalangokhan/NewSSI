@@ -16,7 +16,6 @@ LazyLoadingAgent types or private fields.
 
 from __future__ import annotations
 
-import logging
 from collections.abc import AsyncIterator, Mapping
 from contextvars import ContextVar
 from typing import Any
@@ -37,6 +36,7 @@ from agent_composition.domain.ports import (
     StateRequest,
     StateUpdateRequest,
 )
+from core.logger import get_logger
 
 from .execution_context import AgentExecutionContext, TrustedExecutionContext
 from .lifecycle import IdempotentLifecycle
@@ -49,7 +49,7 @@ from .policies import (
     SafetyPolicyConfig,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Context variable for trusted context at invocation time.
 _trusted_context_var: ContextVar[TrustedExecutionContext | None] = ContextVar(

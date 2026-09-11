@@ -157,7 +157,9 @@ export default function IndexAttemptErrorsModal({
                 <TableRow>
                   <TableHead>{t("admin.connector.timeHeader")}</TableHead>
                   <TableHead>{t("admin.connector.documentIdHeader")}</TableHead>
-                  <TableHead className="w-1/2">{t("admin.connector.errorMessageHeader")}</TableHead>
+                  <TableHead className="w-1/2">
+                    {t("admin.connector.errorMessageHeader")}
+                  </TableHead>
                   <TableHead>{t("admin.connector.statusHeader")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -176,10 +178,14 @@ export default function IndexAttemptErrorsModal({
                             rel="noopener noreferrer"
                             className="text-link hover:underline"
                           >
-                            {error.document_id || error.entity_id || t("admin.connector.unknown")}
+                            {error.document_id ||
+                              error.entity_id ||
+                              t("admin.connector.unknown")}
                           </a>
                         ) : (
-                          error.document_id || error.entity_id || t("admin.connector.unknown")
+                          error.document_id ||
+                          error.entity_id ||
+                          t("admin.connector.unknown")
                         )}
                       </TableCell>
                       <TableCell className="h-[60px] align-top p-0">
@@ -195,7 +201,9 @@ export default function IndexAttemptErrorsModal({
                               : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {error.is_resolved ? t("admin.connector.resolved") : t("admin.connector.unresolved")}
+                          {error.is_resolved
+                            ? t("admin.connector.resolved")
+                            : t("admin.connector.unresolved")}
                         </span>
                       </TableCell>
                     </TableRow>

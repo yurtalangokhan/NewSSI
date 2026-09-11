@@ -4,16 +4,17 @@ Revision ID: 0011
 Revises: 0010
 Create Date: 2026-05-08
 """
+
 from __future__ import annotations
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 from alembic import op
 
 revision: str = "0011"
-down_revision: Union[str, None] = "0010"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "0010"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -117,9 +118,7 @@ def upgrade() -> None:
         "ALTER TABLE providers DROP CONSTRAINT IF EXISTS providers_user_id_provider_type_base_url_key"
     )
     op.execute("DROP INDEX IF EXISTS idx_providers_user_id")
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS idx_providers_kind ON providers (provider_kind)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS idx_providers_kind ON providers (provider_kind)")
 
     # 7. Add FK constraint
     op.execute("""
@@ -198,9 +197,7 @@ def downgrade() -> None:
     op.execute("ALTER TABLE providers DROP COLUMN IF EXISTS provider_kind")
 
     # Restore old constraint and index
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS idx_providers_user_id ON providers (user_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS idx_providers_user_id ON providers (user_id)")
 
     # Drop new tables/indexes
     op.execute("DROP INDEX IF EXISTS idx_providers_kind")

@@ -41,8 +41,8 @@ class TestAPIDependencies:
         from service.AuthService import verify_bearer
 
         with (
-            patch("service.AuthService._is_keycloak_enabled", return_value=False),
-            patch("service.AuthService._get_valid_api_keys", return_value=set()),
+            patch("api.dependencies._is_keycloak_enabled", return_value=False),
+            patch("api.dependencies._get_valid_api_keys", return_value=set()),
         ):
             verify_bearer(_request(), None)
 
@@ -55,8 +55,8 @@ class TestAPIDependencies:
             credentials = "test-key"
 
         with (
-            patch("service.AuthService._is_keycloak_enabled", return_value=False),
-            patch("service.AuthService._get_valid_api_keys", return_value={"test-key"}),
+            patch("api.dependencies._is_keycloak_enabled", return_value=False),
+            patch("api.dependencies._get_valid_api_keys", return_value={"test-key"}),
         ):
             verify_bearer(_request(), MockCredentials())
 
@@ -72,8 +72,8 @@ class TestAPIDependencies:
             credentials = "invalid-key"
 
         with (
-            patch("service.AuthService._is_keycloak_enabled", return_value=False),
-            patch("service.AuthService._get_valid_api_keys", return_value={"test-key"}),
+            patch("api.dependencies._is_keycloak_enabled", return_value=False),
+            patch("api.dependencies._get_valid_api_keys", return_value={"test-key"}),
             pytest.raises(UnauthorizedError) as exc,
         ):
             verify_bearer(_request(), MockCredentials())

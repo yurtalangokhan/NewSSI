@@ -1,12 +1,13 @@
 "use client";
 
+import DropzoneInput from "@/refresh-components/inputs/DropzoneInput";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import Dropzone from "react-dropzone";
 import CardSection from "@/components/admin/CardSection";
 import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
-import { ThreeDotsLoader } from "@/components/Loading";
+import ListSkeleton from "@/refresh-components/skeletons/ListSkeleton";
 import { toast } from "@/hooks/useToast";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
 import {
@@ -97,8 +98,9 @@ function ChunkViewer({
 
   if (isLoading) {
     return (
-      <div className="pt-2 pl-4">
-        <ThreeDotsLoader />
+      <div className="pt-2 pl-4 flex flex-col gap-2">
+        <div className="h-4 w-48 rounded bg-background-tint-02 animate-pulse" />
+        <div className="h-3 w-full rounded bg-background-tint-02 animate-pulse" />
       </div>
     );
   }
@@ -178,8 +180,10 @@ function ChunkViewer({
           </div>
         ))}
         {hasMore && (
-          <div ref={sentinelRef} className="flex justify-center py-2">
-            {isLoadingMore && <ThreeDotsLoader />}
+          <div ref={sentinelRef} className="py-2">
+            {isLoadingMore && (
+              <div className="h-4 w-full rounded bg-background-tint-02 animate-pulse" />
+            )}
           </div>
         )}
       </div>
@@ -543,7 +547,8 @@ export default function DocumentsPanel({
   }
 
   function renderDatasourceChunks() {
-    if (isDatasourceChunksLoading) return <ThreeDotsLoader />;
+    if (isDatasourceChunksLoading)
+      return <ListSkeleton itemCount={4} hasIcon={false} />;
     if (datasourceChunks.length === 0) {
       return (
         <Text as="p" mainContentMuted text03 className="text-center py-6">
@@ -653,7 +658,7 @@ export default function DocumentsPanel({
                           uploadInProgress && "opacity-60 cursor-not-allowed"
                         )}
                       >
-                        <input {...getInputProps()} />
+                        <DropzoneInput {...getInputProps()} />
                         {uploadInProgress ? (
                           <div className="flex w-full max-w-xs flex-col items-center gap-3">
                             <Text as="p" mainContentMuted text03>
@@ -799,7 +804,7 @@ export default function DocumentsPanel({
         {readOnly ? (
           renderDatasourceChunks()
         ) : isLoading ? (
-          <ThreeDotsLoader />
+          <ListSkeleton itemCount={4} hasIcon={true} />
         ) : documents.length === 0 ? (
           <Text as="p" mainContentMuted text03 className="text-center py-6">
             {t("admin.documentProcessing.noDocuments")}

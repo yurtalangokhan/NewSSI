@@ -1,7 +1,6 @@
 import asyncio
 import contextlib
 import json
-import logging
 from typing import Any
 
 import ldap3  # type: ignore[import-untyped]
@@ -10,8 +9,9 @@ from ldap3.core.exceptions import LDAPBindError, LDAPException  # type: ignore[i
 
 from src.config import get_settings
 from src.core.env import get_env
+from src.core.observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _env = get_env()
 _settings = get_settings()

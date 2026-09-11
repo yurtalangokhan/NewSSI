@@ -1,0 +1,58 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "agent-1",
+      "type": "ReActAgent",
+      "template_version": 1,
+      "position": {
+        "x": 200.0,
+        "y": 0.0
+      },
+      "values": {
+        "system_prompt": "Be helpful."
+      }
+    },
+    {
+      "id": "in-1",
+      "type": "ChatInput",
+      "template_version": 1,
+      "position": {
+        "x": 0.0,
+        "y": 0.0
+      },
+      "values": {}
+    },
+    {
+      "id": "out-1",
+      "type": "ChatOutput",
+      "template_version": 1,
+      "position": {
+        "x": 400.0,
+        "y": 0.0
+      },
+      "values": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "in-1",
+      "sourceHandle": "message",
+      "target": "agent-1",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e2",
+      "source": "agent-1",
+      "sourceHandle": "output",
+      "target": "out-1",
+      "targetHandle": "message"
+    }
+  ],
+  "viewport": {
+    "x": 10.0,
+    "y": 20.0,
+    "zoom": 1.5
+  }
+}

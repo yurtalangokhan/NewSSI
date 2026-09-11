@@ -1,5 +1,54 @@
 const en = {
   chat: {
+    copied: "Copied",
+    stageFailed: "Failed",
+    nodeDrawer: {
+      thinking: "Thinking",
+      tools: "Tools",
+      toolsCount: "tools",
+      output: "Output",
+      expand: "Details",
+      collapse: "Collapse",
+      words: "words",
+      copyThinking: "Copy Thinking",
+      copyOutput: "Copy Output",
+      maximize: "Maximize",
+      noThinking: "No thinking recorded for this stage.",
+      noTools: "No external tools called in this stage.",
+      noOutput: "No output generated yet.",
+      toolInput: "Input",
+      toolOutput: "Output",
+    },
+    graphStages: "Graph Stages",
+    listView: "List View",
+    canvasView: "Canvas View",
+    toolsUsed: "Tools Used",
+    stageCompleted: "Completed",
+    stageRunning: "Running",
+    stagePending: "Pending",
+    executionTime: "Execution Time",
+    callBreakdown: "Call Breakdown",
+    calls: "calls",
+    callIndex: "Call #{{index}}",
+    totalDuration: "Total Duration",
+    stages: {
+      chatinput: "Chat Input",
+      chatoutput: "Chat Output",
+      reactagent: "ReAct Agent",
+      loop: "Loop",
+      merge: "Merge",
+      research: "Research",
+      analysis: "Analysis",
+      synthesis: "Synthesis",
+      review: "Review",
+      plan: "Plan",
+      execution: "Execution",
+    },
+    flowTimeline: {
+      loopLabel: "{{name}} Loop",
+      iterationCount: "{{count}} iterations",
+      iteration: "Iteration {{turn}}",
+    },
     fileFailed: "File failed and was removed: {{name}}",
     filesFailed: "Files failed and were removed: {{names}}",
     noPreviousMessage: "No previously-submitted user message found.",
@@ -466,7 +515,7 @@ const en = {
     recentsEmptyState:
       "Try sending a message! Your chat history will appear here.",
     recentsEmpty: "Try sending a message! Your chat history will appear here.",
-    agentsSectionTitle: "Agents",
+    agentsSectionTitle: "Agents & Flows",
     projectsSectionTitle: "Projects",
     recentsSectionTitle: "Recents",
     newSessionButton: "New Session",
@@ -692,6 +741,8 @@ const en = {
     },
     chatHistory: {
       selectedCount: "{{count}} selected",
+      selectedCount_one: "{{count}} item selected",
+      selectedCount_other: "{{count}} items selected",
       selectPlaceholder: "Select chats",
       title: "Chat History",
       chatCountSuffix: "{{count}} chats",
@@ -845,6 +896,15 @@ const en = {
     retry: "Retry",
   },
   agentViewer: {
+    flowPreviewTitle: "Flow Preview",
+    flowPreviewDescription:
+      "Visual workflow architecture and component connections for this agent.",
+    flowNodesCount_one: "{{count}} node",
+    flowNodesCount_other: "{{count}} nodes",
+    flowEdgesCount_one: "{{count}} connection",
+    flowEdgesCount_other: "{{count}} connections",
+    openFlowEditor: "Open Flow Editor",
+    noFlowDesigned: "No flow designed for this agent yet.",
     featuredLabel: "Featured",
     publicToOrgLabel: "Public to your organization",
     knowledgeSectionTitle: "Knowledge",
@@ -853,6 +913,10 @@ const en = {
     memoryTitle: "Memory",
     memoryTypeLongTerm: "Long-Term",
     memoryTypeStandard: "Standard",
+    memoryTypeLongTermTooltip:
+      "Automatically recalls facts and preferences across conversations to maintain context.",
+    memoryTypeStandardTooltip:
+      "Only remembers messages within the current conversation session; context is not retained across sessions.",
     documentProcessingLabel: "Document Processing Collections",
     documentProcessingDescription_one: "{{count}} connected collection",
     documentProcessingDescription_other: "{{count}} connected collections",
@@ -895,6 +959,12 @@ const en = {
       "No collections with a built knowledge graph. Build a knowledge graph from the Knowledge Graph page first.",
   },
   documentSidebar: {
+    allSourcesHeader_one: "{{count}} Source",
+    allSourcesHeader_other: "{{count}} Sources",
+    readPagesHeader_one: "{{count}} Read Page",
+    readPagesHeader_other: "{{count}} Read Pages",
+    searchResultsHeader_one: "{{count}} Search Result",
+    searchResultsHeader_other: "{{count}} Search Results",
     citedSourcesHeader: "Cited Sources",
     moreSourcesHeader: "More",
     foundSourcesHeader: "Found Sources",
@@ -963,10 +1033,12 @@ const en = {
     updatedAt: "Updated {{date}}",
   },
   agentsPage: {
-    title: "Agents",
+    title: "Agents & Flows",
     description:
       "Customize AI behavior and knowledge for you and your team's use cases.",
     newAgentButton: "New Agent",
+    agentsSurfaceTab: "Agents",
+    flowsSurfaceTab: "Flows",
     searchAgentsPlaceholder: "Search agents...",
     allAgentsTab: "All Agents",
     yourAgentsTab: "Your Agents",
@@ -988,6 +1060,7 @@ const en = {
     actionsCount_one: "{{count}} Action",
     actionsCount_other: "{{count}} Actions",
     noActions: "No Actions",
+    flowAgent: "Flow Agent",
     unknownOwner: "Deleted User",
     longTermMemoryEnabled: "Long-Term Memory: Enabled",
     longTermMemoryDisabled: "Long-Term Memory: Disabled",
@@ -1008,16 +1081,76 @@ const en = {
     shareError: "Failed to share agent: {{error}}",
     featuredError: "Failed to update featured status: {{error}}",
   },
+  flowsPage: {
+    newFlowButton: "New Flow",
+    searchFlowsPlaceholder: "Search flows...",
+    noFlowsFound: "No flows yet",
+    versionChip: "v{{version}}",
+    notPublished: "Not published",
+    notPublishedTooltip:
+      "This flow has not been published yet. Open it and press Publish to start chatting.",
+    draftAhead: "Draft ahead",
+    updatedAt: "Updated {{date}}",
+    startChat: "Start chat",
+    edit: "Edit",
+  },
+  flowSettings: {
+    createTitle: "New flow",
+    editTitle: "Flow settings",
+    avatarLabel: "Flow avatar",
+    nameLabel: "Name",
+    descriptionLabel: "Description",
+    namePlaceholder: "Invoice triage",
+    descriptionPlaceholder: "What this flow does, in a sentence.",
+    starterMessagesLabel: "Conversation starters",
+    starterMessagesDescription:
+      "Shown as suggested first messages when someone opens this flow.",
+    createSubmit: "Create",
+    saveSubmit: "Save",
+    nameTakenError: "A flow with this name already exists.",
+    createFailedError: "The flow could not be created. Please try again.",
+    shareThisAgentLabel: "Share this flow",
+    shareThisAgentDescription:
+      "Other users, groups, or everyone in your organization.",
+    featureThisAgentLabel: "Feature this flow",
+    featureThisAgentDescription:
+      "Show it at the top of the flow list and pin it to the sidebar for new users who have access.",
+    agentPrivateWarning:
+      "A private flow cannot be featured until you share it.",
+  },
+  flowStudio: {
+    exitToFlows: "Back to flows",
+    settings: "Settings",
+    publishMenu: "More publish options",
+    saveDraftNow: "Save draft now",
+    discardDraft: "Discard draft",
+    publishModalTitle: "Publish flow",
+    publishFirst:
+      "This will publish version {{next}} — the first published version.",
+    publishReplacing:
+      "This will publish version {{next}}, replacing v{{current}}.",
+    publishNotesPlaceholder: "What changed? (optional)",
+    publishConfirm: "Publish",
+    exitTitle: "You have an unpublished draft",
+    exitKeepsPublished:
+      "v{{version}} stays published for everyone chatting with this flow.",
+    exitNothingPublished: "Discarding leaves this flow with no content at all.",
+    exitKeep: "Keep draft",
+    exitDiscard: "Discard changes",
+  },
   settingsLayout: {
     title: "Settings",
     generalTab: "General",
     chatPreferencesTab: "Chat Preferences",
+    emailTab: "Email Settings",
   },
   settings: {
     general: {
       profileTitle: "Profile",
       fullNameLabel: "Full Name",
       fullNameDescription: "We'll display this name in the app.",
+      fullNameLdapManagedDescription:
+        "This name is managed by your organization's directory (LDAP/SSO) and cannot be modified here.",
       fullNamePlaceholder: "Your name",
       workRoleLabel: "Work Role",
       workRoleDescription: "Share your role to better tailor responses.",
@@ -1071,6 +1204,8 @@ const en = {
       updateMemoriesLabel: "Update Memories",
       updateMemoriesDescription:
         "Let ATLAS generate and update stored memories.",
+      updateMemoriesRequiresReference:
+        'Turn on "Reference Stored Memories" first to use this setting.',
       longTermMemoryLabel: "Long-Term Memory",
       longTermMemoryDescription:
         "Automatically extract and recall facts from your conversations.",
@@ -1141,6 +1276,46 @@ const en = {
       toastTokenDeleted: "Token deleted successfully",
       toastTokenDeleteFailed: "Failed to delete token",
       toastTokenDeleteError: "Network error deleting token",
+      emailConfigTitle: "Email Configuration",
+      emailConfigDescription:
+        "Configure your personal email credentials so agents can send emails on your behalf.",
+      mailConfigLabel: "Mail configuration",
+      mailConfigDescription:
+        "Select the SMTP server configuration provided by your administrator.",
+      mailConfigPlaceholder: "Select a mail configuration",
+      mailConfigLoading: "Loading mail configurations...",
+      mailConfigRequired: "Select a mail configuration.",
+      emailUsernameLabel: "Username",
+      emailUsernameDescription:
+        "Your email address or username for SMTP server authentication.",
+      emailUsernamePlaceholder: "jdoe@company.com",
+      emailPasswordLabel: "Password",
+      emailPasswordDescription: "Your email account or app-specific password.",
+      emailPasswordConfiguredHint:
+        "Password is securely stored. Enter a new password only if changing it.",
+      emailPasswordPlaceholder: "Enter your password",
+      emailPasswordPlaceholderConfigured: "•••••••• (Password configured)",
+      fromEmailLabel: "Sender Email",
+      fromEmailDescription: "The email address displayed in the 'From' header.",
+      fromEmailPlaceholder: "jdoe@company.com",
+      fromNameLabel: "Sender Display Name",
+      fromNameDescription: "Optional display name for outgoing emails.",
+      fromNamePlaceholder: "John Doe",
+      saveEmailButton: "Save Email Settings",
+      savingEmailButton: "Saving...",
+      removeEmailConfigButton: "Remove",
+      emailConfigEntity: "Email settings",
+      testEmailButton: "Test Connection",
+      testingEmailButton: "Testing...",
+      emailLastTested: "Last tested: {{date}}",
+      emailNotTestedYet: "Not tested yet",
+      toastEmailConfigSaved: "Email credentials saved successfully.",
+      toastEmailConfigSaveFailed: "Failed to save email credentials: {{error}}",
+      toastEmailConfigDeleted: "Email credentials removed.",
+      toastEmailConfigDeleteFailed:
+        "Failed to remove email credentials: {{error}}",
+      toastEmailTestSuccess: "Test email sent successfully.",
+      toastEmailTestFailed: "Email connection test failed: {{error}}",
     },
     pat: {
       title: "Create Access Token",
@@ -1310,6 +1485,13 @@ const en = {
     expandTimeline: "Expand timeline",
     collapseTimeline: "Collapse timeline",
   },
+  duration: {
+    none: "—",
+    ms: "{{value}}ms",
+    seconds: "{{value}}s",
+    minutesSeconds: "{{minutes}}m {{seconds}}s",
+    minutes: "{{minutes}}m",
+  },
   messageSwitcher: {
     waitForCompletion: "Wait for agent message to complete",
     previous: "Previous",
@@ -1319,6 +1501,27 @@ const en = {
     editTooltip: "Edit",
   },
   agentEditor: {
+    connectors: {
+      operationRequired:
+        "Select at least one operation or remove this connector.",
+      title: "Connectors",
+      description:
+        "Choose saved connections and what this agent may do with each one.",
+      listResources: "List resources",
+      read: "Read",
+      loadError:
+        "Connector options could not be loaded. Saved selections are preserved.",
+      loading: "Loading connectors…",
+      empty: "No configured connectors are available.",
+      remove: "Remove",
+      removeNamed: "Remove {{name}}",
+      saved: "Saved connector ({{id}})",
+      deleted: "Deleted connector ({{id}})",
+      unavailable:
+        "This saved connection is unavailable. Remove it before saving if it is no longer needed.",
+    },
+    formTab: "Form",
+    flowTab: "Flow",
     searchToolsPlaceholder: "Search tools...",
     expandButton: "Expand",
     foldButton: "Fold",
@@ -1367,6 +1570,20 @@ const en = {
     graphSchemaLabel: "Graph Schema",
     graphSchemaDescription: "Select the dynamic graph execution pattern.",
     selectGraphSchemaPlaceholder: "Select graph schema",
+    flowCanvasSaveNoticeTitle: "Design your flow here",
+    flowCanvasNoticeBadge: "Draft",
+    flowCanvasSaveNotice:
+      "Your flow will be saved when you finish creating the agent, and further edits happen after creation.",
+    flowCanvasTestButton: "Test",
+    flowCanvasTestDisabledTooltip:
+      "Add a Chat Input or Chat Output node to test this flow",
+    flowChatInputNode: "Chat Input",
+    flowChatOutputNode: "Chat Output",
+    flowMissingChatNodes:
+      "A flow agent needs a Chat Input and a Chat Output node before it can be created. Add: {{nodes}}.",
+    flowValidationFailed: "This flow can't be created yet: {{issues}}",
+    strategyFlow: "Visual Flow",
+    convertToFlow: "Convert to Visual Flow",
     graphPreviewTitle: "{{schema}} graph",
     graphPreviewHeroEyebrow: "Agent architecture preview",
     graphPreviewButtonTitle: "Preview the agent graph",
@@ -1620,6 +1837,7 @@ const en = {
     noMailConfigsAvailable:
       "No email configurations available. Please add an SMTP account via Admin panel first.",
     mcpToolsChecking: "Checking MCP tools...",
+    builtInToolsGroup: "Built-in Tools",
     selectToolsButton: "Select Tools",
     noMcpToolsTitle: "No MCP Tools Found",
     noMcpToolsDescription: "There are no configured MCP tools in the system.",
@@ -1792,6 +2010,21 @@ const en = {
     downloadButton: "Download",
     waitingForResponse: "Waiting for response...",
     queryLabel: "Query",
+  },
+  humanInput: {
+    waiting: "Waiting for your decision",
+    picked: "You chose: {{decision}}",
+  },
+  clarification: {
+    asking: "Let me make sure I understood",
+    askingAgent: "{{agent}} is asking",
+    defer: "You decide",
+    continue: "Continue",
+    skipped: "You wrote something instead of answering.",
+    typeInstead:
+      "If you would rather type, the questions are skipped and what you write is passed straight on.",
+    unsupported:
+      "This question cannot be shown in this version. You can continue by typing what you want.",
   },
   generatedFile: {
     openAriaLabel: "Open {{filename}}",
@@ -2151,10 +2384,21 @@ const en = {
       editButton: "Edit",
       testButton: "Test",
       deleteButton: "Delete",
+      deleteEntity: "Mail configuration",
       lastTested: "Last tested: {{date}}",
       notTestedYet: "Not tested yet",
+      testStatusSuccess: "Success",
+      testStatusFailed: "Failed",
+      searchPlaceholder: "Search mail configs...",
+      searchResultCount_one: "{{count}} result found",
+      searchResultCount_other: "{{count}} results found",
+      noSearchResults: "No mail configs match your search.",
+      clearSearch: "Clear search",
+      paginationInfo: "Showing {{from}} to {{to}} of {{total}} results",
       editConfigTitle: "Edit config",
       addConfigTitle: "Add config",
+      serverSettingsNote:
+        "Configure the generic SMTP gateway server. End-users configure their authentication credentials in General Settings.",
       passwordsEncryptedNote:
         "Passwords are encrypted by agent-service and are never sent to agent prompts.",
       nameLabel: "Name",
@@ -2173,8 +2417,6 @@ const en = {
       passwordPlaceholder: "SMTP password",
       fromEmailLabel: "From email",
       fromNameLabel: "From name",
-      testRecipientLabel: "Test recipient",
-      testRecipientHint: "Used by the Test action for this config.",
       cancelButton: "Cancel",
       saveButton: "Save",
       createButton: "Create",
@@ -2190,6 +2432,10 @@ const en = {
       toastDeleted: "Mail config deleted.",
       toastDeleteFailed: "Mail config could not be deleted: {{error}}",
       toastTestFailed: "Test email could not be sent: {{error}}",
+      deleteConfirmTitle: "Delete mail config",
+      deleteConfirmDescription:
+        'Are you sure you want to delete "{{name}}"? This action cannot be undone.',
+      testingButton: "Testing...",
     },
     agentAccessGroups: {
       groupNameRequired: "Group name is required",
@@ -2244,6 +2490,10 @@ const en = {
         revealLoading: "Loading organization hierarchy",
         searchEmpty: "No matching organizations",
         searchCount: "{{count}} results",
+        searchCount_one: "{{count}} result",
+        searchCount_other: "{{count}} results",
+        moreMembers_one: "+{{count}} more member",
+        moreMembers_other: "+{{count}} more members",
         searchLimited: "Showing the first 100 results",
         searchFailed: "Organization search could not be completed",
         revealFailed: "Organization hierarchy could not be revealed",
@@ -2342,6 +2592,8 @@ const en = {
         childCount_one: "{{count}} child",
         childCount_other: "{{count}} children",
         positionLocked: "Position locked",
+        collapseSubtree: "Collapse subtree",
+        expandSubtree: "Expand subtree",
       },
       inspector: {
         label: "Organization inspector",
@@ -2396,6 +2648,8 @@ const en = {
         searchResources: "Search {{resource}}",
         selectedOnly: "Selected only",
         selectedCount: "{{count}} selected",
+        selectedCount_one: "{{count}} item selected",
+        selectedCount_other: "{{count}} items selected",
         clearVisible: "Clear visible",
         selectVisible: "Select visible",
         noFilterMatches: "No {{resource}} match the current filters",
@@ -2418,8 +2672,12 @@ const en = {
       accessModelLabel: "Access model",
       catalogTitle: "Agent Catalog",
       createButton: "Create Agent",
+      createFlowButton: "Create Flow",
       catalogDescription:
         "Browse and manage all agents available in your organization.",
+      flowCatalogTitle: "Flow Catalog",
+      flowCatalogDescription:
+        "Browse and manage all flows available in your organization.",
       searchPlaceholder: "Search agents...",
       noSearchResults: "No agents found matching your search.",
       errorTitle: "Failed to load agents",
@@ -2458,7 +2716,10 @@ const en = {
       hidden: "Hidden",
       visible: "Visible",
       agentsTab: "Agents",
+      flowsTab: "Flows",
       accessGroupsTab: "Access groups",
+      totalFlowsLabel: "Total flows",
+      publishedFlowsLabel: "Published flows",
     },
     search: {
       workspaceTitle: "Search quality workspace",
@@ -3004,8 +3265,13 @@ const en = {
       accessModelLabel: "Access model",
       exportLabel: "Export",
       matchingUsersLabel: "Matching users",
+      userStatusLabel: "User status",
       pendingRequestsLabel: "Pending requests",
       rolesAvailableLabel: "Roles available",
+      topRoleLabel: "Most common role",
+      roleDistributionLabel: "Role distribution",
+      rolesInUseLabel: "Roles in use",
+      noRoleData: "No data",
       notAvailable: "Not available",
       addUserWorkspaceTitle: "Create user",
       addUserWorkspaceDescription:
@@ -3163,6 +3429,9 @@ const en = {
       roles: "Roles",
       permissionCatalogLabel: "Permission catalog",
       permissions: "Permissions",
+      builtInRolesLabel: "Built-in roles",
+      topRoleLabel: "Most used role",
+      noRoleData: "No data",
       roleLayerLabel: "Role layer",
       compositeLayerLabel: "Composite layer",
       compositeRoles: "Composite Roles",
@@ -3170,6 +3439,7 @@ const en = {
       services: "Services",
     },
     rolesPage: {
+      noRolesMatchSearch: "No roles match your search",
       roleNameRequired: "Role name is required",
       compositeRoleNameRequired: "Composite role name is required",
       unknownError: "Unknown error",
@@ -3465,6 +3735,8 @@ const en = {
         "Monitor connected sources, expand by connector type, and jump straight into adding the next data source.",
       connectedSourcesLabel: "Connected sources",
       connectorTypesLabel: "Connector types",
+      totalDocumentsLabel: "Total indexed documents",
+      erroredSourcesLabel: "Sync errors",
       viewModeLabel: "View mode",
       groupedByType: "Grouped by type",
       connectorCreated: "Connector created successfully",
@@ -3476,6 +3748,11 @@ const en = {
       collapseAll: "Collapse All",
       loading: "Loading…",
       noDataSources: "No data sources found.",
+      noDataSourcesDescription:
+        "Connect a new data source to begin indexing documents for your agents.",
+      noMatchingDataSources: "No matching data sources found",
+      noMatchingDataSourcesDescription:
+        "Try searching with a different keyword or connector type.",
       addConnectorLinkText: "Add a connector",
       toGetStarted: "to get started.",
       columns: {
@@ -3510,6 +3787,8 @@ const en = {
         syncing: "Syncing",
         completed: "Completed",
         error: "Error",
+        tokens_one: "{{count}} tok",
+        tokens_other: "{{count}} tok",
         succeeded: "Succeeded",
         failed: "Failed",
         cancelled: "Cancelled",
@@ -3564,7 +3843,6 @@ const en = {
         },
         removing: "Removing…",
         removeSchedule: "Remove Schedule",
-        close: "Close",
         cancel: "Cancel",
         saving: "Saving…",
         saveChanges: "Save Changes",
@@ -3940,6 +4218,8 @@ const en = {
       entities: "Entities",
       relations: "Relations",
       error: "Error",
+      tokens_one: "{{count}} tok",
+      tokens_other: "{{count}} tok",
       graphSearchFailed: "Graph search failed",
       graphSearchTitle: "Graph Search",
       graphSearchDescription:
@@ -4137,6 +4417,10 @@ const en = {
       notConfigured: "Not configured",
       validationLabel: "Validation",
       crawlerTestValue: "Crawler test",
+      lastTestLabel: "Last verification",
+      testPassed: "Passed",
+      testFailed: "Failed",
+      testNotRun: "Not tested yet",
       pageDescription:
         "Search settings for external search across the internet.",
       checkingConnection: "Checking connection...",
@@ -4269,6 +4553,9 @@ const en = {
       catalogDescription:
         "Search the available connectors, press Enter to open the first match, or browse by category.",
       categoriesLabel: "Categories",
+      totalConnectorsLabel: "Total connectors",
+      connectedSourcesLabel: "Connected sources",
+      erroredSourcesLabel: "Sources with errors",
       searchStateLabel: "Search state",
       filtered: "Filtered",
       browseAll: "Browse all",
@@ -4320,6 +4607,10 @@ const en = {
       workspaceDescription:
         "Review plan status, license activation, and billing details without leaving the admin console.",
       currentViewLabel: "Current view",
+      planLabel: "Plan",
+      noActivePlan: "No active plan",
+      renewalDateLabel: "Renewal date",
+      noRenewalDate: "Not set",
       subscriptionLabel: "Subscription",
       active: "Active",
       review: "Review",
@@ -4462,6 +4753,8 @@ const en = {
         starting: "Starting",
         completed: "Completed",
         error: "Error",
+        tokens_one: "{{count}} tok",
+        tokens_other: "{{count}} tok",
         succeeded: "Succeeded",
         failed: "Failed",
         cancelled: "Cancelled",
@@ -4563,6 +4856,8 @@ const en = {
       accessTokenLifespanLabel: "Access token lifespan (seconds)",
       ssoIdleTimeoutLabel: "SSO idle timeout (seconds)",
       ssoMaxLifespanLabel: "SSO max lifespan (seconds)",
+      clientSessionMaxLifespanLabel:
+        "Client session max lifespan (seconds, 0 inherits SSO max)",
       saveSessionSettingsButton: "Save session settings",
       refreshStatusButton: "Refresh status",
       startupBehaviorTitle: "Startup behavior",
@@ -4653,6 +4948,9 @@ const en = {
       workspaceTitle: "Slack bot workspace",
       workspaceDescription:
         "Manage Slack bot connections, channel routing, and chat entry points for workspace users.",
+      totalBotsLabel: "Total bots",
+      activeBotsLabel: "Active bots",
+      configuredChannelsLabel: "Configured channels",
       integrationLabel: "Integration",
       routingLabel: "Routing",
       channels: "Channels",
@@ -4717,6 +5015,11 @@ const en = {
       workspaceTitle: "Discord bot workspace",
       workspaceDescription:
         "Register Discord servers, manage bot tokens, and route channels to the right default agent.",
+      totalServersLabel: "Total servers",
+      registeredServersLabel: "Registered servers",
+      botStatusLabel: "Bot status",
+      botAvailable: "Available",
+      botUnavailable: "Not configured",
       integrationLabel: "Integration",
       registrationLabel: "Registration",
       agentLayerLabel: "Agent layer",
@@ -4838,148 +5141,218 @@ const en = {
         indexingStatus: {
           title: "Existing Connectors",
           sidebar: "Existing Connectors",
+          description:
+            "View and manage your configured data connectors and indexing status.",
         },
         addConnector: {
           title: "Add Connector",
           sidebar: "Add Connector",
+          description:
+            "Connect new data sources and external services to ingest knowledge for your agents.",
         },
         documentSets: {
           title: "Document Sets",
           sidebar: "Document Sets",
+          description:
+            "Group documents into collections to define knowledge scopes for agents and search.",
         },
         documentExplorer: {
           title: "Document Explorer",
           sidebar: "Explorer",
+          description:
+            "Search, inspect, and verify indexed documents and their chunked contents.",
         },
         mcpActions: {
           title: "MCP Actions",
           sidebar: "MCP Actions",
+          description:
+            "Connect MCP (Model Context Protocol) servers to add custom actions and tools for your agents.",
         },
         agents: {
           title: "Agents",
-          sidebar: "Agents",
+          sidebar: "Agents & Flows",
+          description:
+            "Create and manage AI agents equipped with custom instructions, tools, and knowledge sources.",
         },
         chatPreferences: {
           title: "Chat Preferences",
           sidebar: "Chat Preferences",
+          description:
+            "Configure default AI behaviors, team context, and chat preferences for your organization.",
         },
         llmModels: {
           title: "LLM Models",
           sidebar: "LLM Models",
+          description:
+            "Configure LLM providers, API keys, and default models used across the system.",
         },
         webSearch: {
           title: "Web Search",
           sidebar: "Web Search",
+          description:
+            "Search settings for external search across the internet.",
         },
         imageGeneration: {
           title: "Image Generation",
           sidebar: "Image Generation",
+          description:
+            "Configure image generation models for users to generate images directly from the chat interface.",
         },
         codeInterpreter: {
           title: "Code Interpreter",
           sidebar: "Code Interpreter",
+          description:
+            "Secure, isolated Python runtime available for your LLM. See docs for more details.",
         },
         searchSettings: {
           title: "Search Settings",
           sidebar: "Search Settings",
+          description:
+            "Configure embedding models, reindexing options, and search retrieval quality settings.",
         },
         documentProcessing: {
           title: "Document Processing",
           sidebar: "Document Processing",
+          description:
+            "Configure settings for the Document Processing & RAG Pipeline.",
         },
         knowledgeGraph: {
           title: "Knowledge Graph",
           sidebar: "Knowledge Graph",
+          description:
+            "Build, inspect, and search entity graphs across your indexed knowledge sources.",
         },
         organizations: {
           title: "Manage Organization",
           sidebar: "Organization",
+          description:
+            "Manage your organizational hierarchy, department tree, and user assignments.",
         },
         users: {
           title: "Manage Users",
           sidebar: "Users",
+          description:
+            "Manage user accounts, send invitations, and configure user roles.",
         },
         apiKeys: {
           title: "API Keys",
           sidebar: "API Keys",
+          description:
+            "Generate and manage API keys for programmatic access to platform APIs.",
         },
         roles: {
           title: "Roles & Permissions",
           sidebar: "Roles & Permissions",
+          description:
+            "Configure access roles and granular permissions for users and teams.",
         },
         tokenRateLimits: {
           title: "Token Rate Limits",
           sidebar: "Token Rate Limits",
+          description:
+            "Manage token usage quotas and rate limits for users and groups.",
         },
         systemSettings: {
           title: "System Settings",
           sidebar: "System Settings",
+          description:
+            "Manage global system configurations, session settings, and authentication preferences.",
         },
         documentFeedback: {
           title: "Document Feedback",
           sidebar: "Feedback",
+          description:
+            "Review user ratings and feedback on document relevance and answer quality.",
         },
         systemInfo: {
           title: "System Information",
           sidebar: "System Information",
+          description:
+            "View system version information and runtime environment details.",
         },
         mailConfigs: {
           title: "Mail Configs",
           sidebar: "Mail Configs",
+          description:
+            "Manage SMTP accounts that agents can use with send_email.",
         },
         slackBots: {
           title: "Slack Bots",
           sidebar: "Slack Bots",
+          description:
+            "Connect ATLAS to your Slack workspace and let users ask questions directly from Slack channels.",
         },
         discordBots: {
           title: "Discord Bots",
           sidebar: "Discord Bots",
+          description:
+            "Connect ATLAS to your Discord servers. Users can ask questions directly in Discord channels.",
         },
         openapiActions: {
           title: "OpenAPI Actions",
           sidebar: "OpenAPI Actions",
+          description:
+            "Connect OpenAPI servers to add custom actions and tools for your agents.",
         },
         standardAnswers: {
           title: "Standard Answers",
           sidebar: "Standard Answers",
+          description:
+            "Configure predefined standard answers triggered by specific questions or keywords.",
         },
         groups: {
           title: "Manage User Groups",
           sidebar: "Groups",
+          description:
+            "Create and organize user groups to manage permissions and document access collectively.",
         },
         usage: {
           title: "Usage Statistics",
           sidebar: "Usage Statistics",
+          description:
+            "Monitor query volumes, user activity, and system usage statistics.",
         },
         queryHistory: {
           title: "Query History",
           sidebar: "Query History",
+          description:
+            "Inspect and review past search and chat queries made by users.",
         },
         customAnalytics: {
           title: "Custom Analytics",
           sidebar: "Custom Analytics",
+          description:
+            "Integrate third-party analytics tools to track user interactions and usage events.",
         },
         theme: {
           title: "Appearance & Theming",
           sidebar: "Appearance & Theming",
+          description:
+            "Customize how the application looks to users across your organization.",
         },
         billing: {
           title: "Plans & Billing",
           sidebar: "Plans & Billing",
+          description:
+            "Manage your subscription plan, seat licenses, and billing details.",
         },
         indexMigration: {
           title: "Document Index Migration",
           sidebar: "Document Index Migration",
+          description:
+            "Monitor migration from Vespa to OpenSearch and control active ingestion source.",
         },
         debug: {
           title: "Debug Logs",
           sidebar: "Debug Logs",
+          description:
+            "Review system debug logs and download diagnostic bundles.",
         },
       },
       sections: {
         connectors: "Connectors",
         documentManagement: "Document Management",
-        customAgents: "Custom Agents",
+        customAgents: "Custom Agents and Flows",
         configuration: "Configuration",
         userManagement: "User Management",
         performance: "Performance",
@@ -5290,6 +5663,8 @@ const en = {
       loadingConnectorConfiguration: "Loading connector configuration...",
       retrievingConnectorDetails: "Retrieving connector details...",
       error: "Error",
+      tokens_one: "{{count}} tok",
+      tokens_other: "{{count}} tok",
       noCredentialSchema:
         "No credential schema available for this connector type.",
       noSearchConfig:
@@ -5379,6 +5754,8 @@ const en = {
       deleting: "Deleting",
       paused: "Paused",
       error: "Error",
+      tokens_one: "{{count}} tok",
+      tokens_other: "{{count}} tok",
       indexing: "Indexing",
       indexed: "Indexed",
       initialIndexing: "Initial Indexing",
@@ -5634,6 +6011,8 @@ const en = {
       "Unsupported field type. You can enter raw JSON here.",
     executingTool: "Executing tool...",
     error: "Error",
+    tokens_one: "{{count}} tok",
+    tokens_other: "{{count}} tok",
     runToSeeResults: "Run the tool to see results",
     result: "Result",
     executedSuccessfully: "Tool executed successfully",
@@ -5806,6 +6185,8 @@ const en = {
     today: "Today",
     loading: "Loading...",
     error: "Error",
+    tokens_one: "{{count}} tok",
+    tokens_other: "{{count}} tok",
     success: "Success",
     manage: "Manage",
     optional: "Optional",
@@ -6593,6 +6974,8 @@ const en = {
   },
   federated: {
     error: "Error",
+    tokens_one: "{{count}} tok",
+    tokens_other: "{{count}} tok",
   },
   embeddings: {
     default: "Default",
@@ -6601,6 +6984,8 @@ const en = {
     failed: "Failed",
     none: "None",
     error: "Error",
+    tokens_one: "{{count}} tok",
+    tokens_other: "{{count}} tok",
   },
   providerModal: {
     cancel: "Cancel",
@@ -6690,6 +7075,1294 @@ const en = {
       "Curators must select one or more groups to give access to this {{objectName}}",
     publicDisabledMessage:
       "This {{objectName}} is public and available to all users.",
+  },
+  urlMustStartWithHttp: "URL must start with http:// or https://",
+  lines_one: "{{count}} line",
+  lines_other: "{{count}} lines",
+  flowCanvas: {
+    importJson: "Import JSON",
+    importJsonTooltip: "Import flow from JSON file",
+    importModalTitle: "Import Flow (JSON)",
+    importModalDescription:
+      "Import a flow by uploading a JSON file or pasting JSON directly.",
+    uploadTab: "Upload File",
+    pasteTab: "Paste JSON",
+    dragDropTitle: "Drag & drop a JSON file here",
+    dragDropSubtitle: "or click to browse (.json files supported)",
+    dragDropActive: "Drop file here...",
+    dropJsonHere: "Drop the JSON flow file here",
+    dropJsonDescription: "Drop it to load your flow onto the canvas",
+    fileUnreadable: "File could not be read",
+    fileSelected: "Selected File",
+    changeFile: "Change File",
+    removeFile: "Remove",
+    editInCodeEditor: "Edit in Editor",
+    editorPlaceholder: "Paste or type flow JSON data here...",
+    formatJson: "Format JSON",
+    clearJson: "Clear",
+    copyJson: "Copy",
+    copied: "Copied!",
+    loadSample: "Load Sample",
+    validFlow: "Valid Flow ({{nodes}} nodes, {{edges}} edges)",
+    invalidJson: "Invalid JSON: {{error}}",
+    invalidFlow: "Invalid Flow: {{error}}",
+    noContent: "No file uploaded or JSON text entered yet",
+    importAction: "Import Flow",
+    cancel: "Cancel",
+    importSuccess:
+      "Flow imported successfully ({{nodes}} nodes, {{edges}} edges)",
+    importError: "Failed to import flow: {{error}}",
+    importErrors: {
+      invalidJson: "The file is not valid JSON.",
+      notAnObject: "JSON content must be an object or a valid JSON string.",
+      missingSpec: "Could not find a flow specification in the JSON.",
+      noNodes: "The flow JSON has no nodes or edges.",
+    },
+    tools: {
+      calculate: {
+        label: "Calculate",
+        description: "Safe mathematical expression evaluation",
+      },
+      execute_python_code: {
+        label: "Execute Python Code",
+        description: "Execute Python code in a secure sandbox",
+      },
+      execute_bash_command: {
+        label: "Execute Bash Command",
+        description: "Execute a bash command in a secure sandbox",
+      },
+      validate_python_syntax: {
+        label: "Validate Python Syntax",
+        description: "Check Python code for syntax errors",
+      },
+      format_python_code: {
+        label: "Format Python Code",
+        description: "Format Python code using Black",
+      },
+      install_package: {
+        label: "Install Package",
+        description: "Install a Python package via pip",
+      },
+      list_installed_packages: {
+        label: "List Installed Packages",
+        description: "List all installed Python packages",
+      },
+      execute_command: {
+        label: "Execute Command",
+        description: "Execute system command",
+      },
+      ping_host: { label: "Ping Host", description: "Ping a network host" },
+      get_system_info: {
+        label: "Get System Info",
+        description: "Get system hardware and OS information",
+      },
+      list_containers: {
+        label: "List Containers",
+        description: "List Docker containers",
+      },
+      inspect_container: {
+        label: "Inspect Container",
+        description: "Get detailed container information",
+      },
+      get_container_logs: {
+        label: "Get Container Logs",
+        description: "Get logs from a container",
+      },
+      start_container: {
+        label: "Start Container",
+        description: "Start a stopped container",
+      },
+      stop_container: {
+        label: "Stop Container",
+        description: "Stop a running container",
+      },
+      restart_container: {
+        label: "Restart Container",
+        description: "Restart a container",
+      },
+      list_images: {
+        label: "List Images",
+        description: "List local Docker images",
+      },
+      read_file: { label: "Read File", description: "Read contents of a file" },
+      write_file: {
+        label: "Write File",
+        description: "Write content to a file",
+      },
+      append_to_file: {
+        label: "Append to File",
+        description: "Append content to a file",
+      },
+      list_directory: {
+        label: "List Directory",
+        description: "List files and directories in a path",
+      },
+      file_exists: {
+        label: "File Exists",
+        description: "Check if a file or directory exists",
+      },
+      delete_file: { label: "Delete File", description: "Delete a file" },
+      create_directory: {
+        label: "Create Directory",
+        description: "Create a new directory",
+      },
+      get_file_info: {
+        label: "Get File Info",
+        description: "Get metadata for a file or directory",
+      },
+      search_files: {
+        label: "Search Files",
+        description: "Search for files matching a pattern",
+      },
+      git_status: {
+        label: "Git Status",
+        description: "Get current working tree status",
+      },
+      git_diff: {
+        label: "Git Diff",
+        description: "Show changes between commits and working tree",
+      },
+      git_log: { label: "Git Log", description: "Show commit logs" },
+      git_add: {
+        label: "Git Add",
+        description: "Add file contents to the staging area",
+      },
+      git_commit: {
+        label: "Git Commit",
+        description: "Record changes to the repository",
+      },
+      git_checkout: {
+        label: "Git Checkout",
+        description: "Switch branches or restore working tree files",
+      },
+      git_branch: {
+        label: "Git Branch",
+        description: "List, create, or delete branches",
+      },
+      git_clone: {
+        label: "Git Clone",
+        description: "Clone a repository into a new directory",
+      },
+      git_pull: {
+        label: "Git Pull",
+        description: "Fetch from and integrate with another repository",
+      },
+      compile_java: {
+        label: "Compile Java",
+        description: "Compile Java source files",
+      },
+      run_java_class: {
+        label: "Run Java Class",
+        description: "Execute a compiled Java class",
+      },
+      run_jar: { label: "Run JAR", description: "Execute a runnable JAR file" },
+      inspect_class: {
+        label: "Inspect Class",
+        description: "Disassemble/inspect a Java class",
+      },
+      get_jvm_info: {
+        label: "Get JVM Info",
+        description: "Get Java Virtual Machine information",
+      },
+      list_classpath: {
+        label: "List Classpath",
+        description: "List JARs and classes on the classpath",
+      },
+      parse_json: {
+        label: "Parse JSON",
+        description: "Parse a JSON string into a structured object",
+      },
+      validate_json: {
+        label: "Validate JSON",
+        description: "Validate JSON syntax and structure",
+      },
+      format_json: {
+        label: "Format JSON",
+        description: "Pretty-print JSON with indentation",
+      },
+      query_json: {
+        label: "Query JSON",
+        description: "Query JSON using JSONPath expressions",
+      },
+      json_diff: {
+        label: "JSON Diff",
+        description: "Compare two JSON objects and find differences",
+      },
+      send_email: {
+        label: "Send Email",
+        description: "Send an email via configured SMTP",
+      },
+      draft_email: {
+        label: "Draft Email",
+        description: "Create an email draft",
+      },
+      search_emails: {
+        label: "Search Emails",
+        description: "Search email inbox by query",
+      },
+      read_email: {
+        label: "Read Email",
+        description: "Read full email content and attachments",
+      },
+      extract_text: {
+        label: "Extract Text",
+        description: "Extract all text from a PDF document",
+      },
+      extract_pages: {
+        label: "Extract Pages",
+        description: "Extract specific page range from a PDF",
+      },
+      get_metadata: {
+        label: "Get Metadata",
+        description: "Get title, author, and page count of PDF",
+      },
+      render_page_as_image: {
+        label: "Render Page Image",
+        description: "Render a PDF page to PNG/JPEG",
+      },
+      search_pdf: {
+        label: "Search PDF",
+        description: "Search for text occurrences within PDF",
+      },
+      check_health: {
+        label: "Check Health",
+        description: "Check health of a web service",
+      },
+      list_endpoints: {
+        label: "List Endpoints",
+        description: "List discovered REST endpoints",
+      },
+      call_endpoint: {
+        label: "Call Endpoint",
+        description: "Make HTTP request to service endpoint",
+      },
+      count_words: {
+        label: "Count Words",
+        description: "Count words, characters, and sentences",
+      },
+      summarize_text: {
+        label: "Summarize Text",
+        description: "Generate concise summary of text",
+      },
+      regex_match: {
+        label: "Regex Match",
+        description: "Match regular expression against text",
+      },
+      regex_replace: {
+        label: "Regex Replace",
+        description: "Replace patterns using regular expressions",
+      },
+      convert_case: {
+        label: "Convert Case",
+        description: "Convert text case (upper, lower, title, camel)",
+      },
+      split_text: {
+        label: "Split Text",
+        description: "Split text into chunks or tokens",
+      },
+      get_current_time: {
+        label: "Get Current Time",
+        description: "Get current date and time with timezone",
+      },
+      format_date: {
+        label: "Format Date",
+        description: "Format timestamps into standard string formats",
+      },
+      calculate_duration: {
+        label: "Calculate Duration",
+        description: "Calculate difference between two dates",
+      },
+      generate_uuid: {
+        label: "Generate UUID",
+        description: "Generate random UUID v4 string",
+      },
+      hash_text: {
+        label: "Hash Text",
+        description: "Compute SHA-256 or MD5 hash of text",
+      },
+      base64_encode: {
+        label: "Base64 Encode",
+        description: "Encode string or bytes to base64",
+      },
+      base64_decode: {
+        label: "Base64 Decode",
+        description: "Decode base64 string to original text",
+      },
+      random_number: {
+        label: "Random Number",
+        description: "Generate cryptographically secure random number",
+      },
+      web_search: {
+        label: "Web Search",
+        description: "Search the web using configured search provider",
+      },
+      fetch_webpage: {
+        label: "Fetch Webpage",
+        description: "Fetch and extract text from a webpage URL",
+      },
+      scrape_content: {
+        label: "Scrape Content",
+        description: "Extract structured data from a webpage",
+      },
+      crawl_sitemap: {
+        label: "Crawl Sitemap",
+        description: "Parse and crawl links from a sitemap",
+      },
+      equals: { label: "equals", description: "" },
+      not_equals: { label: "does not equal", description: "" },
+      contains: { label: "contains", description: "" },
+      not_contains: { label: "does not contain", description: "" },
+      starts_with: { label: "starts with", description: "" },
+      ends_with: { label: "ends with", description: "" },
+      regex: { label: "matches regex", description: "" },
+      less_than: { label: "less than", description: "" },
+      less_than_or_equal: { label: "less than or equal", description: "" },
+      greater_than: { label: "greater than", description: "" },
+      greater_than_or_equal: {
+        label: "greater than or equal",
+        description: "",
+      },
+    },
+    components: {
+      Agent: {
+        name: "Agent",
+        description:
+          "Autonomous agent utilizing tools and models to execute tasks.",
+      },
+      AgentRef: {
+        name: "Agent Reference",
+        description: "References an existing registered agent in the system.",
+      },
+      AirbyteDatasource: {
+        name: "Airbyte Datasource",
+        description: "Connects external data via Airbyte connectors.",
+      },
+      BuiltinTool: {
+        name: "Built-in Tool",
+        description: "Executes built-in system tools.",
+      },
+      CalculatorTools: {
+        name: "Calculator Tools",
+        description: "Mathematical calculations and expression evaluation.",
+      },
+      ChatInput: {
+        name: "Chat Input",
+        description: "Receives user input from the chat interface.",
+      },
+      ChatOutput: {
+        name: "Chat Output",
+        description: "Sends the final response back to the user.",
+      },
+      BatchRun: {
+        name: "Batch Run",
+        description: "Runs a model on each row of a table column.",
+      },
+      Chatbot: {
+        name: "Chatbot",
+        description: "Basic chatbot handling interactive user conversations.",
+      },
+      CitationFormatter: {
+        name: "Citation Formatter",
+        description: "Appends document source citations to responses.",
+      },
+      CodeTools: {
+        name: "Code Tools",
+        description: "Execute and inspect code snippets in various languages.",
+      },
+      CommandTools: {
+        name: "Command Tools",
+        description: "Execute system commands and shell operations.",
+      },
+      Connector: {
+        name: "Connector",
+        description: "Integrates with third-party services and databases.",
+      },
+      ConditionalRouter: {
+        name: "If-Else",
+        description:
+          "Compares the latest message against a fixed rule and branches true/false. Wire a branch back upstream for a condition-driven loop.",
+      },
+      ContentCrawl: {
+        name: "Content Crawl",
+        description: "Crawls domains recursively up to max page depth.",
+      },
+      ConversationMemory: {
+        name: "Conversation Memory",
+        description: "Maintains message history within the current session.",
+      },
+      CustomTools: {
+        name: "Custom Tools",
+        description: "Attaches selected builtin and MCP tools.",
+      },
+      DataSource: {
+        name: "Data Source",
+        description: "Pulls data from configured external data sources.",
+      },
+      DockerTools: {
+        name: "Docker Tools",
+        description: "Manage Docker containers, images, and volumes.",
+      },
+      DocumentContext: {
+        name: "Document Context",
+        description: "Extracts context text from selected documents.",
+      },
+      DocumentFilter: {
+        name: "Document Filter",
+        description: "Filters search results by metadata and criteria.",
+      },
+      DocumentSearch: {
+        name: "Document Search",
+        description:
+          "Retrieves relevant passages from indexed document collections.",
+      },
+      ExternalMCPServer: {
+        name: "External MCP Server",
+        description: "Connects to an external Model Context Protocol server.",
+      },
+      FetchWebpage: {
+        name: "Fetch Webpage",
+        description: "Extracts markdown and text content from URLs.",
+      },
+      FileInput: {
+        name: "File Input",
+        description: "Accepts file uploads from the user.",
+      },
+      FileTools: {
+        name: "File Tools",
+        description: "Read, write, and manipulate local filesystem files.",
+      },
+      GitTools: {
+        name: "Git Tools",
+        description: "Clone, commit, push, and inspect Git repositories.",
+      },
+      GraphEntitySearch: {
+        name: "Graph Entity Search",
+        description: "Searches for specific entities in the knowledge graph.",
+      },
+      GraphNeighborhood: {
+        name: "Graph Neighborhood",
+        description:
+          "Fetches neighboring nodes and relationships of an entity.",
+      },
+      GraphSearch: {
+        name: "Graph Search",
+        description: "Traverses knowledge graph entities and relationships.",
+      },
+      GraphStats: {
+        name: "Graph Stats",
+        description: "Displays overall statistics of the knowledge graph.",
+      },
+      HumanInput: {
+        name: "Human Input",
+        description:
+          "Pauses the flow and asks a person to choose an action, then continues down that branch.",
+      },
+      HybridSearch: {
+        name: "Hybrid Search",
+        description: "Combines keyword and semantic vector search.",
+      },
+      JavaTools: {
+        name: "Java Tools",
+        description: "Java development tools and runtime inspection.",
+      },
+      JsonTools: {
+        name: "JSON Tools",
+        description: "Parse, validate, and manipulate JSON data.",
+      },
+      KnowledgeBase: {
+        name: "Knowledge Base",
+        description: "Provides access to document and knowledge collections.",
+      },
+      LLMModel: {
+        name: "Language Model",
+        description: "Configures language model parameters and provider.",
+      },
+      LongTermMemory: {
+        name: "Long-Term Memory",
+        description: "Stores and retrieves persistent conversation memories.",
+      },
+      Loop: {
+        name: "Loop",
+        description:
+          "Runs a branch once per item in a list, then sends the collected results down Done.",
+      },
+      MCPTool: {
+        name: "MCP Tool",
+        description: "Executes tools via Model Context Protocol servers.",
+      },
+      MailConfig: {
+        name: "Mail Config",
+        description: "Configure SMTP email server settings.",
+      },
+      MailTools: {
+        name: "Mail Tools",
+        description: "Read, search, draft, and send emails.",
+      },
+      Memory: {
+        name: "Memory",
+        description: "Stores conversation history and context.",
+      },
+      Merge: {
+        name: "Merge",
+        description: "Merges results coming from different branches.",
+      },
+      Note: {
+        name: "Sticky Note",
+        description: "Adds comments and annotations on the canvas.",
+      },
+      Operations: {
+        name: "Data Operations",
+        description:
+          "Perform operations on Text, JSON, and Tables from a single component.",
+      },
+      OllamaModel: {
+        name: "Ollama Model",
+        description: "Executes and configures local Ollama models.",
+      },
+      PdfTools: {
+        name: "PDF Tools",
+        description: "Extract text, metadata, and analyze PDF documents.",
+      },
+      Parser: {
+        name: "Parser",
+        description: "Extracts text using a template.",
+      },
+      PipelineStage: {
+        name: "Pipeline Stage",
+        description: "Executes a sequential stage in a multi-step pipeline.",
+      },
+      PlanExecuteAgent: {
+        name: "Plan & Execute Agent",
+        description:
+          "Formulates a structured plan before executing tool steps.",
+      },
+      Prompt: {
+        name: "Prompt",
+        description: "Creates a prompt template with formatted variables.",
+      },
+      PromptTemplate: {
+        name: "Prompt Template",
+        description: "Creates a prompt template with formatted variables.",
+      },
+      RAGSearch: {
+        name: "RAG Search",
+        description:
+          "Retrieves relevant context using advanced hybrid retrieval.",
+      },
+      ReActAgent: {
+        name: "ReAct Agent",
+        description: "Reasons and invokes tools iteratively to solve tasks.",
+      },
+      Router: {
+        name: "Router",
+        description: "Routes execution flow based on conditions.",
+      },
+      RunFlow: {
+        name: "Run Flow",
+        description: "Runs another published flow and passes its answer on.",
+      },
+      SelfReflectAgent: {
+        name: "Self-Reflect Agent",
+        description:
+          "Drafts a response, critiques it, and iteratively refines.",
+      },
+      ServiceTools: {
+        name: "Service Tools",
+        description: "Inspect and interact with system services.",
+      },
+      SetVariable: {
+        name: "Set Variable",
+        description:
+          "Stores a value under a name that a later Prompt Template can read as {name}.",
+      },
+      SmartRouter: {
+        name: "Smart Router",
+        description:
+          "Uses an LLM to sort the message into one of your categories, then routes to that branch.",
+      },
+      SplitText: {
+        name: "Split Text",
+        description: "Split text into chunks based on specified criteria.",
+      },
+      StickyNote: {
+        name: "Sticky Note",
+        description: "Adds comments and annotations on the canvas.",
+      },
+      StructuredOutput: {
+        name: "Structured Output",
+        description:
+          "Uses a model to pull structured records out of text, in a shape you define.",
+      },
+      Supervisor: {
+        name: "Supervisor",
+        description: "Orchestrates multi-agent teams and delegates tasks.",
+      },
+      SyncTrigger: {
+        name: "Sync Trigger",
+        description: "Triggers on-demand synchronization jobs for datasources.",
+      },
+      TextInput: {
+        name: "Text Input",
+        description: "Provides static or dynamic text input for the flow.",
+      },
+      TextTools: {
+        name: "Text Tools",
+        description: "Text processing, formatting, and string transformations.",
+      },
+      ThreadCheckpointer: {
+        name: "Thread Checkpointer",
+        description: "Saves session state and message history.",
+      },
+      TimeTools: {
+        name: "Time Tools",
+        description: "Time, date, and scheduling utility functions.",
+      },
+      UtilityTools: {
+        name: "Utility Tools",
+        description: "General utility tools and helper functions.",
+      },
+      VectorSearch: {
+        name: "Vector Search",
+        description: "Finds relevant content using vector similarity search.",
+      },
+      WebContentExtractor: {
+        name: "Web Content Extractor",
+        description: "Extracts clean text and data from HTML pages.",
+      },
+      TypeConverter: {
+        name: "Type Convert",
+        description: "Convert between different types (Message, JSON, Table).",
+      },
+      WebSearch: {
+        name: "Web Search",
+        description: "Searches the live web via configured search providers.",
+      },
+      WebTools: {
+        name: "Web Tools",
+        description: "Fetch web pages, scrape content, and search the web.",
+      },
+      While: {
+        name: "While",
+        description:
+          "Repeats a branch while a condition holds or until the max-iterations bound is hit.",
+      },
+      Guardrails: {
+        name: "Guardrails",
+        description:
+          "Checks text against safety and privacy rules with an LLM, then sends it down the Pass or the Fail branch.",
+      },
+      ZeroShotAgent: {
+        name: "Zero-Shot Agent",
+        description: "Single-turn model call with a system prompt. No tools.",
+      },
+    },
+    sidebar: {
+      title: "Components",
+      collapsePanel: "Collapse component panel",
+      openPanel: "Open component panel",
+      searchPlaceholder: "Search components...",
+      searchAriaLabel: "Search components",
+      clearSearchAriaLabel: "Clear search",
+      recentlyUsed: "Recently Used",
+      noComponentsFound: "No components found",
+      noComponentsFoundDescription: "Try a different search term.",
+      loadError: "Couldn't load components",
+      loadErrorDescription: "Try reloading the page.",
+      categories: {
+        all: "All",
+        core: "Core",
+        agents: "Agents",
+        models: "Models",
+        tools: "Tools",
+        memory: "Memory",
+        rag: "Knowledge & RAG",
+        knowledge: "Knowledge",
+        datasources: "Data Sources",
+        io: "Input / Output",
+        triggers: "Triggers",
+        logic: "Logic",
+        web: "Web",
+        websearch: "Web Search",
+        bundles: "Bundles",
+      },
+    },
+    versionBar: {
+      run: "Run",
+      draftSaveBeforePublishFailed:
+        "Failed to save draft before publishing; last saved version will be published",
+      publishedConcurrently: "The flow was published concurrently.",
+      nodeIssue: "Node {{id}}: {{message}}",
+      reloadAndRetry: "Reload and retry",
+      draft: "Draft",
+      published: "Published (v{{version}})",
+      draftAhead: "Draft ahead of v{{version}}",
+      publish: "Publish",
+      publishing: "Publishing...",
+      restore: "Restore",
+      restoring: "Restoring...",
+      history: "Version History",
+      draftSaved: "Draft saved",
+      savingDraft: "Saving draft...",
+      savedAt: "Saved at {{time}}",
+      unsavedChanges: "Unsaved changes",
+      backToAgents: "Back to Agents",
+    },
+    versionHistory: {
+      retry: "Retry",
+      title: "Version History",
+      description: "Review and restore previous versions of this flow.",
+      currentVersion: "Current Version",
+      backToDraft: "Back to draft",
+      publishedVersion: "Published Version",
+      revertToVersion: "Restore This Version",
+      revertConfirmTitle: "Restore Version?",
+      revertConfirmDescription:
+        "This will replace the current draft with the selected version. Do you want to continue?",
+      noVersions: "No version history recorded yet.",
+      versionNumber: "Version {{version}}",
+      compare: "Compare",
+      close: "Close version history",
+      currentDraft: "Current draft",
+      draftSummary: "Working version · v{{version}} in draft",
+      noDraftYet: "No draft yet — your next edit creates one",
+      loading: "Loading versions…",
+      loadFailed: "Failed to load versions.",
+      noPublishedVersions: "No published versions yet.",
+      versionUnavailable: "Version {{version}} is no longer available.",
+      loadVersionFailed: "Failed to load version {{version}}.",
+      previewBanner: "Viewing v{{version}} — read-only preview",
+      versionActions: "Version actions",
+      versionActionsFor: "Version actions for v{{version}}",
+      previewOnCanvas: "Preview on canvas",
+      exportJson: "Export JSON",
+      exportFailed: "Failed to export v{{version}}.",
+      restoreConfirmTitle: "Restore v{{version}}?",
+      restoreConfirmBody:
+        "The flow will be re-published as a new version. Your current draft is kept.",
+      cancel: "Cancel",
+      restore: "Restore",
+      restoring: "Restoring…",
+      restoreSuccess: "Restored v{{from}} — now published as v{{to}}.",
+      restoreFailed: "Failed to restore v{{version}}.",
+      statusPublished: "Published",
+      statusDraft: "Draft",
+      statusArchived: "Archived",
+      compareWithPrevious: "Compare with previous",
+      diff: {
+        loading: "Loading changes…",
+        noChanges: "No changes.",
+        emptyValue: "(empty)",
+        nodeAdded: "{{type}} node added",
+        nodeRemoved: "{{type}} node removed",
+        connectionAdded: "Connection added:",
+        connectionRemoved: "Connection removed:",
+        templateUpgraded:
+          "{{type}} updated from template v{{oldVersion}} to v{{newVersion}}",
+        fieldChanged: "{{field}} changed",
+        closeOverlay: "Close diff",
+        compareTwoVersions: "Compare two versions",
+        compareHintFirst: "Select a version to compare.",
+        compareHintSecond: "Select a second version.",
+        selectForCompare: "Select v{{version}} to compare",
+        draftChangesTitle: "Changes since v{{version}}",
+        draftChangesTitleNoPublish: "Changes in draft",
+        versionCompareTitle: "v{{from}} → v{{to}}",
+        firstVersionTitle: "v{{version}} (first version)",
+      },
+    },
+    inspector: {
+      title: "Node Configuration",
+      noSelectionTitle: "No Node Selected",
+      noSelectionDescription:
+        "Select a node on the canvas to configure its settings.",
+      nodeName: "Node Name",
+      nodeType: "Type",
+      description: "Description",
+      descriptionPlaceholder: "Enter component description...",
+      saveDescription: "Save",
+      deleteNode: "Delete Node",
+      duplicateNode: "Duplicate Node",
+      documentation: "Documentation",
+      inputs: "Inputs",
+      outputs: "Outputs",
+      parameters: "Parameters",
+      advanced: "Advanced",
+      advancedSettings: "Advanced Settings",
+      itemsSelected_one: "{{count}} item selected",
+      itemsSelected_other: "{{count}} items selected",
+      connectionSelected: "1 connection selected",
+      unknownComponent: "Unknown component: {{type}}",
+      unknownComponentDesc:
+        "This component isn't registered. Its saved values are kept, not lost.",
+    },
+    node: {
+      noDescription: "No description.",
+    },
+    nodeToolbar: {
+      toolMode: "Use as agent tool",
+      expandAgent: "Expand into flow",
+      parameters: "Parameters",
+      showDetails: "Show node details",
+      hideDetails: "Hide node details",
+      run: "Run",
+      moreActions: "More actions",
+      expand: "Expand",
+      minimize: "Minimize",
+      running: "Running...",
+      duplicate: "Duplicate",
+      delete: "Delete",
+      freeze: "Freeze",
+      unfreeze: "Unfreeze",
+      copy: "Copy",
+      documentation: "Documentation",
+      editDescription: "Edit Description",
+    },
+    nodeStatus: {
+      idle: "Idle",
+      running: "Running…",
+      success: "Completed",
+      error: "Error",
+      failed: "Failed",
+      queued: "Queued",
+      tokens_one: "{{count}} tok",
+      tokens_other: "{{count}} tok",
+    },
+    stickyNote: {
+      placeholder: "Write a note here...",
+      color: "Color",
+      changeColor: "Change color",
+      delete: "Delete Note",
+      duplicate: "Duplicate Note",
+      colors: {
+        yellow: "Yellow",
+        blue: "Blue",
+        green: "Green",
+        pink: "Pink",
+        purple: "Purple",
+      },
+    },
+    playground: {
+      title: "Flow Playground",
+      clearChat: "Clear chat",
+      close: "Close playground",
+      emptyState: "Send a message to test this flow in real time.",
+      thinking: "Thinking",
+      thinkingActive: "Thinking…",
+      placeholder: "Type a message…",
+      send: "Send",
+      draftBannerNew:
+        "Playground — testing your unsaved flow, nothing is stored",
+      draftBannerDraft:
+        "Playground — running your draft, not the published version",
+      testButton: "Test",
+      testDisabledTooltip:
+        "Add a Chat Input or Chat Output node to test this flow",
+      attachFile: "Attach file",
+      removeAttachment: "Remove attachment",
+      toolArguments: "Arguments",
+      toolOutput: "Output",
+      tokens: "tokens",
+      tokensInputLabel: "Input",
+      tokensOutputLabel: "Output",
+      tokensTotalLabel: "Total",
+      copy: "Copy",
+      copied: "Copied",
+      retry: "Retry",
+      runFailedWithStatus: "Run failed with status {{status}}",
+      noResponseStream: "No response stream received",
+      networkError: "Network error",
+    },
+    validation: {
+      validFlow: "Flow is valid and ready to publish.",
+      noEntry: "Flow must have at least one entry node (e.g. ChatInput).",
+      noExit: "Flow must have at least one exit node (e.g. ChatOutput).",
+      missingInput: 'Node "{{node}}" is missing required input "{{input}}".',
+      typeMismatch:
+        'Incompatible connection between "{{source}}" ({{sourceType}}) and "{{target}}" ({{targetType}}).',
+      cycleDetected: "Cycle detected in execution graph.",
+      isolatedNode: 'Node "{{node}}" is disconnected from the main flow.',
+    },
+    handles: {
+      input: "Input",
+      output: "Output",
+      model: "Model",
+      tools: "Tools",
+      memory: "Memory",
+      message: "Message",
+      text: "Text",
+      data: "Data",
+      variables: "Variables",
+      routes: "Routes",
+      continue: "Continue",
+      exit: "Exit",
+      trigger: "Trigger",
+      result: "Result",
+      results: "Results",
+      checkpointer: "Checkpointer",
+      query: "Query",
+      documents: "Documents",
+      context: "Context",
+      graph_data: "Graph Data",
+      entities: "Entities",
+      entity_id: "Entity ID",
+      subgraph: "Subgraph",
+      stats: "Stats",
+      mail_config: "Mail Config",
+      url: "URL",
+      urls: "URLs",
+      content: "Content",
+      condition: "Continue While",
+      max_iterations: "Max Iterations",
+      name: "Stage Name",
+      stage_name: "Stage Name",
+      datasource_id: "Datasource",
+      reflection_prompt: "Reflection Prompt",
+      supervisor_prompt: "Supervisor Prompt",
+      sub_agents: "Sub-agents",
+      strategy: "Strategy",
+      collection: "Collection",
+      provider: "Provider",
+      limit: "Limit",
+      depth: "Depth",
+      entity_type: "Entity Type",
+      items: "Items",
+      input_text: "Compare",
+      true_case_message: "True branch message",
+      false_case_message: "False branch message",
+      unmatched: "Unmatched",
+      item: "Item",
+      done: "Done",
+      true_result: "True",
+      false_result: "False",
+      else: "Else",
+      decisions: "Actions",
+    },
+    nodeHandle: {
+      receiving: "Receiving {{label}}",
+      connectSource: "Connect a {{types}} source",
+    },
+    controls: {
+      zoomIn: "Zoom In",
+      zoomOut: "Zoom Out",
+      fitView: "Fit View",
+      autoLayout: "Auto Layout",
+      addNote: "Add Sticky Note",
+      toggleMinimap: "Toggle Minimap",
+      runTest: "Test Flow",
+      clearCanvas: "Clear Canvas",
+      fullscreen: "Fullscreen",
+      exitFullscreen: "Exit Fullscreen (Esc)",
+      lockCanvas: "Lock Canvas",
+      unlockCanvas: "Unlock Canvas",
+      zoomTooltip: "Click to edit, double-click for 100%",
+      setZoomAria: "Set zoom percentage",
+      zoomPercentageAria: "Zoom percentage",
+      zoomFormat: "{{value}}%",
+    },
+    fields: {
+      infos: {
+        system_prompt: "Instructions that shape how this agent behaves.",
+        template: "Reference upstream values with {variable} placeholders.",
+        routes: "Each row is a condition and the branch label it selects.",
+        condition: "The loop repeats while this holds.",
+        max_iterations:
+          "Hard bound. The loop exits here even if the condition still holds.",
+        operator:
+          "How the incoming message is compared with Match text. 'matches regex' is anchored at the start and ignores Case sensitive; numeric operators coerce both sides to numbers.",
+        match_text:
+          "The text, number, or regex pattern the latest message is compared against.",
+        case_sensitive: "Ignored for the 'matches regex' operator.",
+        strip_match:
+          "Remove Match text from the message before it continues down either branch. Turn this on when Match text is a completion marker the user should not see.",
+        default_route:
+          "The branch taken once Max iterations is hit. In a loop this must be the branch that leaves the loop.",
+        datasource_id: "Configured data source to reference.",
+        stage_name:
+          "Labels this step in traces and the canvas; does not affect execution.",
+        name: "Labels this step in traces and the canvas; does not affect execution.",
+        collection: "Knowledge base collection to query.",
+        query:
+          "Search query string. Can also be supplied via incoming query handle.",
+        top_k: "Number of relevant chunks to retrieve (default 4).",
+        threshold: "Minimum similarity score threshold (0.0 to 1.0).",
+        tools: "Only the tools selected here are bound to the agent.",
+        provider: "Provider. Optional — defaults to built-in provider.",
+        max_results: "Maximum number of search results to return (default 5).",
+        url: "Webpage URL to fetch. Can also be supplied via incoming url handle.",
+        urls: "Newline-separated list of webpage URLs to fetch. Can also be supplied via incoming urls handle.",
+        description:
+          "Labels this step in traces and the canvas; does not affect execution.",
+        model_name: "The language model to use.",
+        temperature:
+          "Controls output randomness (0.0 is deterministic, 1.0 is creative).",
+        base_url: "Custom model endpoint or API URL.",
+        api_key: "Provider authentication API key.",
+        input_value: "Text input to process or pass to the template.",
+        category: "Tool category.",
+        search_provider: "Web search provider to use.",
+        collection_id: "Knowledge base collection.",
+        collection_name: "Knowledge base collection name.",
+        provider_id: "External tool provider.",
+        agent_id: "Sub-agent to invoke.",
+        memory_type: "Memory type to use.",
+        score_threshold: "Minimum similarity score threshold.",
+        limit: "Maximum number of records to retrieve.",
+        depth: "Graph traversal depth.",
+        entity_type: "Entity type to filter by.",
+        config_id: "Configuration ID.",
+        tool_mode:
+          "Hand this component to an agent instead of running it as a flow step. Wire its Tool output into the agent's Tools port.",
+        tool_name: "The name the model sees. Blank derives one from the node.",
+        input_source:
+          "A Set Variable name to validate or extract from instead of the latest message. Leave empty to use the latest message.",
+        heuristic_threshold:
+          "Jailbreak and Prompt Injection are pattern-scored before any model call; text scoring at or above this fails immediately. Lower is stricter, higher sends more cases to the model. The other checks always call the model.",
+        enabled_guardrails:
+          "Checks run in this order and stop at the first failure, so each one you add costs a model call only while everything before it passes. Detection is advisory: the model is instructed to allow text unless it is certain.",
+        enable_custom_guardrail:
+          "Adds one extra check described in your own words.",
+        custom_guardrail:
+          "Description of the custom safety rule for the model to evaluate.",
+        enable_else_output:
+          "Adds an 'else' branch taken when the message fits no category. When off, an unmatched category is an error.",
+        enable_unmatched:
+          "Adds an 'unmatched' branch taken when the answer matches no action. When off, an unmatched answer is an error.",
+        prompt: "The question shown to the person.",
+        decisions:
+          "One row per action: its label is the branch it continues down.",
+        flow_id:
+          "The flow to run. Its current published version is used, so publishing a fix there updates every flow that calls it.",
+        value: "Leave empty to store the latest message's text.",
+        append: "Append to a list under this name instead of replacing it.",
+        items_source:
+          "Wire a collection into the Items port, or name a Set Variable holding a list here. With neither, the lines of the latest message are iterated.",
+        output_schema:
+          "One row per field to extract: its name, a description the model reads to find it, its type, and whether it is a list.",
+        schema_name:
+          "Names the shape in the prompt; helps the model understand it.",
+        operation:
+          "The operation to perform. The fields it needs, and the output it produces, appear once you choose one.",
+        text_input:
+          "The input text to process. A wired Text port overrides it.",
+        select_keys_input: "Top-level keys to keep, as a list.",
+        append_update_data: "Key/value pairs to write at the top level.",
+        remove_keys_input: "Keys to remove, at every depth.",
+        rename_keys_input: "Old-to-new key names, applied at every depth.",
+        selected_key: "A jq path, for example .user.name",
+        merge_on_column: "Blank joins on the row index.",
+        max_matches: "0 returns every match.",
+        strip_characters: "Blank strips whitespace.",
+        chunk_size:
+          "The maximum length of each chunk. Text is split by the separator first, then chunks are merged up to this size.",
+        chunk_overlap: "Number of characters to overlap between chunks.",
+        separator:
+          "The character to split on. '/n' and '\n' both mean a newline.",
+        text_key: "The column holding the text when a Table is wired in.",
+        keep_separator:
+          "Whether to keep the separator in the chunks, and where.",
+        output_type: "The type to convert to.",
+        auto_parse: "Detect and convert JSON/CSV strings automatically.",
+        mode: "Stringify renders the whole value instead of using a template.",
+        pattern:
+          "Use {curly brackets} to pull a table column or a JSON key, for example: Name: {name}, Score: {score}",
+        sep: "Placed between rows or items.",
+        clean_data:
+          "Drop a table's empty rows and collapse whitespace in its cells.",
+        column_name: "The column to send. Blank sends the whole row.",
+        output_column_name: "Where the model's answer is stored.",
+        system_message: "Applied to every row.",
+        true_case_message:
+          "Sent down the true branch instead of the input. Blank forwards the input.",
+        false_case_message:
+          "Sent down the false branch instead of the input. Blank forwards the input.",
+        message:
+          "When filled, this replaces the branch message for every category, ignoring each row's own value.",
+        custom_prompt:
+          "Extra guidance appended to the built-in categorisation prompt — it does not replace it. Use {input_text} for the message and {routes} for the category list.",
+        custom_guardrail_explanation:
+          "What the extra check should look for, e.g. 'Detect if the input contains medical or health information'. Be specific: this description is what the model is asked about.",
+        SetVariable: {
+          name: "Letters, digits and underscores, starting with a letter. This is the name you use as {name} in a Prompt Template.",
+          value: "Leave empty to store the latest message's text.",
+          append: "Append to a list under this name instead of replacing it.",
+        },
+        Operations: {
+          query: "A jq program run against the JSON.",
+        },
+        StructuredOutput: {
+          system_prompt:
+            "Overrides the built-in extraction instructions. Blank uses them.",
+          input_source:
+            "A Set Variable name to extract from instead of the latest message. Leave empty to use the latest message.",
+        },
+        SyncTrigger: {
+          datasource_id: "Data source to trigger synchronization for.",
+        },
+        ExternalMCPServer: {
+          tools:
+            "Only the tools selected here are bound to the agent. Leave empty to bind none.",
+        },
+        WebSearch: {
+          provider: "Search provider. Optional — defaults to built-in search.",
+        },
+        ContentCrawl: {
+          provider: "Content crawler provider.",
+        },
+        Router: {
+          routes:
+            "Each row compares a Source (a Set Variable name, or blank for the latest message) against Match text with an Operator, and selects the Route branch on the first match.",
+        },
+        SmartRouter: {
+          routes:
+            "One row per category: its name (the branch label), a description the LLM uses to choose, and an optional message sent down that branch instead of the original input.",
+        },
+      },
+      names: {
+        append: "Append",
+        append_update_data: "Append or Update",
+        ascending: "Sort Ascending",
+        auto_parse: "Auto Parse",
+        case_type: "Case Type",
+        chunk_overlap: "Chunk Overlap",
+        chunk_size: "Chunk Size",
+        clean_data: "Clean Data",
+        columns_to_select: "Columns to Select",
+        count_characters: "Count Characters",
+        count_lines: "Count Lines",
+        count_words: "Count Words",
+        custom_guardrail_explanation: "Custom guardrail description",
+        custom_prompt: "Additional instructions",
+        decisions: "Actions",
+        enable_custom_guardrail: "Enable custom guardrail",
+        enable_else_output: "Enable Else output",
+        enable_unmatched: "Enable unmatched branch",
+        enabled_guardrails: "Guardrails",
+        extract_pattern: "Extract Pattern",
+        false_case_message: "False branch message",
+        filter_operator: "Filter Operator",
+        filter_value: "Filter Value",
+        has_header: "Has Header",
+        head_characters: "Characters from Start",
+        heuristic_threshold: "Pattern detection threshold",
+        items_source: "Items",
+        keep_separator: "Keep Separator",
+        max_matches: "Max Matches",
+        merge_how: "Merge Type",
+        merge_on_column: "Merge On Column",
+        message: "Override output",
+        new_column_name: "New Column Name",
+        new_column_value: "New Column Value",
+        num_rows: "Number of Rows",
+        operation: "Operation",
+        output_type: "Output Type",
+        remove_empty_lines: "Remove Empty Lines",
+        remove_extra_spaces: "Remove Extra Spaces",
+        remove_keys_input: "Remove Keys",
+        remove_special_chars: "Remove Special Characters",
+        rename_keys_input: "Rename Keys",
+        replace_value: "Value to Replace",
+        replacement_text: "Replacement Text",
+        replacement_value: "Replacement Value",
+        search_pattern: "Search Pattern",
+        select_keys_input: "Select Keys",
+        selected_key: "Select Path",
+        separator: "Separator",
+        strip_characters: "Characters to Strip",
+        strip_mode: "Strip Mode",
+        system_message: "Instructions",
+        table_separator: "Table Separator",
+        tail_characters: "Characters from End",
+        text_input: "Text",
+        text_input_2: "Second Text Input",
+        text_key: "Text Key",
+        true_case_message: "True branch message",
+        use_regex: "Use Regex",
+        pattern: "Template",
+        sep: "Separator",
+        mode: "Mode",
+        output_column_name: "Output column",
+        tool_mode: "Use as agent tool",
+        tool_name: "Tool name",
+        output_schema: "Output schema",
+        schema_name: "Schema name",
+        input_source: "Extract from",
+        flow_id: "Flow",
+        model_name: "Model Name",
+        temperature: "Temperature",
+        system_prompt: "System Prompt",
+        template: "Template",
+        input_value: "Input Value",
+        tools: "Tools",
+        enabled_tools: "Enabled Tools",
+        category: "Category",
+        search_provider: "Search Provider",
+        max_results: "Max Results",
+        collection_id: "Collection",
+        collection_name: "Collection Name",
+        provider_id: "Provider",
+        url: "URL",
+        query: "Query",
+        routes: "Routing Rules",
+        agent_id: "Agent",
+        memory_type: "Memory Type",
+        top_k: "Top K",
+        score_threshold: "Score Threshold",
+        description: "Description",
+        name: "Stage Name",
+        stage_name: "Stage Name",
+        condition: "Continue While",
+        max_iterations: "Max Iterations",
+        operator: "Operator",
+        match_text: "Match Text",
+        case_sensitive: "Case Sensitive",
+        strip_match: "Strip Match Text",
+        default_route: "Default Route",
+        true_result: "True",
+        false_result: "False",
+        reflection_prompt: "Reflection Prompt",
+        supervisor_prompt: "Supervisor Prompt",
+        sub_agents: "Sub-agents",
+        strategy: "Strategy",
+        text: "Text",
+        file: "File",
+        model: "Model",
+        depth: "Depth",
+        entity_type: "Entity Type",
+        limit: "Limit",
+        max_tokens: "Max Tokens",
+        config_id: "Mail Configuration",
+        datasource_id: "Datasource",
+        collection: "Collection",
+        threshold: "Score Threshold",
+        provider: "Provider",
+        urls: "URLs",
+      },
+      multiselect: {
+        add: "Add...",
+        noMoreOptions: "No more options",
+        sourceUnavailable: "This option source is currently unavailable.",
+        selectProviderFirst: "Select a provider first",
+      },
+      options: {
+        select: "Select {{field}}...",
+        noOptions: "No {{field}} available",
+        sourceUnavailable: "Option source unavailable",
+      },
+      prompt: {
+        expand: "Expand Prompt Editor",
+        cancel: "Cancel",
+        apply: "Apply",
+      },
+      slider: {
+        min: "Min",
+        max: "Max",
+      },
+      table: {
+        addRow: "Add row",
+        removeRow: "Remove row",
+        choose: "Choose...",
+      },
+    },
   },
 } as const;
 

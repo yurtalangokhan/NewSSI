@@ -1,5 +1,6 @@
-import logging
 from contextlib import asynccontextmanager
+
+from core.logger import get_logger
 
 try:
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -17,7 +18,7 @@ from psycopg_pool import AsyncConnectionPool
 
 from core.settings import settings
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def validate_postgres_config() -> None:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -13,8 +13,24 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from core.db.models.thread import ThreadModel
 from core.db.repositories.base import BaseRepository
+from core.logger import get_logger
+from core.run_kinds import DEFAULT_RUN_KIND, RunKind
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
+
+
+def _run_kind_where(stmt: Any, run_kinds: Sequence[str] | None) -> Any:
+    """Constrain a thread query to ``run_kinds``.
+
+    ``None`` means no filter. When the caller wants ``production`` threads, the
+    legacy ``NULL`` run_kind (rows written before the column existed) counts as
+    production too.
+    """
+    if run_kinds is None:
+        return stmt
+    if RunKind.PRODUCTION in run_kinds:
+        return stmt.where(ThreadModel.run_kind.in_(run_kinds) | ThreadModel.run_kind.is_(None))
+    return stmt.where(ThreadModel.run_kind.in_(run_kinds))
 
 
 def _ensure_datetime(val: Any) -> datetime:
@@ -80,6 +96,7 @@ class ThreadRepository(BaseRepository):
             "updated_at": row.updated_at.isoformat() if row.updated_at else None,
             "last_message_at": row.last_message_at.isoformat() if row.last_message_at else None,
             "last_accessed_at": row.last_accessed_at.isoformat() if row.last_accessed_at else None,
+            "run_kind": row.run_kind or DEFAULT_RUN_KIND.value,
         }
 
     # ---- read -----------------------------------------------------------
@@ -90,6 +107,7 @@ class ThreadRepository(BaseRepository):
         limit: int = 100,
         offset: int = 0,
         metadata_filter: dict[str, Any] | None = None,
+        run_kinds: Sequence[str] | None = None,
     ) -> list[dict[str, Any]]:
         """Return threads ordered by most recently updated.
 
@@ -101,6 +119,7 @@ class ThreadRepository(BaseRepository):
             stmt = select(ThreadModel)
             if metadata_filter:
                 stmt = stmt.where(ThreadModel.metadata_.op("@>")(cast(metadata_filter, JSONB)))
+            stmt = _run_kind_where(stmt, run_kinds)
             stmt = stmt.order_by(ThreadModel.updated_at.desc()).limit(limit).offset(offset)
             result = await session.execute(stmt)
             rows = result.scalars().all()
@@ -113,6 +132,7 @@ class ThreadRepository(BaseRepository):
         before_activity: str | datetime | None = None,
         before_id: str | None = None,
         metadata_filter: dict[str, Any] | None = None,
+        run_kinds: Sequence[str] | None = None,
     ) -> list[dict[str, Any]]:
         """Return chat sessions ordered by conversational activity.
 
@@ -124,6 +144,7 @@ class ThreadRepository(BaseRepository):
         stmt = select(ThreadModel)
         if metadata_filter:
             stmt = stmt.where(ThreadModel.metadata_.op("@>")(cast(metadata_filter, JSONB)))
+        stmt = _run_kind_where(stmt, run_kinds)
 
         parsed_before_id = _parse_thread_id(before_id) if before_id else None
         if before_activity is not None and parsed_before_id is not None:
@@ -169,6 +190,7 @@ class ThreadRepository(BaseRepository):
             else (thread.get("metadata", {}) or {}).get("project_id"),
             "created_at": _ensure_datetime(thread.get("created_at", now)),
             "updated_at": _ensure_datetime(thread.get("updated_at", now)),
+            "run_kind": thread.get("run_kind") or DEFAULT_RUN_KIND.value,
         }
         activity_fields = ("last_message_at", "last_accessed_at")
         for field in activity_fields:
@@ -181,6 +203,8 @@ class ThreadRepository(BaseRepository):
             "status": values["status"],
             "project_id": values["project_id"],
         }
+        if "run_kind" in thread:
+            conflict_updates["run_kind"] = values["run_kind"]
         for field in activity_fields:
             if field in values:
                 conflict_updates[field] = values[field]
@@ -271,3 +295,30 @@ class ThreadRepository(BaseRepository):
             stmt = delete(ThreadModel).where(ThreadModel.thread_id == parsed_thread_id)
             result = await session.execute(stmt)
             return result.rowcount > 0
+
+    async def delete_threads_older_than(
+        self,
+        *,
+        run_kind: str,
+        older_than: datetime,
+    ) -> list[str]:
+        """Bulk-delete threads of the given run_kind whose created_at predates the cutoff.
+
+        Returns the list of deleted thread_ids as strings.
+        """
+        async with self._session() as session:
+            select_stmt = select(ThreadModel.thread_id).where(
+                ThreadModel.run_kind == run_kind,
+                ThreadModel.created_at < older_than,
+            )
+            res = await session.execute(select_stmt)
+            thread_ids = [str(tid) for tid in res.scalars().all()]
+            if not thread_ids:
+                return []
+
+            delete_stmt = delete(ThreadModel).where(
+                ThreadModel.run_kind == run_kind,
+                ThreadModel.created_at < older_than,
+            )
+            await session.execute(delete_stmt)
+            return thread_ids

@@ -22,6 +22,7 @@ import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationMo
 import Button from "@/refresh-components/buttons/Button";
 import { SvgAlertCircle, SvgTrash } from "@opal/icons";
 import type { Route } from "next";
+import { authenticatedFetch } from "@/lib/fetcher";
 
 function PersonaTypeDisplay({ persona }: { persona: Persona }) {
   const { t } = useTranslation();
@@ -104,15 +105,18 @@ export function PersonasTable({
       displayPriorityMap.set(personaId, pageStartIndex + ind);
     });
 
-    const response = await fetch("/api/admin/agents/display-priorities", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        display_priority_map: Object.fromEntries(displayPriorityMap),
-      }),
-    });
+    const response = await authenticatedFetch(
+      "/api/admin/agents/display-priorities",
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          display_priority_map: Object.fromEntries(displayPriorityMap),
+        }),
+      }
+    );
 
     if (!response.ok) {
       toast.error(

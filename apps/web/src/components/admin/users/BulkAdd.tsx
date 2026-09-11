@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { withFormik, FormikProps, FormikErrors, Form } from "formik";
 import Button from "@/refresh-components/buttons/Button";
 import InputTextAreaField from "@/refresh-components/form/InputTextAreaField";
@@ -11,7 +13,7 @@ const WHITESPACE_SPLIT = /\s+/;
 const EMAIL_REGEX = /[^@]+@[^.]+\.[^.]/;
 
 const addUsers = async (url: string, { arg }: { arg: Array<string> }) => {
-  return await fetch(url, {
+  return await authenticatedFetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

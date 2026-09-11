@@ -11,16 +11,31 @@ import Separator from "@/refresh-components/Separator";
 import { useAdminPersonas } from "@/hooks/useAdminPersonas";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.USAGE]!;
 
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useTimeRange();
   const { personas } = useAdminPersonas();
+  const { t } = useTranslation();
 
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
+      <SettingsLayouts.Header
+        icon={route.icon}
+        title={
+          route.titleKey
+            ? t(route.titleKey, { defaultValue: route.title })
+            : route.title
+        }
+        description={
+          route.descriptionKey
+            ? t(route.descriptionKey, { defaultValue: route.description })
+            : route.description
+        }
+        separator
+      />
       <SettingsLayouts.Body>
         <AdminDateRangeSelector
           value={timeRange}

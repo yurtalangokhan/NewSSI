@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from langconnect.database.postgres.engine import get_session_factory
+from langconnect.observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class BaseRepository:

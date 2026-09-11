@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import { useEffect, useState } from "react";
 import { SourceIcon } from "@/components/SourceIcon";
 import Switch from "@/refresh-components/inputs/Switch";
@@ -45,7 +46,7 @@ function TableRow({ entityType }: { entityType: EntityType }) {
   const [hasMounted, setHasMounted] = useState(false);
 
   const handleToggle = async (checked: boolean) => {
-    const response = await fetch("/api/admin/kg/entity-types", {
+    const response = await authenticatedFetch("/api/admin/kg/entity-types", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify([{ ...entityType, active: checked }]),
@@ -58,7 +59,7 @@ function TableRow({ entityType }: { entityType: EntityType }) {
 
   const handleDescriptionChange = async (description: string) => {
     try {
-      const response = await fetch("/api/admin/kg/entity-types", {
+      const response = await authenticatedFetch("/api/admin/kg/entity-types", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify([{ ...entityType, description }]),

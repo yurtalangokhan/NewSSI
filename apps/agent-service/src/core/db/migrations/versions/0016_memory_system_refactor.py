@@ -9,24 +9,24 @@ Three operations:
 2. Add new `extract_memory` column to enable/disable memory extraction independently
 3. Update defaults: all three memory toggles now have clear semantics
 """
+
 from __future__ import annotations
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 from alembic import op
-import sqlalchemy as sa
 
 revision: str = "0016"
-down_revision: Union[str, None] = "0015"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "0015"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
     # Drop unused columns
     op.execute("ALTER TABLE user_settings DROP COLUMN IF EXISTS use_memories")
     op.execute("ALTER TABLE user_settings DROP COLUMN IF EXISTS enable_memory_tool")
-    
+
     # Add new extract_memory column
     # This controls whether the LLM should extract and save new facts
     # (independent of long_term_memory_enabled, which is the master toggle)
@@ -46,6 +46,6 @@ def downgrade() -> None:
         "ALTER TABLE user_settings "
         "ADD COLUMN IF NOT EXISTS enable_memory_tool BOOLEAN NOT NULL DEFAULT FALSE"
     )
-    
+
     # Drop the new column
     op.execute("ALTER TABLE user_settings DROP COLUMN IF EXISTS extract_memory")

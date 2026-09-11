@@ -1,0 +1,301 @@
+/**
+ * Langflow's own design tokens, scoped to the flow canvas.
+ *
+ * Values copied verbatim from Langflow (MIT), `src/frontend/src/style/index.css`
+ * at commit 3ec070e99af5196fdb187546de2c4f29a35ebe46 — the same commit
+ * `vendor/langflow/NOTICE.md` pins. Task 20 vendored only the TSX/TS
+ * subtrees and **no CSS at all** (`find vendor -name "*.css"` → 0 files),
+ * which is why earlier attempts at this port reproduced Langflow's layout
+ * with this project's palette and still didn't look like Langflow. These
+ * are the missing half.
+ *
+ * Everything is scoped under `.langflow-canvas` so the rest of the
+ * application keeps its own palette untouched. Two mechanisms:
+ *
+ *  1. `--lf-*` are Langflow's tokens, consumed by the shadcn aliases in
+ *     `tailwind.config.js` (muted, accent, card, popover, …).
+ *  2. The three tokens this project already defines app-wide
+ *     (`background`, `foreground`, `border`) are redirected by overriding
+ *     the project variables they read, inside this scope only — so
+ *     `bg-background` renders Langflow's canvas white/near-black here and
+ *     the project's own colour everywhere else.
+ *
+ * Langflow stores HSL as a bare `H S% L%` triple and wraps it at the use
+ * site (`hsl(var(--muted))`); that convention is preserved.
+ */
+
+.langflow-canvas {
+  /* ---- index.css :root (light) ---- */
+  --lf-foreground: 0 0% 0%;
+  --lf-background: 0 0% 100%;
+  --lf-muted: 240 5% 96%;
+  --lf-muted-foreground: 240 4% 43%;
+  --lf-card: 0 0% 100%;
+  --lf-card-foreground: 0 0% 0%;
+  --lf-popover: 0 0% 100%;
+  --lf-popover-foreground: 0 0% 0%;
+  --lf-border: 240 6% 90%;
+  --lf-input: 240 6% 90%;
+  --lf-primary: 0 0% 0%;
+  --lf-primary-foreground: 0 0% 100%;
+  --lf-secondary: 0 0% 100%;
+  --lf-secondary-foreground: 240 4% 16%;
+  --lf-secondary-hover: 240 6% 90%;
+  --lf-accent: 240 5% 96%;
+  --lf-accent-foreground: 0 0% 0%;
+  --lf-destructive: 0 72% 45%;
+  --lf-destructive-foreground: 0 0% 100%;
+  --lf-ring: 0 0% 0%;
+  --lf-placeholder-foreground: 240 5% 40%;
+  --lf-canvas: 240 5% 96%;
+  --lf-canvas-dot: 240 5% 65%;
+  --lf-node-selected: 243 75% 59%;
+  --lf-node-ring: 240 6% 90%;
+  --lf-accent-indigo: 226 100% 94%;
+  --lf-accent-indigo-foreground: 243 75% 59%;
+
+  /* NOTE: this scope deliberately does **not** override the project's own
+   * `--background-tint-*` / `--border-01` variables. An earlier revision
+   * did, to make `bg-background` resolve to Langflow's colour here — but
+   * those variables are also what every shared `refresh-components` input
+   * reads, so redefining them blanked out the field boxes inside nodes.
+   * Canvas-specific tokens (`canvas-panel`, `canvas-fg`, `canvas-border`
+   * in tailwind.config.js) carry Langflow's values instead, leaving the
+   * shared inputs to render normally. */
+
+  /* index.css: --font-sans: "Inter", sans-serif */
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.dark .langflow-canvas,
+.langflow-canvas.dark,
+[data-theme="dark"] .langflow-canvas,
+html.dark .langflow-canvas,
+:root.dark .langflow-canvas {
+  /* ---- index.css .dark ---- */
+  --lf-foreground: 0 0% 100%;
+  --lf-background: 240 6% 10%;
+  --lf-muted: 240 4% 16%;
+  --lf-muted-foreground: 240 5% 65%;
+  --lf-card: 240 6% 10%;
+  --lf-card-foreground: 0 0% 100%;
+  --lf-popover: 240 6% 10%;
+  --lf-popover-foreground: 0 0% 100%;
+  --lf-border: 240 5% 26%;
+  --lf-input: 240 5% 34%;
+  --lf-primary: 0 0% 100%;
+  --lf-primary-foreground: 0 0% 0%;
+  --lf-secondary: 0 0% 0%;
+  --lf-secondary-foreground: 240 6% 90%;
+  --lf-secondary-hover: 240 4% 16%;
+  --lf-accent: 240 4% 16%;
+  --lf-accent-foreground: 0 0% 100%;
+  --lf-destructive: 0 84% 60%;
+  --lf-destructive-foreground: 0 0% 100%;
+  --lf-ring: 0 0% 100%;
+  --lf-placeholder-foreground: 240 4% 63%;
+  --lf-canvas: 0 0% 0%;
+  --lf-canvas-dot: 240 5.3% 26.1%;
+  --lf-node-selected: 243 75% 59%;
+  /* Not theme-dependent in upstream — `--node-ring: 240 6% 90%` is the
+   * literal, identical value in both `:root` and `.dark`
+   * (style/index.css :198 and :484): a constant near-white ring that's
+   * meant to stand out against a dark node in dark mode, not blend into
+   * it. Was `240 5% 26%` (a dark grey, same darkness as `--lf-border`
+   * here) — that reads as barely-there on a dark card, which is what
+   * made the handle hover-glow (NodeHandle.tsx's `neonShadow`) look weak
+   * instead of the bright white frame upstream shows. */
+  --lf-node-ring: 240 6% 90%;
+  --lf-accent-indigo: 242 25% 34%;
+  --lf-accent-indigo-foreground: 234 89% 74%;
+}
+
+/* ---------------------------------------------------------------------
+ * xyflow surface. Langflow paints the pane with `--canvas`.
+ *
+ * Only the outermost `.react-flow` gets the colour. `__pane` and
+ * `__renderer` sit *above* the `<Background>` SVG, so painting them
+ * hides the dot pattern entirely — that is what removed the dots in an
+ * earlier revision. The dot colour itself comes from the `<Background>`
+ * component's own `color` prop (FlowCanvas.tsx), which is the supported
+ * hook; styling the generated `<pattern>` from CSS is version-fragile.
+ * ------------------------------------------------------------------- */
+
+.langflow-canvas .react-flow {
+  background-color: hsl(var(--lf-canvas));
+}
+
+/* Edges: Langflow's stroke weight and selected/hover colours. */
+.langflow-canvas .react-flow__edge-path {
+  stroke: hsl(var(--lf-muted-foreground));
+  stroke-width: 2;
+}
+
+.langflow-canvas .react-flow__edge.selected .react-flow__edge-path,
+.langflow-canvas .react-flow__edge:hover .react-flow__edge-path {
+  stroke: hsl(var(--lf-node-selected));
+}
+
+.langflow-canvas .react-flow__edge-path[data-selected="true"] {
+  stroke: hsl(var(--lf-node-selected));
+}
+
+/* Selection rectangle — accent indigo, matching upstream's drag-select. */
+.langflow-canvas .react-flow__selection {
+  background-color: hsl(var(--lf-accent-indigo) / 0.3);
+  border: 1px solid hsl(var(--lf-accent-indigo-foreground));
+}
+
+/* Node wrapper must not paint its own background behind the card. */
+.langflow-canvas .react-flow__node {
+  background: transparent;
+  border: none;
+  padding: 0;
+  border-radius: 0;
+  width: auto;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* xyflow draws a focus ring on the wrapper; the card draws its own. */
+.langflow-canvas .react-flow__node:focus,
+.langflow-canvas .react-flow__node:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.langflow-canvas .react-flow__attribution {
+  display: none;
+}
+
+/* Fullscreen is applied by FlowCanvas through React (Tailwind utilities +
+ * `.z-canvas-fullscreen` from app/css/z-index.css), not from here — see
+ * `FlowStore.isFullscreen`. The browser Fullscreen API is unavailable on
+ * this origin because `next.config.js` sends
+ * `Permissions-Policy: … fullscreen=() …`. */
+
+/* MiniMap (Overview) surface and styling for light & dark themes. */
+.langflow-canvas .react-flow__minimap {
+  background-color: #ffffff !important;
+  border: 1px solid hsl(240 6% 82%) !important;
+  border-radius: 0.5rem !important;
+  overflow: hidden !important;
+  box-shadow:
+    0 4px 16px -2px rgba(0, 0, 0, 0.12),
+    0 2px 6px -1px rgba(0, 0, 0, 0.08) !important;
+}
+
+.langflow-canvas .react-flow__minimap-svg {
+  background-color: hsl(240 5% 98%) !important;
+}
+
+.langflow-canvas .react-flow__minimap-mask {
+  fill: rgba(15, 23, 42, 0.16) !important;
+  stroke: hsl(var(--lf-node-selected)) !important;
+  stroke-width: 1.5px !important;
+}
+
+.langflow-canvas .react-flow__minimap-node {
+  fill: hsl(220 14% 86%) !important;
+  stroke: hsl(220 13% 68%) !important;
+  stroke-width: 1px !important;
+  rx: 2px !important;
+  ry: 2px !important;
+}
+
+.langflow-canvas .react-flow__minimap-node.selected {
+  fill: hsl(var(--lf-node-selected) / 0.35) !important;
+  stroke: hsl(var(--lf-node-selected)) !important;
+  stroke-width: 1.5px !important;
+}
+
+.dark .langflow-canvas .react-flow__minimap,
+.langflow-canvas.dark .react-flow__minimap,
+[data-theme="dark"] .langflow-canvas .react-flow__minimap,
+html.dark .langflow-canvas .react-flow__minimap,
+:root.dark .langflow-canvas .react-flow__minimap {
+  background-color: hsl(var(--lf-card)) !important;
+  border-color: hsl(var(--lf-border)) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .langflow-canvas .react-flow__minimap-svg,
+.langflow-canvas.dark .react-flow__minimap-svg,
+[data-theme="dark"] .langflow-canvas .react-flow__minimap-svg,
+html.dark .langflow-canvas .react-flow__minimap-svg,
+:root.dark .langflow-canvas .react-flow__minimap-svg {
+  background-color: hsl(var(--lf-canvas)) !important;
+}
+
+.dark .langflow-canvas .react-flow__minimap-mask,
+.langflow-canvas.dark .react-flow__minimap-mask,
+[data-theme="dark"] .langflow-canvas .react-flow__minimap-mask,
+html.dark .langflow-canvas .react-flow__minimap-mask,
+:root.dark .langflow-canvas .react-flow__minimap-mask {
+  fill: rgba(0, 0, 0, 0.65) !important;
+  stroke: hsl(var(--lf-node-selected) / 0.8) !important;
+  stroke-width: 1.5px !important;
+}
+
+.dark .langflow-canvas .react-flow__minimap-node,
+.langflow-canvas.dark .react-flow__minimap-node,
+[data-theme="dark"] .langflow-canvas .react-flow__minimap-node,
+html.dark .langflow-canvas .react-flow__minimap-node,
+:root.dark .langflow-canvas .react-flow__minimap-node {
+  fill: hsl(240 6% 22%) !important;
+  stroke: hsl(var(--lf-node-ring)) !important;
+  stroke-width: 1px !important;
+}
+
+.dark .langflow-canvas .react-flow__minimap-node.selected,
+.langflow-canvas.dark .react-flow__minimap-node.selected,
+[data-theme="dark"] .langflow-canvas .react-flow__minimap-node.selected,
+html.dark .langflow-canvas .react-flow__minimap-node.selected,
+:root.dark .langflow-canvas .react-flow__minimap-node.selected {
+  fill: hsl(var(--lf-node-selected) / 0.5) !important;
+  stroke: hsl(var(--lf-node-selected)) !important;
+  stroke-width: 1.5px !important;
+}
+
+/* Handle glow pulse (NodeHandle.tsx) — upstream's `pulseNeon-${nodeId}`
+ * keyframes (handleRenderComponent/index.tsx :63-95), generalized: upstream
+ * bakes the handle's colour into a dynamically-injected per-node
+ * <style> tag; here the colour is a CSS custom property set inline per
+ * handle instead, so one shared keyframe animation covers every colour.
+ * The 3px ring stays constant across both keyframes on purpose — only the
+ * blur layers grow — so the pulse never reads as the handle shrinking. */
+@keyframes lf-handle-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 3px hsl(var(--lf-node-ring)),
+      0 0 2px var(--lf-handle-glow-color),
+      0 0 4px var(--lf-handle-glow-color),
+      0 0 6px var(--lf-handle-glow-color),
+      0 0 8px var(--lf-handle-glow-color),
+      0 0 10px var(--lf-handle-glow-color),
+      0 0 15px var(--lf-handle-glow-color),
+      0 0 20px var(--lf-handle-glow-color);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px hsl(var(--lf-node-ring)),
+      0 0 4px var(--lf-handle-glow-color),
+      0 0 8px var(--lf-handle-glow-color),
+      0 0 12px var(--lf-handle-glow-color),
+      0 0 16px var(--lf-handle-glow-color),
+      0 0 20px var(--lf-handle-glow-color),
+      0 0 25px var(--lf-handle-glow-color),
+      0 0 30px var(--lf-handle-glow-color);
+  }
+}
+
+.langflow-canvas .lf-handle-glow {
+  animation: lf-handle-pulse 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .langflow-canvas .lf-handle-glow {
+    animation: none;
+  }
+}

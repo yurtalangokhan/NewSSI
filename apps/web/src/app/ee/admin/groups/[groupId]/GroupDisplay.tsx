@@ -6,11 +6,10 @@ import { useTranslation } from "react-i18next";
 import { ConnectorTitle } from "@/components/admin/connectors/ConnectorTitle";
 import AddMemberForm from "./AddMemberForm";
 import { updateUserGroup } from "./lib";
-import { LoadingAnimation } from "@/components/Loading";
 import { User, UserGroup, ConnectorStatus } from "@/lib/types";
 import AddConnectorForm from "./AddConnectorForm";
 import Separator from "@/refresh-components/Separator";
-import Text from "@/components/ui/text";
+import Text from "@/refresh-components/texts/Text";
 import {
   Table,
   TableBody,
@@ -63,14 +62,19 @@ export const GroupDisplay = ({
   return (
     <div>
       <div className="text-sm mb-3 flex">
-        <Text className="mr-1">{t("admin.groups.statusLabel")}</Text>{" "}
+        <Text as="p" className="text-sm mr-1">
+          {t("admin.groups.statusLabel")}
+        </Text>{" "}
         {userGroup.is_up_to_date ? (
           <div className="text-success font-bold">
             {t("admin.groups.upToDate")}
           </div>
         ) : (
           <div className="text-accent font-bold">
-            <LoadingAnimation text={t("admin.groups.syncing")} />
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-status-warning-05 animate-pulse" />
+              {t("admin.groups.syncing")}
+            </span>
           </div>
         )}
       </div>
@@ -78,7 +82,9 @@ export const GroupDisplay = ({
       <Separator />
 
       <div className="flex w-full">
-        <h2 className="text-xl font-bold">{t("admin.groups.usersSection")}</h2>
+        <Text as="h2" className="text-xl font-bold">
+          {t("admin.groups.usersSection")}
+        </Text>
       </div>
 
       <div className="mt-2">
@@ -192,9 +198,9 @@ export const GroupDisplay = ({
 
       <Separator />
 
-      <h2 className="text-xl font-bold mt-8">
+      <Text as="h2" className="text-xl font-bold mt-8">
         {t("admin.groups.connectorsSection")}
-      </h2>
+      </Text>
       <div className="mt-2">
         {userGroup.cc_pairs.length > 0 ? (
           <>
@@ -299,9 +305,9 @@ export const GroupDisplay = ({
 
       <Separator />
 
-      <h2 className="text-xl font-bold mt-8 mb-2">
+      <Text as="h2" className="text-xl font-bold mt-8 mb-2">
         {t("admin.groups.documentSetsSection")}
-      </h2>
+      </Text>
 
       <div>
         {userGroup.document_sets.length > 0 ? (
@@ -311,7 +317,9 @@ export const GroupDisplay = ({
                 <Bubble isSelected key={documentSet.id}>
                   <div className="flex">
                     <BookmarkIcon />
-                    <Text className="ml-1">{documentSet.name}</Text>
+                    <Text as="p" className="text-sm ml-1">
+                      {documentSet.name}
+                    </Text>
                   </div>
                 </Bubble>
               );
@@ -319,16 +327,18 @@ export const GroupDisplay = ({
           </div>
         ) : (
           <>
-            <Text>{t("admin.groups.noDocumentSets")}</Text>
+            <Text as="p" className="text-sm">
+              {t("admin.groups.noDocumentSets")}
+            </Text>
           </>
         )}
       </div>
 
       <Separator />
 
-      <h2 className="text-xl font-bold mt-8 mb-2">
+      <Text as="h2" className="text-xl font-bold mt-8 mb-2">
         {t("admin.groups.agentsSection")}
-      </h2>
+      </Text>
 
       <div>
         {userGroup.document_sets.length > 0 ? (
@@ -338,7 +348,9 @@ export const GroupDisplay = ({
                 <Bubble isSelected key={persona.id}>
                   <div className="flex">
                     <RobotIcon />
-                    <Text className="ml-1">{persona.name}</Text>
+                    <Text as="p" className="text-sm ml-1">
+                      {persona.name}
+                    </Text>
                   </div>
                 </Bubble>
               );
@@ -346,16 +358,18 @@ export const GroupDisplay = ({
           </div>
         ) : (
           <>
-            <Text>{t("admin.groups.noAgents")}</Text>
+            <Text as="p" className="text-sm">
+              {t("admin.groups.noAgents")}
+            </Text>
           </>
         )}
       </div>
 
       <Separator />
 
-      <h2 className="text-xl font-bold mt-8 mb-2">
+      <Text as="h2" className="text-xl font-bold mt-8 mb-2">
         {t("admin.groups.tokenRateLimitsSection")}
-      </h2>
+      </Text>
 
       <AddTokenRateLimitForm
         isOpen={addRateLimitFormVisible}

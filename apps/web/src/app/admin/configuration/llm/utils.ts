@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@/lib/fetcher";
 import { JSX } from "react";
 import i18n from "@/i18n/config";
 import {
@@ -33,7 +34,6 @@ export const AGGREGATOR_PROVIDERS = new Set([
   "bedrock",
   "bedrock_converse",
   "openrouter",
-  "ollama_chat",
   "vertex_ai",
 ]);
 
@@ -46,41 +46,100 @@ export const getProviderIcon = (
     ({ size, className }: IconProps) => JSX.Element
   > = {
     amazon: AmazonIcon,
+    aws: SvgAws,
     phi: MicrosoftIconSVG,
     mistral: MistralIcon,
     ministral: MistralIcon,
+    mixtral: MistralIcon,
+    codestral: MistralIcon,
+    pixtral: MistralIcon,
     llama: MetaIcon,
+    meta: MetaIcon,
     ollama_chat: OllamaIcon,
     ollama: OllamaIcon,
     gemini: GeminiIcon,
+    gemma: GeminiIcon,
+    antigravity: GeminiIcon,
+    google: GeminiIcon,
+    google_genai: GeminiIcon,
+    google_vertexai: GeminiIcon,
+    vertex_ai: GeminiIcon,
     deepseek: DeepseekIcon,
     claude: AnthropicIcon,
     anthropic: AnthropicIcon,
     openai: OpenAISVG,
-    // Azure OpenAI should display the Azure logo
+    chatgpt: OpenAISVG,
     azure: AzureIcon,
+    azure_openai: AzureIcon,
+    azure_ai: AzureIcon,
     microsoft: MicrosoftIconSVG,
-    meta: MetaIcon,
-    google: GeminiIcon,
-    google_genai: GeminiIcon,
-    google_vertexai: GeminiIcon,
     qwen: QwenIcon,
     qwq: QwenIcon,
     zai: ZAIIcon,
     vllm: SvgServer,
-    // Cloud providers - use AWS icon for Bedrock
     bedrock: SvgAws,
     bedrock_converse: SvgAws,
     openrouter: SvgOpenrouter,
-    vertex_ai: GeminiIcon,
+    groq: CPUIcon,
+    cohere: CPUIcon,
+    xai: CPUIcon,
+    grok: CPUIcon,
+    perplexity: CPUIcon,
+    together: CPUIcon,
+    fireworks: CPUIcon,
+    cerebras: CPUIcon,
+    huggingface: CPUIcon,
+    nvidia: CPUIcon,
+    sambanova: CPUIcon,
   };
 
-  const lowerProviderName = providerName.toLowerCase();
+  const lowerProviderName = (providerName || "").toLowerCase();
+  const lowerModelName = (modelName || "").toLowerCase();
 
-  // For aggregator providers (bedrock, openrouter, vertex_ai), prioritize showing
+  // 1. Direct provider match for Ollama
+  if (lowerProviderName.includes("ollama")) {
+    return OllamaIcon;
+  }
+
+  // 2. For aggregator providers (bedrock, openrouter, vertex_ai), prioritize showing
   // the vendor icon based on model name (e.g., show Claude icon for Bedrock Claude models)
-  if (AGGREGATOR_PROVIDERS.has(lowerProviderName) && modelName) {
-    const lowerModelName = modelName.toLowerCase();
+  if (AGGREGATOR_PROVIDERS.has(lowerProviderName) && lowerModelName) {
+    if (
+      lowerModelName.includes("claude") ||
+      lowerModelName.includes("anthropic")
+    )
+      return AnthropicIcon;
+    if (
+      lowerModelName.includes("gpt") ||
+      lowerModelName.includes("o1") ||
+      lowerModelName.includes("o3") ||
+      lowerModelName.includes("dall-e") ||
+      lowerModelName.includes("text-embedding")
+    )
+      return OpenAISVG;
+    if (
+      lowerModelName.includes("gemini") ||
+      lowerModelName.includes("gemma") ||
+      lowerModelName.includes("antigravity")
+    )
+      return GeminiIcon;
+    if (lowerModelName.includes("deepseek")) return DeepseekIcon;
+    if (
+      lowerModelName.includes("mistral") ||
+      lowerModelName.includes("ministral") ||
+      lowerModelName.includes("mixtral") ||
+      lowerModelName.includes("codestral") ||
+      lowerModelName.includes("pixtral")
+    )
+      return MistralIcon;
+    if (lowerModelName.includes("llama") || lowerModelName.includes("meta"))
+      return MetaIcon;
+    if (lowerModelName.includes("qwen") || lowerModelName.includes("qwq"))
+      return QwenIcon;
+    if (lowerModelName.includes("phi")) return MicrosoftIconSVG;
+    if (lowerModelName.includes("nova") || lowerModelName.includes("titan"))
+      return AmazonIcon;
+
     for (const [key, icon] of Object.entries(iconMap)) {
       if (lowerModelName.includes(key)) {
         return icon;
@@ -88,25 +147,89 @@ export const getProviderIcon = (
     }
   }
 
-  // Check if provider name directly matches an icon
-  if (lowerProviderName in iconMap) {
-    const icon = iconMap[lowerProviderName];
-    if (icon) {
+  // 3. Provider-based vendor matching
+  if (
+    lowerProviderName.includes("gemini") ||
+    lowerProviderName.includes("google") ||
+    lowerProviderName.includes("vertex") ||
+    lowerProviderName.includes("gemma") ||
+    lowerProviderName.includes("antigravity")
+  )
+    return GeminiIcon;
+  if (
+    lowerProviderName.includes("anthropic") ||
+    lowerProviderName.includes("claude")
+  )
+    return AnthropicIcon;
+  if (
+    lowerProviderName.includes("openai") ||
+    lowerProviderName.includes("azure_openai")
+  )
+    return OpenAISVG;
+  if (lowerProviderName.includes("deepseek")) return DeepseekIcon;
+  if (lowerProviderName.includes("mistral")) return MistralIcon;
+  if (lowerProviderName.includes("meta") || lowerProviderName.includes("llama"))
+    return MetaIcon;
+  if (lowerProviderName.includes("qwen") || lowerProviderName.includes("qwq"))
+    return QwenIcon;
+  if (lowerProviderName.includes("azure")) return AzureIcon;
+  if (lowerProviderName.includes("microsoft")) return MicrosoftIconSVG;
+  if (
+    lowerProviderName.includes("bedrock") ||
+    lowerProviderName.includes("amazon") ||
+    lowerProviderName.includes("aws")
+  )
+    return SvgAws;
+  if (lowerProviderName.includes("openrouter")) return SvgOpenrouter;
+  if (lowerProviderName.includes("zai")) return ZAIIcon;
+  if (lowerProviderName.includes("vllm")) return SvgServer;
+
+  // 4. Model-based fallback if provider is generic (custom, etc.)
+  if (lowerModelName) {
+    if (
+      lowerModelName.includes("claude") ||
+      lowerModelName.includes("anthropic")
+    )
+      return AnthropicIcon;
+    if (
+      lowerModelName.includes("gpt") ||
+      lowerModelName.includes("o1") ||
+      lowerModelName.includes("o3") ||
+      lowerModelName.includes("dall-e") ||
+      lowerModelName.includes("text-embedding")
+    )
+      return OpenAISVG;
+    if (
+      lowerModelName.includes("gemini") ||
+      lowerModelName.includes("gemma") ||
+      lowerModelName.includes("antigravity")
+    )
+      return GeminiIcon;
+    if (lowerModelName.includes("deepseek")) return DeepseekIcon;
+    if (
+      lowerModelName.includes("mistral") ||
+      lowerModelName.includes("ministral") ||
+      lowerModelName.includes("mixtral") ||
+      lowerModelName.includes("codestral") ||
+      lowerModelName.includes("pixtral")
+    )
+      return MistralIcon;
+    if (lowerModelName.includes("llama") || lowerModelName.includes("meta"))
+      return MetaIcon;
+    if (lowerModelName.includes("qwen") || lowerModelName.includes("qwq"))
+      return QwenIcon;
+    if (lowerModelName.includes("phi")) return MicrosoftIconSVG;
+    if (lowerModelName.includes("nova") || lowerModelName.includes("titan"))
+      return AmazonIcon;
+  }
+
+  // 5. Fallback scan in iconMap
+  for (const [key, icon] of Object.entries(iconMap)) {
+    if (lowerProviderName.includes(key) || lowerModelName.includes(key)) {
       return icon;
     }
   }
 
-  // For non-aggregator providers, check if model name contains any of the keys
-  if (modelName) {
-    const lowerModelName = modelName.toLowerCase();
-    for (const [key, icon] of Object.entries(iconMap)) {
-      if (lowerModelName.includes(key)) {
-        return icon;
-      }
-    }
-  }
-
-  // Fallback to CPU icon if no matches
   return CPUIcon;
 };
 
@@ -129,19 +252,22 @@ export const fetchBedrockModels = async (
   }
 
   try {
-    const response = await fetch("/api/admin/llm/bedrock/available-models", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        aws_region_name: params.aws_region_name,
-        aws_access_key_id: params.aws_access_key_id,
-        aws_secret_access_key: params.aws_secret_access_key,
-        aws_bearer_token_bedrock: params.aws_bearer_token_bedrock,
-        provider_name: params.provider_name,
-      }),
-    });
+    const response = await authenticatedFetch(
+      "/api/admin/llm/bedrock/available-models",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          aws_region_name: params.aws_region_name,
+          aws_access_key_id: params.aws_access_key_id,
+          aws_secret_access_key: params.aws_secret_access_key,
+          aws_bearer_token_bedrock: params.aws_bearer_token_bedrock,
+          provider_name: params.provider_name,
+        }),
+      }
+    );
 
     if (!response.ok) {
       let errorMessage = i18n.t("llmOnboarding.failedFetchModels");
@@ -187,16 +313,19 @@ export const fetchOllamaModels = async (
   }
 
   try {
-    const response = await fetch("/api/admin/llm/ollama/available-models", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        api_base: apiBase,
-        provider_name: params.provider_name,
-      }),
-    });
+    const response = await authenticatedFetch(
+      "/api/admin/llm/ollama/available-models",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          api_base: apiBase,
+          provider_name: params.provider_name,
+        }),
+      }
+    );
 
     if (!response.ok) {
       let errorMessage = i18n.t("llmOnboarding.failedFetchModels");
@@ -246,17 +375,20 @@ export const fetchOpenRouterModels = async (
   }
 
   try {
-    const response = await fetch("/api/admin/llm/openrouter/available-models", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        api_base: apiBase,
-        api_key: apiKey,
-        provider_name: params.provider_name,
-      }),
-    });
+    const response = await authenticatedFetch(
+      "/api/admin/llm/openrouter/available-models",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          api_base: apiBase,
+          api_key: apiKey,
+          provider_name: params.provider_name,
+        }),
+      }
+    );
 
     if (!response.ok) {
       let errorMessage = i18n.t("llmOnboarding.failedFetchModels");

@@ -3,6 +3,7 @@
 import React, { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import Switch from "@/refresh-components/inputs/Switch";
+import IconButton from "@/refresh-components/buttons/IconButton";
 import Text from "@/refresh-components/texts/Text";
 import Truncated from "@/refresh-components/texts/Truncated";
 import type { IconProps } from "@opal/types";
@@ -12,6 +13,7 @@ import {
   SvgArrowRightDot,
   SvgCornerRightUpDot,
   SvgMinusCircle,
+  SvgPlayCircle,
 } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 
@@ -74,6 +76,7 @@ export interface ToolItemProps {
 
   // Handlers
   onToggle?: (enabled: boolean) => void;
+  onTest?: () => void;
 
   // Optional styling
   className?: string;
@@ -88,6 +91,7 @@ const ToolItem: React.FC<ToolItemProps> = ({
   variant = "mcp",
   openApiMetadata,
   onToggle,
+  onTest,
   className,
 }) => {
   const { t } = useTranslation();
@@ -223,8 +227,20 @@ const ToolItem: React.FC<ToolItemProps> = ({
             </div>
           )}
 
-          {/* Switch */}
+          {/* Test + Switch */}
           <div className="flex items-center justify-center gap-1 h-5 px-0.5 py-0.5">
+            {onTest && (
+              <IconButton
+                icon={SvgPlayCircle}
+                tertiary
+                tooltip={t("admin.mcp.testTool")}
+                aria-label={`tool-test-${name}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTest();
+                }}
+              />
+            )}
             <Switch
               checked={isEnabled}
               onCheckedChange={onToggle}

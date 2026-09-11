@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import useSWR from "swr";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 import { useAvailableTools } from "@/hooks/useAvailableTools";
 import useBuiltInTools from "@/hooks/useBuiltInTools";
 import useMcpServersForAgentEditor from "@/hooks/useMcpServersForAgentEditor";
@@ -17,6 +17,7 @@ import Text from "@/refresh-components/texts/Text";
 import McpToolSelectionCard, {
   buildMcpOnlyToolSelectionGroups,
   buildToolSelectionGroups,
+  flattenGroupTools,
   toSelectableTool,
 } from "@/refresh-components/agents/McpToolSelectionCard";
 import {
@@ -139,14 +140,23 @@ export default function DynamicAgentEditorPage() {
       };
     });
 
-    return [
-      ...externalMcpGroups,
-      ...buildToolSelectionGroups({
-        serviceToolsByCategory: groupToolsByCategory(serviceTools),
-        categoryLabelMap: buildCategoryLabelMap(serviceTools),
-      }),
-    ];
-  }, [builtInTools, mcpData?.mcp_servers, tools]);
+    const builtInCategoryGroups = buildToolSelectionGroups({
+      serviceToolsByCategory: groupToolsByCategory(serviceTools),
+      categoryLabelMap: buildCategoryLabelMap(serviceTools),
+    });
+    const builtInRoot = builtInCategoryGroups.length
+      ? [
+          {
+            id: "builtin-root",
+            title: t("agentEditor.builtInToolsGroup", "Built-in Tools"),
+            kind: "builtin-root" as const,
+            children: builtInCategoryGroups,
+          },
+        ]
+      : [];
+
+    return [...externalMcpGroups, ...builtInRoot];
+  }, [builtInTools, mcpData?.mcp_servers, tools, t]);
   const selectedToolNames = useMemo(
     () =>
       Object.entries(selectedTools)
@@ -163,7 +173,7 @@ export default function DynamicAgentEditorPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/agent-definitions", {
+      const response = await authenticatedFetch("/api/agent-definitions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -359,9 +369,10 @@ export default function DynamicAgentEditorPage() {
             const next = new Set(toolNames);
             setSelectedTools(
               Object.fromEntries(
-                toolGroups
-                  .flatMap((group) => group.tools)
-                  .map((tool) => [tool.name, next.has(tool.name)])
+                flattenGroupTools(toolGroups).map((tool) => [
+                  tool.name,
+                  next.has(tool.name),
+                ])
               )
             );
           }}

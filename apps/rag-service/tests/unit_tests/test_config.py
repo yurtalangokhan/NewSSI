@@ -41,3 +41,8 @@ def test_valid_api_keys_are_read_from_config(monkeypatch):
     monkeypatch.setattr(config, "VALID_API_KEYS", " alpha, , beta ,")
 
     assert config.parse_valid_api_keys() == {"alpha", "beta"}
+
+
+def test_logging_config_has_operator_friendly_defaults():
+    assert config.LOG_LEVEL == "INFO"
+    assert config.LOG_FORMAT == "text"

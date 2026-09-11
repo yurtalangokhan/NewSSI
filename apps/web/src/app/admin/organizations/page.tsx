@@ -1,10 +1,15 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSWR, { mutate } from "swr";
 import { useTranslation } from "react-i18next";
 
-import { OrganizationAccessPanel } from "@/components/organization/OrganizationAccessPanel";
+import {
+  OrganizationAccessPanel,
+  type ResourceType,
+} from "@/components/organization/OrganizationAccessPanel";
 import { OrganizationDesigner } from "@/components/organization/OrganizationDesigner";
 import { OrganizationTree } from "@/components/organization/OrganizationTree";
 import type {
@@ -20,6 +25,9 @@ import { SvgOrganization, SvgUsers } from "@/icons";
 import Tabs from "@/refresh-components/Tabs";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
+import Skeleton from "@/refresh-components/skeletons/Skeleton";
+import ListSkeleton from "@/refresh-components/skeletons/ListSkeleton";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 
 const DEFAULT_TREE_PANE_WIDTH = 480;
 const MIN_TREE_PANE_WIDTH = 320;
@@ -29,6 +37,19 @@ const ORGANIZATION_TREE_KEY =
 const ORGANIZATION_LAYOUT_KEY = "/api/user-service/organizations/layout";
 const ORGANIZATION_MEMBERS_KEY = "/api/user-service/organizations/members";
 const SHOW_MEMBERS_STORAGE_KEY = "admin-organizations-show-members";
+
+function TabLoadingDots() {
+  return (
+    <span
+      className="ml-2 inline-flex items-center gap-1"
+      aria-label="tab-loading"
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-theme-primary-04 animate-pulse" />
+      <span className="h-1.5 w-1.5 rounded-full bg-theme-primary-04 animate-pulse [animation-delay:200ms]" />
+      <span className="h-1.5 w-1.5 rounded-full bg-theme-primary-04 animate-pulse [animation-delay:400ms]" />
+    </span>
+  );
+}
 
 function findOrganization(
   organizations: OrganizationNode[],
@@ -126,6 +147,9 @@ export default function OrganizationsPage() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [resultsLimited, setResultsLimited] = useState(false);
   const [revealLoading, setRevealLoading] = useState(false);
+  const [expandingOrganizationIds, setExpandingOrganizationIds] = useState<
+    Set<string>
+  >(new Set());
   const [pendingReveal, setPendingReveal] = useState<PendingReveal | null>(
     null
   );
@@ -133,6 +157,22 @@ export default function OrganizationsPage() {
   const searchRequestIdRef = useRef(0);
   const revealRequestIdRef = useRef(0);
   const [activeTab, setActiveTab] = useState("users");
+  const [accessLoading, setAccessLoading] = useState<
+    Record<ResourceType, boolean>
+  >({
+    agent: false,
+    rag_collection: false,
+  });
+  const handleAccessLoadingChange = useCallback(
+    (resourceType: ResourceType, loading: boolean) => {
+      setAccessLoading((current) =>
+        current[resourceType] === loading
+          ? current
+          : { ...current, [resourceType]: loading }
+      );
+    },
+    []
+  );
   const [isDesignerOpen, setIsDesignerOpen] = useState(false);
   const [showMembers, setShowMembers] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -198,8 +238,13 @@ export default function OrganizationsPage() {
   const [subunitsByParentId, setSubunitsByParentId] = useState<
     Record<string, OrganizationNode[]>
   >({});
+  const subunitsByParentIdRef = useRef(subunitsByParentId);
   const [unitMembersMap, setUnitMembersMap] =
     useState<OrganizationMembersByUnit>({});
+
+  useEffect(() => {
+    subunitsByParentIdRef.current = subunitsByParentId;
+  }, [subunitsByParentId]);
 
   const { data: treeData, isLoading } = useSWR<
     { roots: OrganizationNode[] } | OrganizationNode[]
@@ -280,7 +325,7 @@ export default function OrganizationsPage() {
   const membersKey = selectedOrg
     ? `/api/user-service/organizations/${selectedOrg.id}/users`
     : null;
-  const { data: membersData } = useSWR<{
+  const { data: membersData, isLoading: membersLoading } = useSWR<{
     users: OrganizationMember[];
     count: number;
   }>(membersKey, fetchJson);
@@ -305,8 +350,28 @@ export default function OrganizationsPage() {
   const handleExpandOrg = useCallback(
     async (orgId: string) => {
       const promises: Promise<void>[] = [];
+      const shouldLoadChildren = !subunitsByParentId[orgId];
+      const shouldLoadMembers = showMembers && !unitMembersMap[orgId];
 
-      if (!subunitsByParentId[orgId]) {
+      if (!shouldLoadChildren && !shouldLoadMembers) {
+        return;
+      }
+
+      let isAlreadyLoading = false;
+      setExpandingOrganizationIds((current) => {
+        if (current.has(orgId)) {
+          isAlreadyLoading = true;
+          return current;
+        }
+        const next = new Set(current);
+        next.add(orgId);
+        return next;
+      });
+      if (isAlreadyLoading) {
+        return;
+      }
+
+      if (shouldLoadChildren) {
         promises.push(
           fetch(`/api/user-service/organizations/${orgId}/children`)
             .then(async (res) => {
@@ -324,7 +389,7 @@ export default function OrganizationsPage() {
         );
       }
 
-      if (showMembers && !unitMembersMap[orgId]) {
+      if (shouldLoadMembers) {
         promises.push(
           fetch(`/api/user-service/organizations/${orgId}/users`)
             .then(async (res) => {
@@ -342,8 +407,15 @@ export default function OrganizationsPage() {
         );
       }
 
-      if (promises.length > 0) {
+      try {
         await Promise.all(promises);
+      } finally {
+        setExpandingOrganizationIds((current) => {
+          if (!current.has(orgId)) return current;
+          const next = new Set(current);
+          next.delete(orgId);
+          return next;
+        });
       }
     },
     [showMembers, subunitsByParentId, unitMembersMap]
@@ -374,16 +446,70 @@ export default function OrganizationsPage() {
     }
   }, [allMembersError, t]);
 
-  const refreshOrganizations = useCallback(async () => {
-    await mutate(ORGANIZATION_TREE_KEY);
+  const refreshSubunits = useCallback(async () => {
+    const parentIds = Object.keys(subunitsByParentIdRef.current);
+    if (parentIds.length === 0) return;
+    const results = await Promise.all(
+      parentIds.map(async (parentId) => {
+        try {
+          const response = await fetch(
+            `/api/user-service/organizations/${parentId}/children`
+          );
+          if (response.status === 404) {
+            return { parentId, status: "removed" as const };
+          }
+          if (!response.ok) return { parentId, status: "unchanged" as const };
+          const data = (await response.json()) as {
+            children?: OrganizationNode[];
+          };
+          return {
+            parentId,
+            status: "loaded" as const,
+            children: Array.isArray(data.children) ? data.children : [],
+          };
+        } catch {
+          return { parentId, status: "unchanged" as const };
+        }
+      })
+    );
+    const removedIds = results
+      .filter((result) => result.status === "removed")
+      .map((result) => result.parentId);
+    setSubunitsByParentId((current) => {
+      const next = { ...current };
+      results.forEach((result) => {
+        if (result.status === "removed") {
+          delete next[result.parentId];
+          return;
+        }
+        if (result.status === "loaded") {
+          next[result.parentId] = result.children;
+        }
+      });
+      return next;
+    });
+    if (removedIds.length > 0) {
+      setUnitMembersMap((current) => {
+        const next = { ...current };
+        removedIds.forEach((removedId) => {
+          delete next[removedId];
+        });
+        return next;
+      });
+    }
   }, []);
+
+  const refreshOrganizations = useCallback(async () => {
+    await Promise.all([mutate(ORGANIZATION_TREE_KEY), refreshSubunits()]);
+  }, [refreshSubunits]);
 
   const refreshOrganizationsAndLayout = useCallback(async () => {
     await Promise.all([
       mutate(ORGANIZATION_TREE_KEY),
       mutate(ORGANIZATION_LAYOUT_KEY),
+      refreshSubunits(),
     ]);
-  }, []);
+  }, [refreshSubunits]);
 
   const handleSelectOrg = useCallback((organization: OrganizationNode) => {
     setSelectedOrgId(organization.id);
@@ -463,11 +589,14 @@ export default function OrganizationsPage() {
         .replace(/\s+/g, "-")
         .replace(/-+/g, "-")
         .replace(/^-+|-+$/g, "");
-      const response = await fetch("/api/user-service/organizations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, code, parent_id: parentId }),
-      });
+      const response = await authenticatedFetch(
+        "/api/user-service/organizations",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, code, parent_id: parentId }),
+        }
+      );
       if (!response.ok) {
         toast.error(
           await responseDetail(
@@ -485,11 +614,14 @@ export default function OrganizationsPage() {
 
   const handleUpdateOrg = useCallback(
     async (id: string, updates: Partial<OrganizationNode>) => {
-      const response = await fetch(`/api/user-service/organizations/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
+      const response = await authenticatedFetch(
+        `/api/user-service/organizations/${id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updates),
+        }
+      );
       if (!response.ok) {
         toast.error(
           await responseDetail(
@@ -506,9 +638,12 @@ export default function OrganizationsPage() {
 
   const handleDeleteOrg = useCallback(
     async (id: string) => {
-      const response = await fetch(`/api/user-service/organizations/${id}`, {
-        method: "DELETE",
-      });
+      const response = await authenticatedFetch(
+        `/api/user-service/organizations/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
       if (!response.ok) {
         toast.error(
           await responseDetail(
@@ -526,7 +661,7 @@ export default function OrganizationsPage() {
 
   const handleMoveOrg = useCallback(
     async (id: string, newParentId: string | null) => {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `/api/user-service/organizations/${id}/move`,
         {
           method: "POST",
@@ -561,7 +696,7 @@ export default function OrganizationsPage() {
     role: OrganizationMember["role_in_org"]
   ) {
     if (!selectedOrg) return;
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `/api/user-service/organizations/${selectedOrg.id}/users`,
       {
         method: "POST",
@@ -585,7 +720,7 @@ export default function OrganizationsPage() {
     role: OrganizationMember["role_in_org"]
   ) {
     if (!selectedOrg) return;
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `/api/user-service/organizations/${selectedOrg.id}/users/${userId}`,
       {
         method: "PATCH",
@@ -612,7 +747,7 @@ export default function OrganizationsPage() {
       !confirm(t("admin.organizations.notifications.memberRemoveConfirm"))
     )
       return;
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `/api/user-service/organizations/${selectedOrg.id}/users/${userId}`,
       { method: "DELETE" }
     );
@@ -630,9 +765,15 @@ export default function OrganizationsPage() {
 
   if (isLoading) {
     return (
-      <div className={cn("flex h-screen items-center justify-center")}>
-        <Text text03>{t("admin.organizations.page.loading")}</Text>
-      </div>
+      <main className="flex h-screen flex-col bg-background-neutral-01 md:flex-row">
+        <aside className="w-[320px] md:w-[480px] p-4 border-r border-border-02 flex flex-col gap-3">
+          <Skeleton className="h-8 w-40 rounded-08" />
+          <ListSkeleton itemCount={6} hasIcon={true} />
+        </aside>
+        <section className="flex-1 p-6">
+          <TableSkeleton rowCount={6} />
+        </section>
+      </main>
     );
   }
 
@@ -668,6 +809,7 @@ export default function OrganizationsPage() {
           onShowMembersChange={setShowMembers}
           membersLoading={allMembersLoading}
           onExpandOrg={handleExpandOrg}
+          expandingOrganizationIds={expandingOrganizationIds}
           searchResults={searchResults}
           searchLoading={searchLoading}
           searchError={searchError}
@@ -750,12 +892,15 @@ export default function OrganizationsPage() {
                 >
                   <Tabs.Trigger value="users" icon={SvgUsers}>
                     {t("admin.organizations.page.usersTab")}
+                    {selectedOrg && membersLoading ? <TabLoadingDots /> : null}
                   </Tabs.Trigger>
                   <Tabs.Trigger value="agents">
                     {t("admin.organizations.access.agents")}
+                    {accessLoading.agent ? <TabLoadingDots /> : null}
                   </Tabs.Trigger>
                   <Tabs.Trigger value="collections">
                     {t("admin.organizations.access.collections")}
+                    {accessLoading.rag_collection ? <TabLoadingDots /> : null}
                   </Tabs.Trigger>
                 </Tabs.List>
               </Tabs>
@@ -778,6 +923,7 @@ export default function OrganizationsPage() {
                   resourceType={
                     activeTab === "agents" ? "agent" : "rag_collection"
                   }
+                  onLoadingChange={handleAccessLoadingChange}
                   onSaveComplete={refreshOrganizations}
                 />
               )}

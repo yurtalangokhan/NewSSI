@@ -31,10 +31,9 @@ export default function AddUserPage() {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: roles } = useSWR<{ roles: { name: string }[] }>(
-    "/api/user-service/roles",
-    errorHandlingFetcher
-  );
+  const { data: roles, isLoading: isRolesLoading } = useSWR<{
+    roles: { name: string }[];
+  }>("/api/user-service/roles", errorHandlingFetcher);
 
   const disabled = useMemo(() => {
     return (
@@ -88,12 +87,17 @@ export default function AddUserPage() {
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         title={t("admin.users.addUserPageTitle")}
+        description={t("admin.users.addUserPageDescription", {
+          defaultValue:
+            "Add a new user account and assign their initial access profile.",
+        })}
         icon={usersRoute.icon}
         separator
       />
       <SettingsLayouts.Body>
         <AdminOverviewPanel
           icon={usersRoute.icon}
+          isLoading={isRolesLoading}
           title={t("admin.users.addUserWorkspaceTitle", {
             defaultValue: "Create user",
           })}
@@ -121,21 +125,6 @@ export default function AddUserPage() {
                 defaultValue: "Available roles",
               }),
               value: roles?.roles ? String(roles.roles.length) : "...",
-            },
-          ]}
-          actions={[
-            {
-              label: t("admin.navigation.routes.users.sidebar", {
-                defaultValue: "Users",
-              }),
-              href: ADMIN_PATHS.USERS,
-            },
-            {
-              label: t("admin.navigation.routes.roles.sidebar", {
-                defaultValue: "Roles & Permissions",
-              }),
-              href: ADMIN_PATHS.ROLES,
-              primary: true,
             },
           ]}
         />

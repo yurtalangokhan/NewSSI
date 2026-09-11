@@ -1,5 +1,6 @@
 "use client";
 
+import DropzoneInput from "@/refresh-components/inputs/DropzoneInput";
 import React, { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import Separator from "@/refresh-components/Separator";
@@ -96,7 +97,8 @@ export default function ProjectContextPanel({
 
   // Handle project name editing
   const currentProject = projects.find((p) => p.id === currentProjectId);
-  const projectName = currentProject?.name || t("projectContextPanel.loadingProject");
+  const projectName =
+    currentProject?.name || t("projectContextPanel.loadingProject");
 
   const startEditing = useCallback(() => {
     setIsEditingName(true);
@@ -229,7 +231,7 @@ export default function ProjectContextPanel({
             />
           </div>
           {/* Hidden input just to satisfy dropzone contract; we rely on FilePicker for clicks */}
-          <input {...getInputProps()} />
+          <DropzoneInput {...getInputProps()} />
 
           {isLoadingProjectDetails && !currentProjectDetails ? (
             <>
@@ -262,7 +264,9 @@ export default function ProjectContextPanel({
                       <SvgFiles className="h-5 w-5 stroke-text-02" />
                     </div>
                     <Text as="p" text03 secondaryBody>
-                      {t("projectContextPanel.filesCount", { n: displayFileCount })}
+                      {t("projectContextPanel.filesCount", {
+                        n: displayFileCount,
+                      })}
                     </Text>
                   </div>
                 </button>
@@ -298,7 +302,9 @@ export default function ProjectContextPanel({
                         <SvgFiles className="h-5 w-5 stroke-text-02" />
                       </div>
                       <Text as="p" text03 secondaryBody>
-                        {t("projectContextPanel.filesCount", { n: displayFileCount })}
+                        {t("projectContextPanel.filesCount", {
+                          n: displayFileCount,
+                        })}
                       </Text>
                     </div>
                   </button>

@@ -1,7 +1,9 @@
 import { USER_SERVICE_URL } from "@/lib/constants";
 import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { getLanguageHeaders } from "@/lib/api/proxy";
-import { NextRequest, NextResponse } from "next/server";
+import { getIncomingIdempotencyHeaders } from "@/lib/api/idempotency";
+import { forwardBackendResponse } from "@/lib/api/backendResponse";
+import { NextRequest } from "next/server";
 
 export async function PATCH(
   request: NextRequest,
@@ -13,6 +15,7 @@ export async function PATCH(
     "Content-Type": "application/json",
     Cookie: request.headers.get("cookie") || "",
     ...getLanguageHeaders(request),
+    ...getIncomingIdempotencyHeaders(request),
   };
   const auth = request.headers.get("authorization");
   if (auth) headers["Authorization"] = auth;
@@ -30,8 +33,7 @@ export async function PATCH(
     }
   );
 
-  const data = await response.json();
-  return NextResponse.json(data, { status: response.status });
+  return forwardBackendResponse(response);
 }
 
 export async function DELETE(
@@ -43,6 +45,7 @@ export async function DELETE(
     "Content-Type": "application/json",
     Cookie: request.headers.get("cookie") || "",
     ...getLanguageHeaders(request),
+    ...getIncomingIdempotencyHeaders(request),
   };
   const auth = request.headers.get("authorization");
   if (auth) headers["Authorization"] = auth;
@@ -59,9 +62,5 @@ export async function DELETE(
     }
   );
 
-  if (response.status === 204) {
-    return new NextResponse(null, { status: 204 });
-  }
-  const data = await response.json();
-  return NextResponse.json(data, { status: response.status });
+  return forwardBackendResponse(response);
 }

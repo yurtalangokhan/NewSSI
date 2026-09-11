@@ -47,7 +47,9 @@ export function DiscordGuildsTable({ guilds, onRefresh }: Props) {
       toast.success(t("admin.discord.serverConfigDeleted"));
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : t("admin.discord.deleteServerConfigFailed")
+        err instanceof Error
+          ? err.message
+          : t("admin.discord.deleteServerConfigFailed")
       );
     } finally {
       setGuildToDelete(null);

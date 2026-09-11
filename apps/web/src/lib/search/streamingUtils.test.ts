@@ -463,4 +463,66 @@ describe("handleSSEStream", () => {
     expect(turnOf("search-1", "search_tool_documents_delta")).toBe(s1Turn);
     expect(turnOf("search-2", "search_tool_documents_delta")).toBe(s2Turn);
   });
+
+  it("passes graph_stage_start/graph_stage_end through with their stage_name", async () => {
+    const response = createStreamingResponse([
+      'data: {"type":"graph_stage_start","stage_name":"ChatInput-1"}\n',
+      'data: {"type":"graph_stage_end","stage_name":"ChatInput-1"}\n',
+      "data: [DONE]\n",
+    ]);
+
+    const packets = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    const stageObjs = packets
+      .map((p: any) => p.obj)
+      .filter((o: any) => o?.type?.startsWith("graph_stage_"));
+
+    expect(stageObjs).toEqual([
+      { type: "graph_stage_start", stage_name: "ChatInput-1" },
+      { type: "graph_stage_end", stage_name: "ChatInput-1" },
+    ]);
+  });
+  it("carries FlowAgent stage identity into placement for flow_stage_* and stage-scoped packets", async () => {
+    const response = createStreamingResponse([
+      'data: {"type":"flow_stage_start","stage_key":"A#1","node_id":"A","label":"Analiz","stage_order":1,"iteration":1,"is_final_stage":false}\n',
+      'data: {"type":"reasoning_delta","reasoning":"hmm","stage_key":"A#1","stage_order":1,"iteration":1}\n',
+      'data: {"type":"flow_stage_output_delta","stage_key":"A#1","stage_order":1,"iteration":1,"content":"ara"}\n',
+      'data: {"type":"flow_stage_end","stage_key":"A#1","status":"done","duration_ms":1200}\n',
+      "data: [DONE]\n",
+    ]);
+
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    const start = packets.find((p) => p.obj?.type === "flow_stage_start");
+    expect(start.placement).toMatchObject({
+      stage_key: "A#1",
+      stage_order: 1,
+      iteration: 1,
+      is_final_stage: false,
+    });
+    expect(start.obj).toMatchObject({ label: "Analiz", node_id: "A" });
+
+    const reasoning = packets.find((p) => p.obj?.type === "reasoning_delta");
+    expect(reasoning.placement).toMatchObject({
+      stage_key: "A#1",
+      stage_order: 1,
+      iteration: 1,
+    });
+
+    const output = packets.find(
+      (p) => p.obj?.type === "flow_stage_output_delta"
+    );
+    expect(output.placement.stage_key).toBe("A#1");
+    expect(output.obj.content).toBe("ara");
+
+    const end = packets.find((p) => p.obj?.type === "flow_stage_end");
+    expect(end.placement.stage_key).toBe("A#1");
+    expect(end.obj.duration_ms).toBe(1200);
+  });
 });

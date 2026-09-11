@@ -74,7 +74,15 @@ export function isDisplayPacket(packet: Packet) {
     // no `start` until the tool is already rendering.
     packet.obj.type === PacketType.DOCUMENT_GENERATION_START ||
     packet.obj.type === PacketType.DOCUMENT_GENERATION_PROGRESS ||
-    packet.obj.type === PacketType.DOCUMENT_GENERATION_END
+    packet.obj.type === PacketType.DOCUMENT_GENERATION_END ||
+    // A run parked at a HumanInput node: the prompt + its buttons are the only
+    // thing the turn produces, so the group must be display or nothing renders
+    // and the run looks silently stuck.
+    packet.obj.type === PacketType.HUMAN_INPUT ||
+    // Same for an `ask_user` pause: the question card (and the packet that
+    // locks it once answered) is the whole turn.
+    packet.obj.type === PacketType.USER_CLARIFICATION ||
+    packet.obj.type === PacketType.USER_CLARIFICATION_ANSWERED
   );
 }
 
@@ -94,7 +102,12 @@ export function isFinalAnswerComing(packets: Packet[]) {
   return packets.some(
     (packet) =>
       packet.obj.type === PacketType.MESSAGE_START ||
-      packet.obj.type === PacketType.IMAGE_GENERATION_TOOL_START
+      packet.obj.type === PacketType.IMAGE_GENERATION_TOOL_START ||
+      // A pause *is* the end of this turn's output: nothing more streams until
+      // a person answers, so display content must stop being withheld.
+      packet.obj.type === PacketType.HUMAN_INPUT ||
+      packet.obj.type === PacketType.USER_CLARIFICATION ||
+      packet.obj.type === PacketType.USER_CLARIFICATION_ANSWERED
   );
 }
 

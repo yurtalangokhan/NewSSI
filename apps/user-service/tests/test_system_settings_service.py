@@ -1,8 +1,9 @@
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from pydantic import ValidationError
 
-from src.schema.system_settings import KeycloakConfigUpdate
+from src.schema.system_settings import KeycloakConfigUpdate, KeycloakRealmSessionUpdate
 from src.service.system_settings_service import SystemSettingsService
 
 
@@ -32,6 +33,7 @@ def _mock_keycloak():
             "accessTokenLifespan": 300,
             "ssoSessionIdleTimeout": 1800,
             "ssoSessionMaxLifespan": 36000,
+            "clientSessionMaxLifespan": 1800,
         }
     )
     keycloak.get_external_identity_provider_status = AsyncMock(
@@ -64,6 +66,7 @@ async def test_keycloak_settings_masks_external_client_secret(monkeypatch):
     assert external["client_secret_configured"] is True
     assert "client_secret" not in external
     assert external["identity_provider"]["exists"] is True
+    assert settings["keycloak"]["realm_session"]["client_session_max_lifespan"] == 1800
 
 
 @pytest.mark.asyncio
@@ -87,3 +90,33 @@ async def test_update_keycloak_settings_persists_and_applies_runtime_settings():
     assert "EXTERNAL_KEYCLOAK_CLIENT_SECRET" not in saved
     assert "EXTERNAL_KEYCLOAK_CLIENT_SECRET_ENCRYPTED" in saved
     service.keycloak.set_runtime_settings.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_update_realm_session_settings_saves_client_session_maximum():
+    service = SystemSettingsService()
+    service.repo = _mock_repo()
+    service.keycloak = _mock_keycloak()
+    service.keycloak.update_realm_configuration = AsyncMock(
+        return_value={
+            "accessTokenLifespan": 300,
+            "ssoSessionIdleTimeout": 1800,
+            "ssoSessionMaxLifespan": 36000,
+            "clientSessionMaxLifespan": 0,
+        }
+    )
+
+    result = await service.update_realm_session_settings(
+        KeycloakRealmSessionUpdate(client_session_max_lifespan=0)
+    )
+
+    service.keycloak.update_realm_configuration.assert_awaited_once_with(
+        {"clientSessionMaxLifespan": 0}
+    )
+    assert result["client_session_max_lifespan"] == 0
+
+
+@pytest.mark.parametrize("value", [1, 59])
+def test_client_session_maximum_rejects_nonzero_values_below_one_minute(value):
+    with pytest.raises(ValidationError):
+        KeycloakRealmSessionUpdate(client_session_max_lifespan=value)

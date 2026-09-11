@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/fetcher";
+
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 import { toast } from "@/hooks/useToast";
@@ -10,7 +12,11 @@ import Text from "@/refresh-components/texts/Text";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import { SvgTrash, SvgCheckCircle, SvgAlertCircle } from "@opal/icons";
 import { useTranslation } from "react-i18next";
-import { getProviderDisplayName, getProviderIcon, URL_PROVIDER_TYPES } from "@/lib/llmConfig/providers";
+import {
+  getProviderDisplayName,
+  getProviderIcon,
+  URL_PROVIDER_TYPES,
+} from "@/lib/llmConfig/providers";
 import { useWellKnownLangChainProviders } from "@/hooks/useProviders";
 
 type Provider = UrlBasedProvider | ApiKeyProvider;
@@ -38,24 +44,32 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
   const ProviderIcon = getProviderIcon(providerType);
 
   const availableProviders = isUrlProvider
-    ? wellKnownProviders.filter((p) => URL_PROVIDER_TYPES.includes(p.provider_type))
+    ? wellKnownProviders.filter((p) =>
+        URL_PROVIDER_TYPES.includes(p.provider_type)
+      )
     : wellKnownProviders.filter((p) => p.category === "api_key");
 
   // Common fields
   const [name, setName] = useState(provider.name);
-  const [defaultModel, setDefaultModel] = useState(provider.user_config.default_model ?? "");
+  const [defaultModel, setDefaultModel] = useState(
+    provider.user_config.default_model ?? ""
+  );
 
   // URL provider fields
   const [baseUrl, setBaseUrl] = useState(urlProvider?.base_url ?? "");
   const [apiVersion, setApiVersion] = useState(
-    urlProvider?.config.api_version ?? apiKeyProvider?.user_config.api_version ?? ""
+    urlProvider?.config.api_version ??
+      apiKeyProvider?.user_config.api_version ??
+      ""
   );
-  const [customConfigList, setCustomConfigList] = useState<Array<[string, string]>>(
-    Object.entries(urlProvider?.config.custom_config ?? {})
-  );
+  const [customConfigList, setCustomConfigList] = useState<
+    Array<[string, string]>
+  >(Object.entries(urlProvider?.config.custom_config ?? {}));
 
   // Cloud provider fields
-  const [apiBase, setApiBase] = useState(apiKeyProvider?.user_config.api_base ?? "");
+  const [apiBase, setApiBase] = useState(
+    apiKeyProvider?.user_config.api_base ?? ""
+  );
 
   // API key — always shown empty (encrypted in DB)
   const [newApiKey, setNewApiKey] = useState("");
@@ -85,16 +99,19 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
     setTestStatus("testing");
     setTestError(null);
     try {
-      const res = await fetch("/api/admin/providers/test-connection", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider_type: providerType,
-          base_url: effectiveBaseUrl || undefined,
-          api_key: effectiveApiKey,
-          provider_id: isUrlProvider ? provider.id : undefined,
-        }),
-      });
+      const res = await authenticatedFetch(
+        "/api/admin/providers/test-connection",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provider_type: providerType,
+            base_url: effectiveBaseUrl || undefined,
+            api_key: effectiveApiKey,
+            provider_id: isUrlProvider ? provider.id : undefined,
+          }),
+        }
+      );
       const data = await res.json();
       setTestLatency(data.latency_ms ?? null);
       if (data.success) {
@@ -105,7 +122,9 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
       }
     } catch (e) {
       setTestStatus("error");
-      setTestError(e instanceof Error ? e.message : t("admin.llm.connectionFailed"));
+      setTestError(
+        e instanceof Error ? e.message : t("admin.llm.connectionFailed")
+      );
     }
   };
 
@@ -124,10 +143,13 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
       let res: Response;
 
       if (isUrlProvider) {
-        const customConfig = customConfigList.reduce<Record<string, string>>((acc, [k, v]) => {
-          if (k.trim()) acc[k.trim()] = v;
-          return acc;
-        }, {});
+        const customConfig = customConfigList.reduce<Record<string, string>>(
+          (acc, [k, v]) => {
+            if (k.trim()) acc[k.trim()] = v;
+            return acc;
+          },
+          {}
+        );
 
         const body: Record<string, unknown> = {
           name: name.trim(),
@@ -145,7 +167,7 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
           body.api_key = newApiKey.trim();
         }
 
-        res = await fetch(`/api/admin/providers/${provider.id}`, {
+        res = await authenticatedFetch(`/api/admin/providers/${provider.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -159,11 +181,14 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
         };
         if (newApiKey.trim()) body.api_key = newApiKey.trim();
 
-        res = await fetch(`/api/admin/user-providers/${provider.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
+        res = await authenticatedFetch(
+          `/api/admin/user-providers/${provider.id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          }
+        );
       }
 
       if (!res.ok) {
@@ -176,7 +201,10 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
       onOpenChange(false);
     } catch (e: unknown) {
       toast({
-        message: e instanceof Error ? e.message : t("admin.llm.failedToUpdateProvider"),
+        message:
+          e instanceof Error
+            ? e.message
+            : t("admin.llm.failedToUpdateProvider"),
         level: "error",
       });
     } finally {
@@ -187,16 +215,17 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
   const testResultRow = (
     <>
       {testStatus === "ok" && (
-        <p className="text-sm text-green-600 flex items-center gap-1">
+        <Text as="p" className="text-sm text-green-600 flex items-center gap-1">
           <SvgCheckCircle className="h-4 w-4" />
-          {t("admin.llm.connected")}{testLatency !== null ? ` (${testLatency}ms)` : ""}
-        </p>
+          {t("admin.llm.connected")}
+          {testLatency !== null ? ` (${testLatency}ms)` : ""}
+        </Text>
       )}
       {testStatus === "error" && (
-        <p className="text-sm text-red-500 flex items-center gap-1">
+        <Text as="p" className="text-sm text-red-500 flex items-center gap-1">
           <SvgAlertCircle className="h-4 w-4" />
           {testError || t("admin.llm.connectionFailed")}
-        </p>
+        </Text>
       )}
     </>
   );
@@ -205,18 +234,26 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
     <Modal open={open} onOpenChange={onOpenChange}>
       <Modal.Content width="sm">
         <Modal.Header
-          title={isUrlProvider ? t("admin.llm.editLocalProviderTitle") : t("admin.llm.editCloudProviderTitle")}
+          title={
+            isUrlProvider
+              ? t("admin.llm.editLocalProviderTitle")
+              : t("admin.llm.editCloudProviderTitle")
+          }
           onClose={() => onOpenChange(false)}
         />
 
         <Modal.Body>
           <div className="space-y-4 w-full">
-
             {/* Provider type — selectable like add modal */}
             <div className="space-y-1">
               <Text secondaryBody>{t("admin.llm.providerType")}</Text>
-              <InputSelect value={providerType} onValueChange={(v) => setProviderType(v)}>
-                <InputSelect.Trigger placeholder={t("admin.llm.selectProvider")}>
+              <InputSelect
+                value={providerType}
+                onValueChange={(v) => setProviderType(v)}
+              >
+                <InputSelect.Trigger
+                  placeholder={t("admin.llm.selectProvider")}
+                >
                   <span className="inline-flex items-center gap-2 text-text-04">
                     <ProviderIcon className="h-4 w-4" />
                     <span>{getProviderDisplayName(providerType)}</span>
@@ -258,14 +295,19 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
                     className="flex-1 rounded border border-input bg-background px-3 py-2 text-sm"
                     placeholder={t("admin.llm.baseUrlPlaceholder")}
                     value={baseUrl}
-                    onChange={(e) => { setBaseUrl(e.target.value); setTestStatus("idle"); }}
+                    onChange={(e) => {
+                      setBaseUrl(e.target.value);
+                      setTestStatus("idle");
+                    }}
                   />
                   <Button
                     prominence="secondary"
                     onClick={handleTest}
                     disabled={testStatus === "testing" || !baseUrl.trim()}
                   >
-                    {testStatus === "testing" ? t("admin.llm.testing") : t("admin.llm.test")}
+                    {testStatus === "testing"
+                      ? t("admin.llm.testing")
+                      : t("admin.llm.test")}
                   </Button>
                 </div>
                 {testResultRow}
@@ -275,15 +317,23 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
             {/* API key */}
             <div className="space-y-1">
               <Text secondaryBody>
-                {isUrlProvider ? t("admin.llm.apiKeyOptional") : t("admin.llm.apiKey")}
+                {isUrlProvider
+                  ? t("admin.llm.apiKeyOptional")
+                  : t("admin.llm.apiKey")}
               </Text>
 
               {deleteApiKey ? (
                 <div className="flex gap-2 items-center">
-                  <p className="flex-1 text-sm text-amber-600 dark:text-amber-400">
+                  <Text
+                    as="p"
+                    className="flex-1 text-sm text-amber-600 dark:text-amber-400"
+                  >
                     {t("admin.llm.apiKeyWillBeDeleted")}
-                  </p>
-                  <Button prominence="tertiary" onClick={() => setDeleteApiKey(false)}>
+                  </Text>
+                  <Button
+                    prominence="tertiary"
+                    onClick={() => setDeleteApiKey(false)}
+                  >
                     {t("admin.llm.undoDeleteApiKey")}
                   </Button>
                 </div>
@@ -297,25 +347,31 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
                         hasExistingApiKey
                           ? t("admin.llm.apiKeyKeepCurrent")
                           : isUrlProvider
-                          ? t("admin.llm.leaveBlankIfNotRequired")
-                          : t("admin.llm.enterApiKey")
+                            ? t("admin.llm.leaveBlankIfNotRequired")
+                            : t("admin.llm.enterApiKey")
                       }
                       value={newApiKey}
-                      onChange={(e) => { setNewApiKey(e.target.value); setTestStatus("idle"); }}
+                      onChange={(e) => {
+                        setNewApiKey(e.target.value);
+                        setTestStatus("idle");
+                      }}
                     />
                     {isUrlProvider && hasExistingApiKey && (
                       <Button
                         icon={SvgTrash}
                         prominence="tertiary"
                         aria-label={t("admin.llm.deleteApiKey")}
-                        onClick={() => { setDeleteApiKey(true); setNewApiKey(""); }}
+                        onClick={() => {
+                          setDeleteApiKey(true);
+                          setNewApiKey("");
+                        }}
                       />
                     )}
                   </div>
                   {hasExistingApiKey && (
-                    <p className="text-xs text-muted-foreground">
+                    <Text as="p" className="text-xs text-muted-foreground">
                       {t("admin.llm.apiKeyHiddenHint")}
-                    </p>
+                    </Text>
                   )}
                 </>
               )}
@@ -330,7 +386,9 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
                     onClick={handleTest}
                     disabled={testStatus === "testing"}
                   >
-                    {testStatus === "testing" ? t("admin.llm.testing") : t("admin.llm.test")}
+                    {testStatus === "testing"
+                      ? t("admin.llm.testing")
+                      : t("admin.llm.test")}
                   </Button>
                 </div>
                 {testResultRow}
@@ -366,7 +424,9 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
             {/* URL provider: custom config */}
             {isUrlProvider && (
               <div className="rounded border border-border p-3 space-y-2">
-                <Text secondaryBody>{t("admin.llm.optionalCustomConfigs")}</Text>
+                <Text secondaryBody>
+                  {t("admin.llm.optionalCustomConfigs")}
+                </Text>
                 {customConfigList.map(([key, value], idx) => (
                   <div key={idx} className="grid grid-cols-12 gap-2">
                     <input
@@ -375,7 +435,9 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
                       value={key}
                       onChange={(e) =>
                         setCustomConfigList((prev) =>
-                          prev.map((entry, i) => (i === idx ? [e.target.value, entry[1]] : entry))
+                          prev.map((entry, i) =>
+                            i === idx ? [e.target.value, entry[1]] : entry
+                          )
                         )
                       }
                     />
@@ -385,7 +447,9 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
                       value={value}
                       onChange={(e) =>
                         setCustomConfigList((prev) =>
-                          prev.map((entry, i) => (i === idx ? [entry[0], e.target.value] : entry))
+                          prev.map((entry, i) =>
+                            i === idx ? [entry[0], e.target.value] : entry
+                          )
                         )
                       }
                     />
@@ -393,7 +457,9 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
                       <Button
                         prominence="tertiary"
                         onClick={() =>
-                          setCustomConfigList((prev) => prev.filter((_, i) => i !== idx))
+                          setCustomConfigList((prev) =>
+                            prev.filter((_, i) => i !== idx)
+                          )
                         }
                       >
                         {t("admin.llm.remove")}
@@ -403,7 +469,9 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
                 ))}
                 <Button
                   prominence="secondary"
-                  onClick={() => setCustomConfigList((prev) => [...prev, ["", ""]])}
+                  onClick={() =>
+                    setCustomConfigList((prev) => [...prev, ["", ""]])
+                  }
                 >
                   {t("admin.llm.addConfig")}
                 </Button>
@@ -427,7 +495,11 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
           <Button prominence="secondary" onClick={() => onOpenChange(false)}>
             {t("modals.cancel")}
           </Button>
-          <Button prominence="primary" onClick={handleSubmit} disabled={submitting}>
+          <Button
+            prominence="primary"
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
             {submitting ? t("admin.llm.saving") : t("admin.llm.saveChanges")}
           </Button>
         </Modal.Footer>
