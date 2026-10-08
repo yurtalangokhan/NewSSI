@@ -5,18 +5,22 @@ import CardSection from "@/components/admin/CardSection";
 import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
 import {
-  useGraphBuildStatus,
-  useGraphCollections,
-  useDocuments,
+  type GraphBuildStatus,
+  type GraphBuildStatusResponse,
+} from "@/lib/api/domains/knowledge/types";
+import {
   buildGraph,
   deleteGraph,
   fetchGraphBuildStatus,
   pauseGraphBuild,
   resumeGraphBuild,
   stopGraphBuild,
-  type GraphBuildStatus,
-  type GraphBuildStatusResponse,
-} from "@/lib/langconnect";
+} from "@/lib/api/domains/knowledge/api";
+import {
+  useGraphBuildStatus,
+  useGraphCollections,
+  useDocuments,
+} from "@/lib/api/domains/knowledge/hooks";
 import { toast } from "@/hooks/useToast";
 import { SvgActivity, SvgTrash, SvgAlertTriangle } from "@opal/icons";
 import { cn } from "@/lib/utils";
@@ -185,7 +189,7 @@ export default function GraphBuildPanel({
     (async () => {
       try {
         const data = await fetchGraphBuildStatus(collectionId);
-        if (cancelled) return;
+        if (cancelled || !data) return;
         if (
           data.status === "pending" ||
           data.status === "extracting" ||

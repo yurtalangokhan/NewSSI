@@ -5,37 +5,31 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from langchain.agents import create_agent
+from error_contract.agent import GraphBuilderError
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.prebuilt import create_react_agent
 from langgraph.pregel import Pregel
 
-from agents.clarification.middleware import (
-    AskUserAloneMiddleware,
-    ask_user_alone_post_model_hook,
+from agents.graphs.builder_helpers import (
+    MAX_NESTED_SUB_AGENT_DEPTH,
+    agent_def_to_config,
 )
-from agents.clarification.prompt import ASK_USER_PROMPT
-from agents.clarification.tool import get_clarification_tools
-from agents.document_tools import DOCUMENT_TOOL_PROMPT, get_document_tools
-from agents.graphs.builder_helpers import agent_def_to_config
-from agents.graphs.middleware import DeadEndTurnRetryMiddleware
-from agents.graphs.schemas import (
+from agents.graphs.strategies.registry import get_strategy
+from agents.tooling.mail_tooling import maybe_wrap_mcp_tool
+from core.observability.logger import get_logger
+from schemas.agent_graphs import (
     GraphSchemaType,
     get_schema,
 )
-from agents.mail_tooling import append_email_tool_policy, maybe_wrap_mcp_tool
-from core.logger import get_logger
 
 logger = get_logger(__name__)
 
-
-class GraphBuilderError(Exception):
-    """Error during graph building."""
-
-    pass
+# A supervisor/pipeline sub-agent chain that loops back on itself (directly
+# or indirectly) used to recurse with no bound at all in both the DB-loading
+# step below and the nested-strategy-construction step in
+# strategies/supervisor.py and strategies/pipeline.py.
 
 
 class GraphBuilder:
@@ -55,6 +49,7 @@ class GraphBuilder:
         checkpointer: Any | None = None,
         repository: Any | None = None,
         gateway_tools: list[Any] | None = None,
+        owner_ids: list[str] | None = None,
     ):
         self.model = model
         self.system_prompt = system_prompt
@@ -63,6 +58,11 @@ class GraphBuilder:
         self.memory_enabled = memory_enabled
         self.checkpointer = checkpointer
         self.repository = repository  # NEW: For loading sub-agents from DB
+        # Which identities may run the definitions this graph pulls from the
+        # database. ``None`` means the caller already authorised the whole
+        # graph (e.g. a persona whose execution was checked upstream); a list
+        # scopes every lookup, which is what a client-supplied flow spec needs.
+        self.owner_ids = owner_ids
         # Gateway-injected tools (from ToolsServiceToolGateway, pre-resolved as BaseTool).
         # These are prepended to the tools list so they take precedence over
         # mcp_tools_map lookups for the same tool name.
@@ -96,14 +96,16 @@ class GraphBuilder:
     def _get_model(self, model_name: str | None = None) -> BaseChatModel:
         """Get model instance, using override or default."""
         if model_name:
-            from core import get_model
+            from infrastructure.llm import get_model
 
             return get_model(model_name)
         if self.model:
             return self.model
-        from core import get_model, settings
+        from config_manager import env
 
-        return get_model(settings.DEFAULT_MODEL)
+        from infrastructure.llm import get_model
+
+        return get_model(env.DEFAULT_MODEL)
 
     def build(
         self, schema_type: str | GraphSchemaType, config: dict[str, Any] | None = None
@@ -124,7 +126,7 @@ class GraphBuilder:
             try:
                 schema_type = GraphSchemaType(schema_type)
             except ValueError:
-                raise GraphBuilderError(f"Unknown schema type: {schema_type}")
+                raise GraphBuilderError(f"Unknown schema type: {schema_type}") from None
 
         schema = get_schema(schema_type)
         if not schema:
@@ -133,7 +135,6 @@ class GraphBuilder:
         logger.info("Building graph with schema: %s", schema_type)
 
         # Use strategy registry instead of central if/elif dispatch
-        from agents.graphs.strategies.registry import get_strategy
 
         strategy = get_strategy(
             schema_type,
@@ -144,6 +145,7 @@ class GraphBuilder:
             memory_enabled=self.memory_enabled,
             checkpointer=self.checkpointer,
             repository=self.repository,
+            gateway_tools=self.gateway_tools,
         )
 
         if strategy is None:
@@ -177,7 +179,7 @@ class GraphBuilder:
             try:
                 schema_type = GraphSchemaType(schema_type)
             except ValueError:
-                raise GraphBuilderError(f"Unknown schema type: {schema_type}")
+                raise GraphBuilderError(f"Unknown schema type: {schema_type}") from None
 
         schema = get_schema(schema_type)
         if not schema:
@@ -186,7 +188,6 @@ class GraphBuilder:
         logger.info("Building graph (async) with schema: %s", schema_type)
 
         # Use strategy registry instead of central if/elif dispatch
-        from agents.graphs.strategies.registry import get_strategy
 
         strategy = get_strategy(
             schema_type,
@@ -197,6 +198,7 @@ class GraphBuilder:
             memory_enabled=self.memory_enabled,
             checkpointer=self.checkpointer,
             repository=self.repository,
+            gateway_tools=self.gateway_tools,
         )
 
         if strategy is None:
@@ -219,6 +221,7 @@ class GraphBuilder:
         config: dict[str, Any],
         *,
         target_field: str | None = None,
+        _depth: int = 0,
     ) -> None:
         """
         Load sub-agents from DB and merge with config.
@@ -228,9 +231,20 @@ class GraphBuilder:
 
         Args:
             config: Config dict to modify in-place
+
+        ``_depth`` guards against a sub_agent_ids cycle (a supervisor whose
+        chain of sub-agents loops back on itself, directly or indirectly) —
+        this used to recurse with no bound at all until the stack gave out.
         """
         if not self.repository:
             logger.debug("No repository provided, skipping DB agent loading")
+            return
+
+        if _depth >= MAX_NESTED_SUB_AGENT_DEPTH:
+            logger.warning(
+                "Sub-agent nesting reached the %d-level depth limit, stopping",
+                MAX_NESTED_SUB_AGENT_DEPTH,
+            )
             return
 
         sub_agent_ids = config.get("sub_agent_ids", [])
@@ -252,27 +266,28 @@ class GraphBuilder:
                     continue
 
             try:
-                # Load sub-agent from repository
-                sub_agent_def = await self.repository.get_by_id(sub_id)
+                # Load sub-agent from repository, scoped to who may run it when
+                # the caller told us (a client-supplied flow spec can name any id).
+                if self.owner_ids is None:
+                    sub_agent_def = await self.repository.get_by_id(sub_id)
+                else:
+                    sub_agent_def = await self.repository.get_by_id_for_user(sub_id, self.owner_ids)
                 if not sub_agent_def:
-                    logger.warning(f"Sub-agent {sub_id} not found in DB")
+                    logger.warning(f"Sub-agent {sub_id} not found or not available to the runner")
                     continue
 
                 sub_config = agent_def_to_config(sub_agent_def)
                 nested_target = (
-                    "stages"
-                    if sub_config.get("graph_schema") == GraphSchemaType.PIPELINE.value
-                    else "sub_agents"
+                    "stages" if sub_config.get("graph_schema") == GraphSchemaType.PIPELINE.value else "sub_agents"
                 )
                 await self._load_sub_agents_from_db(
                     sub_config,
                     target_field=nested_target,
+                    _depth=_depth + 1,
                 )
                 loaded_sub_agents.append(sub_config)
 
-                logger.debug(
-                    f"Loaded sub-agent {sub_agent_def.name} (schema: {sub_agent_def.graph_schema})"
-                )
+                logger.debug(f"Loaded sub-agent {sub_agent_def.name} (schema: {sub_agent_def.graph_schema})")
 
             except Exception as e:
                 logger.error(f"Error loading sub-agent {sub_id}: {e}", exc_info=True)
@@ -281,397 +296,11 @@ class GraphBuilder:
         # Merge loaded agents with inline configs
         if loaded_sub_agents:
             field = target_field or (
-                "stages"
-                if config.get("graph_schema") == GraphSchemaType.PIPELINE.value
-                else "sub_agents"
+                "stages" if config.get("graph_schema") == GraphSchemaType.PIPELINE.value else "sub_agents"
             )
             existing = config.get(field, [])
             config[field] = loaded_sub_agents + existing
-            logger.info(
-                f"Merged {len(loaded_sub_agents)} DB agents with "
-                f"{len(existing)} inline configs in {field}"
-            )
-
-    def _attach_clarification(self, tools: list[Any], system_prompt: str) -> tuple[list[Any], str]:
-        """Give a chat agent the ability to ask the user what they meant.
-
-        Gated on the checkpointer, which decides two things at once:
-
-        - Without one, ``interrupt()`` has nowhere to park and would return
-          nothing at all, leaving the model with an empty answer to a question
-          the user never saw (design 5.3, E13). A tool that does not exist
-          cannot be called, so the situation never arises.
-        - Every flow-canvas build constructs GraphBuilder with
-          ``checkpointer=None`` (the parent flow owns persistence), so the tool
-          stays out of flows for free (K3, E14). Flows have their own
-          HumanInput node, and a RunFlow sub-run cannot pause at all.
-        """
-        if not self.checkpointer:
-            return tools, system_prompt
-        tools.extend(get_clarification_tools())
-        return tools, f"{system_prompt}\n{ASK_USER_PROMPT}"
-
-    def _clarification_post_model_hook(self):
-        """The "call ask_user alone" guard for the ``create_react_agent`` paths.
-
-        ``_build_react``/``_build_zero_shot`` run ``create_agent`` and get this
-        guard as ``AskUserAloneMiddleware``. Sub-agents and plan-execute run
-        ``create_react_agent``, which has no middleware slot — so they take the
-        same guard as a ``post_model_hook``. Gated on the same checkpointer as
-        the tool: no tool attached, no guard needed, so ``None`` (the
-        create_react_agent default) is correct there.
-        """
-        return ask_user_alone_post_model_hook if self.checkpointer else None
-
-    def _build_zero_shot(self, config: dict[str, Any]) -> CompiledStateGraph:
-        """Build zero-shot chat graph.
-
-        "Zero-shot" is one model call with a system prompt — a tool loop is what
-        ReActAgent is for. Document tools alone used to trigger the upgrade
-        below, which silently turned every zero-shot graph into a react agent
-        (and appended DOCUMENT_TOOL_PROMPT to the caller's own prompt). An
-        explicitly attached tool still upgrades, since that is the caller asking
-        for a loop, but document tools never ride along into it.
-        """
-        tool_names = config.get("mcp_tools", [])
-        extra_tools = config.get("extra_tools", []) or []
-        if tool_names or extra_tools:
-            return self._build_react({**config, "document_tools": False})
-
-        from langgraph.graph import END, MessagesState, StateGraph
-
-        system_prompt = config.get("system_prompt", self.system_prompt)
-        model = self._get_model(config.get("model"))
-        memory_enabled = self.memory_enabled
-
-        async def call_model(state: MessagesState, config: RunnableConfig) -> MessagesState:
-            messages = list(state["messages"])
-
-            if memory_enabled:
-                messages = await _inject_memory_context_async(messages, config)
-
-            messages = [SystemMessage(content=system_prompt)] + messages
-            response = await model.ainvoke(messages)
-            return {"messages": [response]}
-
-        workflow = StateGraph(MessagesState)
-        workflow.add_node("model", call_model)
-        workflow.set_entry_point("model")
-        workflow.add_edge("model", END)
-
-        return workflow.compile(checkpointer=self.checkpointer)
-
-    def _build_react(self, config: dict[str, Any]) -> CompiledStateGraph:
-        """Build ReAct agent with tools."""
-        tool_names = config.get("mcp_tools", [])
-        system_prompt = append_email_tool_policy(
-            config.get("system_prompt", self.system_prompt),
-            tool_names,
-            mail_attachments=config.get("mail_attachments"),
-        )
-        model = self._get_model(config.get("model"))
-
-        tools = self._get_tools_for_names(
-            tool_names,
-            tool_configs=config.get("mcp_tool_configs") or {},
-            user_id=config.get("user_id"),
-            mail_attachments=config.get("mail_attachments"),
-        )
-        extra_tools = config.get("extra_tools", []) or []
-        tools.extend(extra_tools)
-
-        # Prepend gateway tools so they take precedence over mcp_tools_map entries
-        # with the same name (mcp_tools_map is consulted last).
-        if self.gateway_tools:
-            tools = list(self.gateway_tools) + tools
-
-        document_tools = get_document_tools() if config.get("document_tools", True) else []
-        if document_tools:
-            tools.extend(document_tools)
-            system_prompt = f"{system_prompt}\n{DOCUMENT_TOOL_PROMPT}"
-
-        tools, system_prompt = self._attach_clarification(tools, system_prompt)
-
-        agent = create_agent(
-            model=model,
-            tools=tools,
-            name="react-agent",
-            system_prompt=system_prompt,
-            checkpointer=self.checkpointer,
-            middleware=[DeadEndTurnRetryMiddleware(), AskUserAloneMiddleware()],
-        )
-
-        return agent
-
-    def _build_supervisor(self, config: dict[str, Any]) -> CompiledStateGraph | Pregel:
-        """Build supervisor graph with sub-agents."""
-        from langgraph_supervisor import create_supervisor
-
-        supervisor_prompt = config.get("supervisor_prompt", "You are a team supervisor.")
-        model = self._get_model(config.get("model"))
-
-        sub_agents_config = config.get("sub_agents", [])
-        if not sub_agents_config:
-            logger.warning("No sub-agents configured for supervisor, using fallback")
-            fallback_agent = create_react_agent(
-                model=model,
-                tools=[],
-                name="fallback",
-                prompt="You are a helpful assistant.",
-            )
-            workflow = create_supervisor(
-                [fallback_agent],
-                model=model,
-                prompt="No sub-agents configured.",
-                add_handoff_back_messages=True,
-                output_mode="full_history",
-            )
-            return workflow.compile(checkpointer=self.checkpointer)
-
-        agents_list = []
-        agent_descriptions = []
-
-        for sub_agent_cfg in sub_agents_config:
-            if not isinstance(sub_agent_cfg, dict):
-                continue
-
-            name = sub_agent_cfg.get("name", "agent")
-            sa_system_prompt = sub_agent_cfg.get("system_prompt", "You are a helpful agent.")
-            tool_names = sub_agent_cfg.get("mcp_tools", [])
-            if config.get("user_id") and not sub_agent_cfg.get("user_id"):
-                sub_agent_cfg["user_id"] = config["user_id"]
-            if config.get("mail_attachments") and not sub_agent_cfg.get("mail_attachments"):
-                sub_agent_cfg["mail_attachments"] = config["mail_attachments"]
-            agent = self._build_sub_agent_graph(sub_agent_cfg)
-
-            agents_list.append(agent)
-            tool_list = ", ".join(tool_names) if tool_names else "no tools"
-            agent_descriptions.append(f"- {name}: {sa_system_prompt[:60]}... (tools: {tool_list})")
-
-        enhanced_supervisor_prompt = (
-            f"{supervisor_prompt}\n\nAvailable agents:\n"
-            + "\n".join(agent_descriptions)
-            + "\n\nDelegate tasks to the appropriate agent(s)."
-        )
-
-        workflow = create_supervisor(
-            agents_list,
-            model=model,
-            prompt=enhanced_supervisor_prompt,
-            add_handoff_back_messages=True,
-            output_mode="full_history",
-        )
-
-        return workflow.compile(checkpointer=self.checkpointer, name=config.get("name"))
-
-    def _build_pipeline(self, config: dict[str, Any]) -> CompiledStateGraph | Pregel:
-        """Build pipeline graph with sequential stages."""
-        from langgraph_supervisor import create_supervisor
-
-        model = self._get_model(config.get("model"))
-        pipeline_prompt = config.get("pipeline_prompt", "Process through all stages sequentially.")
-
-        stages_config = config.get("stages", [])
-        if not stages_config:
-            logger.warning("No stages configured for pipeline, using fallback")
-            fallback_agent = create_react_agent(
-                model=model,
-                tools=[],
-                name="fallback",
-                prompt="You are a helpful assistant.",
-            )
-            workflow = create_supervisor(
-                [fallback_agent],
-                model=model,
-                prompt="No stages configured.",
-                add_handoff_back_messages=True,
-                output_mode="full_history",
-            )
-            return workflow.compile(checkpointer=self.checkpointer)
-
-        agents_list = []
-        stage_names = []
-
-        for stage_cfg in stages_config:
-            if not isinstance(stage_cfg, dict):
-                continue
-
-            name = stage_cfg.get("name", "stage")
-            if config.get("user_id") and not stage_cfg.get("user_id"):
-                stage_cfg["user_id"] = config["user_id"]
-            if config.get("mail_attachments") and not stage_cfg.get("mail_attachments"):
-                stage_cfg["mail_attachments"] = config["mail_attachments"]
-            agent = self._build_sub_agent_graph(stage_cfg)
-
-            agents_list.append(agent)
-            stage_names.append(name)
-
-        enhanced_prompt = (
-            f"{pipeline_prompt}\n\nYou are a sequential pipeline."
-            f" Process input through each stage in order.\nStages: {stage_names}"
-        )
-
-        workflow = create_supervisor(
-            agents_list,
-            model=model,
-            prompt=enhanced_prompt,
-            add_handoff_back_messages=True,
-            output_mode="full_history",
-        )
-
-        return workflow.compile(checkpointer=self.checkpointer, name=config.get("name"))
-
-    def _build_sub_agent_graph(self, agent_config: dict[str, Any]) -> CompiledStateGraph | Pregel:
-        """Build a sub-agent graph, preserving nested manager schemas when configured."""
-        schema_value = agent_config.get("graph_schema")
-        try:
-            schema_type = GraphSchemaType(schema_value) if schema_value else GraphSchemaType.REACT
-        except ValueError:
-            schema_type = GraphSchemaType.REACT
-
-        if schema_type in (GraphSchemaType.SUPERVISOR, GraphSchemaType.PIPELINE):
-            nested_builder = GraphBuilder(
-                model=self._get_model(agent_config.get("model")),
-                system_prompt=agent_config.get("system_prompt", self.system_prompt),
-                tools=self.tools,
-                mcp_tools_map=self.mcp_tools_map,
-                memory_enabled=self.memory_enabled,
-                checkpointer=self.checkpointer,
-                repository=self.repository,
-                gateway_tools=self.gateway_tools,
-            )
-            return nested_builder.build(schema_type, agent_config)
-
-        name = agent_config.get("name", "agent")
-        tool_names = agent_config.get("mcp_tools", [])
-        system_prompt = append_email_tool_policy(
-            agent_config.get("system_prompt", "You are a helpful agent."),
-            tool_names,
-            mail_attachments=agent_config.get("mail_attachments"),
-        )
-        agent_model = self._get_model(agent_config.get("model"))
-        agent_tools = self._get_tools_for_names(
-            tool_names,
-            tool_configs=agent_config.get("mcp_tool_configs") or {},
-            user_id=agent_config.get("user_id"),
-            mail_attachments=agent_config.get("mail_attachments"),
-        )
-
-        # Prepend gateway tools so they take precedence.
-        if self.gateway_tools:
-            agent_tools = list(self.gateway_tools) + agent_tools
-
-        document_tools = get_document_tools()
-        if document_tools:
-            agent_tools.extend(document_tools)
-            system_prompt = f"{system_prompt}\n{DOCUMENT_TOOL_PROMPT}"
-
-        agent_tools, system_prompt = self._attach_clarification(agent_tools, system_prompt)
-
-        return create_react_agent(
-            model=agent_model,
-            tools=agent_tools,
-            name=name,
-            prompt=SystemMessage(content=system_prompt),
-            post_model_hook=self._clarification_post_model_hook(),
-        )
-
-    def _build_plan_execute(self, config: dict[str, Any]) -> CompiledStateGraph:
-        """Build Plan & Execute graph."""
-        tool_names = config.get("mcp_tools", [])
-        system_prompt = append_email_tool_policy(
-            config.get(
-                "system_prompt",
-                "First create a detailed plan, then execute each step methodically.",
-            ),
-            tool_names,
-            mail_attachments=config.get("mail_attachments"),
-        )
-        model = self._get_model(config.get("model"))
-
-        tools = self._get_tools_for_names(
-            tool_names,
-            tool_configs=config.get("mcp_tool_configs") or {},
-            user_id=config.get("user_id"),
-            mail_attachments=config.get("mail_attachments"),
-        )
-        extra_tools = config.get("extra_tools", []) or []
-        tools.extend(extra_tools)
-
-        # Prepend gateway tools so they take precedence.
-        if self.gateway_tools:
-            tools = list(self.gateway_tools) + tools
-
-        document_tools = get_document_tools()
-        if document_tools:
-            tools.extend(document_tools)
-            system_prompt = f"{system_prompt}\n{DOCUMENT_TOOL_PROMPT}"
-
-        tools, system_prompt = self._attach_clarification(tools, system_prompt)
-
-        agent = create_react_agent(
-            model=model,
-            tools=tools,
-            name="plan-execute",
-            prompt=SystemMessage(content=system_prompt),
-            checkpointer=self.checkpointer,
-            post_model_hook=self._clarification_post_model_hook(),
-        )
-
-        return agent
-
-    def _build_self_reflect(self, config: dict[str, Any]) -> CompiledStateGraph:
-        """Build Self-Reflect graph with generate → reflect loop."""
-        from langgraph.graph import END, MessagesState, StateGraph
-
-        system_prompt = config.get("system_prompt", self.system_prompt)
-        reflection_prompt = config.get(
-            "reflection_prompt",
-            "Review this response and suggest improvements if needed. If it is already good, say 'DONE'.",
-        )
-        model = self._get_model(config.get("model"))
-        max_iterations = int(config.get("max_iterations", 3))
-
-        async def generate(state: MessagesState, config: RunnableConfig) -> MessagesState:
-            messages = [SystemMessage(content=system_prompt)] + list(state["messages"])
-            response = await model.ainvoke(messages)
-            return {"messages": [response]}
-
-        async def reflect(state: MessagesState, config: RunnableConfig) -> MessagesState:
-            last_msg = state["messages"][-1] if state["messages"] else None
-            if not last_msg:
-                return state
-
-            reflection_query = f"{reflection_prompt}\n\nResponse to review:\n{last_msg.content}"
-            reflection = await model.ainvoke([SystemMessage(content=reflection_query)])
-            return {"messages": list(state["messages"]) + [reflection]}
-
-        def should_continue(state: dict) -> str:
-            # NOTE: intentionally annotated `dict`, not `MessagesState`. This
-            # module uses `from __future__ import annotations`, so the hint is
-            # a stringized forward ref; LangGraph's add_conditional_edges runs
-            # get_type_hints() on this branch callable and resolves it against
-            # this module's globals, where the function-local `MessagesState`
-            # import is not visible -> NameError at build time.
-            # Stop if max iterations reached or reflection says DONE
-            msg_count = len(state["messages"])
-            if msg_count >= max_iterations * 2 + 1:
-                return "end"
-            last_msg = state["messages"][-1] if state["messages"] else None
-            if last_msg and "DONE" in str(last_msg.content).upper():
-                return "end"
-            return "reflect"
-
-        workflow = StateGraph(MessagesState)
-        workflow.add_node("generate", generate)
-        workflow.add_node("reflect", reflect)
-        workflow.set_entry_point("generate")
-        workflow.add_conditional_edges(
-            "generate", should_continue, {"reflect": "reflect", "end": END}
-        )
-        workflow.add_edge("reflect", "generate")
-
-        return workflow.compile(checkpointer=self.checkpointer)
+            logger.info(f"Merged {len(loaded_sub_agents)} DB agents with {len(existing)} inline configs in {field}")
 
 
 async def _inject_memory_context_async(messages: list, config: RunnableConfig) -> list:
@@ -684,17 +313,12 @@ async def _inject_memory_context_async(messages: list, config: RunnableConfig) -
         if long_term_memory and user_id:
             store = configurable.get("store")
             if store:
-                from memory.long_term import (
-                    build_event_emitters,
-                    build_memory_context,
-                    recall_memories,
-                )
+                from memory.long_term import latest_human_message_text, recall_context_for_turn
 
-                on_recall, _ = build_event_emitters(configurable)
-                memories = await recall_memories(store, user_id, on_recall=on_recall)
-                context = build_memory_context(memories)
+                query = latest_human_message_text(messages)
+                _, context = await recall_context_for_turn(user_id, query, configurable)
                 if context:
-                    return [SystemMessage(content=context)] + list(messages)
+                    return [SystemMessage(content=context), *list(messages)]
     except Exception as e:
         logger.warning(f"Memory injection failed: {e}")
 

@@ -1,3 +1,5 @@
+import { fetchCsvChatFile } from "@/lib/api/domains/chat/api";
+
 // CsvContent
 import React, { useState, useEffect } from "react";
 import {
@@ -48,9 +50,7 @@ const CsvContent: React.FC<ContentComponentProps> = ({
     setIsFetching(true);
     setErrorMessage(null);
     try {
-      const response = await fetch(`/api/chat/file/${id}`, {
-        cache: "no-store",
-      });
+      const response = await fetchCsvChatFile(id);
       if (!response.ok) {
         setData([]);
         setHeaders([]);

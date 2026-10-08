@@ -1,39 +1,23 @@
-import { proxyToBackend } from "@/lib/api/proxy";
-import { USER_SERVICE_URL } from "@/lib/constants";
-import { buildServiceUrl } from "@/lib/api/gatewayRouting";
-import { getLanguageHeaders } from "@/lib/api/proxy";
-import { getIncomingIdempotencyHeaders } from "@/lib/api/idempotency";
-import { NextRequest, NextResponse } from "next/server";
+import { sessionEndpoints } from "@/lib/api/domains/session/endpoints";
+import { forwardBackendResponse } from "@/lib/api/backendResponse";
+import { backendRequest } from "@/lib/api/http/server";
+
+import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Cookie: request.headers.get("cookie") || "",
-    ...getLanguageHeaders(request),
-    ...getIncomingIdempotencyHeaders(request),
-  };
-  const auth = request.headers.get("authorization");
-  if (auth) headers["Authorization"] = auth;
-
-  const response = await fetch(
-    buildServiceUrl(
-      USER_SERVICE_URL,
-      "user",
-      "/api/users/me/api-keys/"
-    ).toString(),
-    {
-      headers,
-    }
-  );
-  const data = await response.json();
-  return NextResponse.json(data, { status: response.status });
+  const response = await backendRequest({
+    ...sessionEndpoints.listPersonalAccessTokens.backend,
+    request,
+  });
+  return forwardBackendResponse(response);
 }
 
 export async function POST(request: NextRequest) {
-  return proxyToBackend(request, "/api/users/me/api-keys/", {
-    backendUrl: USER_SERVICE_URL,
-    backendService: "user",
+  const response = await backendRequest({
+    ...sessionEndpoints.createPersonalAccessToken.backend,
+    request,
     method: "POST",
-    withCredentials: true,
+    body: await request.arrayBuffer(),
   });
+  return forwardBackendResponse(response);
 }

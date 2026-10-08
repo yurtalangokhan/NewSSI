@@ -1,4 +1,5 @@
 "use client";
+import { craftEndpoints } from "@/lib/api/domains/craft/endpoints";
 
 import { memo, useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -19,7 +20,7 @@ import {
   fetchWebappInfo,
   fetchArtifacts,
   exportDocx,
-} from "@/app/craft/services/apiServices";
+} from "@/lib/api/domains/craft/api";
 import { cn, getFileIcon } from "@/lib/utils";
 import Text from "@/refresh-components/texts/Text";
 import {
@@ -207,7 +208,9 @@ const BuildOutputPanel = memo(({ onClose, isOpen }: BuildOutputPanelProps) => {
     !isWebappReady && pollingDeadline !== null && Date.now() < pollingDeadline;
 
   const { data: webappInfo, mutate } = useSWR(
-    shouldFetchWebapp ? `/api/build/sessions/${session.id}/webapp-info` : null,
+    shouldFetchWebapp
+      ? craftEndpoints.craftWebappInfoKey(session.id).browserPath
+      : null,
     () => (session?.id ? fetchWebappInfo(session.id) : null),
     {
       refreshInterval: shouldPoll ? 2000 : 0,
@@ -318,7 +321,10 @@ const BuildOutputPanel = memo(({ onClose, isOpen }: BuildOutputPanelProps) => {
       .map((s) => encodeURIComponent(s))
       .join("/");
     const link = document.createElement("a");
-    link.href = `/api/build/sessions/${session.id}/artifacts/${encodedPath}`;
+    link.href = craftEndpoints.craftArtifactCacheKey(
+      session.id,
+      encodedPath
+    ).browserPath;
     link.download =
       activeFilePreviewPath.split("/").pop() || activeFilePreviewPath;
     document.body.appendChild(link);
@@ -354,7 +360,9 @@ const BuildOutputPanel = memo(({ onClose, isOpen }: BuildOutputPanelProps) => {
     activeTab === "artifacts";
 
   const { data: polledArtifacts } = useSWR(
-    shouldFetchArtifacts ? `/api/build/sessions/${session.id}/artifacts` : null,
+    shouldFetchArtifacts
+      ? craftEndpoints.craftArtifactsKey(session.id).browserPath
+      : null,
     () => (session?.id ? fetchArtifacts(session.id) : null),
     {
       refreshInterval: 5000, // Refresh every 5 seconds to catch new artifacts

@@ -1,11 +1,15 @@
 "use client";
 
 import React, { useCallback, useMemo, useRef } from "react";
-import { OnyxDocument, MinimalOnyxDocument } from "@/lib/search/interfaces";
+import { useTranslation } from "react-i18next";
+import { AtlasDocument, MinimalAtlasDocument } from "@/lib/search/interfaces";
 import HumanMessage from "@/app/app/message/HumanMessage";
 import { ErrorBanner } from "@/app/app/message/Resubmit";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
-import { LlmDescriptor, LlmManager } from "@/lib/hooks";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
+import {
+  LlmDescriptor,
+  LlmManager,
+} from "@/lib/api/domains/model-providers/hooks";
 import AgentMessage, {
   RegenerationFactory,
 } from "@/app/app/message/messageComponents/AgentMessage";
@@ -18,11 +22,18 @@ import {
   useUncaughtError,
 } from "@/app/app/stores/useChatSessionStore";
 import ChatMessagesSkeleton from "@/refresh-components/skeletons/ChatMessagesSkeleton";
+import { cn } from "@/lib/utils";
+import {
+  SKELETON_REVEAL_CLASS,
+  useSkeletonReveal,
+} from "@/hooks/useSkeletonReveal";
+import TextSeparator from "@/refresh-components/TextSeparator";
+import { buildDaySeparators } from "@/app/app/message/utils/daySeparators";
 
 export interface ChatUIProps {
   liveAgent: MinimalPersonaSnapshot;
   llmManager: LlmManager;
-  setPresentingDocument: (doc: MinimalOnyxDocument | null) => void;
+  setPresentingDocument: (doc: MinimalAtlasDocument | null) => void;
   onMessageSelection: (nodeId: number) => void;
   stopGenerating: () => void;
 
@@ -62,14 +73,28 @@ const ChatUI = React.memo(
     onResubmit,
     anchorNodeId,
   }: ChatUIProps) => {
+    const { t, i18n } = useTranslation();
+
     // Get messages and error state from store
     const messages = useCurrentMessageHistory();
     const messageTree = useCurrentMessageTree();
     const error = useUncaughtError();
     const loadError = useLoadingError();
     const isFetchingChatMessages = useIsFetchingChatMessages();
+    const showingSkeleton = isFetchingChatMessages && messages.length === 0;
+    // The history that replaces the loading skeleton fades in; messages sent
+    // afterwards do not.
+    const revealed = useSkeletonReveal(showingSkeleton, messages);
+    // A conversation can be picked up days later, so the transcript is
+    // headed by day. Computed for the list as a whole rather than per row:
+    // whether a message opens a day depends on the one before it.
+    const daySeparators = useMemo(
+      () => buildDaySeparators(messages, i18n.language, t),
+      [messages, i18n.language, t]
+    );
+
     // Stable fallbacks to avoid changing prop identities on each render
-    const emptyDocs = useMemo<OnyxDocument[]>(() => [], []);
+    const emptyDocs = useMemo<AtlasDocument[]>(() => [], []);
     const emptyChildrenIds = useMemo<number[]>(() => [], []);
 
     // Use refs to keep callbacks stable while always using latest values
@@ -103,6 +128,16 @@ const ChatUI = React.memo(
     const handleHumanDecision = useCallback((decision: string) => {
       onSubmitRef.current({
         message: decision,
+        currentMessageFiles: [],
+        deepResearch: deepResearchEnabledRef.current,
+      });
+    }, []);
+
+    // A follow-up composed inside a message (e.g. "Ask the agent to fix" on a
+    // broken Mermaid block) is an ordinary send of pre-composed text.
+    const handleSendFollowUp = useCallback((message: string) => {
+      onSubmitRef.current({
+        message,
         currentMessageFiles: [],
         deepResearch: deepResearchEnabledRef.current,
       });
@@ -143,7 +178,7 @@ const ChatUI = React.memo(
     return (
       <>
         <div className="flex flex-col w-full max-w-[var(--app-page-main-content-width)] h-full px-3 pt-5 pb-10 gap-8 md:gap-10">
-          {isFetchingChatMessages && messages.length === 0 ? (
+          {showingSkeleton ? (
             <ChatMessagesSkeleton />
           ) : (
             messages.map((message, i) => {
@@ -151,32 +186,40 @@ const ChatUI = React.memo(
               const parentMessage = message.parentNodeId
                 ? messageTree?.get(message.parentNodeId)
                 : null;
+              const daySeparator = daySeparators.get(message.nodeId);
+
               if (message.type === "user") {
                 const nextMessage =
                   messages.length > i + 1 ? messages[i + 1] : null;
 
                 return (
-                  <div
-                    id={messageReactComponentKey}
-                    key={messageReactComponentKey}
-                    className="w-full scroll-mt-6"
-                  >
-                    <HumanMessage
-                      disableSwitchingForStreaming={
-                        (nextMessage && nextMessage.is_generating) || false
-                      }
-                      stopGenerating={stopGenerating}
-                      content={message.message}
-                      files={message.files}
-                      messageId={message.messageId}
-                      nodeId={message.nodeId}
-                      onEdit={handleEditWithMessageId}
-                      otherMessagesCanSwitchTo={
-                        parentMessage?.childrenNodeIds ?? emptyChildrenIds
-                      }
-                      onMessageSelection={onMessageSelection}
-                    />
-                  </div>
+                  <React.Fragment key={messageReactComponentKey}>
+                    {daySeparator && <TextSeparator text={daySeparator} />}
+                    <div
+                      id={messageReactComponentKey}
+                      className={cn(
+                        "w-full scroll-mt-6",
+                        revealed?.has(message.nodeId) && SKELETON_REVEAL_CLASS
+                      )}
+                    >
+                      <HumanMessage
+                        disableSwitchingForStreaming={
+                          (nextMessage && nextMessage.is_generating) || false
+                        }
+                        stopGenerating={stopGenerating}
+                        content={message.message}
+                        files={message.files}
+                        messageId={message.messageId}
+                        nodeId={message.nodeId}
+                        onEdit={handleEditWithMessageId}
+                        otherMessagesCanSwitchTo={
+                          parentMessage?.childrenNodeIds ?? emptyChildrenIds
+                        }
+                        onMessageSelection={onMessageSelection}
+                        timeSent={message.timeSent}
+                      />
+                    </div>
+                  </React.Fragment>
                 );
               } else if (message.type === "assistant") {
                 if ((error || loadError) && i === messages.length - 1) {
@@ -194,7 +237,6 @@ const ChatUI = React.memo(
                   );
                 }
 
-                const previousMessage = i !== 0 ? messages[i - 1] : null;
                 const chatStateData = {
                   agent: liveAgent,
                   docs: message.documents ?? emptyDocs,
@@ -210,35 +252,43 @@ const ChatUI = React.memo(
                   researchType: message.researchType,
                   onHumanDecision: handleHumanDecision,
                   onClarificationAnswer: handleClarificationAnswer,
+                  onSendFollowUp: handleSendFollowUp,
                 };
 
                 return (
-                  <div
-                    id={`message-${message.nodeId}`}
-                    key={messageReactComponentKey}
-                    className="w-full scroll-mt-6"
-                  >
-                    <AgentMessage
-                      rawPackets={message.packets ?? []}
-                      packetCount={message.packetCount}
-                      chatState={chatStateData}
-                      nodeId={message.nodeId}
-                      messageId={message.messageId}
-                      currentFeedback={message.currentFeedback}
-                      llmManager={llmManager}
-                      otherMessagesCanSwitchTo={
-                        parentMessage?.childrenNodeIds ?? emptyChildrenIds
-                      }
-                      onMessageSelection={onMessageSelection}
-                      onRegenerate={createRegenerator}
-                      parentMessage={previousMessage}
-                      originalPersonaId={message.alternateAgentID}
-                      processingDurationSeconds={
-                        message.processingDurationSeconds
-                      }
-                      finalMessageText={message.message}
-                    />
-                  </div>
+                  <React.Fragment key={messageReactComponentKey}>
+                    {daySeparator && <TextSeparator text={daySeparator} />}
+                    <div
+                      id={`message-${message.nodeId}`}
+                      className={cn(
+                        "w-full scroll-mt-6",
+                        revealed?.has(message.nodeId) && SKELETON_REVEAL_CLASS
+                      )}
+                    >
+                      <AgentMessage
+                        rawPackets={message.packets ?? []}
+                        packetCount={message.packetCount}
+                        resuming={message.resuming}
+                        chatState={chatStateData}
+                        nodeId={message.nodeId}
+                        messageId={message.messageId}
+                        currentFeedback={message.currentFeedback}
+                        llmManager={llmManager}
+                        otherMessagesCanSwitchTo={
+                          parentMessage?.childrenNodeIds ?? emptyChildrenIds
+                        }
+                        onMessageSelection={onMessageSelection}
+                        onRegenerate={createRegenerator}
+                        parentMessage={parentMessage}
+                        originalPersonaId={message.alternateAgentID}
+                        processingDurationSeconds={
+                          message.processingDurationSeconds
+                        }
+                        finalMessageText={message.message}
+                        timeSent={message.timeSent}
+                      />
+                    </div>
+                  </React.Fragment>
                 );
               }
               return null;

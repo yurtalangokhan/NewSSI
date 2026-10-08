@@ -11,17 +11,11 @@ import {
   OpenSourceIcon,
   VoyageIconSVG,
 } from "@/components/icons/icons";
-import { SwitchoverType } from "@/app/admin/embeddings/interfaces";
+import {
+  EmbeddingProvider,
+  SwitchoverType,
+} from "@/lib/api/domains/knowledge/search-settings-types";
 import { DOCS_ADMINS_PATH } from "@/lib/constants";
-
-export enum EmbeddingProvider {
-  OPENAI = "openai",
-  COHERE = "cohere",
-  VOYAGE = "voyage",
-  GOOGLE = "google",
-  LITELLM = "litellm",
-  AZURE = "azure",
-}
 
 export interface CloudEmbeddingProvider {
   provider_type: EmbeddingProvider;

@@ -6,20 +6,15 @@ import Text from "@/components/ui/text";
 import Title from "@/components/ui/title";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import CreateButton from "@/refresh-components/buttons/CreateButton";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import { AgentsGridSkeleton } from "@/refresh-components/skeletons/AgentCardSkeleton";
 import { ErrorCallout } from "@/components/ErrorCallout";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { useState, useMemo } from "react";
 import AgentCard from "@/sections/cards/AgentCard";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
-import { useAgents } from "@/hooks/useAgents";
+import { useAgents } from "@/lib/api/domains/agents/hooks";
 import Tabs from "@/refresh-components/Tabs";
-import AgentAccessGroupsTab, {
-  AgentAccessGroupsSkeleton,
-} from "./AgentAccessGroupsTab";
-
-const ResolvedAccessGroupsSkeleton = AgentAccessGroupsSkeleton ?? (() => null);
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 import FlowsTabContent from "@/refresh-pages/agents/FlowsTabContent";
 import FlowSettingsModal from "@/sections/modals/FlowSettingsModal";
@@ -129,7 +124,7 @@ function FlowCatalog({
   );
 }
 
-const ADMIN_AGENTS_TABS = ["catalog", "flows", "access-groups"] as const;
+const ADMIN_AGENTS_TABS = ["catalog", "flows"] as const;
 type AdminAgentsTab = (typeof ADMIN_AGENTS_TABS)[number];
 
 function tabFromParam(value: string | null): AdminAgentsTab {
@@ -300,52 +295,43 @@ export default function Page() {
               })}
               description={t("admin.agents.workspaceDescription", {
                 defaultValue:
-                  "Manage the assistant catalog, access groups, and the tools that shape chat behavior.",
+                  "Manage the assistant catalog and the tools that shape chat behavior.",
               })}
               isLoading={true}
             />
 
             <Tabs value={activeTab}>
               <Tabs.List variant="contained">
-                <Tabs.Trigger value="catalog">
+                <Tabs.Trigger value="catalog" disabled>
                   {t("admin.agents.agentsTab", { defaultValue: "Agents" })}
                 </Tabs.Trigger>
-                <Tabs.Trigger value="flows">
+                <Tabs.Trigger value="flows" disabled>
                   {t("admin.agents.flowsTab", { defaultValue: "Flows" })}
-                </Tabs.Trigger>
-                <Tabs.Trigger value="access-groups">
-                  {t("admin.agents.accessGroupsTab", {
-                    defaultValue: "Access groups",
-                  })}
                 </Tabs.Trigger>
               </Tabs.List>
             </Tabs>
 
-            {activeTab === "access-groups" ? (
-              <ResolvedAccessGroupsSkeleton />
-            ) : (
-              <div className="flex flex-col gap-4">
-                <div>
-                  <Title>
-                    {activeTab === "flows"
-                      ? t("admin.agents.flowCatalogTitle")
-                      : t("admin.agents.catalogTitle")}
-                  </Title>
-                </div>
-                <Text>
+            <div className="flex flex-col gap-4">
+              <div>
+                <Title>
                   {activeTab === "flows"
-                    ? t("admin.agents.flowCatalogDescription")
-                    : t("admin.agents.catalogDescription")}
-                </Text>
-
-                <div className="h-10 w-full rounded-08 border border-border-01 bg-background-neutral-00 flex items-center px-3 gap-2">
-                  <div className="h-4 w-4 rounded-full bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
-                  <div className="h-4 w-44 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
-                </div>
-
-                <AgentsGridSkeleton count={4} />
+                    ? t("admin.agents.flowCatalogTitle")
+                    : t("admin.agents.catalogTitle")}
+                </Title>
               </div>
-            )}
+              <Text>
+                {activeTab === "flows"
+                  ? t("admin.agents.flowCatalogDescription")
+                  : t("admin.agents.catalogDescription")}
+              </Text>
+
+              <div className="h-10 w-full rounded-08 border border-border-01 bg-background-neutral-00 flex items-center px-3 gap-2">
+                <div className="h-4 w-4 rounded-full bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                <div className="h-4 w-44 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+              </div>
+
+              <AgentsGridSkeleton count={4} />
+            </div>
           </div>
         )}
 
@@ -369,7 +355,7 @@ export default function Page() {
               })}
               description={t("admin.agents.workspaceDescription", {
                 defaultValue:
-                  "Manage the assistant catalog, access groups, and the tools that shape chat behavior.",
+                  "Manage the assistant catalog and the tools that shape chat behavior.",
               })}
               metrics={[
                 {
@@ -423,14 +409,6 @@ export default function Page() {
                 >
                   {t("admin.agents.flowsTab", { defaultValue: "Flows" })}
                 </Tabs.Trigger>
-                <Tabs.Trigger
-                  value="access-groups"
-                  data-testid="admin-agents-tab-access-groups"
-                >
-                  {t("admin.agents.accessGroupsTab", {
-                    defaultValue: "Access groups",
-                  })}
-                </Tabs.Trigger>
               </Tabs.List>
             </Tabs>
 
@@ -468,9 +446,6 @@ export default function Page() {
                       agents={catalogAgents}
                       isLoading={isCatalogLoading}
                     />
-                  )}
-                  {activeTab === "access-groups" && (
-                    <AgentAccessGroupsTab agents={catalogAgents} />
                   )}
                 </motion.div>
               </AnimatePresence>

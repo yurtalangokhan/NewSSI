@@ -1,11 +1,11 @@
-import base64
 from typing import Any
 
-from cryptography.fernet import Fernet
-from i18n import t
+from config_manager import env
+from cryptography.fernet import Fernet, InvalidToken
+from error_contract import ConfigurationError, DependencyUnavailableError, render_error_message
+from security import reveal_secret
 
-from src.config import get_settings
-from src.core.env import get_env
+from src.core.security.encryption import SecretScope, get_cipher
 from src.repository import SystemSettingRepository
 from src.schema.system_settings import KeycloakConfigUpdate, KeycloakRealmSessionUpdate
 from src.service.keycloak_service import get_keycloak_service
@@ -19,22 +19,25 @@ SECRET_FIELDS = {
 
 
 def _configured_value(*values: Any) -> str | None:
+    """Return the first non-blank value, unwrapping ``SecretStr`` as it goes.
+
+    Without the unwrap a ``SecretStr`` stringifies to its mask, which is truthy
+    and would be returned as though it were the configured secret.
+    """
     for value in values:
-        if value is None:
-            continue
-        text = str(value).strip()
-        if text:
-            return text
+        revealed = reveal_secret(value)
+        if revealed:
+            return revealed
     return None
 
 
 def _fernet() -> Fernet:
-    settings = get_settings()
-    key = settings.require_encryption_key()
-    if len(key) != 44:
-        key_bytes = base64.urlsafe_b64encode(key.encode()[:32].ljust(32, b"0"))
-        return Fernet(key_bytes)
-    return Fernet(key)
+    """The cipher for secrets inside persisted system settings.
+
+    Scoped to SYSTEM_SETTINGS_ENCRYPTION_KEY, so a leak of the API-key cipher
+    does not expose these. Key validation lives in core.security.encryption.
+    """
+    return get_cipher(SecretScope.SYSTEM_SETTINGS)
 
 
 def _encrypt_secret(value: str) -> str:
@@ -44,13 +47,16 @@ def _encrypt_secret(value: str) -> str:
 def _decrypt_secret(value: str | None) -> str | None:
     if not value:
         return None
-    return _fernet().decrypt(value.encode()).decode()
+    try:
+        return _fernet().decrypt(value.encode()).decode()
+    except (InvalidToken, UnicodeError) as exc:
+        raise ConfigurationError() from exc
 
 
 class SystemSettingsService:
     def __init__(self):
-        self.settings = get_settings()
-        self.env = get_env()
+        self.settings = env
+        self.env = env
         self.repo = SystemSettingRepository()
         self.keycloak = get_keycloak_service()
 
@@ -67,15 +73,15 @@ class SystemSettingsService:
 
         return {
             "keycloak": {
-                "enabled": self.keycloak.is_enabled(),
-                "source": self._source_for(persisted, "KEYCLOAK_ENABLED"),
-                "realm": self.keycloak.get_realm() if self.keycloak.is_enabled() else None,
+                "realm": self.keycloak.get_realm(),
                 "base_url": self._safe_keycloak_base_url(),
                 "issuer_url": self.keycloak.get_issuer_url(),
                 "admin": self._plain_config("KEYCLOAK_ADMIN", persisted, self.env.KEYCLOAK_ADMIN),
                 "admin_password_configured": bool(
                     self._plain_config(
-                        "KEYCLOAK_ADMIN_PASSWORD", persisted, self.env.KEYCLOAK_ADMIN_PASSWORD
+                        "KEYCLOAK_ADMIN_PASSWORD",
+                        persisted,
+                        self.env.KEYCLOAK_ADMIN_PASSWORD,
                     )
                 ),
                 "client_id": self.keycloak.get_client_id(),
@@ -95,13 +101,12 @@ class SystemSettingsService:
         updates = payload.model_dump(exclude_unset=True)
 
         mapping = {
-            "keycloak_enabled": "KEYCLOAK_ENABLED",
             "keycloak_base_url": "KEYCLOAK_BASE_URL",
             "keycloak_issuer_url": "KEYCLOAK_ISSUER_URL",
             "keycloak_realm": "KEYCLOAK_REALM",
             "keycloak_admin": "KEYCLOAK_ADMIN",
             "keycloak_admin_password": "KEYCLOAK_ADMIN_PASSWORD",
-            "keycloak_client_id": "KEYCLOAK_CLIENT_ID",
+            "keycloak_client_id": "KEYCLOAK_USER_SERVICE_CLIENT_ID",
             "keycloak_login_client_id": "KEYCLOAK_LOGIN_CLIENT_ID",
             "keycloak_client_secret": "KEYCLOAK_CLIENT_SECRET",
             "external_keycloak": "EXTERNAL_KEYCLOAK",
@@ -134,9 +139,7 @@ class SystemSettingsService:
     async def get_realm_session_settings(self) -> dict[str, Any]:
         return await self._safe_realm_session_config()
 
-    async def update_realm_session_settings(
-        self, payload: KeycloakRealmSessionUpdate
-    ) -> dict[str, Any]:
+    async def update_realm_session_settings(self, payload: KeycloakRealmSessionUpdate) -> dict[str, Any]:
         updates = {
             "accessTokenLifespan": payload.access_token_lifespan,
             "ssoSessionIdleTimeout": payload.sso_session_idle_timeout,
@@ -214,9 +217,7 @@ class SystemSettingsService:
 
     def _plain_config(self, key: str, persisted: dict[str, Any], *fallbacks: Any) -> Any:
         if key in SECRET_FIELDS:
-            return _decrypt_secret(persisted.get(f"{key}_ENCRYPTED")) or _configured_value(
-                *fallbacks
-            )
+            return _decrypt_secret(persisted.get(f"{key}_ENCRYPTED")) or _configured_value(*fallbacks)
         if key in persisted:
             return persisted[key]
         return _configured_value(*fallbacks)
@@ -227,22 +228,21 @@ class SystemSettingsService:
     def _safe_keycloak_base_url(self) -> str | None:
         try:
             return self.keycloak.get_base_url()
-        except Exception:
+        except (ValueError, ConfigurationError):
             return None
 
     def _safe_external_issuer_url(self) -> str | None:
         try:
             return self.keycloak.get_external_issuer_url()
-        except Exception:
+        except (ValueError, ConfigurationError):
             return None
 
     async def _safe_realm_session_config(self) -> dict[str, Any]:
-        if not self.keycloak.is_enabled():
-            return {"reachable": False, "error": t("system_settings.keycloak_disabled")}
         try:
             return self._realm_session_response(await self.keycloak.get_realm_configuration())
-        except Exception as exc:
-            return {"reachable": False, "error": str(exc)}
+        except Exception:
+            # This read-only status endpoint reports dependency reachability.
+            return {"reachable": False, "error": render_error_message(DependencyUnavailableError())}
 
     def _realm_session_response(self, realm_config: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -250,15 +250,14 @@ class SystemSettingsService:
             "access_token_lifespan": realm_config.get("accessTokenLifespan"),
             "sso_session_idle_timeout": realm_config.get("ssoSessionIdleTimeout"),
             "sso_session_max_lifespan": realm_config.get("ssoSessionMaxLifespan"),
-            "client_session_max_lifespan": realm_config.get(
-                "clientSessionMaxLifespan"
-            ),
+            "client_session_max_lifespan": realm_config.get("clientSessionMaxLifespan"),
         }
 
     async def _external_identity_provider_status(self) -> dict[str, Any]:
         try:
             return await self.keycloak.get_external_identity_provider_status()
-        except Exception as exc:
+        except Exception:
+            # This read-only status endpoint reports dependency reachability.
             return {
                 "enabled": self.keycloak.is_external_keycloak(),
                 "alias": self.keycloak.get_external_keycloak_alias(),
@@ -266,7 +265,7 @@ class SystemSettingsService:
                 "reachable": False,
                 "provider": None,
                 "mapper": None,
-                "error": str(exc),
+                "error": render_error_message(DependencyUnavailableError()),
             }
 
 

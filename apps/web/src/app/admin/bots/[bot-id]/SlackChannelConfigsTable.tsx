@@ -16,7 +16,8 @@ import {
 import Link from "next/link";
 import type { Route } from "next";
 import { useState } from "react";
-import { deleteSlackChannelConfig, isPersonaASlackBotPersona } from "./lib";
+import { isPersonaASlackBotPersona } from "./lib";
+import { deleteSlackChannelConfig } from "@/lib/api/domains/integrations/api";
 import { Card } from "@/components/ui/card";
 import Button from "@/refresh-components/buttons/Button";
 import CreateButton from "@/refresh-components/buttons/CreateButton";

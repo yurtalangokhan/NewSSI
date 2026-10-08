@@ -1,21 +1,23 @@
 "use client";
+import { errorMessageFromUnknown } from "@/lib/api/errors";
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CardSection from "@/components/admin/CardSection";
-import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
-import { ADMIN_PATHS, ADMIN_ROUTE_CONFIG } from "@/lib/admin-routes";
+import { ADMIN_PATHS, ADMIN_ROUTE_CONFIG } from "@/lib/navigation/admin-routes";
 import {
   createMailConfig,
   deleteMailConfig,
+  testMailConfig,
+  updateMailConfig,
+} from "@/lib/api/domains/system/api";
+import { useMailConfigs } from "@/lib/api/domains/system/hooks";
+import type {
   MailConfig,
   MailConfigCreatePayload,
   MailConfigUpdatePayload,
   MailSecurity,
-  testMailConfig,
-  updateMailConfig,
-  useMailConfigs,
-} from "@/lib/mailConfigs";
+} from "@/lib/api/domains/system/types";
 import * as InputLayouts from "@/layouts/input-layouts";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import Button from "@/refresh-components/buttons/Button";
@@ -212,7 +214,9 @@ export default function Page() {
       closeModal();
       await refreshMailConfigs();
     } catch (error) {
-      toast.error(t("toastSaveFailed", { error }));
+      toast.error(
+        t("toastSaveFailed", { error: errorMessageFromUnknown(error) })
+      );
     } finally {
       setIsSaving(false);
     }
@@ -225,7 +229,9 @@ export default function Page() {
       await refreshMailConfigs();
       toast.success(t("toastDeleted"));
     } catch (error) {
-      toast.error(t("toastDeleteFailed", { error }));
+      toast.error(
+        t("toastDeleteFailed", { error: errorMessageFromUnknown(error) })
+      );
     } finally {
       setIsSaving(false);
       setDeleteTarget(null);
@@ -243,7 +249,9 @@ export default function Page() {
       }
       await refreshMailConfigs();
     } catch (error) {
-      toast.error(t("toastTestFailed", { error }));
+      toast.error(
+        t("toastTestFailed", { error: errorMessageFromUnknown(error) })
+      );
     } finally {
       setTestingConfigId(null);
     }
@@ -292,6 +300,7 @@ export default function Page() {
             <div className="w-full sm:w-72 md:w-80">
               <InputTypeIn
                 leftSearchIcon
+                variant={isLoading ? "disabled" : "primary"}
                 value={searchQuery}
                 placeholder={t("searchPlaceholder")}
                 onChange={(event) => setSearchQuery(event.target.value)}

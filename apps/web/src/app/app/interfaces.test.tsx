@@ -2,7 +2,7 @@ import {
   BackendChatSession,
   ChatSessionSharedStatus,
   toChatSession,
-} from "@/app/app/interfaces";
+} from "@/lib/api/domains/chat/types";
 
 function backendSession(
   overrides: Partial<BackendChatSession> = {}

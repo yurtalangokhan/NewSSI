@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import pytest
 
-from agents.graphs.flow_builder import (
+from agents.graphs.flow import (
     ResolvedResources,
     derive_tool_name,
     make_component_tool,
 )
-from models.flows import FlowNode
+from agents.graphs.flow.builder import make_node
+from schemas.flows import FlowNode
 
 
 @pytest.fixture(autouse=True)
@@ -59,39 +60,44 @@ def test_a_blank_tool_name_falls_back_rather_than_producing_an_empty_name():
 
 @pytest.mark.asyncio
 async def test_calling_the_tool_runs_the_components_own_node_function():
-    tool = make_component_tool(_ops(), ResolvedResources())
-    assert await tool.coroutine(text_input="merhaba") == "MERHABA"
+    tool = make_component_tool(_ops(), ResolvedResources(), node_factory=make_node)
+    assert await tool.ainvoke({"text_input": "merhaba"}) == "MERHABA"
 
 
 @pytest.mark.asyncio
 async def test_the_arguments_override_the_stored_values_for_that_call_only():
     node = _ops(text_input="kayitli")
-    tool = make_component_tool(node, ResolvedResources())
-    assert await tool.coroutine(text_input="cagridan") == "CAGRIDAN"
+    tool = make_component_tool(node, ResolvedResources(), node_factory=make_node)
+    # Stored fields are not model arguments (the author pinned them), so only
+    # the call copy itself can override them; that copy must not leak back.
+    content, _artifact = await tool.coroutine(text_input="cagridan")
+    assert content == "CAGRIDAN"
     # The node's stored values are untouched, so the next call is unaffected.
     assert node.values["text_input"] == "kayitli"
 
 
 @pytest.mark.asyncio
 async def test_a_stored_value_the_call_does_not_mention_still_applies():
-    tool = make_component_tool(_ops(case_type="swapcase"), ResolvedResources())
-    assert await tool.coroutine(text_input="AbC") == "aBc"
+    tool = make_component_tool(
+        _ops(case_type="swapcase"), ResolvedResources(), node_factory=make_node
+    )
+    assert await tool.ainvoke({"text_input": "AbC"}) == "aBc"
 
 
 @pytest.mark.asyncio
 async def test_a_json_producing_operation_returns_its_object():
     node = _ops(operation="Word Count", count_words=True, count_characters=False, count_lines=False)
-    tool = make_component_tool(node, ResolvedResources())
-    result = await tool.coroutine(text_input="bir iki uc")
+    tool = make_component_tool(node, ResolvedResources(), node_factory=make_node)
+    result = await tool.ainvoke({"text_input": "bir iki uc"})
     assert result["word_count"] == 3
 
 
 @pytest.mark.asyncio
 async def test_two_calls_do_not_leak_into_each_other():
     """Each call builds a fresh state, so nothing from the first is visible."""
-    tool = make_component_tool(_ops(), ResolvedResources())
-    assert await tool.coroutine(text_input="bir") == "BIR"
-    assert await tool.coroutine(text_input="iki") == "IKI"
+    tool = make_component_tool(_ops(), ResolvedResources(), node_factory=make_node)
+    assert await tool.ainvoke({"text_input": "bir"}) == "BIR"
+    assert await tool.ainvoke({"text_input": "iki"}) == "IKI"
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +106,7 @@ async def test_two_calls_do_not_leak_into_each_other():
 
 
 def test_the_tool_description_comes_from_the_component():
-    tool = make_component_tool(_ops(), ResolvedResources())
+    tool = make_component_tool(_ops(), ResolvedResources(), node_factory=make_node)
     assert "Text, JSON" in tool.description
 
 
@@ -108,7 +114,7 @@ def test_the_tool_advertises_only_what_the_author_left_open():
     """The author pinned `operation` and `case_type`; the model supplies the
     text. Advertising the pinned fields would let the model change what the
     tool does, so the tool would no longer match its own name."""
-    tool = make_component_tool(_ops(), ResolvedResources())
+    tool = make_component_tool(_ops(), ResolvedResources(), node_factory=make_node)
     assert set(tool.args_schema.model_fields) == {"text_input"}
 
 
@@ -116,7 +122,7 @@ def test_fields_belonging_to_other_operations_are_not_advertised():
     """Data Operations has thirty operations' worth of fields. Only the ones
     `show_when` makes visible for this configuration are arguments."""
     node = _ops(operation="Word Count", count_words=None, count_characters=None, count_lines=None)
-    tool = make_component_tool(node, ResolvedResources())
+    tool = make_component_tool(node, ResolvedResources(), node_factory=make_node)
     assert set(tool.args_schema.model_fields) == {
         "text_input",
         "count_words",
@@ -127,7 +133,7 @@ def test_fields_belonging_to_other_operations_are_not_advertised():
 
 
 def test_the_tool_does_not_advertise_the_tool_mode_fields():
-    tool = make_component_tool(_ops(), ResolvedResources())
+    tool = make_component_tool(_ops(), ResolvedResources(), node_factory=make_node)
     assert "tool_mode" not in tool.args_schema.model_fields
     assert "tool_name" not in tool.args_schema.model_fields
 
@@ -179,8 +185,8 @@ def _tool_flow(*, tool_name: str = "web_ara") -> dict:
 async def test_a_tool_mode_node_reaches_the_agent_as_a_tool():
     """The agent side is untouched: it resolves tools by name from the map the
     compiler hands it, and cannot tell an MCP tool from a flow component."""
-    from agents.graphs.flow_builder import FlowGraphBuilder
-    from models.flows import FlowSpec
+    from agents.graphs.flow import FlowGraphBuilder
+    from schemas.flows import FlowSpec
 
     builder = FlowGraphBuilder()
     await builder.build(FlowSpec.model_validate(_tool_flow()))
@@ -191,8 +197,8 @@ async def test_a_tool_mode_node_reaches_the_agent_as_a_tool():
 @pytest.mark.asyncio
 async def test_a_tool_mode_node_is_not_a_graph_node():
     """It is the agent's capability, not a step the flow runs."""
-    from agents.graphs.flow_builder import FlowGraphBuilder
-    from models.flows import FlowSpec
+    from agents.graphs.flow import FlowGraphBuilder
+    from schemas.flows import FlowSpec
 
     graph = await FlowGraphBuilder().build(FlowSpec.model_validate(_tool_flow()))
     assert "ws-1" not in graph.get_graph().nodes
@@ -200,8 +206,8 @@ async def test_a_tool_mode_node_is_not_a_graph_node():
 
 @pytest.mark.asyncio
 async def test_the_tools_map_is_rebuilt_per_build_not_accumulated():
-    from agents.graphs.flow_builder import FlowGraphBuilder
-    from models.flows import FlowSpec
+    from agents.graphs.flow import FlowGraphBuilder
+    from schemas.flows import FlowSpec
 
     builder = FlowGraphBuilder()
     await builder.build(FlowSpec.model_validate(_tool_flow(tool_name="bir")))

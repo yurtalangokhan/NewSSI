@@ -1,20 +1,22 @@
 import { proxyToBackend } from "@/lib/api/proxy";
-import { USER_SERVICE_URL } from "@/lib/constants";
 import type { NextRequest } from "next/server";
+import type { BackendTarget } from "@/lib/api/http/types";
 
 /**
  * Creates a PATCH handler that proxies user-settings updates to the
- * backend user-service `/api/users/me/settings/` endpoint.
+ * domain-owned settings target without defining an upstream address.
  *
  * Used by auto-scroll, chat-background, default-app-mode, default-model,
  * and theme-preference routes — all of which are byte-identical PATCH
  * proxies.
  */
-export function createSettingsPatchRoute() {
+export function createSettingsPatchRoute(endpoint: {
+  method: "PATCH";
+  backend: BackendTarget;
+}) {
   return function PATCH(request: NextRequest) {
-    return proxyToBackend(request, "/api/users/me/settings/", {
-      backendUrl: USER_SERVICE_URL,
-      method: "PATCH",
+    return proxyToBackend(request, endpoint.backend, {
+      method: endpoint.method,
       withCredentials: true,
     });
   };

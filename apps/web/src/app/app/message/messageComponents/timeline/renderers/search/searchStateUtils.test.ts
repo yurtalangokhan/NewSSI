@@ -6,10 +6,10 @@ describe("getSearchedForQuery", () => {
   });
 
   test("returns the single query", () => {
-    expect(getSearchedForQuery(["Onyx"])).toBe("Onyx");
+    expect(getSearchedForQuery(["Atlas"])).toBe("Atlas");
   });
 
   test("joins multiple queries with a comma", () => {
-    expect(getSearchedForQuery(["Onyx", "Danswer"])).toBe("Onyx, Danswer");
+    expect(getSearchedForQuery(["Atlas", "Danswer"])).toBe("Atlas, Danswer");
   });
 });

@@ -1,37 +1,21 @@
-import { getInternalUrl } from "@/lib/env.server";
-import { buildServiceUrl } from "@/lib/api/gatewayRouting";
-import { getLanguageHeaders } from "@/lib/api/proxy";
-import { NextRequest, NextResponse } from "next/server";
+import { toolsEndpoints } from "@/lib/api/domains/tools/endpoints";
+import { backendRequest } from "@/lib/api/http/server";
 
-const INTERNAL_URL = getInternalUrl();
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
-    const headers: HeadersInit = { ...getLanguageHeaders(request) };
-    const cookie = request.headers.get("cookie");
-    const authorization = request.headers.get("authorization");
-    if (cookie) {
-      headers["Cookie"] = cookie;
-    }
-    if (authorization) {
-      headers["Authorization"] = authorization;
-    }
-
-    const response = await fetch(
-      buildServiceUrl(INTERNAL_URL, "agent", "/mcp/tools-builtin").toString(),
-      {
-        cache: "no-store",
-        headers,
-      }
-    );
-
-    if (!response.ok) {
-      return NextResponse.json([]);
-    }
-
-    const data = await response.json();
+    const response = await backendRequest({
+      request,
+      ...toolsEndpoints.listBuiltInTools.backend,
+      cache: "no-store",
+      deriveAuthorizationFromCookie: true,
+    });
+    if (!response.ok) throw new Error("Backend request failed");
+    const data = (await response.json()) as { tools?: unknown[] };
     return NextResponse.json(Array.isArray(data?.tools) ? data.tools : []);
-  } catch {
+  } catch (error) {
+    console.warn("[api/tool/openapi] GET handler threw", error);
     return NextResponse.json([]);
   }
 }

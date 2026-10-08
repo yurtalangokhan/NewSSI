@@ -23,7 +23,7 @@ export interface VerticalShadowScrollerProps
   scrollKey?: string;
 }
 
-const SCROLL_POSITION_PREFIX = "onyx-scroll-";
+const SCROLL_POSITION_PREFIX = "atlas-scroll-";
 
 export default function OverflowDiv({
   disableMask,

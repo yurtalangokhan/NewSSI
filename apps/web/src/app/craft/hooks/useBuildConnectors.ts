@@ -1,5 +1,7 @@
+import { datasourcesEndpoints } from "@/lib/api/domains/datasources/endpoints";
+
 import useSWR from "swr";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { fetchBuildConnectors } from "@/lib/api/domains/datasources/api";
 import { BuildConnectorConfig } from "@/app/craft/v1/configure/components/ConnectorCard";
 
 interface BuildConnectorListResponse {
@@ -20,8 +22,8 @@ interface BuildConnectorListResponse {
  */
 export function useBuildConnectors() {
   const { data, isLoading, mutate } = useSWR<BuildConnectorListResponse>(
-    "/api/build/connectors",
-    errorHandlingFetcher,
+    datasourcesEndpoints.connectors.browserPath,
+    () => fetchBuildConnectors<BuildConnectorListResponse>(),
     { refreshInterval: 30000 } // 30 seconds - matches configure page
   );
 

@@ -58,9 +58,7 @@ class AgentExecutionContext:
             tenant_id=configurable.get("tenant_id"),
             binding_references=configurable.get("binding_references") or {},
             attachment_handles=tuple(
-                a.get("handle") or a.get("filename") or ""
-                for a in (configurable.get("mail_attachments") or [])
-                if a
+                a.get("handle") or a.get("filename") or "" for a in (configurable.get("mail_attachments") or []) if a
             ),
             project_id=configurable.get("project_id"),
             request_id=configurable.get("request_id"),

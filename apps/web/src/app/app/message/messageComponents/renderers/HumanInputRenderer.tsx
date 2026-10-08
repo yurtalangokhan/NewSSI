@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@opal/components";
 import { SvgUserManage } from "@opal/icons";
@@ -9,7 +9,7 @@ import {
   HumanInputPacket,
   HumanInputRequest,
   PacketType,
-} from "../../../services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 import { MessageRenderer } from "../interfaces";
 
 /**

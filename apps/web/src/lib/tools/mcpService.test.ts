@@ -1,22 +1,15 @@
-import { authenticatedFetch } from "@/lib/fetcher";
 import i18n from "@/i18n/config";
-import { createIdempotencyKey } from "@/lib/api/idempotency";
-import { executeBuiltInTool } from "./mcpService";
+import { toolsEndpoints } from "@/lib/api/domains/tools/endpoints";
+import { envelopeResponse } from "@tests/setup/responseModel";
+import { setClientLanguage } from "@/i18n/languageState";
+import {
+  disconnectMCPServer,
+  executeBuiltInTool,
+  validateMCPServer,
+} from "@/lib/api/domains/tools/api";
 
-jest.mock("@/lib/fetcher", () => ({
-  authenticatedFetch: jest.fn(),
-}));
-
-jest.mock("@/lib/api/idempotency", () => ({
-  createIdempotencyKey: jest.fn(),
-  withIdempotencyKey: jest.fn((headers, key) => ({
-    ...headers,
-    "Idempotency-Key": key,
-  })),
-}));
-
-function authenticatedFetchMock() {
-  return authenticatedFetch as jest.MockedFunction<typeof authenticatedFetch>;
+function fetchMock() {
+  return global.fetch as jest.MockedFunction<typeof fetch>;
 }
 
 describe("executeBuiltInTool", () => {
@@ -24,8 +17,7 @@ describe("executeBuiltInTool", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(createIdempotencyKey).mockReturnValue("tool-operation-key");
-    jest.spyOn(global, "fetch").mockReset();
+    global.fetch = jest.fn();
   });
 
   afterEach(() => {
@@ -33,6 +25,7 @@ describe("executeBuiltInTool", () => {
       value: originalLanguage,
       configurable: true,
     });
+    setClientLanguage(originalLanguage);
   });
 
   it("sends X-Language from the app's selected language, not just the browser's Accept-Language", async () => {
@@ -40,28 +33,24 @@ describe("executeBuiltInTool", () => {
       value: "en",
       configurable: true,
     });
-    authenticatedFetchMock().mockResolvedValueOnce(
-      new Response(JSON.stringify({ result: "3", error: null }), {
-        status: 200,
-      })
+    setClientLanguage("en");
+    fetchMock().mockResolvedValueOnce(
+      envelopeResponse({ result: "3", error: null })
     );
 
     await executeBuiltInTool("calculate", { expression: "1+2" });
 
-    const [, init] = authenticatedFetchMock().mock.calls[0]!;
-    expect((init?.headers as Record<string, string>)["X-Language"]).toBe("en");
+    const [, init] = fetchMock().mock.calls[0]!;
+    expect(new Headers(init?.headers).get("X-Language")).toBe("en");
   });
 
   it("routes send_email through the selected mail config endpoint", async () => {
-    authenticatedFetchMock().mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          success: true,
-          message: "Email sent.",
-          result: '{"success": true}',
-        }),
-        { status: 200 }
-      )
+    fetchMock().mockResolvedValueOnce(
+      envelopeResponse({
+        success: true,
+        message: "Email sent.",
+        result: '{"success": true}',
+      })
     );
 
     const result = await executeBuiltInTool("send_email", {
@@ -71,13 +60,10 @@ describe("executeBuiltInTool", () => {
       body: "Merhaba",
     });
 
-    expect(authenticatedFetchMock()).toHaveBeenCalledWith(
+    expect(fetchMock()).toHaveBeenCalledWith(
       "/api/mail-configs/config-1/send",
-      {
+      expect.objectContaining({
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
           to: ["recipient@example.com"],
           subject: "Merhaba",
@@ -85,30 +71,105 @@ describe("executeBuiltInTool", () => {
           cc: [],
           bcc: [],
         }),
-      }
+      })
     );
-    expect(global.fetch).not.toHaveBeenCalled();
+    const [, init] = fetchMock().mock.calls[0]!;
+    expect(new Headers(init?.headers).get("Content-Type")).toBe(
+      "application/json"
+    );
     expect(result.error).toBeUndefined();
-    expect(result.result.success).toBe(true);
+    expect(result.result).toEqual(expect.objectContaining({ success: true }));
   });
 
   it("sends idempotency keys for built-in MCP tool execution", async () => {
-    authenticatedFetchMock().mockResolvedValueOnce(
+    fetchMock().mockResolvedValueOnce(
       new Response(JSON.stringify({ result: "ok" }), { status: 200 })
     );
 
     await executeBuiltInTool("read_file", { path: "/tmp/example.txt" });
 
-    expect(createIdempotencyKey).toHaveBeenCalledTimes(1);
-    expect(authenticatedFetchMock()).toHaveBeenCalledWith(
+    expect(fetchMock()).toHaveBeenCalledWith(
       "/api/proxy/mcp/execute",
       expect.objectContaining({
         method: "POST",
-        headers: expect.objectContaining({
-          "Content-Type": "application/json",
-          "Idempotency-Key": "tool-operation-key",
-        }),
       })
     );
+    const [, init] = fetchMock().mock.calls[0]!;
+    const headers = new Headers(init?.headers);
+    expect(headers.get("Content-Type")).toBe("application/json");
+    expect(headers.get("Idempotency-Key")).toEqual(expect.any(String));
   });
+});
+
+describe("validateMCPServer", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    global.fetch = jest.fn();
+  });
+
+  it("posts the URL to the validate endpoint and returns the probe result", async () => {
+    fetchMock().mockResolvedValueOnce(
+      envelopeResponse({ valid: true, auth_required: false, tool_count: 3 })
+    );
+
+    const result = await validateMCPServer({ server_url: "https://x/mcp" });
+
+    expect(fetchMock()).toHaveBeenCalledWith(
+      "/api/admin/mcp/server/validate",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ server_url: "https://x/mcp" }),
+      })
+    );
+    expect(result).toEqual({
+      valid: true,
+      auth_required: false,
+      tool_count: 3,
+    });
+  });
+
+  it("throws when the backend rejects the URL", async () => {
+    fetchMock().mockResolvedValueOnce(envelopeResponse(null, { status: 422 }));
+
+    await expect(
+      validateMCPServer({ server_url: "https://www.deneme.com" })
+    ).rejects.toThrow();
+  });
+});
+
+describe("disconnectMCPServer", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    global.fetch = jest.fn();
+  });
+
+  it("deletes the connect resource so the provider registration survives", async () => {
+    fetchMock().mockResolvedValueOnce(envelopeResponse({ status: "ok" }));
+
+    await disconnectMCPServer(1000);
+
+    expect(fetchMock()).toHaveBeenCalledWith(
+      "/api/admin/mcp/servers/1000/connect",
+      expect.objectContaining({ method: "DELETE" })
+    );
+  });
+
+  it("throws when the backend refuses to disconnect", async () => {
+    fetchMock().mockResolvedValueOnce(envelopeResponse(null, { status: 404 }));
+
+    await expect(disconnectMCPServer(1000)).rejects.toThrow();
+  });
+});
+
+describe("connect/disconnect endpoints", () => {
+  it.each(["connectMcpServer", "disconnectMcpServer"] as const)(
+    "%s keeps a hostile id inside one backend path segment",
+    (name) => {
+      const { backend } = toolsEndpoints[name]("../server/1");
+
+      expect(backend.path).toBe(
+        "/api/v1/admin/mcp/servers/..%2Fserver%2F1/connect"
+      );
+    }
+  );
 });

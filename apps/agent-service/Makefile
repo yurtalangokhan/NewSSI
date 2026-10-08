@@ -7,14 +7,13 @@ PYTHON := python
 PYTEST := pytest
 VENV_ACTIVATE := .venv/bin/activate
 ALEMBIC := alembic
-PRE_COMMIT := pre-commit
 
 # Colors
 GREEN := $(shell tput setaf 2 2>/dev/null)
 YELLOW := $(shell tput setaf 3 2>/dev/null)
 RESET := $(shell tput sgr0 2>/dev/null)
 
-.PHONY: help install install-dev install-client sync sync-all clean test test-cov test-all test-file lint format fix typecheck validate run run-service run-streamlit run-studio docker-up docker-build docker-down migrate new-migration precommit-install precommit-run check-env info
+.PHONY: help install install-dev install-client sync sync-all clean test test-cov test-all test-file lint format fix typecheck validate run run-service docker-up docker-build docker-down migrate new-migration check-env info
 
 # Default target
 help:
@@ -31,11 +30,9 @@ help:
 	@echo ""
 	@echo "$(YELLOW)Running$(RESET)"
 	@echo "  run-service    Run FastAPI service"
-	@echo "  run-streamlit  Run Streamlit app"
-	@echo "  run-studio     Run LangGraph Studio"
 	@echo ""
 	@echo "$(YELLOW)Testing$(RESET)"
-	@echo "  test           Run core tests (no streamlit required)"
+	@echo "  test           Run core tests"
 	@echo "  test-cov       Run tests with coverage (terminal + HTML)"
 	@echo "  test-all       Run all tests (requires client group)"
 	@echo "  test-file      Run tests for specific file (FILE=path)"
@@ -57,10 +54,6 @@ help:
 	@echo "  docker-build   Build Docker images"
 	@echo "  docker-down    Stop Docker services"
 	@echo "  docker-logs    View Docker logs"
-	@echo ""
-	@echo "$(YELLOW)Pre-commit$(RESET)"
-	@echo "  precommit-install  Install pre-commit hooks"
-	@echo "  precommit-run      Run pre-commit hooks"
 	@echo ""
 	@echo "$(YELLOW)Utilities$(RESET)"
 	@echo "  check-env      Check environment setup"
@@ -92,19 +85,8 @@ install-client:
 
 run-service:
 	@echo "$(GREEN)Starting FastAPI service...$(RESET)"
-	@echo "$(YELLOW)API available at: http://localhost:8080$(RESET)"
-	@echo "$(YELLOW)API docs at: http://localhost:8080/redoc$(RESET)"
-	@echo "$(YELLOW)NOTE: Using FAKE_MODEL for development$(RESET)"
-	cd $(PROJECT_DIR) && PYTHONPATH=$(PROJECT_DIR)/src $(PYTHON) src/run_service.py
+	cd $(PROJECT_DIR) && uv run python src/app.py
 
-run-streamlit:
-	@echo "$(GREEN)Starting Streamlit app...$(RESET)"
-	@echo "$(YELLOW)App available at: http://localhost:8501$(RESET)"
-	cd $(PROJECT_DIR) && streamlit run src/streamlit_app.py
-
-run-studio:
-	@echo "$(GREEN)Starting LangGraph Studio...$(RESET)"
-	cd $(PROJECT_DIR) && langgraph dev
 
 run: run-service
 
@@ -114,11 +96,11 @@ run: run-service
 
 test:
 	@echo "$(GREEN)Running tests...$(RESET)"
-	cd $(PROJECT_DIR) && uv run pytest --ignore=tests/app --ignore=tests/voice --ignore=tests/integration
+	cd $(PROJECT_DIR) && uv run pytest --ignore=tests/integration
 
 test-cov:
 	@echo "$(GREEN)Running tests with coverage...$(RESET)"
-	cd $(PROJECT_DIR) && uv run pytest --ignore=tests/app --ignore=tests/voice --ignore=tests/integration --cov=src --cov-report=term-missing --cov-report=html
+	cd $(PROJECT_DIR) && uv run pytest --ignore=tests/integration --cov=src --cov-report=term-missing --cov-report=html
 
 test-all:
 	@echo "$(GREEN)Running all tests (requires client group)...$(RESET)"
@@ -191,18 +173,6 @@ docker-down:
 
 docker-logs:
 	cd $(PROJECT_DIR) && docker compose logs -f
-
-# ============================================================
-# Pre-commit
-# ============================================================
-
-precommit-install:
-	@echo "$(GREEN)Installing pre-commit hooks...$(RESET)"
-	cd $(PROJECT_DIR) && $(PRE_COMMIT) install
-
-precommit-run:
-	@echo "$(GREEN)Running pre-commit hooks...$(RESET)"
-	cd $(PROJECT_DIR) && $(PRE_COMMIT) run --all-files
 
 # ============================================================
 # Utilities

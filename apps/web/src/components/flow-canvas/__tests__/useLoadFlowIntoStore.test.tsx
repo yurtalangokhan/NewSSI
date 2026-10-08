@@ -3,11 +3,13 @@ import { SWRConfig } from "swr";
 import { createFlowStore } from "../stores/flowStore";
 import { useLoadFlowIntoStore } from "../hooks/useLoadFlowIntoStore";
 
-jest.mock("@/lib/fetcher", () => ({
-  errorHandlingFetcher: jest.fn(),
+jest.mock("@/lib/api/domains/agents/api", () => ({
+  fetchFlowSource: jest.fn(),
 }));
 
-const { errorHandlingFetcher } = jest.requireMock("@/lib/fetcher");
+const { fetchFlowSource: errorHandlingFetcher } = jest.requireMock(
+  "@/lib/api/domains/agents/api"
+);
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -37,9 +39,7 @@ describe("useLoadFlowIntoStore", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(errorHandlingFetcher).toHaveBeenCalledWith(
-      "/api/agent-definitions/def-1/flow/published"
-    );
+    expect(errorHandlingFetcher).toHaveBeenCalledWith("def-1", "published");
     expect(store.getState().nodes.map((n) => n.id)).toEqual(["n1"]);
     expect(result.current.nodes.map((n) => n.id)).toEqual(["n1"]);
     expect(result.current.nodesCount).toBe(1);
@@ -72,9 +72,7 @@ describe("useLoadFlowIntoStore", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(errorHandlingFetcher).toHaveBeenCalledWith(
-      "/api/agent-definitions/def-1/flow/versions/3"
-    );
+    expect(errorHandlingFetcher).toHaveBeenCalledWith("def-1", 3);
     expect(store.getState().nodes.map((n) => n.id)).toEqual(["old1"]);
     expect(result.current.nodes.map((n) => n.id)).toEqual(["old1"]);
     expect(result.current.nodesCount).toBe(1);
@@ -91,29 +89,29 @@ describe("useLoadFlowIntoStore", () => {
     renderHook(() => useLoadFlowIntoStore("def-1", store), { wrapper });
 
     await waitFor(() =>
-      expect(errorHandlingFetcher).toHaveBeenCalledWith(
-        "/api/agent-definitions/def-1/flow/draft"
-      )
+      expect(errorHandlingFetcher).toHaveBeenCalledWith("def-1", "draft")
     );
   });
   it("falls back to the published spec when a pinned version fails to load", async () => {
-    errorHandlingFetcher.mockImplementation((url: string) => {
-      if (url.includes("/versions/")) {
-        return Promise.reject(new Error("version endpoint unavailable"));
+    errorHandlingFetcher.mockImplementation(
+      (_definitionId: string, source: string | number) => {
+        if (typeof source === "number") {
+          return Promise.reject(new Error("version endpoint unavailable"));
+        }
+        return Promise.resolve({
+          nodes: [
+            {
+              id: "pub1",
+              type: "ChatInput",
+              position: { x: 0, y: 0 },
+              values: {},
+            },
+          ],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        });
       }
-      return Promise.resolve({
-        nodes: [
-          {
-            id: "pub1",
-            type: "ChatInput",
-            position: { x: 0, y: 0 },
-            values: {},
-          },
-        ],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-      });
-    });
+    );
 
     const store = createFlowStore();
     const { result } = renderHook(
@@ -124,8 +122,6 @@ describe("useLoadFlowIntoStore", () => {
     await waitFor(() =>
       expect(result.current.nodes.map((n) => n.id)).toEqual(["pub1"])
     );
-    expect(errorHandlingFetcher).toHaveBeenCalledWith(
-      "/api/agent-definitions/def-1/flow/published"
-    );
+    expect(errorHandlingFetcher).toHaveBeenCalledWith("def-1", "published");
   });
 });

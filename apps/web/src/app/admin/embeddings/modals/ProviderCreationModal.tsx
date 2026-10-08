@@ -1,4 +1,6 @@
-import { authenticatedFetch } from "@/lib/fetcher";
+import { testEmbeddingConfiguration } from "@/lib/api/domains/knowledge/api";
+import { saveEmbeddingCredential } from "@/lib/api/domains/knowledge/api";
+
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
@@ -10,10 +12,10 @@ import { Label, TextFormField } from "@/components/Field";
 import { LoadingAnimation } from "@/components/Loading";
 import {
   CloudEmbeddingProvider,
-  EmbeddingProvider,
   getFormattedProviderName,
 } from "@/components/embedding/interfaces";
-import { EMBEDDING_PROVIDERS_ADMIN_URL } from "@/lib/llmConfig/constants";
+import { EmbeddingProvider } from "@/lib/api/domains/knowledge/search-settings-types";
+
 import Modal from "@/refresh-components/Modal";
 import { SvgSettings } from "@opal/icons";
 export interface ProviderCreationModalProps {
@@ -132,14 +134,8 @@ export default function ProviderCreationModal({
         deployment_name: values.deployment_name,
       };
 
-      const initialResponse = await authenticatedFetch(
-        "/api/admin/embedding/test-embedding",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(testEmbeddingPayload),
-        }
-      );
+      const initialResponse =
+        await testEmbeddingConfiguration(testEmbeddingPayload);
 
       if (!initialResponse.ok) {
         const errorMsg = (await initialResponse.json()).detail;
@@ -149,18 +145,14 @@ export default function ProviderCreationModal({
         return;
       }
 
-      const response = await authenticatedFetch(EMBEDDING_PROVIDERS_ADMIN_URL, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...values,
-          api_version: values.api_version,
-          deployment_name: values.deployment_name,
-          provider_type: values.provider_type.toLowerCase().split(" ")[0],
-          custom_config: customConfig,
-          is_default_provider: false,
-          is_configured: true,
-        }),
+      const response = await saveEmbeddingCredential({
+        ...values,
+        api_version: values.api_version,
+        deployment_name: values.deployment_name,
+        provider_type: values.provider_type.toLowerCase().split(" ")[0],
+        custom_config: customConfig,
+        is_default_provider: false,
+        is_configured: true,
       });
 
       if (isAzure) {

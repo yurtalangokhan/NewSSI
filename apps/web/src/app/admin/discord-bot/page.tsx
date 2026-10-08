@@ -16,10 +16,10 @@ import {
   useDiscordGuilds,
   useDiscordBotConfig,
 } from "@/app/admin/discord-bot/hooks";
-import { createGuildConfig } from "@/app/admin/discord-bot/lib";
+import { createGuildConfig } from "@/lib/api/domains/integrations/api";
 import { DiscordGuildsTable } from "@/app/admin/discord-bot/DiscordGuildsTable";
 import { BotConfigCard } from "@/app/admin/discord-bot/BotConfigCard";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { useTranslation } from "react-i18next";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 

@@ -1,9 +1,14 @@
-import { getAuthTypeMetadataSS, logoutSS } from "@/lib/userSS";
+import {
+  getAuthTypeMetadataSS,
+  logoutSS,
+} from "@/lib/api/domains/session/server";
 import { AuthType } from "@/lib/constants";
 import { NextRequest, NextResponse } from "next/server";
 import { getLoginPath } from "@/lib/auth/loginRoute";
-import { getDomain } from "@/lib/redirectSS";
+import { getDomain } from "@/lib/navigation/redirect.server";
 import { buildOidcLogoutUrl } from "@/lib/auth/oidcLogout";
+import { validateInternalRedirect } from "@/lib/auth/redirectValidation";
+import { appSettings } from "@/lib/settings";
 
 const handleLogout = async (request: NextRequest) => {
   const authTypeMetadata = await getAuthTypeMetadataSS();
@@ -16,7 +21,13 @@ const handleLogout = async (request: NextRequest) => {
     }
   })();
   const requestedNextPath = request.nextUrl.searchParams.get("next");
-  const nextPath = requestedNextPath || getLoginPath(authTypeMetadata);
+  // An unvalidated next= turns a GET-triggerable logout into an open
+  // redirect: it flows into postLogoutRedirectUri below both as the OIDC
+  // post_logout_redirect_uri and, for non-OIDC auth, the direct redirect
+  // target.
+  const nextPath =
+    validateInternalRedirect(requestedNextPath) ??
+    getLoginPath(authTypeMetadata);
   const postLogoutRedirectUri = new URL(nextPath, publicWebOrigin).toString();
 
   // Call backend logout — this terminates the Keycloak SSO session
@@ -60,8 +71,8 @@ const handleLogout = async (request: NextRequest) => {
   if (authTypeMetadata.authType === AuthType.OIDC) {
     const logoutUrl = buildOidcLogoutUrl({
       authType: authTypeMetadata.authType,
-      issuer: process.env.KEYCLOAK_ISSUER_URL,
-      clientId: process.env.KEYCLOAK_CLIENT_ID || "agenticai-web",
+      issuer: appSettings.KEYCLOAK_ISSUER_URL,
+      clientId: appSettings.KEYCLOAK_CLIENT_ID,
       postLogoutRedirectUri,
       idTokenHint: request.cookies.get("id_token")?.value,
     });

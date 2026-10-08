@@ -1,4 +1,13 @@
-import { authenticatedFetch } from "@/lib/fetcher";
+import { errorMessageFromUnknown } from "@/lib/api/errors";
+import { datasourcesEndpoints } from "@/lib/api/domains/datasources/endpoints";
+
+import { uploadGmailAppCredential } from "@/lib/api/domains/datasources/api";
+import { uploadGmailServiceAccountKey } from "@/lib/api/domains/datasources/api";
+import { saveGmailServiceAccountCredential } from "@/lib/api/domains/datasources/api";
+import {
+  deleteGmailAppCredential,
+  deleteGmailServiceAccountKey,
+} from "@/lib/api/domains/datasources/api";
 import Button from "@/refresh-components/buttons/Button";
 import { toast } from "@/hooks/useToast";
 import React, { useState, useEffect } from "react";
@@ -6,8 +15,8 @@ import { useSWRConfig } from "swr";
 import * as Yup from "yup";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
-import { adminDeleteCredential } from "@/lib/credential";
-import { setupGmailOAuth } from "@/lib/gmail";
+import { adminDeleteCredential } from "@/lib/api/domains/datasources/api";
+import { setupGmailOAuth } from "@/lib/api/domains/integrations/api";
 import {
   DOCS_ADMINS_PATH,
   GMAIL_AUTH_IS_ADMIN_COOKIE_NAME,
@@ -22,9 +31,9 @@ import {
   GmailCredentialJson,
   GmailServiceAccountCredentialJson,
 } from "@/lib/connectors/credentials";
-import { refreshAllGoogleData } from "@/lib/googleConnector";
+import { refreshAllGoogleData } from "@/lib/api/domains/datasources/google-hooks";
 import { ValidSources } from "@/lib/types";
-import { buildSimilarCredentialInfoURL } from "@/app/admin/connector/[ccPairId]/lib";
+
 import { FiFile, FiCheck, FiLink, FiAlertTriangle } from "react-icons/fi";
 import { cn, truncateString } from "@/lib/utils";
 import { Section } from "@/layouts/general-layouts";
@@ -73,19 +82,10 @@ const GmailCredentialUpload = ({ onSuccess }: { onSuccess?: () => void }) => {
       }
 
       if (credentialFileType === "authorized_user") {
-        const response = await authenticatedFetch(
-          "/api/manage/admin/connector/gmail/app-credential",
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: credentialJsonStr,
-          }
-        );
+        const response = await uploadGmailAppCredential(credentialJsonStr);
         if (response.ok) {
           toast.success(t("googleCredentials.uploadAppCredentials"));
-          mutate("/api/manage/admin/connector/gmail/app-credential");
+          mutate(datasourcesEndpoints.uploadGmailAppCredential.browserPath);
           if (onSuccess) {
             onSuccess();
           }
@@ -98,19 +98,10 @@ const GmailCredentialUpload = ({ onSuccess }: { onSuccess?: () => void }) => {
       }
 
       if (credentialFileType === "service_account") {
-        const response = await authenticatedFetch(
-          "/api/manage/admin/connector/gmail/service-account-key",
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: credentialJsonStr,
-          }
-        );
+        const response = await uploadGmailServiceAccountKey(credentialJsonStr);
         if (response.ok) {
           toast.success(t("googleCredentials.uploadServiceAccountKey"));
-          mutate("/api/manage/admin/connector/gmail/service-account-key");
+          mutate(datasourcesEndpoints.uploadGmailServiceAccountKey.browserPath);
           if (onSuccess) {
             onSuccess();
           }
@@ -330,25 +321,36 @@ export const GmailJsonUploadSection = ({
                 onClick={async () => {
                   const endpoint =
                     localServiceAccountData?.service_account_email
-                      ? "/api/manage/admin/connector/gmail/service-account-key"
-                      : "/api/manage/admin/connector/gmail/app-credential";
+                      ? datasourcesEndpoints.uploadGmailServiceAccountKey
+                          .browserPath
+                      : datasourcesEndpoints.uploadGmailAppCredential
+                          .browserPath;
 
-                  const response = await authenticatedFetch(endpoint, {
-                    method: "DELETE",
-                  });
+                  const response =
+                    localServiceAccountData?.service_account_email
+                      ? await deleteGmailServiceAccountKey()
+                      : await deleteGmailAppCredential();
 
                   if (response.ok) {
                     mutate(endpoint);
                     // Also mutate the credential endpoints to ensure Step 2 is reset
-                    mutate(buildSimilarCredentialInfoURL(ValidSources.Gmail));
+                    mutate(
+                      datasourcesEndpoints.similarCredentialInfo(
+                        ValidSources.Gmail
+                      ).browserPath
+                    );
 
                     // Add additional mutations to refresh all credential-related endpoints
-                    mutate("/api/manage/admin/connector/gmail/credentials");
                     mutate(
-                      "/api/manage/admin/connector/gmail/public-credential"
+                      datasourcesEndpoints.gmailCredentialsCacheKey.browserPath
                     );
                     mutate(
-                      "/api/manage/admin/connector/gmail/service-account-credential"
+                      datasourcesEndpoints.gmailPublicCredentialCacheKey
+                        .browserPath
+                    );
+                    mutate(
+                      datasourcesEndpoints.saveGmailServiceAccountCredential
+                        .browserPath
                     );
 
                     toast.success(
@@ -553,18 +555,9 @@ export const GmailAuthSection = ({
             onSubmit={async (values, formikHelpers) => {
               formikHelpers.setSubmitting(true);
               try {
-                const response = await authenticatedFetch(
-                  "/api/manage/admin/connector/gmail/service-account-credential",
-                  {
-                    method: "PUT",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      google_primary_admin: values.google_primary_admin,
-                    }),
-                  }
-                );
+                const response = await saveGmailServiceAccountCredential({
+                  google_primary_admin: values.google_primary_admin,
+                });
 
                 if (response.ok) {
                   toast.success(t("googleCredentials.createdServiceAccount"));
@@ -643,7 +636,11 @@ export const GmailAuthSection = ({
                 setIsAuthenticating(false);
               }
             } catch (error) {
-              toast.error(t("googleCredentials.failedAuthGmail", { error }));
+              toast.error(
+                t("googleCredentials.failedAuthGmail", {
+                  error: errorMessageFromUnknown(error),
+                })
+              );
               setIsAuthenticating(false);
             }
           }}

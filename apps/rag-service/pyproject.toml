@@ -1,10 +1,11 @@
 [project]
-name = "langconnect"
+name = "rag-service"
 version = "0.0.1"
-description = "LangConnect: A RAG service"
+description = "RAG Service: a retrieval-augmented generation service"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "config-manager",
     "fastapi>=0.115.6",
     "langchain>=0.3.20",
     "langchain-openai>=0.3.7",
@@ -20,6 +21,7 @@ dependencies = [
     "aiohttp>=3.11.13",
     "python-multipart>=0.0.20",
     "httpx>=0.28.1",
+    "cachetools>=5.3.0",
     "beautifulsoup4>=4.12.3",
     "pdfminer.six>=20231228",
     "asyncpg>=0.30.0",
@@ -31,6 +33,7 @@ dependencies = [
     "python-pptx>=0.6.23",
     "python-docx>=1.1.0",
     "error-contract",
+    "metrics",
     "supabase>=2.15.1",
     "neo4j>=5.0",
     "langchain-experimental>=0.3.0",
@@ -38,24 +41,30 @@ dependencies = [
     "alembic>=1.13",
     "PyJWT>=2.10.1",
     "idempotency",
-    "i18n-py",
+    "localization",
+    "security",
+    "observability",
 ]
 
 [tool.uv.sources]
-idempotency = { path = "../../packages/idempotency-py" }
-i18n-py = { path = "../../packages/i18n-py" }
-error-contract = { path = "../../packages/error-contract-py" }
+config-manager = { path = "../../packages/config-manager" }
+idempotency = { path = "../../packages/idempotency" }
+localization = { path = "../../packages/localization" }
+security = { path = "../../packages/security" }
+observability = { path = "../../packages/observability" }
+error-contract = { path = "../../packages/error-contract" }
+metrics = { path = "../../packages/metrics" }
 
 
 [project.packages]
-find = { where = ["langconnect"] }
+find = { where = ["src"] }
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["langconnect"]
+packages = ["src"]
 
 [dependency-groups]
 dev = [
@@ -69,7 +78,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = [".", "../../packages/i18n-py/src", "../../packages/idempotency-py/src"]
+pythonpath = [".", "../../packages/localization/src", "../../packages/idempotency/src", "../../packages/metrics/src", "../../packages/error-contract/src", "../../packages/security/src", "../../packages/observability/src"]
 minversion = "8.0"
 # -ra: Report all extra test outcomes (passed, skipped, failed, etc.)
 # -q: Enable quiet mode for less cluttered output
@@ -84,140 +93,6 @@ python_functions = ["test_*"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
-
-[tool.ruff]
-line-length = 88
-target-version = "py311"
-
-[tool.ruff.lint]
-select = [
-  "ALL",
-]
-ignore = [
-  "COM812",
-  "ANN001",
-  "ANN201",
-  "ARG001",
-  "B008",
-  "B904",
-  "BLE001",
-  "C901",
-  "D100",
-  "D101",
-  "D104",
-  "D106",
-  "D205",
-  "E501",
-  "EM101",
-  "EM102",
-  "ERA001",
-  "FAST002",
-  "G004",
-  "G201",
-  "PLR0912",
-  "PLR0915",
-  "PLW0603",
-  "RET504",
-  "RUF006",
-  "S104",
-  "T201",
-  "TC002",
-  "TID252",
-  "TD003",
-  "FIX002",
-  "TRY003",
-  "TRY004",
-  "TRY201",
-  "TRY300",
-  "TRY301",
-  "TRY401",
-  "UP007",
-  "W291"
-]
-
-
-[tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = [
-  "S101",    # bare asserts
-  "ARG",     # unused-argument
-  "FBT",     # boolean-tuple-for-parameter
-  "ANN202",  # private helper return annotations
-  "D103",    # test function docstrings
-  "D104",    # missing docstring in package
-  "PLR2004", # magic-values-in-comparison
-  "S311",    # use of non-crypto RNG
-  "S105",    # test bearer token literals
-  "SLF001",  # private helper assertions in focused unit tests
-  "RUF001",  # asserting on translated Turkish locale strings
-]
-"langconnect/api/graph.py" = [
-  "ANN401",  # Neo4j serialization accepts dynamic values
-  "PLR0913", # FastAPI endpoint dependency/query signatures
-]
-"langconnect/database/collections.py" = [
-  "ANN202",  # LangChain vector store return type is not stable
-  "ANN401",  # metadata comes from external stores
-  "D107",    # simple dependency-capturing constructors
-  "PERF401", # clarity over micro-optimizing adapter row mapping
-  "SLF001",  # LangChain/Milvus adapter fields are required here
-  "TC001",
-  "TC003",
-]
-"langconnect/services/collections.py" = [
-  "ANN202",  # LangChain vector store return type is not stable
-  "ANN401",  # metadata comes from external stores
-  "D107",    # simple dependency-capturing constructors
-  "PERF401", # clarity over micro-optimizing adapter row mapping
-  "SLF001",  # LangChain/Milvus adapter fields are required here
-  "TC001",
-  "TC003",
-]
-"langconnect/database/neo4j/graph_store.py" = [
-  "D102",
-  "D107",
-  "PLR0913",
-  "TC001",
-]
-"langconnect/database/neo4j/repositories/*.py" = [
-  "ANN401",
-  "ARG002",
-  "D301",
-  "D102",
-  "D107",
-  "PERF",
-  "PLR0913",
-  "PLR2004",
-  "PLW2901",
-  "RUF001",
-  "S110",
-  "SIM",
-  "TC003",
-]
-"langconnect/database/postgres/**/*.py" = [
-  "ANN401",
-  "D103",
-  "D105",
-  "D107",
-  "D415",
-  "INP001",
-  "RUF002",
-  "TC001",
-  "TC003",
-]
-"langconnect/scripts/*.py" = [
-  "D103",
-]
-"langconnect/services/document_processor.py" = [
-  "ANN202",
-  "PLR2004",
-]
-"langconnect/services/entity_extractor.py" = [
-  "ANN401",
-  "D107",
-]
-"langconnect/services/graph_rag_service.py" = [
-  "D107",
-]
 
 [tool.mypy]
 python_version = "3.11"
@@ -246,6 +121,3 @@ disable_error_code = [
   "valid-type",
   "var-annotated",
 ]
-
-[tool.ruff.lint.pydocstyle]
-convention = "google"

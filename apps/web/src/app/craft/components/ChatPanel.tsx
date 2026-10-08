@@ -19,7 +19,7 @@ import {
 } from "@/app/craft/hooks/useBuildSessionStore";
 import { useBuildStreaming } from "@/app/craft/hooks/useBuildStreaming";
 import { useUsageLimits } from "@/app/craft/hooks/useUsageLimits";
-import { SessionErrorCode } from "@/app/craft/types/streamingTypes";
+import { SessionErrorCode } from "@/lib/api/domains/craft/streaming-types";
 import {
   BuildFile,
   UploadFileStatus,

@@ -4,13 +4,16 @@ Provides general utility tools like UUID generation, encoding, hashing.
 """
 
 import base64
+import binascii
 import hashlib
+from typing import Any, Literal
 import uuid
-from typing import Any
 
-from i18n import t
+from localization import t
 
 from ..core.base import BaseToolCategory
+from ..core.schema import LongText
+from .response import tool_error_message
 
 
 class UtilityTools(BaseToolCategory):
@@ -45,7 +48,7 @@ class UtilityTools(BaseToolCategory):
             return str(uuid.uuid4())
 
         @mcp.tool()
-        def encode_base64(text: str) -> str:
+        def encode_base64(text: LongText) -> str:
             """
             Encode text to Base64.
 
@@ -58,7 +61,7 @@ class UtilityTools(BaseToolCategory):
             return base64.b64encode(text.encode()).decode()
 
         @mcp.tool()
-        def decode_base64(encoded: str) -> str:
+        def decode_base64(encoded: LongText) -> str:
             """
             Decode Base64 to text.
 
@@ -70,11 +73,11 @@ class UtilityTools(BaseToolCategory):
             """
             try:
                 return base64.b64decode(encoded).decode()
-            except Exception as e:
-                return t("utility.decode_error", error=str(e))
+            except (binascii.Error, UnicodeDecodeError) as e:
+                return t("utility.decode_error", error=tool_error_message(e))
 
         @mcp.tool()
-        def hash_text(text: str, algorithm: str = "sha256") -> str:
+        def hash_text(text: LongText, algorithm: Literal["md5", "sha1", "sha256", "sha512"] = "sha256") -> str:
             """
             Generate hash of text.
 

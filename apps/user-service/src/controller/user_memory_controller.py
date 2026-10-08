@@ -16,26 +16,23 @@ class UserMemoryController(BaseController):
         return await self.service.list_for_recall(user_id)
 
     async def create_memory(self, user_id: uuid.UUID, content: str) -> dict:
-        try:
-            return await self.service.create(user_id, content)
-        except Exception:
-            self._raise_conflict("memory.already_exists")
+        return await self.service.create(user_id, content)
 
     async def add_facts(
-        self, user_id: uuid.UUID, contents: list[str], source: str = "auto_extracted"
+        self,
+        user_id: uuid.UUID,
+        contents: list[str],
+        source: str = "auto_extracted",
+        language: str | None = None,
     ) -> list[dict]:
-        return await self.service.add_facts(user_id, contents, source=source)
+        return await self.service.add_facts(user_id, contents, source=source, language=language)
 
     async def update_memory(self, user_id: uuid.UUID, memory_id: uuid.UUID, content: str) -> dict:
         result = await self.service.update(memory_id, user_id, content)
-        if not result:
-            self._raise_not_found("memory.not_found")
         return result
 
     async def delete_memory(self, user_id: uuid.UUID, memory_id: uuid.UUID) -> None:
-        deleted = await self.service.delete(memory_id, user_id)
-        if not deleted:
-            self._raise_not_found("memory.not_found")
+        await self.service.delete(memory_id, user_id)
 
     async def delete_all_memories(self, user_id: uuid.UUID) -> dict:
         count = await self.service.delete_all(user_id)
@@ -43,8 +40,6 @@ class UserMemoryController(BaseController):
 
     async def get_memory(self, user_id: uuid.UUID, memory_id: uuid.UUID) -> dict:
         result = await self.service.get(memory_id, user_id)
-        if not result:
-            self._raise_not_found("memory.not_found")
         return result
 
 

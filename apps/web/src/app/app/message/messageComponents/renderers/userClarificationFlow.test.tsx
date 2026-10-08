@@ -10,7 +10,7 @@
  * the run is actually paused.
  */
 import { renderHook } from "@testing-library/react";
-import { Packet, PacketType } from "@/app/app/services/streamingModels";
+import { Packet, PacketType } from "@/lib/api/domains/chat/streaming-types";
 import { handleSSEStream } from "@/lib/search/streamingUtils";
 import {
   createInitialState,

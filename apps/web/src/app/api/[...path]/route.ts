@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBackendUrl } from "@/lib/api/routeBackendUrl";
+import { backendRequest } from "@/lib/api/http/server";
+import { deriveBackendAuthHeaders } from "@/lib/api/proxy";
+import { stripTrustedContextHeaders } from "@/lib/api/proxySecurity";
+import { appSettings } from "@/lib/settings";
 
 /*
- * Catch-all API proxy that routes requests directly to the appropriate
- * backend service based on URL prefix, bypassing the Kong API gateway.
- *
- * Kong is only used for auth routes and internal endpoints.  All other
- * /api/ traffic is forwarded directly to the target microservice, which
- * validates the JWT itself via JWKS / userinfo fallback.  This avoids
- * hard dependencies on Kong's static JWT plugin configuration (which
- * only accepts tokens from the internal Keycloak issuer).
+ * Compatibility catch-all that resolves a domain-owned backend target and
+ * forwards it through the configured gateway.
  *
  * Service endpoints that already OWN a dedicated Next.js route handler
  * (e.g. /api/agent/*, /api/rag/*, /api/auth/*) are NOT caught here.
@@ -73,8 +71,8 @@ export async function OPTIONS(
 
 async function handleRequest(request: NextRequest, path: string[]) {
   if (
-    process.env.NODE_ENV !== "development" &&
-    process.env.OVERRIDE_API_PRODUCTION !== "true"
+    appSettings.NODE_ENV !== "development" &&
+    !appSettings.OVERRIDE_API_PRODUCTION
   ) {
     return NextResponse.json(
       {
@@ -94,19 +92,33 @@ async function handleRequest(request: NextRequest, path: string[]) {
     });
 
     const headers = new Headers(request.headers);
+    headers.delete("host");
+    headers.delete("content-length");
+    stripTrustedContextHeaders(headers);
+    // The default fallback below routes to agent-service, which is
+    // bearer-token only and never reads cookies -- a request that only
+    // carries the browser's access_token cookie (the normal case; the
+    // browser's own fetch never sets an explicit Authorization header)
+    // would otherwise get a bare 401 here even though the session is
+    // perfectly valid.
+    const { Authorization } = deriveBackendAuthHeaders(request);
+    if (Authorization) {
+      headers.set("Authorization", Authorization);
+    }
     if (
-      process.env.DEBUG_AUTH_COOKIE &&
-      process.env.NODE_ENV === "development"
+      appSettings.DEBUG_AUTH_COOKIE &&
+      appSettings.NODE_ENV === "development"
     ) {
       const existingCookies = headers.get("cookie") || "";
-      const debugCookie = `fastapiusersauth=${process.env.DEBUG_AUTH_COOKIE}`;
+      const debugCookie = `fastapiusersauth=${appSettings.DEBUG_AUTH_COOKIE}`;
       headers.set(
         "cookie",
         existingCookies ? `${existingCookies}; ${debugCookie}` : debugCookie
       );
     }
 
-    const response = await fetch(backendUrl, {
+    const response = await backendRequest({
+      url: backendUrl,
       method: request.method,
       headers: headers,
       body: request.body,

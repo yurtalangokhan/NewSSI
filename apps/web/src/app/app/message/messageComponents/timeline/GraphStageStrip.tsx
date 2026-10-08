@@ -327,7 +327,7 @@ export default function GraphStageStrip({
                     </span>
                   )}
 
-                  {/* Embedded agent-level tool calls with Onyx Tooltip */}
+                  {/* Embedded agent-level tool calls with Atlas Tooltip */}
                   {entry.tools && entry.tools.length > 0 && (
                     <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-neutral-200/80 dark:border-neutral-700/80">
                       {entry.tools.map((tool) => {
@@ -370,7 +370,7 @@ export default function GraphStageStrip({
                                 align="center"
                                 className="p-3 min-w-[210px] max-w-[300px] bg-neutral-900/95 dark:bg-neutral-950/95 text-neutral-100 border border-neutral-700/80 dark:border-neutral-800/80 backdrop-blur-md shadow-xl rounded-xl z-tooltip"
                               >
-                                {/* Onyx Tooltip Header */}
+                                {/* Atlas Tooltip Header */}
                                 <div className="flex items-center justify-between gap-2 pb-2 border-b border-neutral-800">
                                   <div className="flex items-center gap-1.5">
                                     <div className="flex size-4 items-center justify-center rounded bg-blue-500/20 text-blue-400">
@@ -398,7 +398,7 @@ export default function GraphStageStrip({
                                   </span>
                                 </div>
 
-                                {/* Onyx Tooltip Invocations Breakdown */}
+                                {/* Atlas Tooltip Invocations Breakdown */}
                                 <div className="pt-2 flex flex-col gap-1.5 text-xs">
                                   {tool.invocations &&
                                   tool.invocations.length > 1 ? (

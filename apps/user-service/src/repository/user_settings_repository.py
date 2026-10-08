@@ -1,5 +1,5 @@
+from typing import Any, ClassVar
 import uuid
-from typing import Any
 
 from sqlalchemy import delete, select
 
@@ -9,7 +9,7 @@ from .base_repository import BaseRepository
 
 
 class UserSettingsRepository(BaseRepository):
-    DEFAULT_SETTINGS = {
+    DEFAULT_SETTINGS: ClassVar[dict[str, Any]] = {
         "auto_scroll": True,
         "shortcut_enabled": True,
         "default_app_mode": "AUTO",
@@ -26,12 +26,10 @@ class UserSettingsRepository(BaseRepository):
 
     async def get_by_user_id(self, user_id: uuid.UUID) -> UserSettingsModel | None:
         async with self._session() as session:
-            result = await session.execute(
-                select(UserSettingsModel).where(UserSettingsModel.user_id == user_id)
-            )
+            result = await session.execute(select(UserSettingsModel).where(UserSettingsModel.user_id == user_id))
             return result.scalar_one_or_none()
 
-    NULLABLE_KEYS = {
+    NULLABLE_KEYS: ClassVar[set[str]] = {
         "theme_preference",
         "chat_background",
         "default_model",
@@ -40,9 +38,7 @@ class UserSettingsRepository(BaseRepository):
 
     async def upsert(self, user_id: uuid.UUID, **updates: Any) -> UserSettingsModel:
         async with self._session() as session:
-            result = await session.execute(
-                select(UserSettingsModel).where(UserSettingsModel.user_id == user_id)
-            )
+            result = await session.execute(select(UserSettingsModel).where(UserSettingsModel.user_id == user_id))
             settings = result.scalar_one_or_none()
 
             allowed_keys = {
@@ -64,9 +60,7 @@ class UserSettingsRepository(BaseRepository):
                 "pinned_assistants",
             }
             filtered = {
-                k: v
-                for k, v in updates.items()
-                if k in allowed_keys and (v is not None or k in self.NULLABLE_KEYS)
+                k: v for k, v in updates.items() if k in allowed_keys and (v is not None or k in self.NULLABLE_KEYS)
             }
             if "user_preferences" in filtered:
                 filtered["user_preferences"] = str(filtered["user_preferences"] or "")
@@ -91,7 +85,5 @@ class UserSettingsRepository(BaseRepository):
 
     async def delete(self, user_id: uuid.UUID) -> bool:
         async with self._session() as session:
-            result = await session.execute(
-                delete(UserSettingsModel).where(UserSettingsModel.user_id == user_id)
-            )
+            result = await session.execute(delete(UserSettingsModel).where(UserSettingsModel.user_id == user_id))
             return result.rowcount > 0

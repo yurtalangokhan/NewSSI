@@ -10,15 +10,16 @@ rows and code block backgrounds.
 
 from __future__ import annotations
 
-import io
+from collections.abc import Mapping
 from dataclasses import dataclass
+import io
 from typing import TYPE_CHECKING, Any
 
-from service.documents import header_footer
 from service.documents.blocks import (
     Block,
     BulletListBlock,
     CodeBlock,
+    DiagramBlock,
     FootnoteDefBlock,
     HeadingBlock,
     HorizontalRuleBlock,
@@ -32,6 +33,8 @@ from service.documents.blocks import (
     TableBlock,
     simple_table_block,
 )
+from service.documents.diagram_images import CSS_PX_TO_IN, diagram_display_width
+import service.documents.header_footer as header_footer
 from service.documents.image_loading import load_image_bytes
 from service.documents.numbering import prepare_blocks
 from service.documents.ooxml import (
@@ -73,12 +76,21 @@ class _RunStyle:
     link_color: str
 
 
-def render_docx(title: str | None, markdown: str, options: DocumentOptions | None = None) -> bytes:
+def render_docx(
+    title: str | None,
+    markdown: str,
+    options: DocumentOptions | None = None,
+    *,
+    diagram_images: Mapping[str, bytes] | None = None,
+    attachment_images: Mapping[str, bytes] | None = None,
+) -> bytes:
     import docx
 
     if not (markdown or "").strip():
         raise ValueError("render_docx: content must not be empty")
 
+    diagram_images = diagram_images or {}
+    attachment_images = attachment_images or {}
     options = options or DocumentOptions()
     style = resolve_effective_style(options)
     blocks = prepare_blocks(markdown, options)
@@ -109,7 +121,17 @@ def render_docx(title: str | None, markdown: str, options: DocumentOptions | Non
         if isinstance(block, HeadingBlock):
             bookmark = (heading_bookmark_names[heading_index], heading_index)
             heading_index += 1
-        _add_docx_block(document, block, style, heading_style, body_style, options.tables, bookmark)
+        _add_docx_block(
+            document,
+            block,
+            style,
+            heading_style,
+            body_style,
+            options.tables,
+            diagram_images,
+            attachment_images,
+            bookmark,
+        )
 
     buffer = io.BytesIO()
     document.save(buffer)
@@ -163,15 +185,11 @@ def _apply_header_footer(document: Any, options: DocumentOptions, title: str | N
 _COVER_LOGO_WIDTH_INCHES = 1.6
 
 
-def _add_cover_page(
-    document: Any, cover: CoverOptions, title: str | None, heading_style: _RunStyle
-) -> None:
+def _add_cover_page(document: Any, cover: CoverOptions, title: str | None, heading_style: _RunStyle) -> None:
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Inches, Pt
 
-    def centered_paragraph(
-        text: str, *, bold: bool = False, italic: bool = False, size: int | None = None
-    ):
+    def centered_paragraph(text: str, *, bold: bool = False, italic: bool = False, size: int | None = None):
         paragraph = document.add_paragraph()
         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = paragraph.add_run(text)
@@ -186,9 +204,7 @@ def _add_cover_page(
         if data is not None:
             picture_paragraph = document.add_paragraph()
             picture_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            picture_paragraph.add_run().add_picture(
-                io.BytesIO(data), width=Inches(_COVER_LOGO_WIDTH_INCHES)
-            )
+            picture_paragraph.add_run().add_picture(io.BytesIO(data), width=Inches(_COVER_LOGO_WIDTH_INCHES))
 
     if title:
         title_paragraph = document.add_paragraph(title, style="Title")
@@ -313,9 +329,7 @@ def _add_toc(
 
     for level, text, bookmark_name in entries:
         entry_paragraph = document.add_paragraph()
-        entry_paragraph.paragraph_format.left_indent = Inches(
-            _TOC_ENTRY_INDENT_INCHES * (level - 1)
-        )
+        entry_paragraph.paragraph_format.left_indent = Inches(_TOC_ENTRY_INDENT_INCHES * (level - 1))
         add_internal_hyperlink_run(entry_paragraph, text, anchor=bookmark_name)
 
     add_field_end(document.add_paragraph())
@@ -369,9 +383,7 @@ def _add_list_item(document: Any, item: ListItem, is_ordered: bool, run_style: _
     _add_spans(paragraph, item.spans, run_style)
 
 
-def _add_table(
-    document: Any, block: TableBlock, style: EffectiveStyle, table_options: TableStyleOptions
-) -> None:
+def _add_table(document: Any, block: TableBlock, style: EffectiveStyle, table_options: TableStyleOptions) -> None:
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 
     alignment_map = {
@@ -406,16 +418,37 @@ def _add_table(
         caption_paragraph.add_run(block.caption)
 
 
-def _add_image(document: Any, block: ImageBlock) -> None:
+def _add_image(document: Any, block: ImageBlock, attachment_images: Mapping[str, bytes]) -> None:
     from docx.shared import Inches
 
-    data = load_image_bytes(block.src)
+    data = load_image_bytes(block.src, attachment_images)
     if data is None:
         return
     document.add_picture(io.BytesIO(data), width=Inches(_IMAGE_WIDTH_INCHES))
     if block.caption:
         caption_paragraph = document.add_paragraph(style="Caption")
         caption_paragraph.add_run(block.caption)
+
+
+def _add_diagram(document: Any, block: DiagramBlock, style: EffectiveStyle, images: Mapping[str, bytes]) -> None:
+    from docx.shared import Inches
+    from PIL import Image as PILImage
+
+    png = images.get(block.digest)
+    if png is None:
+        paragraph = document.add_paragraph()
+        run = paragraph.add_run(block.source)
+        run.font.name = _MONO_FONT
+        shade_paragraph(paragraph, style.code_bg)
+    else:
+        buffer = io.BytesIO(png)
+        with PILImage.open(buffer) as image:
+            pixel_width = image.width
+        buffer.seek(0)
+        width_inches = diagram_display_width(pixel_width, CSS_PX_TO_IN, _IMAGE_WIDTH_INCHES)
+        document.add_picture(buffer, width=Inches(width_inches))
+    if block.caption:
+        document.add_paragraph(style="Caption").add_run(block.caption)
 
 
 def _add_quote(document: Any, block: QuoteBlock, run_style: _RunStyle) -> None:
@@ -441,6 +474,8 @@ def _add_docx_block(
     heading_style: _RunStyle,
     body_style: _RunStyle,
     table_options: TableStyleOptions,
+    diagram_images: Mapping[str, bytes],
+    attachment_images: Mapping[str, bytes],
     bookmark: tuple[str, int] | None = None,
 ) -> None:
     if isinstance(block, HeadingBlock):
@@ -457,6 +492,8 @@ def _add_docx_block(
     elif isinstance(block, OrderedListBlock):
         for item in block.items:
             _add_list_item(document, item, is_ordered=True, run_style=body_style)
+    elif isinstance(block, DiagramBlock):
+        _add_diagram(document, block, style, diagram_images)
     elif isinstance(block, CodeBlock):
         paragraph = document.add_paragraph()
         run = paragraph.add_run(block.text)
@@ -467,7 +504,7 @@ def _add_docx_block(
     elif isinstance(block, QuoteBlock):
         _add_quote(document, block, body_style)
     elif isinstance(block, ImageBlock):
-        _add_image(document, block)
+        _add_image(document, block, attachment_images)
     elif isinstance(block, HorizontalRuleBlock):
         add_horizontal_rule(document.add_paragraph())
     elif isinstance(block, PageBreakBlock):

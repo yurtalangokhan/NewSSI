@@ -45,6 +45,7 @@ FEATURE_MAP: Final[dict[tuple[str, str], str]] = {
     ("rag-service", "chunk"): "knowledge",
     ("rag-service", "embedding"): "knowledge",
     ("rag-service", "graph"): "knowledge",
+    ("rag-service", "datasource"): "knowledge",
     # tools
     ("tools-service", "tool"): "tools",
     ("agent-service", "mcp_provider"): "tools",
@@ -74,8 +75,3 @@ def feature_for(service: str, entity: str) -> str:
     appear in the admin UI instead of disappearing from it.
     """
     return FEATURE_MAP.get((service, entity), DEFAULT_FEATURE)
-
-
-def list_features() -> list[str]:
-    """Return the ordered feature keys known to the taxonomy."""
-    return list(FEATURE_LABELS)

@@ -1,4 +1,6 @@
-import { idempotentFetch } from "@/lib/api/idempotency";
+import { createProviderConfiguration } from "@/lib/api/domains/model-providers/api";
+import { setProviderDefault } from "@/lib/api/domains/model-providers/api";
+
 import React, { useState, useMemo, ReactNode } from "react";
 import { Form, Formik, FormikProps } from "formik";
 import * as Yup from "yup";
@@ -7,10 +9,7 @@ import {
   ModelConfiguration,
   WellKnownLLMProviderDescriptor,
 } from "@/interfaces/llm";
-import {
-  LLM_ADMIN_URL,
-  LLM_PROVIDERS_ADMIN_URL,
-} from "@/lib/llmConfig/constants";
+
 import { getErrorMsg } from "@/lib/fetchUtils";
 import { OnboardingActions, OnboardingState } from "../types";
 import { APIFormFieldState } from "@/refresh-components/form/types";
@@ -19,10 +18,8 @@ import {
   testCustomProvider,
   getModelOptions,
 } from "../components/llmConnectionHelpers";
-import {
-  canProviderFetchModels,
-  fetchModels,
-} from "@/app/admin/configuration/llm/utils";
+import { canProviderFetchModels } from "@/app/admin/configuration/llm/utils";
+import { fetchModels } from "@/lib/api/domains/model-providers/api";
 import type { IconProps } from "@opal/types";
 import { ComboBoxOption } from "@/refresh-components/inputs/InputComboBox";
 
@@ -202,16 +199,7 @@ export function OnboardingFormWrapper<T extends Record<string, any>>({
     setApiStatus("success");
 
     // Create the provider
-    const response = await idempotentFetch(
-      `${LLM_PROVIDERS_ADMIN_URL}?is_creation=true`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      }
-    );
+    const response = await createProviderConfiguration(payload);
 
     if (!response.ok) {
       const errorMsg = (await getErrorMsg(response)) ?? "Unknown error";
@@ -240,17 +228,10 @@ export function OnboardingFormWrapper<T extends Record<string, any>>({
               "No model name available to set as default — skipping set-default call"
             );
           } else {
-            const setDefaultResponse = await idempotentFetch(
-              `${LLM_ADMIN_URL}/default`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  provider_id: newLlmProvider.id,
-                  model_name: defaultModelName,
-                }),
-              }
-            );
+            const setDefaultResponse = await setProviderDefault({
+              provider_id: newLlmProvider.id,
+              model_name: defaultModelName,
+            });
             if (!setDefaultResponse.ok) {
               const err = await setDefaultResponse.json().catch(() => ({}));
               setErrorMessage(

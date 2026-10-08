@@ -1,5 +1,4 @@
 import { formToFlow, type FlowNode, type FlowEdge } from "../formToFlow";
-import type { FullPersona } from "@/app/admin/agents/interfaces";
 
 const basePersona: any = {
   id: 1,

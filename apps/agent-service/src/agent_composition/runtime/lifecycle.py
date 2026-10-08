@@ -8,11 +8,11 @@ has no additional effect beyond the first call.
 
 from __future__ import annotations
 
-import asyncio
 from abc import ABC, abstractmethod
+import asyncio
 from typing import TYPE_CHECKING
 
-from core.logger import get_logger
+from core.observability.logger import get_logger
 
 if TYPE_CHECKING:
     from langgraph.graph.state import CompiledStateGraph

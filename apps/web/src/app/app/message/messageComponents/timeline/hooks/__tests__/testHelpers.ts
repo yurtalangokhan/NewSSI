@@ -6,8 +6,8 @@ import {
   PacketType,
   Placement,
   StopReason,
-} from "@/app/app/services/streamingModels";
-import { OnyxDocument } from "@/lib/search/interfaces";
+} from "@/lib/api/domains/chat/streaming-types";
+import { AtlasDocument } from "@/lib/search/interfaces";
 
 // Core packet factory
 export function createPacket(
@@ -114,7 +114,7 @@ export function createSearchToolQueriesPacket(
 }
 
 export function createSearchToolDocumentsPacket(
-  documents: Partial<OnyxDocument>[],
+  documents: Partial<AtlasDocument>[],
   placement: Partial<Placement> = {}
 ): Packet {
   return createPacket(PacketType.SEARCH_TOOL_DOCUMENTS_DELTA, placement, {
@@ -139,7 +139,7 @@ export function createFetchToolUrlsPacket(
 }
 
 export function createFetchToolDocumentsPacket(
-  documents: Partial<OnyxDocument>[],
+  documents: Partial<AtlasDocument>[],
   placement: Partial<Placement> = {}
 ): Packet {
   return createPacket(PacketType.FETCH_TOOL_DOCUMENTS, placement, {

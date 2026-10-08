@@ -1,4 +1,11 @@
 "use client";
+import { systemEndpoints } from "@/lib/api/domains/system/endpoints";
+
+import {
+  fetchLogCategories,
+  fetchLogCategoryList,
+} from "@/lib/api/domains/system/api";
+import { downloadLogCategory } from "@/lib/api/domains/system/api";
 
 import { useState, useEffect } from "react";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
@@ -15,10 +22,9 @@ import Button from "@/refresh-components/buttons/Button";
 import { Card } from "@/components/ui/card";
 import Text from "@/components/ui/text";
 import { SvgDownloadCloud } from "@opal/icons";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { useTranslation } from "react-i18next";
 import useSWR from "swr";
-import { errorHandlingFetcher } from "@/lib/fetcher";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DEBUG]!;
@@ -32,7 +38,7 @@ function Main() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch("/api/admin/long-term-logs");
+        const response = await fetchLogCategories();
         if (!response.ok) throw new Error("Failed to fetch categories");
         const data = await response.json();
         setCategories(data);
@@ -49,9 +55,7 @@ function Main() {
   const handleDownload = async (category: string) => {
     setIsDownloading(true);
     try {
-      const response = await fetch(
-        `/api/admin/long-term-logs/${category}/download`
-      );
+      const response = await downloadLogCategory(category);
       if (!response.ok) throw new Error("Failed to download logs");
 
       const blob = await response.blob();
@@ -129,8 +133,8 @@ function Main() {
 export default function Page() {
   const { t } = useTranslation();
   const { isLoading } = useSWR<string[]>(
-    "/api/admin/long-term-logs",
-    errorHandlingFetcher
+    systemEndpoints.fetchLogCategories.browserPath,
+    () => fetchLogCategoryList<string[]>()
   );
 
   return (

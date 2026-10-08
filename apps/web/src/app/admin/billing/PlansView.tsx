@@ -24,7 +24,7 @@ import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
 import { Section } from "@/layouts/general-layouts";
 
-const SALES_URL = "https://www.onyx.app/contact-sales";
+const SALES_URL = "https://www.atlas.app/contact-sales";
 
 // ----------------------------------------------------------------------------
 // Types

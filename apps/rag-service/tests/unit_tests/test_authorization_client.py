@@ -1,39 +1,34 @@
-from types import TracebackType
-from typing import ClassVar, Self
+from typing import ClassVar
 
-from langconnect.authorization import AuthorizationClient
+from src.shared.authorization import AuthorizationClient
 
 
 class _Response:
     status_code = 200
 
-    def json(self) -> dict[str, bool]:
-        return {"allowed": True}
+    def json(self) -> dict[str, object]:
+        return {"statusCode": 200, "message": None, "data": {"allowed": True}, "error": None}
 
 
-class _AsyncClient:
+class _PooledClient:
+    """Stands in for the shared per-peer client (security.get_shared_client).
+
+    The calls used to build their own ``httpx.AsyncClient`` per request; they
+    now borrow the pooled one, so the double is a plain object rather than an
+    async context manager.
+    """
+
     captured_url: str = ""
     captured_headers: ClassVar[dict[str, str]] = {}
 
-    def __init__(self, timeout: float) -> None:
-        pass
-
-    async def __aenter__(self) -> Self:
-        return self
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> None:
-        return None
-
+    # **_options absorbs the per-request transport settings (timeout) the
+    # caller now passes to the pooled client.
     async def post(
         self,
         url: str,
         headers: dict[str, str],
         json: dict[str, str],
+        **_options: object,
     ) -> _Response:
         self.__class__.captured_url = url
         self.__class__.captured_headers = headers
@@ -43,15 +38,14 @@ class _AsyncClient:
 async def test_authorization_client_uses_api_v1_internal_authorize_path(
     monkeypatch,
 ) -> None:
-    monkeypatch.setattr("langconnect.authorization.httpx.AsyncClient", _AsyncClient)
     monkeypatch.setattr(
-        "langconnect.authorization.config.USER_SERVICE_URL",
-        "http://kong:8000/internal/user-service",
+        "src.shared.authorization.get_shared_client",
+        lambda _name, **_kw: _PooledClient(),
     )
-    monkeypatch.setattr(
-        "langconnect.authorization.config.INTERNAL_SERVICE_TOKEN",
-        "internal-token",
+    monkeypatch.setenv(
+        "INTERNAL_USER_SERVICE_URL", "http://apisix:8000/internal/user-service"
     )
+    monkeypatch.setenv("INTERNAL_SERVICE_TOKEN", "internal-token")
 
     assert await AuthorizationClient()._fetch_permission_decision(
         user_id="user-1",
@@ -59,7 +53,9 @@ async def test_authorization_client_uses_api_v1_internal_authorize_path(
         access_token=None,
     )
     assert (
-        _AsyncClient.captured_url
-        == "http://kong:8000/internal/user-service/api/v1/internal/users/authorize"
+        _PooledClient.captured_url
+        == "http://apisix:8000/internal/user-service/api/v1/internal/users/authorize"
     )
-    assert _AsyncClient.captured_headers["X-Internal-Service-Token"] == "internal-token"
+    assert (
+        _PooledClient.captured_headers["X-Internal-Service-Token"] == "internal-token"
+    )

@@ -1,9 +1,16 @@
 "use client";
 
-import { AgentId, MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import {
+  AgentId,
+  MinimalPersonaSnapshot,
+} from "@/lib/api/domains/agents/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChatSession } from "@/app/app/interfaces";
-import { agentIdsMatch, useAgents, usePinnedAgents } from "@/hooks/useAgents";
+import { ChatSession } from "@/lib/api/domains/chat/types";
+import {
+  agentIdsMatch,
+  useAgents,
+  usePinnedAgents,
+} from "@/lib/api/domains/agents/hooks";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import useAppFocus from "@/hooks/useAppFocus";
 

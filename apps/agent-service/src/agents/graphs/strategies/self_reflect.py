@@ -13,8 +13,8 @@ from langchain_core.runnables import RunnableConfig
 # ``MessagesState`` undefined there.
 from langgraph.graph import MessagesState
 
-from agents.graphs.schemas import GraphSchemaType
 from agents.graphs.strategies.base import GraphSchemaStrategy
+from schemas.agent_graphs import GraphSchemaType
 
 if TYPE_CHECKING:
     from langgraph.graph.state import CompiledStateGraph
@@ -25,7 +25,7 @@ class SelfReflectGraphStrategy(GraphSchemaStrategy):
 
     schema_type = GraphSchemaType.SELF_REFLECT
 
-    def validate(self, config: dict[str, Any]) -> tuple[str, ...]:
+    def validate(self, config: dict[str, Any]) -> tuple[str, ...]:  # noqa: ARG002
         """SelfReflect has no required fields (all have defaults)."""
         return ()  # All fields have defaults
 
@@ -39,22 +39,22 @@ class SelfReflectGraphStrategy(GraphSchemaStrategy):
             "reflection_prompt",
             "Review this response and suggest improvements if needed. If it is already good, say 'DONE'.",
         )
-        model = self._get_model(config.get("model"))
+        model = await self._get_model(config.get("model"))
         max_iterations = int(config.get("max_iterations", 3))
 
-        async def generate(state: MessagesState, config: RunnableConfig) -> MessagesState:
-            messages = [SystemMessage(content=system_prompt)] + list(state["messages"])
+        async def generate(state: MessagesState, config: RunnableConfig) -> MessagesState:  # noqa: ARG001
+            messages = [SystemMessage(content=system_prompt), *list(state["messages"])]
             response = await model.ainvoke(messages)
             return {"messages": [response]}
 
-        async def reflect(state: MessagesState, config: RunnableConfig) -> MessagesState:
+        async def reflect(state: MessagesState, config: RunnableConfig) -> MessagesState:  # noqa: ARG001
             last_msg = state["messages"][-1] if state["messages"] else None
             if not last_msg:
                 return state
 
             reflection_query = f"{reflection_prompt}\n\nResponse to review:\n{last_msg.content}"
             reflection = await model.ainvoke([SystemMessage(content=reflection_query)])
-            return {"messages": list(state["messages"]) + [reflection]}
+            return {"messages": [*list(state["messages"]), reflection]}
 
         def should_continue(state: MessagesState) -> str:
             # Stop if max iterations reached or reflection says DONE
@@ -70,9 +70,7 @@ class SelfReflectGraphStrategy(GraphSchemaStrategy):
         workflow.add_node("generate", generate)
         workflow.add_node("reflect", reflect)
         workflow.set_entry_point("generate")
-        workflow.add_conditional_edges(
-            "generate", should_continue, {"reflect": "reflect", "end": END}
-        )
+        workflow.add_conditional_edges("generate", should_continue, {"reflect": "reflect", "end": END})
         workflow.add_edge("reflect", "generate")
 
         return workflow.compile(checkpointer=self.checkpointer)

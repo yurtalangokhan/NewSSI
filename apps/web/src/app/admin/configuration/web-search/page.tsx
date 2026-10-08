@@ -1,4 +1,30 @@
 "use client";
+import { errorMessageFromUnknown } from "@/lib/api/errors";
+import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
+
+import { Button as OpalButton } from "@opal/components";
+import {
+  SvgArrowExchange,
+  SvgArrowRightCircle,
+  SvgChevronDown,
+  SvgChevronRight,
+  SvgEdit,
+  SvgX,
+} from "@opal/icons";
+import { WebProviderSetupModal } from "@/app/admin/configuration/web-search/WebProviderSetupModal";
+import { isContentProviderConfigured } from "@/app/admin/configuration/web-search/contentProviderUtils";
+
+import { crawlDocumentEntry as testAtlasCrawler } from "@/lib/api/domains/knowledge/api";
+import { activateSearchProvider } from "@/lib/api/domains/knowledge/api";
+import { deactivateSearchProvider } from "@/lib/api/domains/knowledge/api";
+import { resetContentProvider } from "@/lib/api/domains/knowledge/api";
+import { deactivateContentProvider } from "@/lib/api/domains/knowledge/api";
+import { activateContentProvider } from "@/lib/api/domains/knowledge/api";
+import { createContentProvider } from "@/lib/api/domains/knowledge/api";
+import {
+  fetchContentProviders,
+  fetchSearchProviders,
+} from "@/lib/api/domains/knowledge/api";
 
 import Image from "next/image";
 import { useMemo, useState, useReducer } from "react";
@@ -7,31 +33,17 @@ import Text from "@/refresh-components/texts/Text";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { Content } from "@opal/layouts";
 import useSWR from "swr";
-import {
-  errorHandlingFetcher,
-  FetchError,
-  authenticatedFetch,
-} from "@/lib/fetcher";
+import { FetchError } from "@/lib/api/http/errors";
 import { parseApiErrorPayload } from "@/lib/api/errors";
-import CardGridSkeleton from "@/refresh-components/skeletons/CardGridSkeleton";
+
 import { Callout } from "@/components/ui/callout";
 import Button from "@/refresh-components/buttons/Button";
-import { Button as OpalButton } from "@opal/components";
+
 import { cn } from "@/lib/utils";
-import {
-  SvgArrowExchange,
-  SvgArrowRightCircle,
-  SvgCheckSquare,
-  SvgChevronDown,
-  SvgChevronRight,
-  SvgEdit,
-  SvgGlobe,
-  SvgLoader,
-  SvgX,
-} from "@opal/icons";
-import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
-import { WebProviderSetupModal } from "@/app/admin/configuration/web-search/WebProviderSetupModal";
+import { SvgCheckSquare, SvgGlobe, SvgLoader } from "@opal/icons";
+
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
+
 import { useTranslation, Trans } from "react-i18next";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
@@ -57,7 +69,6 @@ import {
   canConnectContentProvider,
   getSingleContentConfigFieldValueForForm,
   getCurrentContentProviderType,
-  isContentProviderConfigured,
   type WebContentProviderType,
 } from "@/app/admin/configuration/web-search/contentProviderUtils";
 import {
@@ -68,10 +79,7 @@ import {
 import { connectProviderFlow } from "@/app/admin/configuration/web-search/connectProviderFlow";
 
 function getContentProviderDisplayLabel(providerType: WebContentProviderType) {
-  if (
-    providerType === "atlas_web_crawler" ||
-    providerType === "onyx_web_crawler"
-  ) {
+  if (providerType === "atlas_web_crawler") {
     return (
       CONTENT_PROVIDER_DETAILS.atlas_web_crawler?.label || "ATLAS Web Crawler"
     );
@@ -149,51 +157,44 @@ export default function Page() {
     string | null
   >(null);
   const [hoveredButtonKey, setHoveredButtonKey] = useState<string | null>(null);
-  const [onyxCrawlerExpanded, setOnyxCrawlerExpanded] = useState(false);
-  const [onyxTestUrl, setOnyxTestUrl] = useState("");
-  const [onyxTestLoading, setOnyxTestLoading] = useState(false);
-  const [onyxTestResult, setOnyxTestResult] = useState<{
+  const [atlasCrawlerExpanded, setAtlasCrawlerExpanded] = useState(false);
+  const [atlasTestUrl, setAtlasTestUrl] = useState("");
+  const [atlasTestLoading, setAtlasTestLoading] = useState(false);
+  const [atlasTestResult, setAtlasTestResult] = useState<{
     title: string;
     content: string;
     scrape_successful: boolean;
     failure_reason?: string | null;
   } | null>(null);
-  const [onyxTestError, setOnyxTestError] = useState<string | null>(null);
+  const [atlasTestError, setAtlasTestError] = useState<string | null>(null);
 
-  const handleOnyxCrawlerTest = async () => {
-    if (!onyxTestUrl.trim()) return;
-    setOnyxTestLoading(true);
-    setOnyxTestResult(null);
-    setOnyxTestError(null);
+  const handleAtlasCrawlerTest = async () => {
+    if (!atlasTestUrl.trim()) return;
+    setAtlasTestLoading(true);
+    setAtlasTestResult(null);
+    setAtlasTestError(null);
     try {
-      const response = await authenticatedFetch(
-        "/api/admin/web-search/content-providers/crawl",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: onyxTestUrl.trim() }),
-        }
-      );
+      const response = await testAtlasCrawler({ url: atlasTestUrl.trim() });
       const data = await response.json();
       if (!response.ok) {
         const parsed = parseApiErrorPayload(data, response.status);
-        setOnyxTestError(
+        setAtlasTestError(
           parsed.userMessage ||
             t("admin.webSearch.crawlFailed", {
               defaultValue: "Crawl failed.",
             })
         );
       } else {
-        setOnyxTestResult(data);
+        setAtlasTestResult(data);
       }
     } catch {
-      setOnyxTestError(
+      setAtlasTestError(
         t("admin.webSearch.networkErrorWhileCrawling", {
           defaultValue: "Network error while crawling.",
         })
       );
     } finally {
-      setOnyxTestLoading(false);
+      setAtlasTestLoading(false);
     }
   };
 
@@ -202,9 +203,8 @@ export default function Page() {
     error: searchProvidersError,
     isLoading: isLoadingSearchProviders,
     mutate: mutateSearchProviders,
-  } = useSWR<WebSearchProviderView[]>(
-    SEARCH_PROVIDERS_URL,
-    errorHandlingFetcher
+  } = useSWR<WebSearchProviderView[]>(SEARCH_PROVIDERS_URL, () =>
+    fetchSearchProviders<WebSearchProviderView[]>()
   );
 
   const {
@@ -212,9 +212,8 @@ export default function Page() {
     error: contentProvidersError,
     isLoading: isLoadingContentProviders,
     mutate: mutateContentProviders,
-  } = useSWR<WebContentProviderView[]>(
-    CONTENT_PROVIDERS_URL,
-    errorHandlingFetcher
+  } = useSWR<WebContentProviderView[]>(CONTENT_PROVIDERS_URL, () =>
+    fetchContentProviders<WebContentProviderView[]>()
   );
 
   const searchProviders = searchProvidersData ?? [];
@@ -441,10 +440,7 @@ export default function Page() {
       const existing = byType.get(providerType);
       if (existing) return existing;
 
-      if (
-        providerType === "atlas_web_crawler" ||
-        providerType === "onyx_web_crawler"
-      ) {
+      if (providerType === "atlas_web_crawler") {
         return {
           id: -1,
           name: "ATLAS Web Crawler",
@@ -703,15 +699,7 @@ export default function Page() {
     setActivationError(null);
 
     try {
-      const response = await authenticatedFetch(
-        `/api/admin/web-search/search-providers/${providerId}/activate`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await activateSearchProvider(providerId);
 
       if (!response.ok) {
         const parsed = parseApiErrorPayload(
@@ -725,8 +713,7 @@ export default function Page() {
 
       await mutateSearchProviders();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unexpected error occurred.";
+      const message = errorMessageFromUnknown(error);
       setActivationError(message);
     }
   };
@@ -735,15 +722,7 @@ export default function Page() {
     setActivationError(null);
 
     try {
-      const response = await authenticatedFetch(
-        `/api/admin/web-search/search-providers/${providerId}/deactivate`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await deactivateSearchProvider(providerId);
 
       if (!response.ok) {
         const parsed = parseApiErrorPayload(
@@ -755,8 +734,7 @@ export default function Page() {
 
       await mutateSearchProviders();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unexpected error occurred.";
+      const message = errorMessageFromUnknown(error);
       setActivationError(message);
     }
   };
@@ -767,19 +745,8 @@ export default function Page() {
     setContentActivationError(null);
 
     try {
-      if (
-        provider.provider_type === "atlas_web_crawler" ||
-        provider.provider_type === "onyx_web_crawler"
-      ) {
-        const response = await authenticatedFetch(
-          "/api/admin/web-search/content-providers/reset-default",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
+      if (provider.provider_type === "atlas_web_crawler") {
+        const response = await resetContentProvider();
 
         if (!response.ok) {
           const parsed = parseApiErrorPayload(
@@ -791,15 +758,7 @@ export default function Page() {
           );
         }
       } else if (provider.id > 0) {
-        const response = await authenticatedFetch(
-          `/api/admin/web-search/content-providers/${provider.id}/activate`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        const response = await activateContentProvider(provider.id);
 
         if (!response.ok) {
           const parsed = parseApiErrorPayload(
@@ -824,16 +783,7 @@ export default function Page() {
           activate: true,
         };
 
-        const response = await authenticatedFetch(
-          "/api/admin/web-search/content-providers",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payload),
-          }
-        );
+        const response = await createContentProvider(payload);
 
         if (!response.ok) {
           const parsed = parseApiErrorPayload(
@@ -848,8 +798,7 @@ export default function Page() {
 
       await mutateContentProviders();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unexpected error occurred.";
+      const message = errorMessageFromUnknown(error);
       setContentActivationError(message);
     }
   };
@@ -861,21 +810,12 @@ export default function Page() {
     setContentActivationError(null);
 
     try {
-      // For onyx_web_crawler (virtual provider with id -1), use reset-default
+      // For atlas_web_crawler (virtual provider with id -1), use reset-default
       // For real providers, use the deactivate endpoint
-      const endpoint =
-        providerType === "atlas_web_crawler" ||
-        providerType === "onyx_web_crawler" ||
-        providerId < 0
-          ? "/api/admin/web-search/content-providers/reset-default"
-          : `/api/admin/web-search/content-providers/${providerId}/deactivate`;
-
-      const response = await authenticatedFetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const response =
+        providerType === "atlas_web_crawler" || providerId < 0
+          ? await resetContentProvider()
+          : await deactivateContentProvider(providerId);
 
       if (!response.ok) {
         const parsed = parseApiErrorPayload(
@@ -887,8 +827,7 @@ export default function Page() {
 
       await mutateContentProviders();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unexpected error occurred.";
+      const message = errorMessageFromUnknown(error);
       setContentActivationError(message);
     }
   };
@@ -980,7 +919,7 @@ export default function Page() {
       storedBaseUrl !== contentProviderValues.config;
 
     // Reuse shared connect flow for key-based providers (firecrawl + similar).
-    // Note: onyx_web_crawler doesn't go through this modal.
+    // Note: atlas_web_crawler doesn't go through this modal.
     dispatchContentModal({ type: "SET_PHASE", phase: "saving" });
     dispatchContentModal({ type: "CLEAR_MESSAGE" });
 
@@ -1074,24 +1013,24 @@ export default function Page() {
                 label: t("admin.webSearch.lastTestLabel", {
                   defaultValue: "Last verification",
                 }),
-                value: onyxTestResult
-                  ? onyxTestResult.scrape_successful
+                value: atlasTestResult
+                  ? atlasTestResult.scrape_successful
                     ? t("admin.webSearch.testPassed", {
                         defaultValue: "Passed",
                       })
                     : t("admin.webSearch.testFailed", {
                         defaultValue: "Failed",
                       })
-                  : onyxTestError
+                  : atlasTestError
                     ? t("admin.webSearch.testFailed", {
                         defaultValue: "Failed",
                       })
                     : t("admin.webSearch.testNotRun", {
                         defaultValue: "Not tested yet",
                       }),
-                tone: onyxTestResult?.scrape_successful
+                tone: atlasTestResult?.scrape_successful
                   ? "success"
-                  : onyxTestResult || onyxTestError
+                  : atlasTestResult || atlasTestError
                     ? "warning"
                     : "neutral",
               },
@@ -1317,9 +1256,7 @@ export default function Page() {
             <div className="flex flex-col gap-2">
               {combinedContentProviders.map((provider) => {
                 const label =
-                  provider.name &&
-                  provider.name !== "Onyx Web Crawler" &&
-                  provider.name !== "ATLAS Web Crawler"
+                  provider.name && provider.name !== "ATLAS Web Crawler"
                     ? provider.name
                     : t(
                         `admin.webSearch.contentProviders.${provider.provider_type}.label`,
@@ -1377,7 +1314,6 @@ export default function Page() {
                   const canActivate =
                     providerId > 0 ||
                     provider.provider_type === "atlas_web_crawler" ||
-                    provider.provider_type === "onyx_web_crawler" ||
                     isConfigured;
 
                   return {
@@ -1403,9 +1339,8 @@ export default function Page() {
                   }
                 };
 
-                const isOnyxCrawler =
-                  provider.provider_type === "atlas_web_crawler" ||
-                  provider.provider_type === "onyx_web_crawler";
+                const isAtlasCrawler =
+                  provider.provider_type === "atlas_web_crawler";
 
                 return (
                   <div
@@ -1427,8 +1362,10 @@ export default function Page() {
                         "flex items-start justify-between gap-3 p-1",
                         isContentCardClickable &&
                           "cursor-pointer hover:bg-background-tint-01 transition-colors",
-                        isOnyxCrawler && onyxCrawlerExpanded && "rounded-t-16",
-                        isOnyxCrawler && !onyxCrawlerExpanded && "rounded-16"
+                        isAtlasCrawler &&
+                          atlasCrawlerExpanded &&
+                          "rounded-t-16",
+                        isAtlasCrawler && !atlasCrawlerExpanded && "rounded-16"
                       )}
                     >
                       <div className="flex flex-1 items-start gap-1 px-2 py-1">
@@ -1438,8 +1375,7 @@ export default function Page() {
                               ?.logoSrc,
                           alt: `${label} logo`,
                           fallback:
-                            provider.provider_type === "atlas_web_crawler" ||
-                            provider.provider_type === "onyx_web_crawler" ? (
+                            provider.provider_type === "atlas_web_crawler" ? (
                               <Image
                                 src="/logo.single.svg"
                                 alt="ATLAS logo"
@@ -1458,15 +1394,15 @@ export default function Page() {
                         />
                       </div>
                       <div className="flex items-center justify-end gap-2">
-                        {isOnyxCrawler && (
+                        {isAtlasCrawler && (
                           <OpalButton
                             icon={
-                              onyxCrawlerExpanded
+                              atlasCrawlerExpanded
                                 ? SvgChevronDown
                                 : SvgChevronRight
                             }
                             tooltip={
-                              onyxCrawlerExpanded
+                              atlasCrawlerExpanded
                                 ? t("admin.webSearch.collapseTooltip")
                                 : t("admin.webSearch.testCrawlerTooltip")
                             }
@@ -1474,17 +1410,16 @@ export default function Page() {
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setOnyxCrawlerExpanded((v) => !v);
+                              setAtlasCrawlerExpanded((v) => !v);
                             }}
                             aria-label={
-                              onyxCrawlerExpanded
+                              atlasCrawlerExpanded
                                 ? t("admin.webSearch.collapseTooltip")
                                 : t("admin.webSearch.testCrawlerTooltip")
                             }
                           />
                         )}
                         {provider.provider_type !== "atlas_web_crawler" &&
-                          provider.provider_type !== "onyx_web_crawler" &&
                           isConfigured && (
                             <OpalButton
                               icon={SvgEdit}
@@ -1537,10 +1472,10 @@ export default function Page() {
                         )}
                       </div>
                     </div>
-                    {isOnyxCrawler && onyxCrawlerExpanded && (
+                    {isAtlasCrawler && atlasCrawlerExpanded && (
                       <div className="border-t border-border-01 px-4 py-3 flex flex-col gap-3">
                         <Text as="p" mainUiBody text03>
-                          {t("admin.webSearch.onyxCrawlerTestDescription", {
+                          {t("admin.webSearch.atlasCrawlerTestDescription", {
                             defaultValue:
                               "Enter a URL to test the built-in crawler and preview the extracted content.",
                           })}
@@ -1551,30 +1486,30 @@ export default function Page() {
                               placeholder={t("admin.webSearch.urlPlaceholder", {
                                 defaultValue: "https://example.com",
                               })}
-                              value={onyxTestUrl}
+                              value={atlasTestUrl}
                               onChange={(e) => {
-                                setOnyxTestUrl(e.target.value);
-                                setOnyxTestResult(null);
-                                setOnyxTestError(null);
+                                setAtlasTestUrl(e.target.value);
+                                setAtlasTestResult(null);
+                                setAtlasTestError(null);
                               }}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter")
-                                  void handleOnyxCrawlerTest();
+                                  void handleAtlasCrawlerTest();
                               }}
                             />
                           </div>
                           <Button
                             action={false}
                             tertiary
-                            disabled={!onyxTestUrl.trim() || onyxTestLoading}
-                            onClick={() => void handleOnyxCrawlerTest()}
+                            disabled={!atlasTestUrl.trim() || atlasTestLoading}
+                            onClick={() => void handleAtlasCrawlerTest()}
                             rightIcon={
-                              onyxTestLoading
+                              atlasTestLoading
                                 ? SpinningLoader
                                 : SvgArrowRightCircle
                             }
                           >
-                            {onyxTestLoading
+                            {atlasTestLoading
                               ? t("admin.webSearch.crawling", {
                                   defaultValue: "Crawling...",
                                 })
@@ -1583,33 +1518,33 @@ export default function Page() {
                                 })}
                           </Button>
                         </div>
-                        {onyxTestError && (
+                        {atlasTestError && (
                           <div className="rounded-8 border border-status-danger-02 bg-status-danger-00 px-3 py-2">
                             <Text
                               as="p"
                               mainUiBody
                               className="text-status-error-05"
                             >
-                              {onyxTestError}
+                              {atlasTestError}
                             </Text>
                           </div>
                         )}
-                        {onyxTestResult && (
+                        {atlasTestResult && (
                           <div className="flex flex-col gap-2 rounded-8 border border-border-01 bg-background-neutral-01 px-3 py-2">
-                            {onyxTestResult.scrape_successful ? (
+                            {atlasTestResult.scrape_successful ? (
                               <>
                                 <div className="flex items-center gap-2">
-                                  {onyxTestResult.title && (
+                                  {atlasTestResult.title && (
                                     <Text
                                       as="p"
                                       mainUiBody
                                       className="font-semibold text-text-05"
                                     >
-                                      {onyxTestResult.title}
+                                      {atlasTestResult.title}
                                     </Text>
                                   )}
                                   <span className="shrink-0 rounded-full bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
-                                    {onyxTestResult.content.length.toLocaleString()}{" "}
+                                    {atlasTestResult.content.length.toLocaleString()}{" "}
                                     {t("admin.webSearch.chars", {
                                       defaultValue: "karakter",
                                     })}
@@ -1621,8 +1556,8 @@ export default function Page() {
                                   text04
                                   className="whitespace-pre-wrap break-words max-h-64 overflow-y-auto"
                                 >
-                                  {onyxTestResult.content
-                                    ? onyxTestResult.content
+                                  {atlasTestResult.content
+                                    ? atlasTestResult.content
                                     : t("admin.webSearch.noContent", {
                                         defaultValue: "(no content extracted)",
                                       })}
@@ -1634,7 +1569,7 @@ export default function Page() {
                                 mainUiBody
                                 className="text-status-error-05"
                               >
-                                {onyxTestResult.failure_reason ||
+                                {atlasTestResult.failure_reason ||
                                   t("admin.webSearch.crawlFailed", {
                                     defaultValue: "Crawl failed.",
                                   })}
@@ -1793,8 +1728,7 @@ export default function Page() {
             contentProviderLabel || selectedContentProviderType || "provider"
           } logo`,
           fallback:
-            selectedContentProviderType === "atlas_web_crawler" ||
-            selectedContentProviderType === "onyx_web_crawler" ? (
+            selectedContentProviderType === "atlas_web_crawler" ? (
               <Image
                 src="/logo.single.svg"
                 alt="ATLAS logo"

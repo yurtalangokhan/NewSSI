@@ -10,16 +10,14 @@ import SidebarWrapper from "@/sections/sidebar/SidebarWrapper";
 import { useIsKGExposed } from "@/app/admin/kg/utils";
 import { useCustomAnalyticsEnabled } from "@/lib/hooks/useCustomAnalyticsEnabled";
 import { useUser } from "@/providers/UserProvider";
-import {
-  useBillingInformation,
-  useLicense,
-  hasActiveSubscription,
-} from "@/lib/billing";
+import { useBillingInformation } from "@/lib/api/domains/billing/hooks";
+import { useLicense } from "@/lib/api/domains/billing/hooks";
+import { hasActiveSubscription } from "@/lib/api/domains/billing/types";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
 import { CombinedSettings } from "@/interfaces/settings";
 import SidebarTab from "@/refresh-components/buttons/SidebarTab";
 import SidebarBody from "@/sections/sidebar/SidebarBody";
-import { ADMIN_PATHS, sidebarItem } from "@/lib/admin-routes";
+import { ADMIN_PATHS, sidebarItem } from "@/lib/navigation/admin-routes";
 import UserAvatarPopover from "@/sections/sidebar/UserAvatarPopover";
 import { useTranslation } from "react-i18next";
 import { useAppSidebarContext } from "@/providers/AppSidebarProvider";
@@ -92,6 +90,7 @@ const collections = (
               sidebarItem(ADMIN_PATHS.LLM_MODELS, t),
               sidebarItem(ADMIN_PATHS.WEB_SEARCH, t),
               sidebarItem(ADMIN_PATHS.MAIL_CONFIGS, t),
+              sidebarItem(ADMIN_PATHS.MCP_CONFIG, t),
               sidebarItem(ADMIN_PATHS.DOCUMENT_PROCESSING, t),
               ...(kgExposed
                 ? [sidebarItem(ADMIN_PATHS.KNOWLEDGE_GRAPH, t)]
@@ -153,7 +152,10 @@ export default function AdminSidebar({
   const { kgExposed } = useIsKGExposed();
   const pathname = usePathname();
   const { customAnalyticsEnabled } = useCustomAnalyticsEnabled();
-  const { user, hasAllPermissions, isPermissionsLoading } = useUser();
+  const { user, permissions, hasAllPermissions, isPermissionsLoading } =
+    useUser();
+  const showPermissionsSkeleton =
+    isPermissionsLoading && permissions.length === 0;
   const settings = useSettingsContext();
   const { data: billingData } = useBillingInformation();
   const { data: licenseData } = useLicense();
@@ -189,7 +191,7 @@ export default function AdminSidebar({
   )
     .map((collection) => ({
       ...collection,
-      items: isPermissionsLoading
+      items: showPermissionsSkeleton
         ? []
         : collection.items
             .filter((item) => item.enabled !== false)
@@ -225,7 +227,7 @@ export default function AdminSidebar({
           </div>
         }
       >
-        {isPermissionsLoading ? (
+        {showPermissionsSkeleton ? (
           <AdminSidebarSkeleton folded={folded} />
         ) : (
           items.map((collection, index) => (

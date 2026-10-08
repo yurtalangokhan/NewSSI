@@ -1,5 +1,5 @@
-import uuid
 from typing import Any
+import uuid
 
 from src.repository import AuditLogRepository
 
@@ -33,9 +33,7 @@ class AuditService:
             "created_at": log_entry.created_at.isoformat(),
         }
 
-    async def list_by_user(
-        self, user_id: uuid.UUID, limit: int = 100, offset: int = 0
-    ) -> list[dict[str, Any]]:
+    async def list_by_user(self, user_id: uuid.UUID, limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
         logs = await self.repo.list_by_user(user_id, limit, offset)
         return self._logs_to_dicts(logs)
 

@@ -5,7 +5,7 @@ import {
   WORKER_USER_POOL_SIZE,
   workerUserCredentials,
 } from "@tests/e2e/constants";
-import { OnyxApiClient } from "@tests/e2e/utils/onyxApiClient";
+import { AtlasApiClient } from "@tests/e2e/utils/atlasApiClient";
 
 const PREFLIGHT_TIMEOUT_MS = 60_000;
 const PREFLIGHT_POLL_INTERVAL_MS = 2_000;
@@ -50,7 +50,7 @@ async function waitForServer(baseURL: string): Promise<void> {
   }
 
   throw new Error(
-    `Onyx is not running at ${baseURL}. ` +
+    `Atlas is not running at ${baseURL}. ` +
       `Timed out after ${
         PREFLIGHT_TIMEOUT_MS / 1000
       }s waiting for ${healthURL} to return 200. ` +
@@ -61,6 +61,9 @@ async function waitForServer(baseURL: string): Promise<void> {
 /**
  * Register a user via the backend API. Idempotent — silently succeeds if the
  * user already exists (HTTP 400 with "REGISTER_USER_ALREADY_EXISTS").
+ *
+ * The register contract requires a non-blank first and last name, so both are
+ * derived from the email local part; the tests never read them back.
  */
 async function ensureUserExists(
   apiBase: string,
@@ -69,8 +72,15 @@ async function ensureUserExists(
 ): Promise<void> {
   const ctx = await request.newContext({ baseURL: apiBase });
   try {
+    const localPart = email.split("@")[0] || "e2e";
     const res = await ctx.post("/api/auth/register", {
-      data: { email, username: email, password },
+      data: {
+        email,
+        username: email,
+        password,
+        first_name: localPart,
+        last_name: "User",
+      },
     });
 
     if (res.ok()) {
@@ -244,7 +254,7 @@ async function globalSetup(config: FullConfig) {
     storageState: "admin_auth.json",
   });
   try {
-    const client = new OnyxApiClient(adminCtx, baseURL);
+    const client = new AtlasApiClient(adminCtx, baseURL);
     await client.ensurePublicProvider();
   } finally {
     await adminCtx.dispose();

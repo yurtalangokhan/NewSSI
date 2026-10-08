@@ -1,14 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Formik, Form } from "formik";
-import * as Yup from "yup";
 import Modal from "@/refresh-components/Modal";
 import * as InputLayouts from "@/layouts/input-layouts";
 import InputTypeInField from "@/refresh-components/form/InputTypeInField";
 import InputTextAreaField from "@/refresh-components/form/InputTextAreaField";
 import Button from "@/refresh-components/buttons/Button";
-import { createMCPServer, updateMCPServer } from "@/lib/tools/mcpService";
+import { createMCPServer, updateMCPServer } from "@/lib/api/domains/tools/api";
 import {
   MCPServerCreateRequest,
   MCPServerStatus,
@@ -23,6 +22,8 @@ import { SvgCheckCircle, SvgServer, SvgUnplug } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
 import Text from "@/refresh-components/texts/Text";
 import { useTranslation } from "react-i18next";
+import { useUser } from "@/providers/UserProvider";
+import { buildMCPServerValidationSchema } from "./mcpServerValidation";
 
 interface AddMCPServerModalProps {
   skipOverlay?: boolean;
@@ -35,14 +36,6 @@ interface AddMCPServerModalProps {
   mutateMcpServers?: () => Promise<void>;
 }
 
-const validationSchema = Yup.object().shape({
-  name: Yup.string().required("Server name is required"),
-  description: Yup.string(),
-  server_url: Yup.string()
-    .url("Must be a valid URL")
-    .required("Server URL is required"),
-});
-
 export default function AddMCPServerModal({
   skipOverlay = false,
   activeServer,
@@ -54,7 +47,16 @@ export default function AddMCPServerModal({
 }: AddMCPServerModalProps) {
   const { t } = useTranslation();
   const { isOpen, toggle } = useModal();
+  const { hasPermission } = useUser();
+  // Only a system admin may change a provider's definition (name/url): those
+  // live on the MCP Configuration page. Enterprise admins authenticate the
+  // provider here but must not rename or re-point it.
+  const canEditDefinition = hasPermission("mcp_provider:update");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const validationSchema = useMemo(
+    () => buildMCPServerValidationSchema(t),
+    [t]
+  );
 
   // Use activeServer from props
   const server = activeServer;
@@ -110,7 +112,7 @@ export default function AddMCPServerModal({
       toast.error(
         error instanceof Error
           ? error.message
-          : `Failed to ${isEditMode ? "update" : "create"} MCP server`
+          : t(isEditMode ? "admin.mcp.updateFailed" : "admin.mcp.createFailed")
       );
     } finally {
       setIsSubmitting(false);
@@ -153,6 +155,15 @@ export default function AddMCPServerModal({
               />
 
               <Modal.Body>
+                {!canEditDefinition && (
+                  <Text as="p" secondaryBody text03>
+                    {t("admin.mcp.definitionReadOnly", {
+                      defaultValue:
+                        "Server details are managed by a system admin on the MCP Configuration page. You can add or update credentials here.",
+                    })}
+                  </Text>
+                )}
+
                 <InputLayouts.Vertical
                   name="name"
                   title={t("admin.mcp.serverName")}
@@ -160,6 +171,7 @@ export default function AddMCPServerModal({
                   <InputTypeInField
                     name="name"
                     placeholder={t("admin.mcp.serverNamePlaceholder")}
+                    variant={canEditDefinition ? "primary" : "disabled"}
                     autoFocus
                   />
                 </InputLayouts.Vertical>
@@ -173,6 +185,7 @@ export default function AddMCPServerModal({
                   <InputTextAreaField
                     name="description"
                     placeholder={t("admin.mcp.serverDescriptionPlaceholder")}
+                    variant={canEditDefinition ? "primary" : "disabled"}
                     rows={3}
                   />
                 </InputLayouts.Vertical>
@@ -187,6 +200,7 @@ export default function AddMCPServerModal({
                   <InputTypeInField
                     name="server_url"
                     placeholder={t("admin.mcp.serverUrlPlaceholder")}
+                    variant={canEditDefinition ? "primary" : "disabled"}
                   />
                 </InputLayouts.Vertical>
 
@@ -261,7 +275,9 @@ export default function AddMCPServerModal({
                 <Button
                   primary
                   type="submit"
-                  disabled={isSubmitting || !isValid || !dirty}
+                  disabled={
+                    isSubmitting || !isValid || !dirty || !canEditDefinition
+                  }
                 >
                   {isSubmitting
                     ? isEditMode

@@ -7,7 +7,7 @@ from langchain_core.messages import (
     ToolMessage,
 )
 
-from service.message_conversion import (
+from service.chat.message_conversion import (
     extract_reasoning_from_metadata,
     langchain_to_chat_message,
     split_message_content_reasoning,

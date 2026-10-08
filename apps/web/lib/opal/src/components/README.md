@@ -4,7 +4,7 @@ High-level UI components built on the [`@opal/core`](../core/) primitives. Every
 
 ## Package export
 
-Components are exposed from the `@onyx/opal` package via:
+Components are exposed from the `@atlas/opal` package via:
 
 ```ts
 import { Button } from "@opal/components";

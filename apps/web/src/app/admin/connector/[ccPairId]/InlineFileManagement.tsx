@@ -1,4 +1,5 @@
 "use client";
+import { datasourcesEndpoints } from "@/lib/api/domains/datasources/endpoints";
 
 import { useState, useRef } from "react";
 import Button from "@/refresh-components/buttons/Button";
@@ -12,13 +13,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
+import { type ConnectorFileInfo } from "@/lib/api/domains/datasources/types";
 import {
+  fetchConnectorFiles,
   updateConnectorFiles,
-  type ConnectorFileInfo,
-} from "@/lib/fileConnector";
+} from "@/lib/api/domains/datasources/api";
 import { toast } from "@/hooks/useToast";
 import useSWR from "swr";
-import { errorHandlingFetcher } from "@/lib/fetcher";
 import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import Modal from "@/refresh-components/Modal";
 import Text from "@/refresh-components/texts/Text";
@@ -58,8 +59,8 @@ export default function InlineFileManagement({
     error,
     mutate: refreshFiles,
   } = useSWR<{ files: ConnectorFileInfo[] }>(
-    `/api/manage/admin/connector/${connectorId}/files`,
-    errorHandlingFetcher,
+    datasourcesEndpoints.connectorFilesCacheKey(connectorId).browserPath,
+    () => fetchConnectorFiles<{ files: ConnectorFileInfo[] }>(connectorId),
     { refreshInterval: isEditing ? 0 : 5000 } // Disable auto-refresh while editing
   );
 

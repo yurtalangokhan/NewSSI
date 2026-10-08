@@ -272,6 +272,7 @@ export function HandleRow({
   value,
   onFieldChange,
   isPotentialTarget,
+  isConnectable,
   onHandleClick,
   componentType,
 }: {
@@ -285,6 +286,7 @@ export function HandleRow({
   value?: unknown;
   onFieldChange?: (key: string, value: unknown) => void;
   isPotentialTarget?: boolean;
+  isConnectable?: boolean;
   onHandleClick?: () => void;
   componentType?: string;
 }) {
@@ -328,6 +330,7 @@ export function HandleRow({
         handle={handle}
         direction={direction}
         isPotentialTarget={isPotentialTarget}
+        isConnectable={isConnectable}
         onHandleClick={onHandleClick}
       />
       <div
@@ -342,7 +345,11 @@ export function HandleRow({
         </span>
         {field?.info && (
           <SimpleTooltip tooltip={info || field.info}>
-            <span className="ml-1 cursor-help text-muted-foreground">
+            {/* `pointer-events-auto` overrides the read-only canvas's
+                blanket `pointer-events-none` on this row's ancestor (see
+                TemplateNode's handle-row wrapper) — that wrapper exists to
+                stop field *editing*, not to silence this tooltip. */}
+            <span className="ml-1 cursor-help pointer-events-auto text-muted-foreground">
               <SvgInfo className="h-3 w-3" />
             </span>
           </SimpleTooltip>
@@ -368,6 +375,7 @@ export function HandleRow({
               field={field}
               value={value !== undefined ? value : field.value}
               onChange={(v) => onFieldChange(fieldKey ?? handle.name, v)}
+              componentType={componentType}
             />
           </div>
         ) : (

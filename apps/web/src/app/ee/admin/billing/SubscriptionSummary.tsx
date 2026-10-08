@@ -1,7 +1,10 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { InfoItem } from "./InfoItem";
-import { statusToDisplay, BillingInformation } from "@/lib/billing";
+import {
+  statusToDisplay,
+  type BillingInformation,
+} from "@/lib/api/domains/billing/types";
 import { formatDateShort } from "@/lib/dateUtils";
 
 interface SubscriptionSummaryProps {

@@ -1,4 +1,3 @@
-import { authenticatedFetch } from "@/lib/fetcher";
 export interface StandardAnswerCategoryCreationRequest {
   name: string;
 }
@@ -19,34 +18,6 @@ const buildRequestBodyFromStandardAnswerCategoryCreationRequest = (
   });
 };
 
-export const createStandardAnswerCategory = async (
-  request: StandardAnswerCategoryCreationRequest
-) => {
-  return authenticatedFetch("/api/manage/admin/standard-answer/category", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: buildRequestBodyFromStandardAnswerCategoryCreationRequest(request),
-  });
-};
-
-export const updateStandardAnswerCategory = async (
-  id: number,
-  request: StandardAnswerCategoryCreationRequest
-) => {
-  return authenticatedFetch(
-    `/api/manage/admin/standard-answer/category/${id}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: buildRequestBodyFromStandardAnswerCategoryCreationRequest(request),
-    }
-  );
-};
-
 const buildRequestBodyFromStandardAnswerCreationRequest = (
   request: StandardAnswerCreationRequest
 ) => {
@@ -56,39 +27,5 @@ const buildRequestBodyFromStandardAnswerCreationRequest = (
     categories: request.categories,
     match_regex: request.matchRegex,
     match_any_keywords: request.matchAnyKeywords,
-  });
-};
-
-export const createStandardAnswer = async (
-  request: StandardAnswerCreationRequest
-) => {
-  return authenticatedFetch("/api/manage/admin/standard-answer", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: buildRequestBodyFromStandardAnswerCreationRequest(request),
-  });
-};
-
-export const updateStandardAnswer = async (
-  id: number,
-  request: StandardAnswerCreationRequest
-) => {
-  return authenticatedFetch(`/api/manage/admin/standard-answer/${id}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: buildRequestBodyFromStandardAnswerCreationRequest(request),
-  });
-};
-
-export const deleteStandardAnswer = async (id: number) => {
-  return authenticatedFetch(`/api/manage/admin/standard-answer/${id}`, {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-    },
   });
 };

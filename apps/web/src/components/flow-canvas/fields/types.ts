@@ -11,4 +11,8 @@ export type FieldRendererProps = {
   columns?: TableColumn[];
   /** Sibling field values on the same node (e.g. provider selection for model filtering). */
   allValues?: Record<string, unknown>;
+  /** The owning component's type, so renderers that display the field's own
+   * name (placeholder, aria-label, expanded modal title) resolve the
+   * component-scoped locale copy — same chain as NodeFieldList's label. */
+  componentType?: string;
 };

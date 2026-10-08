@@ -1,8 +1,8 @@
 import pytest
 
-from agents.graphs.flow_builder import FlowGraphBuilder
-from domain.flows.validator import validate
-from models.flows import FlowEdge, FlowNode, FlowSpec
+from agents.graphs.flow import FlowGraphBuilder
+from schemas.flows import FlowEdge, FlowNode, FlowSpec
+from service.flow_model.validator import validate
 
 
 @pytest.mark.asyncio

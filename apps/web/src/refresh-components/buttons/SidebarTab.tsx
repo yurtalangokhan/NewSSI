@@ -22,6 +22,8 @@ export interface SidebarTabProps {
   className?: string;
   leftIcon?: React.FunctionComponent<IconProps>;
   rightChildren?: React.ReactNode;
+  /** Rendered between the leading icon and the title, e.g. an activity spinner. */
+  leadingIndicator?: React.ReactNode;
   children?: React.ReactNode;
 }
 
@@ -37,6 +39,7 @@ export default function SidebarTab({
   className,
   leftIcon: LeftIcon,
   rightChildren,
+  leadingIndicator,
   children,
 }: SidebarTabProps) {
   const variant = lowlight ? "lowlight" : focused ? "focused" : "defaulted";
@@ -83,6 +86,7 @@ export default function SidebarTab({
             />
           </div>
         )}
+        {!folded && leadingIndicator}
         {!folded &&
           (typeof children === "string" ? (
             <Truncated

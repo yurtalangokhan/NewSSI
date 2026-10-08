@@ -1,0 +1,250 @@
+# =============================================================================
+# Docker Compose - Development Services
+# 
+# Application services only - connects to infrastructure services.
+# Backend services share configs/.env; the frontend keeps its own env file.
+# Run with: docker compose -f deploy/docker/docker-compose-dev.yml up -d
+# =============================================================================
+
+name: agentic-ai-platform
+
+services:
+
+  # ==========================================================================
+  # Agent Service - Core LangGraph orchestration
+  # ==========================================================================
+
+  agent-service:
+    container_name: agentic-ai-platform-agent-service
+    build:
+      context: ../..
+      dockerfile: apps/agent-service/docker/Dockerfile.service
+    image: agentic-ai-platform/agent-service:${APP_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    # GRACEFUL_SHUTDOWN_TIMEOUT + CHAT_RUN_SHUTDOWN_GRACE_SECONDS +
+    # CHAT_RUN_CANCEL_GRACE_SECONDS + 10: lets live chat runs finish or close
+    # as `interrupted` before SIGKILL (see docs/deployment.md).
+    stop_grace_period: 65s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
+    env_file:
+      - path: ../../configs/.env
+        required: true
+    environment:
+      REDIS_HOST: ${REDIS_CONTAINER_HOST:?Set the Redis host containers reach}
+      LANGCHAIN_PROJECT: agent-service
+      INTERNAL_TOOLS_SERVICE_URL: http://apisix:8000/internal/tools-service/mcp
+      INTERNAL_RAG_SERVICE_API_URL: http://apisix:8000/internal/rag-service
+      INTERNAL_USER_SERVICE_URL: http://apisix:8000/internal/user-service
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8123/api/v1/health', timeout=3).status == 200 else 1)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      infrastructure:
+        aliases:
+          - agent-service
+
+  # ==========================================================================
+  # RAG Service - Graph RAG API
+  # ==========================================================================
+
+  rag-service:
+    container_name: agentic-ai-platform-rag-service
+    build:
+      context: ../..
+      dockerfile: apps/rag-service/Dockerfile
+    image: agentic-ai-platform/rag-service:${APP_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - path: ../../configs/.env
+        required: true
+    environment:
+      REDIS_HOST: ${REDIS_CONTAINER_HOST:?Set the Redis host containers reach}
+      INTERNAL_USER_SERVICE_URL: http://apisix:8000/internal/user-service
+    # ALLOW_ORIGINS comes from the shared configs/.env
+    # here. It used to be force-overridden to '["*"]' inline, which the
+    # service's own validate_cors_policy() refuses at startup (that origin
+    # can't be combined with the allow_credentials=True this service always
+    # sends) -- so this exact override made rag-service fail to boot.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8083/api/v1/health', timeout=3).status == 200 else 1)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      infrastructure:
+        aliases:
+          - rag-service
+
+  # ==========================================================================
+  # Tools Service - MCP Tools Server
+  # ==========================================================================
+
+  tools-service:
+    container_name: agentic-ai-platform-tools-service
+    build:
+      context: ../..
+      dockerfile: apps/tools-service/Dockerfile
+    image: agentic-ai-platform/tools-service:${APP_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file:
+      - path: ../../configs/.env
+        required: true
+    environment:
+      REDIS_HOST: ${REDIS_CONTAINER_HOST:?Set the Redis host containers reach}
+      MCP_HOST: "0.0.0.0"
+      MCP_PORT: "8003"
+      INTERNAL_AGENT_SERVICE_URL: http://apisix:8000/internal/agent-service/api/v1
+      INTERNAL_USER_SERVICE_URL: http://apisix:8000/internal/user-service
+      INTERNAL_RAG_SERVICE_API_URL: http://apisix:8000/internal/rag-service
+    volumes:
+      - ./workspace:/workspace
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8003/health', timeout=3).status == 200 else 1)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      infrastructure:
+        aliases:
+          - tools-service
+
+  # ==========================================================================
+  # User Service - Auth & User Management
+  # ==========================================================================
+
+  user-service:
+    container_name: agentic-ai-platform-user-service
+    build:
+      context: ../..
+      dockerfile: apps/user-service/Dockerfile
+    image: agentic-ai-platform/user-service:${APP_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
+    env_file:
+      - path: ../../configs/.env
+        required: true
+    environment:
+      PERMISSION_MANIFEST_ROOT: /app
+      KEYCLOAK_ISSUER_URL: ${KEYCLOAK_ISSUER_URL}
+      GATEWAY_URL: http://apisix:8000
+      # Same Redis as keycloak-bootstrap, which serializes policy writes on it.
+      REDIS_HOST: ${REDIS_CONTAINER_HOST:?Set the Redis host containers reach}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_DB: ${REDIS_DB:-0}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    volumes:
+      - ../../apps/agent-service/src/schemas/permissions.py:/app/apps/agent-service/src/schemas/permissions.py:ro
+      - ../../apps/rag-service/src/shared/permissions.py:/app/apps/rag-service/src/shared/permissions.py:ro
+      - ../../apps/tools-service/src/models:/app/apps/tools-service/src/models:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8090/api/v1/health/', timeout=3).status == 200 else 1)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      infrastructure:
+        aliases:
+          - user-service
+
+  # ==========================================================================
+  # Web - Frontend (Atlas)
+  # ==========================================================================
+
+  web:
+    container_name: agentic-ai-platform-web
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      # Same build inputs as docker-compose-dev.yml: the gateway addresses the
+      # runtime `environment` block sets, and configs/.env as the `web_env`
+      # build secret for everything else `next build` validates and inlines.
+      args:
+        GATEWAY_URL: http://apisix:8000
+        AGENT_SERVICE_URL: http://apisix:8000/agent-service
+        RAG_SERVICE_URL: http://apisix:8000/rag-service
+        USER_SERVICE_URL: http://apisix:8000/user-service
+        TOOLS_SERVICE_URL: http://apisix:8000/tools-service/mcp
+        MCP_INTERNAL_URL: http://apisix:8000/internal/tools-service/mcp
+        WEB_DOMAIN: ${WEB_DOMAIN:?Set WEB_DOMAIN for the web image build}
+      secrets:
+        - web_env
+    image: agentic-ai-platform/web:${APP_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "8126:3000"
+    env_file:
+      - path: ../../configs/.env
+        required: true
+    environment:
+      GATEWAY_URL: http://apisix:8000
+      AGENT_SERVICE_URL: http://apisix:8000/agent-service
+      USER_SERVICE_URL: http://apisix:8000/user-service
+      RAG_SERVICE_URL: http://apisix:8000/rag-service
+      MCP_INTERNAL_URL: http://apisix:8000/internal/tools-service/mcp
+      TOOLS_SERVICE_URL: http://apisix:8000/tools-service/mcp
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      infrastructure:
+        aliases:
+          - web
+    # service_healthy, not service_started: the web app calls these on first
+    # render, so "container is up but not yet serving" produces boot-time errors.
+    depends_on:
+      agent-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      rag-service:
+        condition: service_healthy
+      tools-service:
+        condition: service_healthy
+
+
+networks:
+  infrastructure:
+    external: true
+    name: ${INFRA_DOCKER_NETWORK:-agentic-ai-infrastructure_default}
+
+secrets:
+  # The web image build reads configs/.env through this BuildKit secret (see
+  # apps/web/Dockerfile): `next build` validates the whole web configuration
+  # and inlines NEXT_PUBLIC_* into the browser bundle. Mounted for that step
+  # only; nothing of it lands in a layer.
+  web_env:
+    file: ../../configs/.env

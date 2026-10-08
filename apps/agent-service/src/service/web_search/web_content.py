@@ -5,7 +5,7 @@ from urllib.parse import unquote, urlparse
 
 from bs4.dammit import UnicodeDammit
 
-from service.web_search.pdf_utils import read_pdf_file
+from core.utils.pdf_utils import read_pdf_file
 
 PDF_MIME_TYPES = (
     "application/pdf",

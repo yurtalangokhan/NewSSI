@@ -9,9 +9,7 @@ from contextvars import ContextVar
 
 from .trusted import TrustedToolContext
 
-_current_trusted_context: ContextVar[TrustedToolContext | None] = ContextVar(
-    "trusted_context", default=None
-)
+_current_trusted_context: ContextVar[TrustedToolContext | None] = ContextVar("trusted_context", default=None)
 
 
 def set_current_trusted_context(ctx: TrustedToolContext | None) -> None:

@@ -1,32 +1,32 @@
 """Direct unit tests for the extracted reconstruction module.
 
 Mirrors the scenarios already covered end-to-end through
-ChatController.get_chat_session (tests/controller/test_chat_controller_history.py)
+ChatManagementService.get_chat_session (tests/service/test_chat_management_history.py)
 but calls reconstruct_messages directly — this is the function
 CheckpointBranchService also depends on for locating fork points.
 """
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from service.ChatHistoryReconstruction import reconstruct_message_tree, reconstruct_messages
+from service.chat.chat_history_reconstruction import reconstruct_message_tree, reconstruct_messages
 
 
 def test_reconstruct_messages_translates_web_search_into_search_tool_packets():
     web_search_result = (
-        "TITLE: Onyx: Open Source AI Platform\n"
-        "URL: https://onyx.app\n"
-        "SNIPPET: Onyx is the open source generative AI platform."
+        "TITLE: Atlas: Open Source AI Platform\n"
+        "URL: https://atlas.app\n"
+        "SNIPPET: Atlas is the open source generative AI platform."
     )
 
-    messages, packets_2d = reconstruct_messages(
+    _messages, packets_2d = reconstruct_messages(
         [
-            HumanMessage(content="Onyx nedir"),
+            HumanMessage(content="Atlas nedir"),
             AIMessage(
                 content="",
-                tool_calls=[{"name": "web_search", "args": {"query": "Onyx"}, "id": "call-1"}],
+                tool_calls=[{"name": "web_search", "args": {"query": "Atlas"}, "id": "call-1"}],
             ),
             ToolMessage(content=web_search_result, tool_call_id="call-1", name="web_search"),
-            AIMessage(content="Onyx açık kaynaklı bir platform."),
+            AIMessage(content="Atlas açık kaynaklı bir platform."),
         ],
         thread_metadata={"user_id": "user-1", "persona_id": 1},
         chat_session_id="thread-web-search",
@@ -43,16 +43,16 @@ def test_reconstruct_messages_translates_web_search_into_search_tool_packets():
     docs_packet = next(
         p["obj"] for p in packets_2d[0] if p["obj"]["type"] == "search_tool_documents_delta"
     )
-    assert docs_packet["documents"][0]["document_id"] == "https://onyx.app"
+    assert docs_packet["documents"][0]["document_id"] == "https://atlas.app"
 
 
 def test_reconstruct_messages_handles_web_search_error_cleanly_without_custom_tool_delta():
-    messages, packets_2d = reconstruct_messages(
+    _messages, packets_2d = reconstruct_messages(
         [
-            HumanMessage(content="Onyx nedir"),
+            HumanMessage(content="Atlas nedir"),
             AIMessage(
                 content="",
-                tool_calls=[{"name": "web_search", "args": {"query": "Onyx"}, "id": "call-1"}],
+                tool_calls=[{"name": "web_search", "args": {"query": "Atlas"}, "id": "call-1"}],
             ),
             ToolMessage(
                 content="Web search error: timeout", tool_call_id="call-1", name="web_search"
@@ -71,7 +71,7 @@ def test_reconstruct_messages_handles_web_search_error_cleanly_without_custom_to
 
 
 def test_reconstruct_messages_handles_fetch_webpage_404_error_cleanly():
-    messages, packets_2d = reconstruct_messages(
+    _messages, packets_2d = reconstruct_messages(
         [
             HumanMessage(content="Valkey oku"),
             AIMessage(
@@ -494,7 +494,7 @@ def test_reconstruct_messages_groups_web_search_and_fetch_webpage_turns_consiste
         AIMessage(content="İşte Valkey ve Redis 8 karşılaştırma raporu: ..."),
     ]
 
-    messages, packets_2d = reconstruct_messages(
+    _messages, packets_2d = reconstruct_messages(
         raw_msgs,
         thread_metadata={"user_id": "user-1", "persona_id": 1},
         chat_session_id="thread-search-fetch-stream-parity",
@@ -543,7 +543,7 @@ def _flow_forked_checkpoints():
     """A flow turn writes several checkpoints per super-step and adds more
     than one message at a time. The retry forks from the [human]-only
     checkpoint. No subgraph-namespace checkpoints appear here — the
-    ThreadController history filter already excluded them."""
+    ThreadAccessService history filter already excluded them."""
     h1 = HumanMessage(content="rapor hazırla", id="h1")
     a_step1 = AIMessage(
         content="", id="a1", tool_calls=[{"name": "web_search", "args": {}, "id": "c1"}]
@@ -645,7 +645,7 @@ def test_flow_stage_timeline_is_replayed_as_graph_stage_packets_on_the_matching_
 def test_flow_stage_timeline_replay_works_in_the_flat_reconstruct_messages_path():
     h1 = HumanMessage(content="soru", id="h1")
     a_final = AIMessage(content="cevap", id="a-final")
-    messages, packets_2d = reconstruct_messages(
+    _messages, packets_2d = reconstruct_messages(
         [h1, a_final],
         thread_metadata={
             "persona_id": 0,
@@ -857,3 +857,199 @@ def test_flow_run_then_classic_turn_in_same_thread():
     ai = [m["message"] for m in messages if m["message_type"] == "assistant"]
     assert ai[0].endswith("## Final comparison table\n| Model | Ctx |")
     assert ai[1] == "you're welcome"
+
+
+def _knowledge_turn(tool_message):
+    return [
+        HumanMessage(content="Yıllık izin devri kimin onayına tabi?"),
+        AIMessage(
+            content="",
+            tool_calls=[{"name": "database_search", "args": {"query": "izin devri"}, "id": "call-k"}],
+        ),
+        tool_message,
+        AIMessage(content="Birim yöneticisinin onayı gerekir [1]."),
+    ]
+
+
+def _knowledge_delta(packets_2d):
+    return next(
+        p["obj"]
+        for turn in packets_2d
+        for p in turn
+        if p["obj"]["type"] == "custom_tool_delta" and p["obj"].get("tool_name") == "database_search"
+    )
+
+
+def test_reconstruct_messages_references_knowledge_evidence_from_the_artifact():
+    evidence_id = "4f0c3f0e-0a55-4b39-9d2f-54c0a7b1c9e2"
+    _messages, packets_2d = reconstruct_messages(
+        _knowledge_turn(
+            ToolMessage(
+                content="[1] (a.pdf)\nchunk",
+                tool_call_id="call-k",
+                name="database_search",
+                artifact={"knowledge_evidence_id": evidence_id},
+            )
+        ),
+        thread_metadata={"user_id": "user-1"},
+        chat_session_id="thread-knowledge",
+    )
+
+    delta = _knowledge_delta(packets_2d)
+    assert delta["response_type"] == "knowledge_retrieval"
+    assert delta["evidence_id"] == evidence_id
+    assert delta["data"] is None
+    assert delta["call_id"] == "call-k"
+
+
+def test_reconstructed_knowledge_call_start_and_result_share_the_call_id():
+    """The web pairs a result to its start by call_id. A start without one
+    next to an evidence result carrying one renders as two calls after a
+    reload — an extra, forever-"searching" step beside the real result."""
+    _messages, packets_2d = reconstruct_messages(
+        _knowledge_turn(
+            ToolMessage(
+                content="[1] (a.pdf)\nchunk",
+                tool_call_id="call-k",
+                name="database_search",
+                artifact={"knowledge_evidence_id": "4f0c3f0e-0a55-4b39-9d2f-54c0a7b1c9e2"},
+            )
+        ),
+        thread_metadata={"user_id": "user-1"},
+        chat_session_id="thread-knowledge",
+    )
+
+    start = next(
+        p["obj"]
+        for turn in packets_2d
+        for p in turn
+        if p["obj"]["type"] == "custom_tool_start" and p["obj"].get("tool_name") == "database_search"
+    )
+    assert start["call_id"] == _knowledge_delta(packets_2d)["call_id"] == "call-k"
+
+
+def test_reconstructed_plain_tool_result_carries_its_call_id():
+    _messages, packets_2d = reconstruct_messages(
+        _knowledge_turn(ToolMessage(content="no evidence", tool_call_id="call-k", name="database_search")),
+        thread_metadata={"user_id": "user-1"},
+        chat_session_id="thread-knowledge",
+    )
+
+    assert _knowledge_delta(packets_2d)["call_id"] == "call-k"
+
+
+def test_reconstruct_messages_reads_the_artifact_of_a_serialized_tool_message():
+    evidence_id = "4f0c3f0e-0a55-4b39-9d2f-54c0a7b1c9e2"
+    _messages, packets_2d = reconstruct_messages(
+        _knowledge_turn(
+            {
+                "type": "tool",
+                "name": "database_search",
+                "tool_call_id": "call-k",
+                "content": "[1] (a.pdf)\nchunk",
+                "artifact": {"knowledge_evidence_id": evidence_id},
+            }
+        ),
+        thread_metadata={"user_id": "user-1"},
+        chat_session_id="thread-knowledge",
+    )
+
+    assert _knowledge_delta(packets_2d)["evidence_id"] == evidence_id
+
+
+def test_reconstruct_messages_keeps_plain_results_for_tools_without_evidence():
+    _messages, packets_2d = reconstruct_messages(
+        _knowledge_turn(ToolMessage(content="no evidence", tool_call_id="call-k", name="database_search")),
+        thread_metadata={"user_id": "user-1"},
+        chat_session_id="thread-knowledge",
+    )
+
+    delta = _knowledge_delta(packets_2d)
+    assert delta["response_type"] == "tool_result"
+    assert delta["data"] == "no evidence"
+
+
+def test_reconstruct_messages_matches_live_stream_for_document_revision_tools():
+    """A draft edit reloads as the same generated_file card the live stream
+    showed — same document_id and revision_no — and the quiet workspace
+    tools (read_document / list_documents) leave no generic timeline rows,
+    exactly as the live stream hides them."""
+    revision_payload = (
+        '{"__generated_file__": true, "file_id": "file-2", "filename": "rapor.md", '
+        '"mime_type": "text/markdown", "size_bytes": 321, "download_url": "/download/file-2", '
+        '"document_id": "doc-1", "revision_no": 2, "revision_count": 2, "operation": "edit", '
+        '"summary": "Tightened the intro", '
+        '"stats": {"added": 3, "removed": 1, "changes": [{"kind": "replace", "label": "Intro", "change": "edit"}]}, '
+        '"diagram_check": "passed"}'
+    )
+
+    _messages, packets_2d = reconstruct_messages(
+        [
+            HumanMessage(content="girişi kısalt"),
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {"name": "list_documents", "args": {}, "id": "call-list"},
+                    {"name": "read_document", "args": {"document_id": "doc-1"}, "id": "call-read"},
+                ],
+            ),
+            ToolMessage(content='[{"document_id": "doc-1"}]', tool_call_id="call-list", name="list_documents"),
+            ToolMessage(content="# Rapor\n\nUzun giriş.", tool_call_id="call-read", name="read_document"),
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "edit_document",
+                        "args": {"document_id": "doc-1", "base_revision_no": 1, "edits": []},
+                        "id": "call-edit",
+                    }
+                ],
+            ),
+            ToolMessage(content=revision_payload, tool_call_id="call-edit", name="edit_document"),
+            AIMessage(content="Girişi kısalttım."),
+        ],
+        thread_metadata={"persona_id": 0},
+        chat_session_id="thread-doc-revision",
+    )
+
+    turn_packets = [p["obj"] for turn in packets_2d for p in turn]
+    generated = [p for p in turn_packets if p["type"] == "generated_file"]
+    assert len(generated) == 1
+    assert generated[0]["document_id"] == "doc-1"
+    assert generated[0]["revision_no"] == 2
+    assert generated[0]["revision_count"] == 2
+    assert generated[0]["operation"] == "edit"
+    assert generated[0]["stats"]["added"] == 3
+    timeline_tools = [
+        p.get("tool_name") for p in turn_packets if p["type"] in ("custom_tool_start", "custom_tool_delta")
+    ]
+    assert "read_document" not in timeline_tools
+    assert "list_documents" not in timeline_tools
+    assert "edit_document" not in timeline_tools
+
+
+def test_reconstruct_messages_hides_failed_document_tool_results_like_the_live_stream():
+    """A failed generation (plain error text, no generated_file payload) shows
+    no generic tool row on reload — the live stream only closes its skeleton."""
+    _messages, packets_2d = reconstruct_messages(
+        [
+            HumanMessage(content="rapor oluştur ve düzenle"),
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {"name": "create_document", "args": {"filename": "r.pdf"}, "id": "call-create"},
+                    {"name": "edit_document", "args": {"document_id": "doc-1"}, "id": "call-edit"},
+                ],
+            ),
+            ToolMessage(content="Error: render failed", tool_call_id="call-create", name="create_document"),
+            ToolMessage(content="Error: stale base revision", tool_call_id="call-edit", name="edit_document"),
+            AIMessage(content="Belge oluşturulamadı."),
+        ],
+        thread_metadata={"persona_id": 0},
+        chat_session_id="thread-doc-failure",
+    )
+
+    packet_types = [p["obj"]["type"] for turn in packets_2d for p in turn]
+    assert "custom_tool_delta" not in packet_types
+    assert "custom_tool_start" not in packet_types
+    assert "generated_file" not in packet_types

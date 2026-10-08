@@ -19,7 +19,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
 
-from agents import chatbot as chatbot_module
+import agents.implementations.chatbot as chatbot_module
 
 _ASK_CALL = {
     "name": "ask_user",
@@ -44,7 +44,7 @@ _DOC_CALL = {
 
 @pytest.fixture(autouse=True)
 def _clear_file_store():
-    from service.FileService import _STORE
+    from service.storage.file_service import _STORE
 
     _STORE.clear()
     yield
@@ -53,14 +53,14 @@ def _clear_file_store():
 
 @pytest.fixture(autouse=True)
 def _stub_persistence(monkeypatch):
-    monkeypatch.setattr("service.MinioService.upload_file", lambda **kwargs: "object-key")
+    monkeypatch.setattr("service.storage.minio_service.upload_file", lambda **kwargs: "object-key")
 
     class _NoopRepo:
         async def create(self, **kwargs):
             return {}
 
     monkeypatch.setattr(
-        "core.db.repositories.document_repo.DocumentRepository", lambda: _NoopRepo()
+        "infrastructure.db.repositories.document_repo.DocumentRepository", lambda: _NoopRepo()
     )
 
 
@@ -340,7 +340,7 @@ async def test_a_late_ask_user_is_honoured_without_redoing_the_work(monkeypatch)
 async def test_run_tool_call_never_swallows_a_bubble_up(monkeypatch):
     from langgraph.errors import GraphInterrupt
 
-    from agents.chatbot import _run_tool_call
+    from agents.implementations.chatbot import _run_tool_call
 
     class _Boom:
         name = "ask_user"

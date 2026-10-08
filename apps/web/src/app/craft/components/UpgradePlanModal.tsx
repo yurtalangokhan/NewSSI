@@ -3,7 +3,7 @@
 import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
 import { SvgAlertTriangle } from "@opal/icons";
-import { UsageLimits } from "@/app/craft/types/streamingTypes";
+import { UsageLimits } from "@/lib/api/domains/craft/streaming-types";
 
 interface UpgradePlanModalProps {
   open: boolean;

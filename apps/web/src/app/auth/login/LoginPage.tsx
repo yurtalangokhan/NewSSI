@@ -1,10 +1,10 @@
 "use client";
 
-import { AuthTypeMetadata } from "@/lib/userSS";
+import type { AuthTypeMetadata } from "@/lib/api/domains/session/types";
 import LoginText from "@/app/auth/login/LoginText";
 import SignInButton from "@/app/auth/login/SignInButton";
 import EmailPasswordForm from "./EmailPasswordForm";
-import { AuthType, NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED } from "@/lib/constants";
+import { AuthType } from "@/lib/constants";
 import { useSendAuthRequiredMessage } from "@/lib/extension/utils";
 import Text from "@/refresh-components/texts/Text";
 import Button from "@/refresh-components/buttons/Button";
@@ -13,8 +13,9 @@ import Link from "next/link";
 import type { Route } from "next";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
-import { clearAuthRefreshFailed } from "@/lib/fetcher";
+import { clearAuthRefreshFailed } from "@/lib/api/http/browser";
 import { formatErrorMessage } from "@/components/ErrorCallout";
+import { appSettings } from "@/lib/settings";
 
 interface LoginPageProps {
   authUrl: string | null;
@@ -108,7 +109,7 @@ export default function LoginPage({
             </>
           )}
           <EmailPasswordForm shouldVerify={true} nextUrl={effectiveNextUrl} />
-          {NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED && (
+          {appSettings.NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED && (
             <Button href="/auth/forgot-password" className="w-full">
               {t("auth.resetPasswordLink")}
             </Button>
@@ -190,10 +191,14 @@ export default function LoginPage({
           <div className="flex flex-col w-full gap-4">
             <LoginText />
 
-            {authUrl && (
-              <>
+            {spAuthUrl ? (
+              <Button href={spAuthUrl} secondary className="w-full">
+                {t("auth.spSsoLink", { defaultValue: "SP Keycloak SSO" })}
+              </Button>
+            ) : (
+              authUrl && (
                 <SignInButton authorizeUrl={authUrl} authType={AuthType.OIDC} />
-              </>
+              )
             )}
 
             <EmailPasswordForm nextUrl={effectiveNextUrl} />

@@ -18,8 +18,22 @@ jest.mock("@/components/organization/OrganizationAccessPanel", () => ({
 }));
 
 jest.mock("@/components/organization/OrganizationUserAssignmentsPanel", () => ({
-  OrganizationUserAssignmentsPanel: ({ editable }: { editable: boolean }) => (
-    <div>Users panel {editable ? "editable" : "read only"}</div>
+  OrganizationUserAssignmentsPanel: ({
+    editable,
+    organizationId,
+    globalAccess,
+  }: {
+    editable: boolean;
+    organizationId: string;
+    globalAccess: boolean;
+  }) => (
+    <div
+      data-testid="membership-panel"
+      data-organization-id={organizationId}
+      data-global-access={String(globalAccess)}
+    >
+      Users panel {editable ? "editable" : "read only"}
+    </div>
   ),
 }));
 
@@ -46,7 +60,10 @@ const operations = {
   children: [],
 };
 
-const handlers = {
+const baseProps = {
+  // Fail-closed default: a viewer without global scope may only assign the
+  // enduser role, so tests must opt into global access explicitly.
+  globalAccess: false,
   onBeginCreateChild: jest.fn(),
   onBeginDelete: jest.fn(),
   onCreateOrg: jest.fn().mockResolvedValue(undefined),
@@ -70,6 +87,31 @@ describe("OrganizationDesignerInspector", () => {
     jest.clearAllMocks();
   });
 
+  it.each([true, false])(
+    "passes membership scope and selected unit for globalAccess=%s",
+    (globalAccess) => {
+      render(
+        <OrganizationDesignerInspector
+          organization={root.children[0]!}
+          organizations={[root]}
+          members={[]}
+          editable
+          capabilityLoading={false}
+          {...baseProps}
+          globalAccess={globalAccess}
+        />
+      );
+      expect(screen.getByTestId("membership-panel")).toHaveAttribute(
+        "data-global-access",
+        String(globalAccess)
+      );
+      expect(screen.getByTestId("membership-panel")).toHaveAttribute(
+        "data-organization-id",
+        "platform"
+      );
+    }
+  );
+
   it("aligns the inspector with the organization tabs", () => {
     render(
       <OrganizationDesignerInspector
@@ -78,7 +120,7 @@ describe("OrganizationDesignerInspector", () => {
         members={[]}
         editable
         capabilityLoading={false}
-        {...handlers}
+        {...baseProps}
       />
     );
 
@@ -101,7 +143,7 @@ describe("OrganizationDesignerInspector", () => {
         members={[]}
         editable
         capabilityLoading
-        {...handlers}
+        {...baseProps}
       />
     );
 
@@ -146,7 +188,7 @@ describe("OrganizationDesignerInspector", () => {
         mobileOpen
         onBackToMap={onBackToMap}
         onAccessSaveComplete={onAccessSaveComplete}
-        {...handlers}
+        {...baseProps}
       />
     );
 
@@ -163,7 +205,7 @@ describe("OrganizationDesignerInspector", () => {
         mobileOpen
         onBackToMap={onBackToMap}
         onAccessSaveComplete={onAccessSaveComplete}
-        {...handlers}
+        {...baseProps}
       />
     );
     await user.click(screen.getByRole("tab", { name: "Agents" }));

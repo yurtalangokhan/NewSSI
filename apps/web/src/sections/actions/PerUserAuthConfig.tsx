@@ -10,7 +10,7 @@ import Text from "@/refresh-components/texts/Text";
 import Separator from "@/refresh-components/Separator";
 import type { MCPAuthFormValues } from "@/sections/actions/modals/MCPAuthenticationModal";
 import { SvgUser } from "@opal/icons";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 
 interface PerUserAuthConfigProps {
   values: MCPAuthFormValues;
@@ -119,17 +119,13 @@ export function PerUserAuthConfig({
           />
         </FormField.Control>
         <FormField.Description>
-          Format headers for each user to fill in their individual credentials.
-          Use placeholders like{" "}
-          <Text text03 secondaryMono className="inline">
-            {"{api_key}"}
-          </Text>{" "}
-          or{" "}
-          <Text text03 secondaryMono className="inline">
-            {"{user_email}"}
-          </Text>
-          . Users will be prompted to provide values for placeholders (except
-          user_email).
+          <Trans
+            i18nKey="perUserAuth.headersDescription"
+            values={{ apiKey: "{api_key}", userEmail: "{user_email}" }}
+            components={{
+              code: <Text text03 secondaryMono className="inline" />,
+            }}
+          />
         </FormField.Description>
       </FormField>
 
@@ -147,7 +143,6 @@ export function PerUserAuthConfig({
                 </Text>
                 <Text text03 secondaryBody as="p">
                   {t("perUserAuth.credentialsNotShared")}
-                  organization.
                 </Text>
               </div>
             </div>
@@ -180,7 +175,9 @@ export function PerUserAuthConfig({
                         onChange={(e) =>
                           updateUserCredential(field, e.target.value)
                         }
-                        placeholder={`Enter ${field.replace(/_/g, " ")}`}
+                        placeholder={t("perUserAuth.enterField", {
+                          field: field.replace(/_/g, " "),
+                        })}
                         showClearButton={false}
                       />
                     </FormField.Control>

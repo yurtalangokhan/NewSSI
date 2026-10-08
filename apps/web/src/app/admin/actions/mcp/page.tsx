@@ -2,22 +2,28 @@
 
 import MCPPageContent from "@/sections/actions/MCPPageContent";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { useTranslation } from "react-i18next";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
-import useMcpServers from "@/hooks/useMcpServers";
-import { MCPServerStatus } from "@/lib/tools/interfaces";
+import { useMcpServers } from "@/lib/api/domains/tools/hooks";
+import { MCPServer, MCPServerStatus } from "@/lib/tools/interfaces";
+import { isRegisteredMcpProvider } from "@/lib/tools/mcpUtils";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.MCP_ACTIONS]!;
 
 export default function Main() {
   const { t } = useTranslation();
   const { mcpData, isLoading } = useMcpServers();
-  const mcpServers = mcpData?.mcp_servers ?? [];
-  const connectedServers = mcpServers.filter(
+  const mcpServers = (mcpData?.mcp_servers ?? []) as MCPServer[];
+  // A provider only registered on the config page is not an added server, so it
+  // is neither listed nor counted here (it lives in the "Add MCP server" picker).
+  const visibleServers = mcpServers.filter(
+    (server) => !isRegisteredMcpProvider(server)
+  );
+  const connectedServers = visibleServers.filter(
     (server) => server.status === MCPServerStatus.CONNECTED
   ).length;
-  const toolCount = mcpServers.reduce(
+  const toolCount = visibleServers.reduce(
     (total, server) => total + (server.tool_count ?? 0),
     0
   );
@@ -44,7 +50,7 @@ export default function Main() {
           metrics={[
             {
               label: t("admin.actions.serversLabel"),
-              value: isLoading ? "..." : String(mcpServers.length),
+              value: isLoading ? "..." : String(visibleServers.length),
             },
             {
               label: t("admin.actions.connectedServersLabel"),

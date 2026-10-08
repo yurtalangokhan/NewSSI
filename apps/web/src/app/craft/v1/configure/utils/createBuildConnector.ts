@@ -1,7 +1,7 @@
 import { ValidSources } from "@/lib/types";
 import { Credential } from "@/lib/connectors/credentials";
-import { createConnector } from "@/lib/connector";
-import { linkCredential } from "@/lib/credential";
+import { createConnector } from "@/lib/api/domains/datasources/api";
+import { linkCredential } from "@/lib/api/domains/datasources/api";
 import { connectorConfigs, isLoadState } from "@/lib/connectors/connectors";
 
 export interface CreateBuildConnectorParams {

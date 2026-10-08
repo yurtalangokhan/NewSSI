@@ -1,6 +1,6 @@
 "use client";
 
-import { MinimalOnyxDocument, OnyxDocument } from "@/lib/search/interfaces";
+import { MinimalAtlasDocument, AtlasDocument } from "@/lib/search/interfaces";
 import ChatDocumentDisplay from "@/sections/document-sidebar/ChatDocumentDisplay";
 import { Dispatch, SetStateAction, useMemo, memo } from "react";
 import { getCitations } from "@/app/app/services/packetUtils";
@@ -17,12 +17,12 @@ import DomainGroupedSources from "./DomainGroupedSources";
 
 import { useTranslation } from "react-i18next";
 
-// Build an OnyxDocument from basic file info
-const buildOnyxDocumentFromFile = (
+// Build an AtlasDocument from basic file info
+const buildAtlasDocumentFromFile = (
   id: string,
   name?: string | null,
   appendProjectPrefix?: boolean
-): OnyxDocument => {
+): AtlasDocument => {
   const document_id = appendProjectPrefix ? `project_file__${id}` : id;
   return {
     document_id,
@@ -101,9 +101,9 @@ function ChatDocumentDisplayWrapper({
 
 interface DocumentsSidebarProps {
   closeSidebar: () => void;
-  selectedDocuments: OnyxDocument[] | null;
+  selectedDocuments: AtlasDocument[] | null;
   modal: boolean;
-  setPresentingDocument: Dispatch<SetStateAction<MinimalOnyxDocument | null>>;
+  setPresentingDocument: Dispatch<SetStateAction<MinimalAtlasDocument | null>>;
 }
 
 const DocumentsSidebar = memo(
@@ -209,7 +209,7 @@ const DocumentsSidebar = memo(
 
     return (
       <div
-        id="onyx-chat-sidebar"
+        id="atlas-chat-sidebar"
         className="bg-background-tint-01 overflow-y-scroll h-full w-full border-l"
       >
         <Header onClose={closeSidebar}>
@@ -302,7 +302,7 @@ const DocumentsSidebar = memo(
                     key={file.id}
                     setPresentingDocument={setPresentingDocument}
                     modal={modal}
-                    document={buildOnyxDocumentFromFile(
+                    document={buildAtlasDocumentFromFile(
                       file.id,
                       file.name,
                       false

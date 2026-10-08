@@ -1,7 +1,8 @@
-import uuid
 from typing import Any
+import uuid
 
-from i18n import t
+from error_contract import UnauthorizedError
+from localization import t
 
 from src.service import get_user_settings_service
 
@@ -12,29 +13,31 @@ class SettingsController(BaseController):
     def __init__(self):
         self.service = get_user_settings_service()
 
-    async def get_settings(self, user_id: uuid.UUID) -> dict[str, Any]:
-        return await self.service.get_settings(user_id)
+    @staticmethod
+    def _user_id(user_id: uuid.UUID | str) -> uuid.UUID:
+        if isinstance(user_id, uuid.UUID):
+            return user_id
+        try:
+            return uuid.UUID(user_id)
+        except (ValueError, TypeError, AttributeError) as exc:
+            raise UnauthorizedError() from exc
 
-    async def update_settings(self, user_id: uuid.UUID, **updates: Any) -> dict[str, Any]:
-        return await self.service.update_settings(user_id, **updates)
+    async def get_settings(self, user_id: uuid.UUID | str) -> dict[str, Any]:
+        return await self.service.get_settings(self._user_id(user_id))
 
-    async def create_prompt_shortcut(
-        self, user_id: uuid.UUID, shortcut: dict[str, Any]
-    ) -> dict[str, Any]:
-        return await self.service.create_prompt_shortcut(user_id, shortcut)
+    async def update_settings(self, user_id: uuid.UUID | str, **updates: Any) -> dict[str, Any]:
+        return await self.service.update_settings(self._user_id(user_id), **updates)
+
+    async def create_prompt_shortcut(self, user_id: uuid.UUID | str, shortcut: dict[str, Any]) -> dict[str, Any]:
+        return await self.service.create_prompt_shortcut(self._user_id(user_id), shortcut)
 
     async def update_prompt_shortcut(
-        self, user_id: uuid.UUID, shortcut_id: int, **updates: Any
+        self, user_id: uuid.UUID | str, shortcut_id: int, **updates: Any
     ) -> dict[str, Any]:
-        result = await self.service.update_prompt_shortcut(user_id, shortcut_id, **updates)
-        if not result:
-            self._raise_not_found("settings.shortcut_not_found")
-        return result
+        return await self.service.update_prompt_shortcut(self._user_id(user_id), shortcut_id, **updates)
 
-    async def delete_prompt_shortcut(self, user_id: uuid.UUID, shortcut_id: int) -> dict[str, str]:
-        success = await self.service.delete_prompt_shortcut(user_id, shortcut_id)
-        if not success:
-            self._raise_not_found("settings.shortcut_not_found")
+    async def delete_prompt_shortcut(self, user_id: uuid.UUID | str, shortcut_id: int) -> dict[str, str]:
+        await self.service.delete_prompt_shortcut(self._user_id(user_id), shortcut_id)
         return {"message": t("settings.shortcut_deleted")}
 
 

@@ -1,4 +1,7 @@
 "use client";
+import { modelProvidersEndpoints } from "@/lib/api/domains/model-providers/endpoints";
+
+import { pullOllamaModel } from "@/lib/api/domains/model-providers/api";
 
 import { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -9,7 +12,6 @@ import { Button } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
 import { useTranslation } from "react-i18next";
 import { cn, formatBytes } from "@/lib/utils";
-import { authenticatedFetch } from "@/lib/fetcher";
 
 interface Props {
   open: boolean;
@@ -186,13 +188,9 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
     setProgress({ status: t("admin.llm.starting") });
 
     try {
-      const res = await authenticatedFetch("/api/admin/ollama/pull", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: modelName.trim(),
-          provider_id: providerId,
-        }),
+      const res = await pullOllamaModel({
+        model: modelName.trim(),
+        provider_id: providerId,
       });
 
       if (!res.ok || !res.body) {
@@ -236,9 +234,11 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
 
       setDone(true);
       toast({ message: t("admin.llm.modelDownloaded", { model: modelName }) });
-      await mutate(`/api/admin/providers/${providerId}/models`);
-      await mutate("/api/admin/ollama/models");
-      await mutate("/api/admin/ollama/status");
+      await mutate(
+        modelProvidersEndpoints.getProviderModels(providerId).browserPath
+      );
+      await mutate(modelProvidersEndpoints.listOllamaModels.browserPath);
+      await mutate(modelProvidersEndpoints.getOllamaStatus.browserPath);
     } catch (e: unknown) {
       setProgress(null);
       resetAggregate();

@@ -9,9 +9,10 @@ import { ApplicationStatus } from "@/interfaces/settings";
 const replaceMock = jest.fn();
 const prefetchMock = jest.fn();
 const mockUseUser = jest.fn();
+let mockPathname = "/admin/roles";
 
 jest.mock("next/navigation", () => ({
-  usePathname: () => "/admin/roles",
+  usePathname: () => mockPathname,
   useRouter: () => ({
     replace: replaceMock,
     prefetch: prefetchMock,
@@ -28,6 +29,10 @@ jest.mock("@/providers/SettingsProvider", () => ({
 
 jest.mock("@/providers/UserProvider", () => ({
   useUser: () => mockUseUser(),
+}));
+
+jest.mock("@/lib/api/domains/session/api", () => ({
+  logout: jest.fn(),
 }));
 
 jest.mock("@/sections/sidebar/AdminSidebar", () => ({
@@ -48,6 +53,7 @@ jest.mock("react-i18next", () => ({
 
 describe("ClientLayout", () => {
   beforeEach(() => {
+    mockPathname = "/admin/roles";
     mockUseUser.mockReturnValue({
       user: { id: "admin-user" },
       permissionsError: "Failed to fetch permissions",
@@ -86,8 +92,46 @@ describe("ClientLayout", () => {
       </ClientLayout>
     );
 
+    expect(screen.queryByText("Admin content")).not.toBeInTheDocument();
+    expect(replaceMock).not.toHaveBeenCalledWith("/error/403");
+  });
+
+  it("keeps an authorized admin page visible during permission revalidation", () => {
+    mockUseUser.mockReturnValue({
+      isPermissionsLoading: false,
+      hasAllPermissions: () => true,
+    });
+    const { rerender } = render(
+      <ClientLayout enableEnterprise={false} enableCloud={false}>
+        <div>Admin content</div>
+      </ClientLayout>
+    );
+    expect(screen.getByText("Admin content")).toBeInTheDocument();
+
+    mockUseUser.mockReturnValue({
+      isPermissionsLoading: true,
+      hasAllPermissions: () => true,
+    });
+    rerender(
+      <ClientLayout enableEnterprise={false} enableCloud={false}>
+        <div>Admin content</div>
+      </ClientLayout>
+    );
+
     expect(screen.getByText("Admin content")).toBeInTheDocument();
     expect(replaceMock).not.toHaveBeenCalledWith("/error/403");
+
+    mockUseUser.mockReturnValue({
+      isPermissionsLoading: false,
+      hasAllPermissions: () => false,
+    });
+    rerender(
+      <ClientLayout enableEnterprise={false} enableCloud={false}>
+        <div>Admin content</div>
+      </ClientLayout>
+    );
+    expect(screen.queryByText("Admin content")).not.toBeInTheDocument();
+    expect(replaceMock).toHaveBeenCalledWith("/error/403");
   });
 
   it("still redirects admins when route permissions load and deny the route", async () => {
@@ -108,4 +152,19 @@ describe("ClientLayout", () => {
       expect(replaceMock).toHaveBeenCalledWith("/error/403");
     });
   });
+});
+
+it("denies unknown admin routes even with unrelated view access", async () => {
+  mockPathname = "/admin/unregistered";
+  mockUseUser.mockReturnValue({
+    isPermissionsLoading: false,
+    hasAllPermissions: () => true,
+  });
+  render(
+    <ClientLayout enableEnterprise={false} enableCloud={false}>
+      <div>Secret content</div>
+    </ClientLayout>
+  );
+  expect(screen.queryByText("Secret content")).not.toBeInTheDocument();
+  await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/error/403"));
 });

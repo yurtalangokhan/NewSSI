@@ -1,7 +1,7 @@
 # Frontend Stabilization Audit
 
 Use this checklist for each frontend stabilization batch. The goal is a dense,
-stable Onyx admin console built from existing tokens and refresh/opal
+stable Atlas admin console built from existing tokens and refresh/opal
 components.
 
 ## Forbidden Pattern Checks

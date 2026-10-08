@@ -4,6 +4,35 @@ import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 import { SvgWallet } from "@opal/icons";
 
 describe("AdminOverviewPanel", () => {
+  it("keeps loaded metrics visible while another metric is pending", () => {
+    const { rerender } = render(
+      <AdminOverviewPanel
+        icon={SvgWallet}
+        title="Access policy workspace"
+        description="Manage roles"
+        metrics={[
+          { label: "Role profiles", value: "6" },
+          { label: "Most used role", value: "..." },
+        ]}
+      />
+    );
+    expect(screen.getByText("Access policy workspace")).toBeInTheDocument();
+    expect(screen.getByText("6")).toBeInTheDocument();
+    expect(screen.getByText("Most used role")).toBeInTheDocument();
+    rerender(
+      <AdminOverviewPanel
+        icon={SvgWallet}
+        title="Access policy workspace"
+        description="Manage roles"
+        metrics={[
+          { label: "Role profiles", value: "6" },
+          { label: "Most used role", value: "Enduser · 100000" },
+        ]}
+      />
+    );
+    expect(screen.getByText("Enduser · 100000")).toBeInTheDocument();
+  });
+
   it("renders metrics without any navigation button row", () => {
     render(
       <AdminOverviewPanel

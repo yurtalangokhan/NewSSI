@@ -5,9 +5,9 @@ import {
   PacketType,
   SearchToolDocumentsDelta,
   StreamingCitation,
-} from "./streamingModels";
-import { Packet } from "@/app/app/services/streamingModels";
-import { OnyxDocument } from "@/lib/search/interfaces";
+} from "@/lib/api/domains/chat/streaming-types";
+import { Packet } from "@/lib/api/domains/chat/streaming-types";
+import { AtlasDocument } from "@/lib/search/interfaces";
 
 export function isToolPacket(
   packet: Packet,
@@ -249,8 +249,8 @@ export function getReasoningTextContent(packets: Packet[]): string {
  * `documents` field (backend `context_docs`) is only ever populated for
  * internal/connector search, never for web_search/fetch_webpage results, so
  * reading packets directly is the only way those actually reach the sidebar. */
-export function getDocumentsFromPackets(packets: Packet[]): OnyxDocument[] {
-  const documentMap = new Map<string, OnyxDocument>();
+export function getDocumentsFromPackets(packets: Packet[]): AtlasDocument[] {
+  const documentMap = new Map<string, AtlasDocument>();
 
   packets.forEach((packet) => {
     if (packet.obj.type === PacketType.SEARCH_TOOL_DOCUMENTS_DELTA) {
@@ -291,4 +291,20 @@ export function getCitations(packets: Packet[]): StreamingCitation[] {
   });
 
   return citations;
+}
+
+/** True for a packet that arrived while the stream replayed the run's history. */
+export function isReplayedPacket(packet: { replayed?: boolean }): boolean {
+  return packet.replayed === true;
+}
+
+/** How many packets at the start of `packets` are replayed history. */
+export function countReplayedPrefix(
+  packets: readonly { replayed?: boolean }[]
+): number {
+  let count = 0;
+  while (count < packets.length && isReplayedPacket(packets[count]!)) {
+    count += 1;
+  }
+  return count;
 }

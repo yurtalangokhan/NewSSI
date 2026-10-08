@@ -1,12 +1,12 @@
 import { JSX } from "react";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
-import { Packet, StopReason } from "../../services/streamingModels";
-import { OnyxDocument, MinimalOnyxDocument } from "@/lib/search/interfaces";
-import { ProjectFile } from "../../projects/projectsService";
-import { LlmDescriptor } from "@/lib/hooks";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
+import { Packet, StopReason } from "@/lib/api/domains/chat/streaming-types";
+import { AtlasDocument, MinimalAtlasDocument } from "@/lib/search/interfaces";
+import { ProjectFile } from "@/lib/api/domains/projects/types";
+import { LlmDescriptor } from "@/lib/api/domains/model-providers/hooks";
 import { IconType } from "react-icons";
-import { OnyxIconType } from "@/components/icons/icons";
-import { CitationMap } from "../../interfaces";
+import { AtlasIconType } from "@/components/icons/icons";
+import { CitationMap } from "@/lib/api/domains/chat/types";
 
 export enum RenderType {
   HIGHLIGHT = "highlight",
@@ -25,10 +25,10 @@ export type TimelineLayout = "timeline" | "content";
 export interface FullChatState {
   agent: MinimalPersonaSnapshot;
   // Document-related context for citations
-  docs?: OnyxDocument[] | null;
+  docs?: AtlasDocument[] | null;
   userFiles?: ProjectFile[];
   citations?: CitationMap;
-  setPresentingDocument?: (document: MinimalOnyxDocument) => void;
+  setPresentingDocument?: (document: MinimalAtlasDocument) => void;
   // Regenerate functionality
   regenerate?: (modelOverRide: LlmDescriptor) => Promise<void>;
   overriddenModel?: string;
@@ -48,10 +48,13 @@ export interface FullChatState {
   }) => void;
   /** True while a send is in flight, so the buttons can lock. */
   isStreaming?: boolean;
+  /** Sends pre-composed text as the user's next message (e.g. "Ask the agent
+   *  to fix" on a broken Mermaid diagram). Absent where a message cannot send. */
+  onSendFollowUp?: (message: string) => void;
 }
 
 export interface RendererResult {
-  icon: IconType | OnyxIconType | null;
+  icon: IconType | AtlasIconType | null;
   status: string | JSX.Element | null;
   content: JSX.Element;
 

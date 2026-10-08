@@ -4,7 +4,7 @@ import {
   StageGroup,
   LoopGroup,
 } from "./flowStageGrouping";
-import { Packet, PacketType } from "@/app/app/services/streamingModels";
+import { Packet, PacketType } from "@/lib/api/domains/chat/streaming-types";
 import { createInitialState, processPackets } from "./packetProcessor";
 import {
   transformPacketGroups,
@@ -171,6 +171,47 @@ describe("buildStageGroups", () => {
     const r = buildStageGroups(turnGroupsOf(packets), packets);
     expect(r.sections.every((s) => s.kind === "stage")).toBe(true);
     expect(r.sections).toHaveLength(2);
+  });
+
+  it("folds a loop body's very first iteration into a LoopGroup (B18)", () => {
+    // The backend knows structurally that A sits on a Loop/While cycle
+    // before the run has ever looped twice — a second iteration must not be
+    // what decides whether this renders as a standalone card or a group.
+    const packets = [
+      stageStart("A#1", {
+        stage_order: 1,
+        iteration: 1,
+        label: "Analiz",
+        is_loop_body: true,
+      }),
+      ...reasoningStep("A#1", 0, "iter 1"),
+      stageEnd("A#1", { duration_ms: 100 }),
+    ];
+    const r = buildStageGroups(turnGroupsOf(packets), packets);
+    expect(r.sections).toHaveLength(1);
+    const loop = r.sections[0] as LoopGroup;
+    expect([loop.kind, loop.iterationCount, loop.iterations.length]).toEqual([
+      "loop",
+      1,
+      1,
+    ]);
+  });
+
+  it("keeps folding a loop-body node into the same LoopGroup once a second iteration arrives", () => {
+    const packets = [1, 2].flatMap((i) => [
+      stageStart(`A#${i}`, {
+        stage_order: i,
+        iteration: i,
+        label: "Analiz",
+        is_loop_body: true,
+      }),
+      ...reasoningStep(`A#${i}`, i - 1, `iter ${i}`),
+      stageEnd(`A#${i}`, { duration_ms: 100 }),
+    ]);
+    const r = buildStageGroups(turnGroupsOf(packets), packets);
+    expect(r.sections).toHaveLength(1);
+    const loop = r.sections[0] as LoopGroup;
+    expect([loop.kind, loop.iterationCount]).toEqual(["loop", 2]);
   });
 
   it("marks a stage running when it has a start but no end", () => {

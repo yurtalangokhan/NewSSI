@@ -6,9 +6,10 @@ Provides tools for text analysis and transformation.
 import json
 from typing import Any
 
-from i18n import t
+from localization import t
 
 from ..core.base import BaseToolCategory
+from ..core.schema import LongText, ShortText
 
 
 class TextTools(BaseToolCategory):
@@ -33,7 +34,7 @@ class TextTools(BaseToolCategory):
         """Register all text processing tools with MCP."""
 
         @mcp.tool()
-        def text_analysis(text: str) -> str:
+        def text_analysis(text: LongText) -> str:
             """
             Analyze text and return statistics.
 
@@ -51,18 +52,14 @@ class TextTools(BaseToolCategory):
                 "character_count": len(text),
                 "word_count": len(words),
                 "sentence_count": len(sentences),
-                "average_word_length": round(sum(len(w) for w in words) / len(words), 2)
-                if words
-                else 0,
-                "average_sentence_length": round(len(words) / len(sentences), 2)
-                if sentences
-                else 0,
+                "average_word_length": round(sum(len(w) for w in words) / len(words), 2) if words else 0,
+                "average_sentence_length": round(len(words) / len(sentences), 2) if sentences else 0,
             }
 
             return json.dumps(stats, indent=2)
 
         @mcp.tool()
-        def translate_text(text: str, target_language: str = "en") -> str:
+        def translate_text(text: LongText, target_language: ShortText = "en") -> str:
             """
             Placeholder for text translation.
             Note: This is a demo tool. In production, connect to a translation API.

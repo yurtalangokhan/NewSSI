@@ -1,17 +1,17 @@
 import { StandardAnswerCreationForm } from "@/app/ee/admin/standard-answer/StandardAnswerCreationForm";
 import { tServer } from "@/i18n/server";
-import { fetchSS } from "@/lib/utilsSS";
+import { fetchStandardAnswerCategoriesSS } from "@/lib/api/domains/knowledge/server";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { StandardAnswerCategory } from "@/lib/types";
-import { resolveLocaleSS } from "@/lib/localeSS";
+import { resolveLocaleSS } from "@/lib/i18n/locale.server";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.STANDARD_ANSWERS]!;
 
 async function Page() {
   const [standardAnswerCategoriesResponse, locale] = await Promise.all([
-    fetchSS("/manage/admin/standard-answer/category"),
+    fetchStandardAnswerCategoriesSS(),
     resolveLocaleSS(),
   ]);
 

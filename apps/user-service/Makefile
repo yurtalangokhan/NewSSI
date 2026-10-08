@@ -7,7 +7,7 @@ dev-install:
 	uv sync --frozen --all-groups
 
 run:
-	uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8090
+	uv run python -m src.main
 
 test:
 	uv run pytest
@@ -16,13 +16,13 @@ test-coverage:
 	uv run pytest --cov=src --cov-report=html --cov-report=term
 
 lint:
-	uv run ruff check src/
+	uv run ruff check --config ruff.toml src/
 
 format:
-	uv run ruff format src/
+	uv run ruff format --config ruff.toml src/
 
 fix:
-	uv run ruff check --fix src/
+	uv run ruff check --config ruff.toml --fix src/
 
 typecheck:
 	uv run mypy src/

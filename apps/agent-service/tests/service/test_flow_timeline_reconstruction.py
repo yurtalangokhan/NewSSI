@@ -1,4 +1,4 @@
-from service.flow_timeline_reconstruction import emit_flow_timeline_packets
+from service.reconstruction.flow_timeline import emit_flow_timeline_packets
 
 _BLOB = {
     "stages": [
@@ -224,7 +224,7 @@ def test_strip_leaked_reasoning_from_prior_stages():
             },
         ]
     }
-    packets, final_text = emit_flow_timeline_packets(blob)
+    packets, _final_text = emit_flow_timeline_packets(blob)
     deltas = [p["obj"]["reasoning"] for p in packets if p["obj"]["type"] == "reasoning_delta"]
     # Should only appear once for Stage 1, not leaked into Stage 2
     assert deltas == ["Researching topic..."]

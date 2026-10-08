@@ -1,7 +1,7 @@
 """Tests for FlowVersionRepository.publish_draft — the atomic, four-write
 publish transaction (design spec 5.1, 5.2, 10).
 
-Uses the real SQLite harness (tests/agents/storage/conftest.py) so
+Uses the in-memory test harness (tests/agents/storage/conftest.py) so
 atomicity is proven against a genuine transaction boundary, not assumed:
 16.4 forces a real IntegrityError mid-flush and asserts every one of the
 four writes is absent afterward, not just the one that raised.
@@ -15,13 +15,13 @@ from uuid import uuid4
 
 import pytest
 
-from core.db.models.agent_definition import (
+from core.exceptions import FlowVersionConflictError
+from infrastructure.db.models.agent_definition import (
     AgentDefinitionModel,
     AgentFlowVersionModel,
     FlowVersionStatus,
 )
-from core.exceptions import FlowVersionConflictError
-from repository.flow_version_repository import FlowVersionRepository
+from infrastructure.db.repositories.flow_version_repo import FlowVersionRepository
 
 
 async def _make_definition(session) -> AgentDefinitionModel:
@@ -168,7 +168,7 @@ async def test_publishing_the_same_draft_twice_raises_conflict_the_second_time(
     repo, flow_version_session_factory
 ):
     """The realistic shape of "concurrent publish" against a single-writer
-    SQLite connection: the second caller's draft is gone by the time it
+    database connection: the second caller's draft is gone by the time it
     runs, and that must fail clearly rather than silently re-publish or
     corrupt history."""
     async with flow_version_session_factory() as session:

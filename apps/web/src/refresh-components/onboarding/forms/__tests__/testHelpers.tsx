@@ -4,6 +4,7 @@
 
 // Mock Element.prototype.scrollIntoView for JSDOM (not implemented in jsdom)
 Element.prototype.scrollIntoView = jest.fn();
+import { envelopeResponse } from "@tests/setup/responseModel";
 import {
   WellKnownLLMProviderDescriptor,
   LLMProviderName,
@@ -92,43 +93,35 @@ export function createMockOnboardingActions(
  * Creates mock fetch responses for common API calls
  */
 export function createMockFetchResponses() {
+  const failure = (status: number, code: string, message: string) =>
+    new Response(
+      JSON.stringify({
+        statusCode: status,
+        message,
+        data: null,
+        error: { code, message },
+      }),
+      { status, headers: { "Content-Type": "application/json" } }
+    );
+  // A Response body can be read once, so successes are getters: every access
+  // hands the code under test a fresh, real ResponseModel reply.
   return {
-    testApiSuccess: {
-      ok: true,
-      json: async () => ({}),
-    } as Response,
+    get testApiSuccess() {
+      return envelopeResponse({});
+    },
     testApiError: (message: string = "Invalid API key") =>
-      ({
-        ok: false,
-        status: 400,
-        json: async () => ({ detail: message }),
-      }) as Response,
+      failure(400, "llm.test_failed", message),
     createProviderSuccess: (id: number = 1) =>
-      ({
-        ok: true,
-        json: async () => ({ id, name: "test-provider" }),
-      }) as Response,
+      envelopeResponse({ id, name: "test-provider" }),
     createProviderError: (message: string = "Failed to create provider") =>
-      ({
-        ok: false,
-        status: 500,
-        json: async () => ({ detail: message }),
-      }) as Response,
-    setDefaultSuccess: {
-      ok: true,
-      json: async () => ({}),
-    } as Response,
+      failure(500, "llm.provider_create_failed", message),
+    get setDefaultSuccess() {
+      return envelopeResponse({});
+    },
     fetchModelsSuccess: (models: { name: string }[]) =>
-      ({
-        ok: true,
-        json: async () => models,
-      }) as Response,
+      envelopeResponse(models),
     fetchModelsError: (message: string = "Failed to fetch models") =>
-      ({
-        ok: false,
-        status: 400,
-        json: async () => ({ detail: message }),
-      }) as Response,
+      failure(400, "llm.fetch_models_failed", message),
   };
 }
 
@@ -163,7 +156,7 @@ export async function waitForModalOpen(screen: any, waitFor: any) {
 /**
  * The curated list of OpenAI visible models that are returned by
  * /api/admin/llm/built-in/options. This must match OPENAI_VISIBLE_MODEL_NAMES
- * in backend/onyx/llm/llm_provider_options.py
+ * in backend/atlas/llm/llm_provider_options.py
  */
 export const OPENAI_DEFAULT_VISIBLE_MODELS = [
   {
@@ -213,7 +206,7 @@ export const OPENAI_DEFAULT_VISIBLE_MODELS = [
 /**
  * The curated list of Anthropic visible models that are returned by
  * /api/admin/llm/built-in/options. This must match ANTHROPIC_VISIBLE_MODEL_NAMES
- * in backend/onyx/llm/llm_provider_options.py
+ * in backend/atlas/llm/llm_provider_options.py
  */
 export const ANTHROPIC_DEFAULT_VISIBLE_MODELS = [
   {
@@ -242,7 +235,7 @@ export const ANTHROPIC_DEFAULT_VISIBLE_MODELS = [
 /**
  * The curated list of Vertex AI visible models that are returned by
  * /api/admin/llm/built-in/options. This must match VERTEXAI_VISIBLE_MODEL_NAMES
- * in backend/onyx/llm/llm_provider_options.py
+ * in backend/atlas/llm/llm_provider_options.py
  */
 export const VERTEXAI_DEFAULT_VISIBLE_MODELS = [
   {

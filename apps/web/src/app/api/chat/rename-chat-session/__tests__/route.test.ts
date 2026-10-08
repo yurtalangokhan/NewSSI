@@ -1,5 +1,8 @@
-jest.mock("@/lib/env.server", () => ({
-  getInternalUrl: () => "http://kong",
+jest.mock("@/lib/settings", () => ({
+  appSettings: {
+    ...jest.requireActual("@/lib/settings").appSettings,
+    AGENT_SERVICE_URL: "http://apisix/agent-service",
+  },
 }));
 
 import { PUT } from "../route";
@@ -35,23 +38,27 @@ describe("rename chat session proxy", () => {
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://kong/agent-service/api/v1/chat/rename-chat-session",
+      "http://apisix/agent-service/api/v1/chat/rename-chat-session",
       {
         method: "PUT",
         body,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer test-access-token",
-          Cookie: "access_token=test-cookie",
-          "Idempotency-Key": "rename-session-1",
-        },
+        headers: expect.any(Headers),
       }
     );
+    const headers = new Headers(fetchMock.mock.calls[0]![1]?.headers);
+    expect(headers.get("content-type")).toBe("application/json");
+    expect(headers.get("authorization")).toBe("Bearer test-access-token");
+    expect(headers.get("cookie")).toBe("access_token=test-cookie");
+    expect(headers.get("idempotency-key")).toBe("rename-session-1");
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ name: "New name" });
   });
 
-  it("keeps cookie-only authentication without inventing bearer credentials", async () => {
+  it("derives a bearer credential from a cookie-only request", async () => {
+    // agent-service is bearer-token only and never reads cookies (see
+    // AuthService._extract_auth_token), so a cookie-only request that
+    // never got an Authorization header derived from it always got a
+    // bare 401 -- this used to be asserted as the intended behavior.
     const fetchMock = jest
       .spyOn(global, "fetch")
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
@@ -60,7 +67,7 @@ describe("rename chat session proxy", () => {
 
     const headers = new Headers(fetchMock.mock.calls[0]![1]?.headers);
     expect(headers.get("cookie")).toBe("access_token=test-cookie");
-    expect(headers.has("authorization")).toBe(false);
+    expect(headers.get("authorization")).toBe("Bearer test-cookie");
     expect(response.status).toBe(204);
   });
 

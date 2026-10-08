@@ -3,8 +3,12 @@
  * Tests packet type classification and utility functions
  */
 
-import { Packet, PacketType, Placement } from "./streamingModels";
-import { OnyxDocument } from "@/lib/search/interfaces";
+import {
+  Packet,
+  PacketType,
+  Placement,
+} from "@/lib/api/domains/chat/streaming-types";
+import { AtlasDocument } from "@/lib/search/interfaces";
 import { ValidSources } from "@/lib/types";
 import {
   isToolPacket,
@@ -14,6 +18,8 @@ import {
   isStreamingComplete,
   isFinalAnswerComing,
   getDocumentsFromPackets,
+  isReplayedPacket,
+  countReplayedPrefix,
 } from "./packetUtils";
 
 // Helper to create a mock packet with a specific type
@@ -285,7 +291,7 @@ describe("packetUtils", () => {
   });
 
   describe("getDocumentsFromPackets", () => {
-    const doc = (id: string): OnyxDocument =>
+    const doc = (id: string): AtlasDocument =>
       ({
         document_id: id,
         semantic_identifier: id,
@@ -300,7 +306,7 @@ describe("packetUtils", () => {
         metadata: {},
         updated_at: null,
         is_internet: true,
-      }) as OnyxDocument;
+      }) as AtlasDocument;
 
     test("collects documents from SEARCH_TOOL_DOCUMENTS_DELTA packets", () => {
       const packets: Packet[] = [
@@ -364,5 +370,29 @@ describe("packetUtils", () => {
         getDocumentsFromPackets([createPacket(PacketType.REASONING_START)])
       ).toEqual([]);
     });
+  });
+});
+
+describe("replayed packets", () => {
+  const live = () => createPacket(PacketType.MESSAGE_DELTA);
+  const replayed = () => ({ ...live(), replayed: true }) as Packet;
+
+  it("only a packet the controller tagged counts as replayed", () => {
+    expect(isReplayedPacket(replayed())).toBe(true);
+    expect(isReplayedPacket(live())).toBe(false);
+    expect(isReplayedPacket({ ...live(), replayed: false } as Packet)).toBe(
+      false
+    );
+  });
+
+  it("counts the leading run of replayed packets", () => {
+    expect(countReplayedPrefix([])).toBe(0);
+    expect(countReplayedPrefix([live(), live()])).toBe(0);
+    expect(countReplayedPrefix([replayed(), replayed(), live()])).toBe(2);
+    expect(countReplayedPrefix([replayed(), replayed()])).toBe(2);
+  });
+
+  it("stops at the first live packet, even if a replayed one follows", () => {
+    expect(countReplayedPrefix([replayed(), live(), replayed()])).toBe(1);
   });
 });

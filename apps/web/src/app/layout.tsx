@@ -1,23 +1,17 @@
 import "./globals.css";
 
-import {
-  fetchEnterpriseSettingsSS,
-  fetchSettingsSS,
-} from "@/components/settings/lib";
-import {
-  CUSTOM_ANALYTICS_ENABLED,
-  GTM_ENABLED,
-  SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED,
-  NEXT_PUBLIC_CLOUD_ENABLED,
-  MODAL_ROOT_ID,
-} from "@/lib/constants";
+import { fetchSettingsSS } from "@/components/settings/lib";
+import { fetchEnterpriseSettingsSS } from "@/lib/api/domains/system/server";
+import { MODAL_ROOT_ID } from "@/lib/constants";
 import { Metadata } from "next";
-import { buildClientUrl } from "@/lib/utilsSS";
 import { Inter } from "next/font/google";
 import { EnterpriseSettings, ApplicationStatus } from "@/interfaces/settings";
 import AppProvider from "@/providers/AppProvider";
 import { PHProvider } from "./providers";
-import { getAuthTypeMetadataSS, getCurrentUserSS } from "@/lib/userSS";
+import {
+  getAuthTypeMetadataSS,
+  getCurrentUserSS,
+} from "@/lib/api/domains/session/server";
 import { Suspense } from "react";
 import PostHogPageView from "./PostHogPageView";
 import Script from "next/script";
@@ -28,11 +22,18 @@ import CloudError from "@/components/errorPages/CloudErrorPage";
 import Error from "@/components/errorPages/ErrorPage";
 import GatedContentWrapper from "@/components/GatedContentWrapper";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { fetchAppSidebarMetadata } from "@/lib/appSidebarSS";
+import { fetchAppSidebarMetadata } from "@/lib/navigation/app-sidebar.server";
+import { fetchAppBackgroundMetadata } from "@/lib/appBackgroundSS";
+import {
+  CHAT_BACKGROUND_NONE,
+  isCanvasBackground,
+} from "@/lib/constants/chatBackgrounds";
 import StatsOverlayLoader from "@/components/dev/StatsOverlayLoader";
 import PerformanceMeasureGuard from "@/components/dev/PerformanceMeasureGuard";
 import { getAppName } from "@/lib/appInfo";
-import { resolveLocaleSS } from "@/lib/localeSS";
+import { resolveLocaleSS } from "@/lib/i18n/locale.server";
+import { headers } from "next/headers";
+import { appSettings } from "@/lib/settings";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -47,9 +48,12 @@ const hankenGrotesk = Hanken_Grotesk({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const logoLocation = buildClientUrl("/logo.single.svg");
+  const logoLocation = `${appSettings.HOST_URL.replace(
+    /\/+$/,
+    ""
+  )}/logo.single.svg`;
   let enterpriseSettings: EnterpriseSettings | null = null;
-  if (SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED) {
+  if (appSettings.SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED) {
     enterpriseSettings = await (await fetchEnterpriseSettingsSS()).json();
   }
 
@@ -77,6 +81,12 @@ export default async function RootLayout({
   ]);
 
   const { folded } = await fetchAppSidebarMetadata(user);
+  const { backgroundId, backgroundOption } =
+    await fetchAppBackgroundMetadata(user);
+  // Set by src/proxy.ts per request; the CSP's script-src only allows
+  // inline scripts carrying this exact nonce (replacing the 'unsafe-
+  // inline' exception this file used to need).
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   const productGating =
     combinedSettings?.settings.application_status ?? ApplicationStatus.ACTIVE;
@@ -92,20 +102,32 @@ export default async function RootLayout({
           name="viewport"
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, interactive-widget=resizes-content"
         />
-        {CUSTOM_ANALYTICS_ENABLED &&
+        {backgroundOption &&
+          !isCanvasBackground(backgroundOption) &&
+          backgroundOption.src !== CHAT_BACKGROUND_NONE && (
+            <link
+              rel="preload"
+              as="image"
+              href={backgroundOption.src}
+              fetchPriority="high"
+            />
+          )}
+        {appSettings.CUSTOM_ANALYTICS_ENABLED &&
           combinedSettings?.customAnalyticsScript && (
             <script
               type="text/javascript"
+              nonce={nonce}
               dangerouslySetInnerHTML={{
                 __html: combinedSettings.customAnalyticsScript,
               }}
             />
           )}
 
-        {GTM_ENABLED && (
+        {appSettings.GTM_ENABLED && (
           <Script
             id="google-tag-manager"
             strategy="afterInteractive"
+            nonce={nonce}
             dangerouslySetInnerHTML={{
               __html: `
                (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -125,6 +147,7 @@ export default async function RootLayout({
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
+          nonce={nonce}
         >
           <div className="text-text min-h-screen bg-background">
             <TooltipProvider>
@@ -141,7 +164,7 @@ export default async function RootLayout({
 
   if (!combinedSettings) {
     return getPageContent(
-      NEXT_PUBLIC_CLOUD_ENABLED ? <CloudError /> : <Error />
+      appSettings.NEXT_PUBLIC_CLOUD_ENABLED ? <CloudError /> : <Error />
     );
   }
 
@@ -167,6 +190,7 @@ export default async function RootLayout({
       settings={combinedSettings}
       folded={folded}
       initialLocale={locale}
+      initialBackgroundId={backgroundId}
     >
       <Suspense fallback={null}>
         <PostHogPageView />
@@ -174,10 +198,8 @@ export default async function RootLayout({
       <div id={MODAL_ROOT_ID} className="h-screen w-screen">
         {content}
       </div>
-      {process.env.NEXT_PUBLIC_POSTHOG_KEY && <WebVitals />}
-      {process.env.NEXT_PUBLIC_ENABLE_STATS === "true" && (
-        <StatsOverlayLoader />
-      )}
+      {appSettings.NEXT_PUBLIC_POSTHOG_KEY && <WebVitals />}
+      {appSettings.NEXT_PUBLIC_ENABLE_STATS && <StatsOverlayLoader />}
     </AppProvider>
   );
 }

@@ -4,22 +4,19 @@ from __future__ import annotations
 
 import os
 
-from starlette.testclient import TestClient
-
 os.environ.setdefault("MCP_HOST", "127.0.0.1")
 os.environ.setdefault("MCP_PORT", "9000")
-os.environ.setdefault("USER_SERVICE_URL", "http://user-service")
+os.environ.setdefault("INTERNAL_USER_SERVICE_URL", "http://apisix:8000/internal/user-service")
 os.environ.setdefault("POSTGRES_HOST", "postgres")
 os.environ.setdefault("POSTGRES_PORT", "5432")
-os.environ.setdefault("POSTGRES_USER", "tools")
-os.environ.setdefault("POSTGRES_PASSWORD", "secret")
-os.environ.setdefault("POSTGRES_DB", "tools")
+os.environ.setdefault("POSTGRES_TOOL_SERVICE_USER", "tools")
+os.environ.setdefault("POSTGRES_TOOL_SERVICE_PASSWORD", "secret")
+os.environ.setdefault("POSTGRES_TOOL_SERVICE_DB", "tools")
 os.environ.setdefault("REDIS_HOST", "localhost")
 os.environ.setdefault("REDIS_PORT", "6379")
 os.environ.setdefault("REDIS_DB", "0")
 
-from server import build_http_app  # noqa: E402, I001
-
+from src.core import auth  # noqa: E402
 
 INITIALIZE_REQUEST = {
     "jsonrpc": "2.0",
@@ -33,12 +30,12 @@ INITIALIZE_REQUEST = {
 }
 
 
-def test_connector_mcp_transport_requires_bearer_internal_token(monkeypatch) -> None:
+def test_connector_mcp_transport_requires_bearer_internal_token(monkeypatch, http_client) -> None:
     internal_token = "connector-transport-secret"
-    monkeypatch.setenv("INTERNAL_SERVICE_TOKEN", internal_token)
-    app = build_http_app()
+    monkeypatch.setattr(auth, "_get_internal_service_token", lambda: internal_token)
+    from contextlib import nullcontext
 
-    with TestClient(app) as client:
+    with nullcontext(http_client) as client:
         rejected = client.post(
             "/mcp",
             json=INITIALIZE_REQUEST,

@@ -1,6 +1,9 @@
 "use client";
+import { errorMessageFromUnknown } from "@/lib/api/errors";
+import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 
-import { authenticatedFetch } from "@/lib/fetcher";
+import { fetchExistingTenantTeam } from "@/lib/api/domains/access/api";
+import { requestTenantTeamInvite } from "@/lib/api/domains/access/api";
 
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,7 +14,7 @@ import Button from "@/refresh-components/buttons/Button";
 import { toast } from "@/hooks/useToast";
 import { useUser } from "@/providers/UserProvider";
 import { useModalContext } from "../context/ModalContext";
-import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
+
 import {
   SvgArrowRight,
   SvgArrowUp,
@@ -63,7 +66,7 @@ export default function NewTeamModal() {
     setError(null);
 
     try {
-      const response = await fetch("/api/tenants/existing-team-by-domain");
+      const response = await fetchExistingTenantTeam();
       if (!response.ok) {
         throw new Error(`Failed to fetch team info: ${response.status}`);
       }
@@ -91,16 +94,9 @@ export default function NewTeamModal() {
     setError(null);
 
     try {
-      const response = await authenticatedFetch(
-        "/api/tenants/users/invite/request",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ tenant_id: existingTenant.tenant_id }),
-        }
-      );
+      const response = await requestTenantTeamInvite({
+        tenant_id: existingTenant.tenant_id,
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -110,8 +106,10 @@ export default function NewTeamModal() {
       setHasRequestedInvite(true);
       toast.success(t("newTeam.toastInviteSent"));
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : t("newTeam.toastInviteFailed");
+      const message = errorMessageFromUnknown(
+        error,
+        t("newTeam.toastInviteFailed")
+      );
       setError(message);
       toast.error(message);
     } finally {

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from langchain_core.messages import SystemMessage
 from langgraph.prebuilt import create_react_agent
 
-from agents.graphs.schemas import GraphSchemaType
 from agents.graphs.strategies.base import GraphSchemaStrategy
-from core.logger import get_logger
+from agents.graphs.strategies.registry import get_strategy
+from core.observability.logger import get_logger
+from schemas.agent_graphs import GraphSchemaType
 
 if TYPE_CHECKING:
     from langgraph.graph.state import CompiledStateGraph
@@ -67,7 +67,7 @@ class PipelineGraphStrategy(GraphSchemaStrategy):
         """
         from langgraph_supervisor import create_supervisor
 
-        model = self._get_model(config.get("model"))
+        model = await self._get_model(config.get("model"))
         pipeline_prompt = config.get("pipeline_prompt", "Process through all stages sequentially.")
 
         stages_config = config.get("stages", [])
@@ -101,7 +101,7 @@ class PipelineGraphStrategy(GraphSchemaStrategy):
                 stage_cfg["user_id"] = config["user_id"]
             if config.get("mail_attachments") and not stage_cfg.get("mail_attachments"):
                 stage_cfg["mail_attachments"] = config["mail_attachments"]
-            agent = self._build_sub_agent_graph(stage_cfg)
+            agent = await self._build_sub_agent_graph(stage_cfg)
 
             agents_list.append(agent)
             stage_names.append(name)
@@ -123,12 +123,13 @@ class PipelineGraphStrategy(GraphSchemaStrategy):
 
         return workflow.compile(checkpointer=self.checkpointer, name=config.get("name"))
 
-    def _build_sub_agent_graph(self, agent_config: dict[str, Any]) -> CompiledStateGraph | Pregel:
+    async def _build_sub_agent_graph(self, agent_config: dict[str, Any]) -> CompiledStateGraph | Pregel:
         """Build a sub-agent graph for a pipeline stage."""
         from langgraph.prebuilt import create_react_agent
 
-        from agents.graphs.schemas import GraphSchemaType
-        from agents.mail_tooling import append_email_tool_policy
+        from agents.graphs.builder_helpers import MAX_NESTED_SUB_AGENT_DEPTH
+        from agents.tooling.mail_tooling import append_email_tool_policy
+        from schemas.agent_graphs import GraphSchemaType
 
         schema_value = agent_config.get("graph_schema")
         try:
@@ -138,24 +139,27 @@ class PipelineGraphStrategy(GraphSchemaStrategy):
 
         # Recursively handle nested supervisor/pipeline
         if schema_type in (GraphSchemaType.SUPERVISOR, GraphSchemaType.PIPELINE):
-            from agents.graphs.strategies.pipeline import PipelineGraphStrategy
-            from agents.graphs.strategies.supervisor import SupervisorGraphStrategy
+            if self._depth + 1 >= MAX_NESTED_SUB_AGENT_DEPTH:
+                raise RecursionError(
+                    f"Sub-agent nesting reached the {MAX_NESTED_SUB_AGENT_DEPTH}-level "
+                    "depth limit — check for a supervisor/pipeline referencing itself."
+                )
 
-            nested_strategy_class = (
-                SupervisorGraphStrategy
-                if schema_type == GraphSchemaType.SUPERVISOR
-                else PipelineGraphStrategy
-            )
-            nested_strategy = nested_strategy_class(
-                model=self._get_model(agent_config.get("model")),
+            nested_strategy = get_strategy(
+                schema_type,
+                model=await self._get_model(agent_config.get("model")),
                 system_prompt=agent_config.get("system_prompt", self.system_prompt),
                 tools=self.tools,
                 mcp_tools_map=self.mcp_tools_map,
                 memory_enabled=self.memory_enabled,
                 checkpointer=self.checkpointer,
                 repository=self.repository,
+                gateway_tools=self.gateway_tools,
+                depth=self._depth + 1,
             )
-            return nested_strategy.build(agent_config)
+            if nested_strategy is None:
+                raise ValueError(f"No strategy registered for schema type: {schema_type}")
+            return await nested_strategy.build(agent_config)
 
         name = agent_config.get("name", "agent")
         tool_names = agent_config.get("mcp_tools", [])
@@ -164,7 +168,7 @@ class PipelineGraphStrategy(GraphSchemaStrategy):
             tool_names,
             mail_attachments=agent_config.get("mail_attachments"),
         )
-        agent_model = self._get_model(agent_config.get("model"))
+        agent_model = await self._get_model(agent_config.get("model"))
         agent_tools = self._get_tools_for_names(
             tool_names,
             tool_configs=agent_config.get("mcp_tool_configs") or {},
@@ -173,10 +177,13 @@ class PipelineGraphStrategy(GraphSchemaStrategy):
         )
 
         agent_tools, system_prompt = self._apply_document_tools(agent_tools, system_prompt)
+        agent_tools = self._with_gateway_tools(agent_tools)
+        agent_tools, system_prompt = self._attach_clarification(agent_tools, system_prompt)
 
         return create_react_agent(
             model=agent_model,
             tools=agent_tools,
             name=name,
-            prompt=SystemMessage(content=system_prompt),
+            prompt=self._react_prompt(system_prompt, agent_tools),
+            post_model_hook=self._clarification_post_model_hook(),
         )

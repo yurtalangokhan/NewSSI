@@ -50,7 +50,7 @@ import {
 } from "@/components/icons/icons";
 import { ValidSources } from "./types";
 import { SourceCategory, SourceMetadata } from "./search/interfaces";
-import { Persona } from "@/app/admin/agents/interfaces";
+import { Persona } from "@/lib/api/domains/agents/types";
 import React from "react";
 import { DOCS_ADMINS_PATH } from "./constants";
 import { SvgFileText, SvgGlobe } from "@opal/icons";
@@ -113,7 +113,7 @@ export const SOURCE_METADATA_MAP: SourceMap = {
     icon: CodaIcon,
     displayName: "Coda",
     category: SourceCategory.Wiki,
-    docs: "https://docs.onyx.app/connectors/coda",
+    docs: "https://docs.atlas.app/connectors/coda",
   },
   notion: {
     icon: NotionIcon,

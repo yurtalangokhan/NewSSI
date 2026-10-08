@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { IconProps } from "@opal/types";
 import Text from "@/refresh-components/texts/Text";
@@ -113,6 +114,34 @@ export default function CustomAgentAvatar({
 
   size = DEFAULT_AGENT_AVATAR_SIZE_PX,
 }: CustomAgentAvatarProps) {
+  // Uploaded avatars are served one request per file id, so the frame can stay
+  // empty for a while. Track which `src` has settled — keyed by url rather than
+  // a boolean so a changed icon re-arms the skeleton without an effect.
+  const [settledSrc, setSettledSrc] = useState<string | null>(null);
+  const imageSettled = !!src && settledSrc === src;
+
+  // `next/image` only reports a load after its own `decode()` promise settles,
+  // and re-assigns `src` when given an `onError` prop. Listening on the node
+  // keeps the skeleton tied to the actual bytes: it clears as soon as the
+  // image paints, and `complete` covers images the browser already decoded.
+  const watchImage = useCallback(
+    (node: HTMLImageElement | null) => {
+      if (!src || !node) return;
+      const settle = () => setSettledSrc(src);
+      if (node.complete) {
+        settle();
+        return;
+      }
+      node.addEventListener("load", settle);
+      node.addEventListener("error", settle);
+      return () => {
+        node.removeEventListener("load", settle);
+        node.removeEventListener("error", settle);
+      };
+    },
+    [src]
+  );
+
   if (src) {
     return (
       <div
@@ -120,11 +149,19 @@ export default function CustomAgentAvatar({
         data-variant={variant}
         className={cn(
           "aspect-square overflow-hidden relative",
-          variant === "flow" ? "rounded-08" : "rounded-full"
+          variant === "flow" ? "rounded-[28%]" : "rounded-full"
         )}
         style={{ height: size, width: size }}
       >
+        {!imageSettled && (
+          <div
+            data-testid="agent-avatar-image-skeleton"
+            aria-hidden="true"
+            className="absolute inset-0 animate-pulse bg-background-tint-03"
+          />
+        )}
         <Image
+          ref={watchImage}
           alt={name || "Agent avatar"}
           src={src}
           fill

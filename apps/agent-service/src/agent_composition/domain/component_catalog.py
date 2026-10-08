@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class ComponentKind(str, Enum):
+class ComponentKind(StrEnum):
     BRAIN = "brain"
     PERCEPTRON = "perceptron"
     GRAPH_STRATEGY = "graph_strategy"
@@ -47,21 +47,15 @@ def _brain(key: str, description: str, **kw: Any) -> ComponentDescriptor:
 
 
 def _perceptron(key: str, description: str, **kw: Any) -> ComponentDescriptor:
-    return ComponentDescriptor(
-        key=key, kind=ComponentKind.PERCEPTRON, description=description, **kw
-    )
+    return ComponentDescriptor(key=key, kind=ComponentKind.PERCEPTRON, description=description, **kw)
 
 
 def _strategy(key: str, description: str, **kw: Any) -> ComponentDescriptor:
-    return ComponentDescriptor(
-        key=key, kind=ComponentKind.GRAPH_STRATEGY, description=description, **kw
-    )
+    return ComponentDescriptor(key=key, kind=ComponentKind.GRAPH_STRATEGY, description=description, **kw)
 
 
 def _policy(key: str, description: str, **kw: Any) -> ComponentDescriptor:
-    return ComponentDescriptor(
-        key=key, kind=ComponentKind.RUNTIME_POLICY, description=description, **kw
-    )
+    return ComponentDescriptor(key=key, kind=ComponentKind.RUNTIME_POLICY, description=description, **kw)
 
 
 COMPONENT_CATALOG: dict[str, ComponentDescriptor] = {
@@ -96,12 +90,8 @@ COMPONENT_CATALOG: dict[str, ComponentDescriptor] = {
     # Graph strategies
     "zero_shot": _strategy("zero_shot", "Direct single-step reasoning."),
     "react": _strategy("react", "Reason-and-act loop."),
-    "supervisor": _strategy(
-        "supervisor", "Model-directed supervisor delegation.", required_nested=True
-    ),
-    "pipeline": _strategy(
-        "pipeline", "Deterministic ordered pipeline stages.", required_nested=True
-    ),
+    "supervisor": _strategy("supervisor", "Model-directed supervisor delegation.", required_nested=True),
+    "pipeline": _strategy("pipeline", "Deterministic ordered pipeline stages.", required_nested=True),
     "plan_and_execute": _strategy("plan_and_execute", "Plan then execute strategy."),
     "self_reflect": _strategy("self_reflect", "Self-reflection strategy."),
     # The flow canvas is a graph strategy like any other from the catalog's
@@ -109,9 +99,7 @@ COMPONENT_CATALOG: dict[str, ComponentDescriptor] = {
     # carries its own flow_spec instead of nested definitions.
     "flow": _strategy("flow", "Visual flow canvas compiled into a LangGraph graph."),
     # Runtime policies
-    "memory_persistence": _policy(
-        "memory_persistence", "Post-run memory extraction and persistence."
-    ),
+    "memory_persistence": _policy("memory_persistence", "Post-run memory extraction and persistence."),
     "safety": _policy("safety", "Pre/post run safety moderation."),
     "retry": _policy("retry", "Retry, timeout, and retry telemetry."),
     "checkpoint": _policy("checkpoint", "Checkpoint state read, update, history, persistence."),

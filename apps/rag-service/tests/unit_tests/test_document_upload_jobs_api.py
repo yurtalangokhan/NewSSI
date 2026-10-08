@@ -1,10 +1,8 @@
-from langconnect.models.documents import UploadProgress, UploadStatus
-from langconnect.services import document_upload_service
-from tests.unit_tests.fixtures import get_async_test_client
+from src.documents import upload_service as document_upload_service
+from src.documents.schemas import UploadProgress, UploadStatus
+from tests.unit_tests.fixtures import gateway_headers, get_async_test_client
 
-USER_1_HEADERS = {
-    "Authorization": "Bearer user1",
-}
+USER_1_HEADERS = gateway_headers("user1")
 
 
 async def _create_collection(client, name: str) -> str:
@@ -158,13 +156,13 @@ async def test_start_upload_job_blocked_while_graph_building(monkeypatch) -> Non
     async with get_async_test_client() as client:
         collection_id = await _create_collection(client, "upload_jobs_graph_locked")
 
-        from langconnect.models.graph import BuildProgress
+        from src.graph.schemas import BuildProgress
 
         def _fake_progress(_: str):
             return BuildProgress(collection_id=collection_id, status="building")
 
         monkeypatch.setattr(
-            "langconnect.services.build_lock.get_build_progress",
+            "src.collections.write_guards.get_build_progress",
             _fake_progress,
         )
 

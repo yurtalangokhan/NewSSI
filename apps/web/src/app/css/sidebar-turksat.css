@@ -1,0 +1,50 @@
+/* Sidebar theme for the TÜRKSAT animated chat backgrounds.
+
+   Instead of restyling every sidebar component, this re-points the design
+   tokens they already use (text, tint, border) inside the sidebar, so it picks
+   up the frosted navy look of the background design sheet: a translucent
+   surface, ink/muted text, and faint chips for hover and active rows. It only
+   applies while SidebarWrapper sets `data-sidebar-theme="turksat"`. */
+
+[data-sidebar-theme="turksat"] {
+  --sidebar-turksat-surface: rgba(250, 251, 254, 0.8);
+
+  --text-05: #13203a;
+  --text-04: rgba(19, 32, 58, 0.85);
+  --text-03: #5b6882;
+  --text-02: rgba(91, 104, 130, 0.8);
+  --text-01: rgba(91, 104, 130, 0.5);
+
+  --background-tint-00: rgba(20, 40, 80, 0.09);
+  --background-tint-01: rgba(20, 40, 80, 0.06);
+  --background-tint-02: rgba(20, 40, 80, 0.06);
+  --background-tint-03: rgba(20, 40, 80, 0.1);
+  --background-tint-04: rgba(20, 40, 80, 0.15);
+
+  --border-01: rgba(20, 40, 80, 0.13);
+  --border-02: rgba(20, 40, 80, 0.2);
+  --border-03: rgba(20, 40, 80, 0.3);
+
+  background-color: var(--sidebar-turksat-surface);
+  border-right: 1px solid var(--border-01);
+}
+
+.dark [data-sidebar-theme="turksat"] {
+  --sidebar-turksat-surface: rgba(8, 12, 22, 0.72);
+
+  --text-05: #e6ecf7;
+  --text-04: rgba(230, 236, 247, 0.85);
+  --text-03: #9aa8c2;
+  --text-02: rgba(154, 168, 194, 0.8);
+  --text-01: rgba(154, 168, 194, 0.5);
+
+  --background-tint-00: rgba(170, 190, 230, 0.14);
+  --background-tint-01: rgba(170, 190, 230, 0.09);
+  --background-tint-02: rgba(170, 190, 230, 0.09);
+  --background-tint-03: rgba(170, 190, 230, 0.15);
+  --background-tint-04: rgba(170, 190, 230, 0.21);
+
+  --border-01: rgba(170, 190, 230, 0.15);
+  --border-02: rgba(170, 190, 230, 0.22);
+  --border-03: rgba(170, 190, 230, 0.3);
+}

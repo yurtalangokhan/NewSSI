@@ -1,12 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { BasicClickable } from "@/components/BasicClickable";
-import { OnyxDocument } from "@/lib/search/interfaces";
+import { AtlasDocument } from "@/lib/search/interfaces";
 import { FiBook } from "react-icons/fi";
 
 export function SelectedDocuments({
   selectedDocuments,
 }: {
-  selectedDocuments: OnyxDocument[];
+  selectedDocuments: AtlasDocument[];
 }) {
   const { t } = useTranslation("common", { keyPrefix: "selectedDocuments" });
   if (selectedDocuments.length === 0) {

@@ -1,7 +1,7 @@
 """Repository for permission audit logs."""
 
-import uuid
 from typing import Any
+import uuid
 
 from sqlalchemy import func, select
 
@@ -119,9 +119,7 @@ class PermissionAuditRepository(BaseRepository):
     ) -> tuple[list[dict[str, Any]], int]:
         """Get audit logs performed by a user."""
         async with self._session() as session:
-            query = select(PermissionAuditModel).where(
-                PermissionAuditModel.performed_by == performed_by
-            )
+            query = select(PermissionAuditModel).where(PermissionAuditModel.performed_by == performed_by)
             count_query = select(func.count(PermissionAuditModel.id)).where(
                 PermissionAuditModel.performed_by == performed_by
             )
@@ -141,9 +139,7 @@ class PermissionAuditRepository(BaseRepository):
         """Get recent audit logs."""
         async with self._session() as session:
             result = await session.execute(
-                select(PermissionAuditModel)
-                .order_by(PermissionAuditModel.performed_at.desc())
-                .limit(limit)
+                select(PermissionAuditModel).order_by(PermissionAuditModel.performed_at.desc()).limit(limit)
             )
             return [self._to_dict(log) for log in result.scalars().all()]
 

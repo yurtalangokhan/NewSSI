@@ -2,7 +2,45 @@ from __future__ import annotations
 
 import importlib.util
 from collections import Counter
+from contextlib import nullcontext
 from pathlib import Path
+from types import SimpleNamespace
+
+from pydantic import SecretStr
+
+
+def test_migration_lock_uses_the_user_service_credentials(monkeypatch):
+    from src.core.database import startup
+
+    credentials = {}
+    statements = []
+
+    class Connection:
+        def execute(self, statement, parameters):
+            statements.append(statement)
+
+    def connect(**kwargs):
+        credentials.update(kwargs)
+        return nullcontext(Connection())
+
+    monkeypatch.setattr(startup.psycopg, "connect", connect)
+    monkeypatch.setattr(
+        startup,
+        "env",
+        SimpleNamespace(
+            POSTGRES_HOST="test-host",
+            POSTGRES_PORT=6543,
+            POSTGRES_USER_SERVICE_USER="user-service",
+            POSTGRES_USER_SERVICE_PASSWORD=SecretStr("synthetic-password"),
+            POSTGRES_USER_SERVICE_DB="user-service-db",
+        ),
+    )
+    with startup._migration_lock():
+        pass
+    assert credentials["user"] == "user-service"
+    assert credentials["password"] == "synthetic-password"
+    assert credentials["port"] == 6543
+    assert len(statements) == 2
 
 
 def test_alembic_revision_graph_has_unique_revisions_and_single_head():
@@ -34,7 +72,7 @@ def test_alembic_revision_graph_has_unique_revisions_and_single_head():
             referenced_revisions.add(down_revision)
 
     heads = sorted(set(revisions) - referenced_revisions)
-    assert heads == ["0044"]
+    assert heads == ["0051"]
 
 
 def test_alembic_metadata_does_not_register_deprecated_coarse_roles_table():
@@ -69,7 +107,8 @@ def test_run_startup_migrations_ensures_database_before_alembic(monkeypatch):
         def set_main_option(self, key: str, value: str) -> None:
             options[key] = value
 
-    monkeypatch.setattr(startup, "ensure_database_exists", lambda: events.append("ensure"))
+    monkeypatch.setattr(startup, "_migration_lock", nullcontext)
+    monkeypatch.setattr(startup, "run_database_bootstrap", lambda: events.append("ensure"))
     monkeypatch.setattr(startup, "Config", FakeConfig)
     monkeypatch.setattr(
         startup.command,
@@ -95,13 +134,17 @@ def test_run_startup_migrations_ensures_database_before_alembic(monkeypatch):
     startup.run_startup_migrations()
 
     assert events == [
-        "retry:postgres:ensure_database",
+        "retry:postgres:bootstrap_database",
         "ensure",
         "retry:postgres:run_migrations",
         "upgrade:head",
     ]
-    assert options["script_location"].endswith("apps/user-service/src/core/database/migrations")
-    assert options["prepend_sys_path"].endswith("apps/user-service/src")
+    assert (
+        Path(options["script_location"])
+        .as_posix()
+        .endswith("apps/user-service/src/core/database/migrations")
+    )
+    assert Path(options["prepend_sys_path"]).as_posix().endswith("apps/user-service/src")
     assert startup._build_alembic_config().attributes["configure_logger"] is False
     assert (
         "User service database migration check: current=%s target=%s",
@@ -482,12 +525,16 @@ def test_redis_connect_is_wrapped_in_retry_async():
 def test_keycloak_admin_bootstrap_and_external_idp_sync_are_degraded():
     main_py = (Path(__file__).parents[1] / "src/main.py").read_text()
 
-    # Admin bootstrap failure is degraded (record + continue).
-    assert "keycloak is unavailable during default admin bootstrap; " in main_py
+    # Admin bootstrap failure is degraded (record + continue), attributed to
+    # whichever dependency `_admin_bootstrap_degraded_dependency` names --
+    # not hardcoded to "keycloak", since that call's body mixes real Keycloak
+    # calls with local repository calls and a local failure must not be
+    # blamed on Keycloak (see test_default_admin_bootstrap_diagnostics.py).
+    assert "outcome = _admin_bootstrap_degraded_dependency(exc)" in main_py
+    assert "record_degraded(\n                outcome.dependency" in main_py
     assert "continuing without admin user sync." in main_py
-    assert 'record_degraded(\n                    "keycloak"' in main_py
     assert "startup.dependency.degraded" in main_py
 
     # External IdP sync denial is degraded (record + continue).
-    assert 'record_degraded(\n                            "keycloak_idp"' in main_py
+    assert 'record_degraded(\n                        "keycloak_idp"' in main_py
     assert "Skipping external Keycloak identity provider sync" in main_py

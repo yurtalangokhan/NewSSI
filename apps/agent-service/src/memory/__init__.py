@@ -1,59 +1,32 @@
 from contextlib import AbstractAsyncContextManager
 
 try:
-    from langgraph.checkpoint.mongodb.aio import AsyncMongoDBSaver
-except ImportError:
-    AsyncMongoDBSaver = None
-
-try:
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 except ImportError:
     AsyncPostgresSaver = None
 
-try:
-    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-except ImportError:
-    AsyncSqliteSaver = None
-
-from core.settings import DatabaseType, settings
-from memory.mongodb import get_mongo_saver
-from memory.postgres import get_postgres_saver, get_postgres_store
-from memory.sqlite import get_sqlite_saver, get_sqlite_store
-
-
-def initialize_database() -> AbstractAsyncContextManager[
-    AsyncSqliteSaver | AsyncPostgresSaver | AsyncMongoDBSaver
-]:
-    """
-    Initialize the appropriate database checkpointer based on configuration.
-    Returns an initialized AsyncCheckpointer instance.
-    """
-    if settings.DATABASE_TYPE == DatabaseType.POSTGRES:
-        return get_postgres_saver()
-    if settings.DATABASE_TYPE == DatabaseType.MONGO:
-        return get_mongo_saver()
-    else:  # Default to SQLite
-        return get_sqlite_saver()
-
-
-def initialize_store():
-    """
-    Initialize the appropriate store based on configuration.
-    Returns an async context manager for the initialized store.
-    """
-    if settings.DATABASE_TYPE == DatabaseType.POSTGRES:
-        return get_postgres_store()
-    # TODO: Add Mongo store - https://pypi.org/project/langgraph-store-mongodb/
-    else:  # Default to SQLite
-        return get_sqlite_store()
-
-
-__all__ = ["initialize_database", "initialize_store"]
-
-# Re-export long_term helpers for convenience
-from memory.long_term import (  # noqa: E402, F401
+from memory.long_term import (
+    build_compact_memory_context,
     build_memory_context,
+    cancel_all_background_tasks,
     extract_and_save_memories,
+    extract_memories_for_turn,
+    recall_context_for_turn,
     recall_memories,
     save_memories,
 )
+from memory.memory_flags import resolve_memory_flags
+from memory.postgres import get_postgres_saver, get_postgres_store
+
+
+def initialize_database() -> AbstractAsyncContextManager[AsyncPostgresSaver]:
+    """Initialize the canonical database checkpointer (PostgreSQL)."""
+    return get_postgres_saver()
+
+
+def initialize_store():
+    """Initialize the canonical store (PostgreSQL store)."""
+    return get_postgres_store()
+
+
+__all__ = ["initialize_database", "initialize_store", "resolve_memory_flags"]

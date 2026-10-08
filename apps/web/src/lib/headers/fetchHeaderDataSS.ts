@@ -1,7 +1,7 @@
 import { CombinedSettings } from "@/interfaces/settings";
-import { ChatSession, toChatSession } from "@/app/app/interfaces";
+import { ChatSession, toChatSession } from "@/lib/api/domains/chat/types";
 import { fetchSettingsSS } from "@/components/settings/lib";
-import { fetchBackendChatSessionSS } from "@/lib/chat/fetchBackendChatSessionSS";
+import { fetchBackendChatSessionSS } from "@/lib/api/domains/chat/server";
 
 export interface HeaderData {
   settings: CombinedSettings | null;

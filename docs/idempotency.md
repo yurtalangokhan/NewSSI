@@ -59,19 +59,22 @@ Start with these files when you need to understand or change idempotency.
 
 | Area | File | Purpose |
 |---|---|---|
-| Shared middleware | `packages/idempotency-py/src/idempotency/middleware.py` | Reads the request, validates the key, builds the fingerprint, claims ownership, manages locks, caches responses, and returns replay or conflict responses. |
-| Shared Redis operations | `packages/idempotency-py/src/idempotency/storage.py` | Defines Redis key shapes and atomic lock claim, renew, and release operations. |
-| Shared models | `packages/idempotency-py/src/idempotency/models.py` | Defines policy modes, route policy matching, cached response metadata, and key owner metadata. |
-| Shared config | `packages/idempotency-py/src/idempotency/config.py` | Defines TTLs, lock settings, cache settings, Redis settings, principal header candidates, and the optional `principal_extractor` callback. |
-| Agent policy | `apps/agent-service/src/core/idempotency.py` | Classifies agent-service mutating routes by idempotency mode and wires the JWT principal extractor. |
-| RAG policy | `apps/rag-service/langconnect/idempotency.py` | Classifies rag-service mutating routes by idempotency mode and wires the JWT principal extractor. |
+| Shared middleware | `packages/idempotency/src/idempotency/middleware.py` | Reads the request, validates the key, builds the fingerprint, claims ownership, manages locks, caches responses, and returns replay or conflict responses. |
+| Shared Redis operations | `packages/idempotency/src/idempotency/storage.py` | Defines Redis key shapes and atomic lock claim, renew, and release operations. |
+| Shared models | `packages/idempotency/src/idempotency/models.py` | Defines policy modes, route policy matching, cached response metadata, and key owner metadata. |
+| Shared config | `packages/idempotency/src/idempotency/config.py` | Defines TTLs, lock settings, cache settings, Redis settings, principal header candidates, the optional `principal_extractor` callback, and the optional `decision_recorder` callback. |
+| Shared decision model | `packages/idempotency/src/idempotency/models.py` | Defines `IdempotencyOutcome` (the closed ten-value enum) and `IdempotencyDecision`, the record every decision produces. |
+| Metrics collectors | `packages/metrics/src/metrics/idempotency.py` | Defines `idempotency_decisions_total` and `idempotency_lock_wait_seconds` plus `install_idempotency_recorder(service_name)`, the recorder the services bind into their config. |
+| Log contract | `packages/observability/src/observability/formatter.py` | Renders every log record as the platform field contract; the middleware's decision and lock-lifecycle records carry `event`, `status`, `error_code`, and `request_id` through it. |
+| Agent policy | `apps/agent-service/src/core/http/idempotency.py` | Classifies agent-service mutating routes by idempotency mode and wires the JWT principal extractor. |
+| RAG policy | `apps/rag-service/src/shared/idempotency.py` | Classifies rag-service mutating routes by idempotency mode and wires the JWT principal extractor. |
 | User policy | `apps/user-service/src/core/idempotency.py` | Classifies user-service mutating routes by idempotency mode and wires the JWT principal extractor. |
 | Tools policy | `apps/tools-service/src/core/idempotency.py` | Classifies tools-service HTTP transport routes. |
 | Agent principal | `apps/agent-service/src/core/idempotency_principal.py` | Extracts the principal scope from the verified Keycloak JWT `sub` claim for agent-service. |
 | User principal | `apps/user-service/src/core/idempotency_principal.py` | Extracts the principal scope from the verified Keycloak JWT `sub` claim for user-service. |
-| RAG principal | `apps/rag-service/langconnect/idempotency_principal.py` | Extracts the principal scope from the verified Keycloak JWT `sub` claim for rag-service. |
+| RAG principal | `apps/rag-service/src/shared/idempotency_principal.py` | Extracts the principal scope from the verified Keycloak JWT `sub` claim for rag-service. |
 | Agent registration | `apps/agent-service/src/app.py` | Adds `IdempotencyMiddleware` to agent-service. |
-| RAG registration | `apps/rag-service/langconnect/server.py` | Adds `IdempotencyMiddleware` to rag-service. |
+| RAG registration | `apps/rag-service/src/server.py` | Adds `IdempotencyMiddleware` to rag-service. |
 | User registration | `apps/user-service/src/main.py` | Adds `IdempotencyMiddleware` to user-service. |
 | Tools registration | `apps/tools-service/server.py` | Adds `IdempotencyMiddleware` to the FastMCP HTTP app. |
 | Web helpers | `apps/web/src/lib/api/idempotency.ts` | Creates UUID keys, attaches keys to outgoing requests, and forwards incoming keys from Next.js routes. |
@@ -159,7 +162,7 @@ hash of the value.
 ## Policy modes
 
 Each service classifies mutating routes with an `IdempotencyPolicyConfig`.
-Policy paths use the service's versioned API prefix, not Kong routes, hostnames,
+Policy paths use the service's versioned API prefix, not Apisix routes, hostnames,
 or ports.
 
 | Mode | Missing key behavior | Replay behavior | Use for |
@@ -179,6 +182,14 @@ a single static key.
 
 `domain_required` is the safest mode for non-idempotent side effects because the
 route rejects missing keys even when global required-key enforcement is off.
+
+A route policy can also set `rerun_after_failure`. Use it only for a
+`domain_required` route whose handler is safe to run again for the same request
+after a failed run. When the handler answers `429` or `5xx`, or raises, the
+middleware deletes the key's owner record instead of marking the key completed
+(or leaving it "in progress"), so a retry with the same key executes again. A
+successful run is still cached and replayed, a run in flight still returns
+`idempotency_request_in_progress`, and other `4xx` answers still close the key.
 
 ## Choosing a mode
 
@@ -284,7 +295,7 @@ change.
 
 ### Agent service
 
-Agent-service uses `apps/agent-service/src/core/idempotency.py`.
+Agent-service uses `apps/agent-service/src/core/http/idempotency.py`.
 
 High-risk `domain_required` routes include chat message sends, agent invokes and
 streams, MCP execution, datasource sync, ingestion, file upload, mail test and
@@ -292,7 +303,7 @@ send, model sync, Ollama pull, web crawl, persona image upload, and selected
 destructive Ollama model cleanup.
 
 Deterministic create routes such as chat sessions, threads, assistants,
-personas, agent definitions, agent groups, datasources, MCP providers,
+personas, agent definitions, datasources, MCP providers,
 providers, user providers, projects, and datasource schedules are classified as
 `required_replay`.
 
@@ -301,11 +312,17 @@ default. Review defaulted routes carefully before treating coverage as complete.
 
 ### RAG service
 
-RAG-service uses `apps/rag-service/langconnect/idempotency.py`.
+RAG-service uses `apps/rag-service/src/shared/idempotency.py`.
 
 High-risk `domain_required` routes include graph builds, graph build lifecycle
-actions, document creation, force collection delete, and graph collection
-delete. Collection creation and collection update use `required_replay`.
+actions, document creation, connector record ingestion, force collection
+delete, and graph collection delete. Collection creation and collection update
+use `required_replay`.
+
+Connector record ingestion (`POST /datasources/{collection_id}/records`) is the
+one route with `rerun_after_failure`: it replaces what an earlier run stored
+for a record, so agent-service can retry a batch that failed with `429` or
+`5xx` under the same key.
 
 Search, Cypher, regular collection delete, and regular document delete are
 currently `optional_replay`. Document upload-job start and retrieval currently
@@ -341,6 +358,84 @@ and replay handling.
 
 Agent-service's `/api/v1/proxy/mcp/execute` route is the preferred place to
 require operation-level idempotency for tool execution.
+
+## Observability
+
+Every decision the middleware makes is observable three ways: a Prometheus
+counter, a histogram, and one structured log record per decision.
+
+### Metrics
+
+Both series live in `packages/metrics/src/metrics/idempotency.py` and are
+exported from every service's `/metrics` endpoint.
+
+| Series | Labels | Answers |
+|---|---|---|
+| `idempotency_decisions_total` | `service`, `route`, `outcome` | How often each decision happens; replay rate and conflict spikes are single PromQL queries. |
+| `idempotency_lock_wait_seconds` | `service`, `route` | How long concurrent duplicates block on the lock. Contention is invisible without a timing series, because suppression working correctly looks identical to a request that never arrived. |
+
+The `route` label carries the matched route template (`/chat/sessions`), never
+the resolved path (`/chat/sessions/42`), using the same vocabulary as
+`http_requests_total`. A parameterised endpoint stays one time series no
+matter how many ids flow through it; a route with no matching policy entry is
+labelled `<default>`.
+
+`outcome` is the closed ten-value enum from `IdempotencyOutcome`:
+
+| Outcome | Meaning |
+|---|---|
+| `executed` | First request for the key ran the route. |
+| `replayed` | The cached response was returned without executing. |
+| `bypassed` | The route is idempotency-eligible but the optional key was absent. |
+| `key_missing` | Reserved outcome for a missing key on an optional route. |
+| `key_required` | The route requires the key and it was absent (400). |
+| `key_invalid` | The key failed validation (400). |
+| `conflict` | The key was reused with a different body (409). |
+| `in_flight` | A duplicate arrived while the original still held the lock (425). |
+| `completed_no_replay` | A `domain_required` route finished without a replayable response. |
+| `store_unavailable` | Redis could not be reached; required-key routes fail closed with 503. |
+
+Services bind the recorder with
+`decision_recorder=install_idempotency_recorder("<service>")` in their
+`build_idempotency_config()`. The metrics package never imports idempotency;
+the recorder receives decisions through a structural protocol, so the package
+dependency graph stays acyclic.
+
+### Logs
+
+Every decision emits one info record with `event="idempotency.decision"`, the
+outcome, an `ok`/`rejected` status, and the caller's `X-Request-ID`, so replay
+rates and conflict spikes are visible without debug logging.
+`store_unavailable` logs a warning instead and does not double-log.
+
+The lock-lifecycle warnings (`idempotency.lock_renew_failed`,
+`idempotency.lock_release_failed`, `idempotency.lock_renew_gave_up`,
+`idempotency.recorder_failed`) and the
+`idempotency.principal_extractor_failed` warning all carry the platform
+contract fields: `event`, `status` (`degraded`), `error_code`, and
+`request_id`. Request-id resolution mirrors `error_contract`:
+`X-Request-ID` wins, then `X-Correlation-ID`, so the middleware log correlates
+with the response envelope the error contract produces downstream.
+
+### OpenAPI
+
+`error_contract.apply_idempotency_openapi(app)` declares the contract on every
+mutating operation: the `Idempotency-Key` header parameter, the
+`Idempotency-Replayed` response header, and the middleware's error codes on
+the statuses it returns - `idempotency_key_required` and
+`idempotency_key_invalid` on 400, `idempotency_key_reused` on 409,
+`idempotency_request_in_progress` on 425, and `idempotency_store_unavailable`
+on 503 - each typed as the platform `ErrorEnvelope`.
+
+### Expiry replaces a cleanup job
+
+There is no scheduled cleanup job for expired idempotency records, by design.
+All three key types (response cache, lock, owner) are written with a Redis TTL
+derived from `idempotency_ttl` and the lock settings, so Redis itself expires
+every record: a cleanup job would only re-implement the TTL with a scheduler,
+a second source of truth for the same constant, and one more thing to monitor.
+If record retention ever needs to outlive the TTL, that is a new requirement
+with its own design, not a job bolted onto this one.
 
 ## Frontend behavior
 
@@ -529,7 +624,7 @@ The relevant files are:
 
 - `apps/agent-service/src/app.py`
 - `apps/agent-service/src/core/idempotency.py`
-- `apps/agent-service/src/api/routes/ChatRoute.py`
+- `apps/agent-service/src/api/routes/chat_route.py`
 - `apps/agent-service/src/controller/chat_controller.py`
 
 ### Case matrix
@@ -560,7 +655,11 @@ key.
   produce a cached response.
 - If the first request is still in progress after the wait, the middleware
   returns `idempotency_request_in_progress` with the configured status code.
-- Responses with status `429` or `5xx` are not cached.
+- Responses with status `429` or `5xx` are not cached. On a `domain_required`
+  route they close the key (reuse returns `409 idempotency_key_reused`), unless
+  the route sets `rerun_after_failure`: then the key is freed and a retry runs
+  again. The same holds when the handler raises, which otherwise leaves the key
+  "in progress" until its TTL.
 - Responses over `max_cache_body_size` are not cached.
 - Server-sent event responses are not replayed. For `domain_required` routes,
   the key is marked completed without replay so reuse doesn't start the side
@@ -667,7 +766,7 @@ Use these targeted tests for policy changes:
 - `make -C apps/rag-service test TEST_FILE=tests/unit_tests/test_idempotency_policy.py`
 - `(cd apps/user-service && uv run pytest tests/test_idempotency_policy.py)`
 - `(cd apps/tools-service && uv run pytest tests/test_gateway_routes.py)`
-- `uv run --directory packages/idempotency-py pytest`
+- `uv run --directory packages/idempotency pytest`
 
 When you touch shared middleware behavior, run the shared package tests and the
 affected service policy tests. When you touch frontend key generation or proxy

@@ -5,10 +5,9 @@ import Button from "@/refresh-components/buttons/Button";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "next/navigation";
 
-import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
-import { APP_SUPPORT_EMAIL } from "@/lib/appInfo";
 import { formatErrorMessage } from "@/components/ErrorCallout";
 import Text from "@/refresh-components/texts/Text";
+import { appSettings } from "@/lib/settings";
 
 const Page = () => {
   const { t } = useTranslation();
@@ -67,11 +66,14 @@ const Page = () => {
         </Button>
         <Text as="p" className="text-sm text-text-500 text-center">
           {t("authPages.authError.tryAgainNote")}
-          {NEXT_PUBLIC_CLOUD_ENABLED && (
+          {appSettings.NEXT_PUBLIC_CLOUD_ENABLED && (
             <span className="block mt-1 text-blue-600">
               {t("authPages.authError.cloudSupportNote")}{" "}
-              <a href={`mailto:${APP_SUPPORT_EMAIL}`} className="text-blue-600">
-                {APP_SUPPORT_EMAIL}
+              <a
+                href={`mailto:${appSettings.APP_SUPPORT_EMAIL}`}
+                className="text-blue-600"
+              >
+                {appSettings.APP_SUPPORT_EMAIL}
               </a>
             </span>
           )}

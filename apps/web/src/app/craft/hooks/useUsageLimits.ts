@@ -1,14 +1,16 @@
 "use client";
+import { craftEndpoints } from "@/lib/api/domains/craft/endpoints";
 
 import useSWR from "swr";
 
-import { UsageLimits, LimitType } from "@/app/craft/types/streamingTypes";
-
 import {
-  USAGE_LIMITS_ENDPOINT,
-  fetchUsageLimits,
-} from "@/app/craft/services/apiServices";
-import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
+  UsageLimits,
+  LimitType,
+} from "@/lib/api/domains/craft/streaming-types";
+
+import { fetchUsageLimits } from "@/lib/api/domains/craft/api";
+
+import { appSettings } from "@/lib/settings";
 
 // Re-export types for consumers
 export type { UsageLimits, LimitType };
@@ -41,15 +43,15 @@ export interface UseUsageLimitsReturn {
  * - Paid users: 25 messages per week by default (limitType: "weekly")
  *   (configurable via CRAFT_PAID_USER_RATE_LIMIT env var)
  *
- * Only fetches when NEXT_PUBLIC_CLOUD_ENABLED is true.
+ * Only fetches when appSettings.NEXT_PUBLIC_CLOUD_ENABLED is true.
  * Automatically fetches limits on mount and provides refresh capability.
  */
 export function useUsageLimits(): UseUsageLimitsReturn {
-  const isEnabled = NEXT_PUBLIC_CLOUD_ENABLED;
+  const isEnabled = appSettings.NEXT_PUBLIC_CLOUD_ENABLED;
 
   const { data, error, isLoading, mutate } = useSWR<UsageLimits>(
     // Only fetch if cloud is enabled
-    isEnabled ? USAGE_LIMITS_ENDPOINT : null,
+    isEnabled ? craftEndpoints.craftUsageLimits.browserPath : null,
     fetchUsageLimits,
     {
       // Revalidate on focus (when user returns to tab)

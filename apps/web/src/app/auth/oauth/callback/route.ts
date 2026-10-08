@@ -1,16 +1,19 @@
-import { getDomain } from "@/lib/redirectSS";
-import { buildUserServiceUrl } from "@/lib/utilsSS";
+import { sessionEndpoints } from "@/lib/api/domains/session/endpoints";
+import { getDomain } from "@/lib/navigation/redirect.server";
+
+import { backendRequest } from "@/lib/api/http/server";
+import { forwardSetCookies } from "@/lib/auth/forwardSetCookies";
 import { NextRequest, NextResponse } from "next/server";
 
 export const GET = async (request: NextRequest) => {
   // Wrapper around the FastAPI endpoint /api/auth/oauth/callback,
   // which adds back a redirect to the main app.
-  const url = new URL(buildUserServiceUrl("/api/auth/oauth/callback"));
-  url.search = request.nextUrl.search;
   const cookieHeader = request.headers.get("cookie") || "";
 
   // Set 'redirect' to 'manual' to prevent automatic redirection
-  const response = await fetch(url.toString(), {
+  const response = await backendRequest({
+    ...sessionEndpoints.oauthCallback.backend,
+    query: request.nextUrl.searchParams,
     redirect: "manual",
     headers: cookieHeader ? { cookie: cookieHeader } : undefined,
   });
@@ -33,6 +36,6 @@ export const GET = async (request: NextRequest) => {
     new URL(redirectUrl, getDomain(request))
   );
 
-  redirectResponse.headers.set("set-cookie", setCookieHeader);
+  forwardSetCookies(response.headers, redirectResponse.headers);
   return redirectResponse;
 };

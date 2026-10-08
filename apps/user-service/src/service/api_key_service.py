@@ -2,28 +2,20 @@ import hashlib
 import secrets
 import uuid
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
+from error_contract import ApiKeyNotFoundError
 
-from src.config import get_settings
+from src.core.security.encryption import SecretScope, get_cipher
 from src.repository import ApiKeyRepository
-
-_settings = get_settings()
-
-_fernet = None
 
 
 def _get_fernet() -> Fernet:
-    global _fernet
-    if _fernet is None:
-        key = _settings.require_encryption_key()
-        if isinstance(key, str):
-            import base64
+    """The cipher for stored API key hashes.
 
-            key_bytes = base64.urlsafe_b64decode(key + "==")
-            _fernet = Fernet(key_bytes)
-        else:
-            _fernet = Fernet(key)
-    return _fernet
+    Scoped to USER_API_KEY_ENCRYPTION_KEY, so a leak of the system-settings key
+    does not expose API keys. Key validation lives in core.security.encryption.
+    """
+    return get_cipher(SecretScope.USER_API_KEY)
 
 
 class ApiKeyService:
@@ -74,11 +66,12 @@ class ApiKeyService:
         for key_record in candidates:
             try:
                 stored_hash = _get_fernet().decrypt(key_record.key_hash.encode()).decode()
-                if stored_hash == key_hash:
-                    await self.repo.update_last_used(key_record.id)
-                    return key_record.user_id
-            except Exception:
+            except (InvalidToken, UnicodeError):
+                # A corrupt stored key must not prevent checking the remaining records.
                 continue
+            if stored_hash == key_hash:
+                await self.repo.update_last_used(key_record.id)
+                return key_record.user_id
 
         return None
 
@@ -96,11 +89,14 @@ class ApiKeyService:
             for k in keys
         ]
 
-    async def revoke(self, key_id: uuid.UUID) -> bool:
-        return await self.repo.revoke(key_id)
+    async def revoke(self, key_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+        return await self.repo.revoke(key_id, user_id)
 
-    async def delete(self, key_id: uuid.UUID) -> bool:
-        return await self.repo.delete(key_id)
+    async def delete(self, key_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+        deleted = await self.repo.delete(key_id, user_id)
+        if not deleted:
+            raise ApiKeyNotFoundError()
+        return True
 
 
 _api_key_service: ApiKeyService | None = None

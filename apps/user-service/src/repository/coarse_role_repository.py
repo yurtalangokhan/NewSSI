@@ -1,95 +1,127 @@
+"""Feature bundles stored as roles on existing Keycloak service clients."""
+
+import asyncio
 from typing import Any
 
-from sqlalchemy import bindparam, delete, select, text
+from error_contract import BadRequestError
 
-from src.core.database.models import RoleModel
+from .keycloak_role_client import (
+    BUILTIN,
+    PERMISSIONS,
+    CoarseRoleRecord,
+    KeycloakRoleClient,
+    catalog_cache,
+    segment,
+)
 
-from .base_repository import BaseRepository
 
+class RoleRepository:
+    """Feature roles addressed by Keycloak's immutable role ID.
 
-class RoleRepository(BaseRepository):
-    async def get_by_name(self, name: str) -> RoleModel | None:
-        async with self._session() as session:
-            result = await session.execute(select(RoleModel).where(RoleModel.name == name))
-            return result.scalar_one_or_none()
+    A client-role name is unique only within its client, so the ID is the only
+    unambiguous handle; names are accepted solely when creating a role.
+    """
 
-    async def get_all(self, service_client: str | None = None) -> list[RoleModel]:
-        async with self._session() as session:
-            query = select(RoleModel).order_by(RoleModel.service_client, RoleModel.name)
-            if service_client:
-                query = query.where(RoleModel.service_client == service_client)
-            result = await session.execute(query)
-            return list(result.scalars().all())
+    def __init__(self):
+        self.client = KeycloakRoleClient()
 
-    async def get_by_names(self, names: list[str]) -> list[RoleModel]:
-        async with self._session() as session:
-            result = await session.execute(select(RoleModel).where(RoleModel.name.in_(names)))
-            return list(result.scalars().all())
+    @staticmethod
+    def _record(role, service_client) -> CoarseRoleRecord:
+        attributes = role.get("attributes", {})
+        return CoarseRoleRecord(
+            id=role["id"],
+            name=role["name"],
+            description=role.get("description"),
+            service_client=service_client,
+            permissions=tuple(attributes.get(PERMISSIONS, [])),
+            is_builtin=attributes.get(BUILTIN) == ["true"],
+        )
 
-    async def get_permissions_by_names(self, names: list[str]) -> dict[str, list[str]]:
-        if not names:
-            return {}
-        async with self._session() as session:
-            result = await session.execute(
-                text(
-                    """
-                    SELECT role_name, permission_name
-                    FROM role_permissions
-                    WHERE role_name IN :names
-                    ORDER BY role_name, permission_name
-                    """
-                ).bindparams(bindparam("names", expanding=True)),
-                {"names": names},
+    async def get_all(self, service_client=None) -> list[CoarseRoleRecord]:
+        async def load():
+            clients = [
+                client
+                for client in await self.client.clients()
+                if not service_client or client["clientId"] == service_client
+            ]
+            if not clients:
+                return []
+            # One round trip per service client, concurrently rather than in series.
+            pages = await asyncio.gather(
+                *(
+                    self.client.pages(f"/clients/{segment(client['id'])}/roles", briefRepresentation=False)
+                    for client in clients
+                )
             )
-            permissions_by_role: dict[str, list[str]] = {name: [] for name in names}
-            for role_name, permission_name in result.fetchall():
-                permissions_by_role.setdefault(str(role_name), []).append(str(permission_name))
-            return permissions_by_role
+            result = [
+                self._record(role, client["clientId"])
+                for client, roles in zip(clients, pages, strict=True)
+                for role in roles
+                # Keycloak creates this internal authorization role on service
+                # clients; other client roles may legitimately have no attributes.
+                if role["name"] != "uma_protection"
+            ]
+            return sorted(result, key=lambda r: (r.service_client, r.name))
 
-    async def create(
-        self,
-        name: str,
-        service_client: str,
-        description: str | None = None,
-        permissions: list[str] | None = None,
-    ) -> RoleModel:
-        async with self._session() as session:
-            role = RoleModel(
-                name=name,
-                service_client=service_client,
-                description=description,
-                permissions=permissions or [],
-            )
-            session.add(role)
-            await session.flush()
-            await session.refresh(role)
-            return role
+        return list(await catalog_cache.get(("bundles", service_client), load))
 
-    async def update(self, name: str, **updates: Any) -> RoleModel | None:
-        async with self._session() as session:
-            result = await session.execute(select(RoleModel).where(RoleModel.name == name))
-            role = result.scalar_one_or_none()
-            if not role:
-                return None
-            for k, v in updates.items():
-                if v is not None and hasattr(role, k):
-                    setattr(role, k, v)
-            await session.flush()
-            await session.refresh(role)
-            return role
+    async def get_by_id(self, role_id) -> CoarseRoleRecord | None:
+        return next((role for role in await self.get_all() if role.id == role_id), None)
 
-    async def delete(self, name: str) -> bool:
-        async with self._session() as session:
-            result = await session.execute(delete(RoleModel).where(RoleModel.name == name))
-            return result.rowcount > 0
+    async def get_by_ids(self, role_ids) -> list[CoarseRoleRecord]:
+        wanted = list(dict.fromkeys(role_ids))
+        if not wanted:
+            # No IDs asked for: skip the Keycloak catalog read entirely.
+            return []
+        by_id = {role.id: role for role in await self.get_all()}
+        return [by_id[role_id] for role_id in wanted if role_id in by_id]
 
-    async def exists(self, name: str) -> bool:
-        role = await self.get_by_name(name)
-        return role is not None
+    async def get_permissions_by_ids(self, role_ids) -> dict[str, list[str]]:
+        roles = await self.get_by_ids(role_ids)
+        expanded = await asyncio.gather(*(self.client.expanded_permissions({"id": role.id}) for role in roles))
+        return {role.id: permissions for role, permissions in zip(roles, expanded, strict=True)}
+
+    async def create(self, name, service_client, description=None, permissions=None) -> CoarseRoleRecord:
+        client_id = await self.client.client_id(service_client)
+        path = f"/clients/{segment(client_id)}/roles"
+        await self.client.request(
+            "POST",
+            path,
+            json={
+                "name": name,
+                "description": description or "",
+                "attributes": {PERMISSIONS: permissions or []},
+            },
+        )
+        role = await self.client.request("GET", f"{path}/{segment(name)}")
+        return self._record(role, service_client)
+
+    async def update(self, role_id, **updates: Any) -> CoarseRoleRecord | None:
+        existing = await self.get_by_id(role_id)
+        if not existing:
+            return None
+        if updates.get("service_client") not in (None, existing.service_client):
+            raise BadRequestError()
+        path = f"/roles-by-id/{segment(existing.id)}"
+        role = await self.client.request("GET", path)
+        attributes = dict(role.get("attributes", {}))
+        if updates.get("permissions") is not None:
+            attributes[PERMISSIONS] = list(updates["permissions"])
+        role["attributes"] = attributes
+        if updates.get("description") is not None:
+            role["description"] = updates["description"]
+        await self.client.request("PUT", path, json=role)
+        return self._record(role, existing.service_client)
+
+    async def delete(self, role_id) -> bool:
+        role = await self.get_by_id(role_id)
+        if not role:
+            return False
+        await self.client.request("DELETE", f"/roles-by-id/{segment(role.id)}")
+        return True
+
+    async def exists(self, name, service_client) -> bool:
+        return any(role.name == name for role in await self.get_all(service_client))
 
     async def list_service_clients(self) -> list[str]:
-        async with self._session() as session:
-            result = await session.execute(
-                select(RoleModel.service_client).distinct().order_by(RoleModel.service_client)
-            )
-            return [row[0] for row in result]
+        return sorted(c["clientId"] for c in await self.client.clients())

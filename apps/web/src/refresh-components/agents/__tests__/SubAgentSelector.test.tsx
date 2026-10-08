@@ -2,7 +2,7 @@
  * Hover-preview coverage for SubAgentSelector: selected-agent chips and the
  * available-agent picker list must show the agent's system_prompt/model/
  * tools/memory summary on hover, and the "persona-15" placeholder bug must
- * not resurface (see AgentDefinitionsRoute._serialize_definition_for_composition).
+ * not resurface (see agent_definitions_route._serialize_definition_for_composition).
  */
 
 import { render, screen, fireEvent, within } from "@testing-library/react";
@@ -10,7 +10,7 @@ import { Formik } from "formik";
 import SubAgentSelector from "../SubAgentSelector";
 
 const mockUseAvailableAgents = jest.fn();
-jest.mock("@/hooks/useAvailableAgents", () => ({
+jest.mock("@/lib/api/domains/agents/hooks", () => ({
   useAvailableAgents: (options: unknown) => mockUseAvailableAgents(options),
 }));
 

@@ -1,8 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
-import { INTERNAL_URL, USER_SERVICE_URL } from "@/lib/constants";
-import { BackendService, buildServiceUrl } from "@/lib/api/gatewayRouting";
+import type { BackendService, BackendTarget } from "@/lib/api/http/types";
+import {
+  backendRequest,
+  getCookieValue,
+  getLanguageHeaders,
+} from "@/lib/api/http/server";
+import { getRequestLanguage } from "@/i18n/locales";
+import { tServer } from "@/i18n/server";
+import { ApiRequestError } from "@/lib/api/errors";
+import type { ResponseModel } from "@/lib/api/responseModel";
+import { appSettings } from "@/lib/settings";
 
-const BACKEND_URL = INTERNAL_URL;
+export { getCookieValue, getLanguageHeaders };
+
+export function deriveBackendAuthHeaders(request: Request): {
+  Cookie?: string;
+  Authorization?: string;
+} {
+  const headers: { Cookie?: string; Authorization?: string } = {};
+  const cookie = request.headers.get("cookie");
+  if (cookie) headers.Cookie = cookie;
+
+  const authorization = request.headers.get("authorization");
+  if (authorization) {
+    headers.Authorization = authorization;
+    return headers;
+  }
+
+  const accessToken = cookie && getCookieValue(cookie, "access_token");
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  return headers;
+}
+
 const EXCLUDED_PROXY_RESPONSE_HEADERS = new Set([
   "connection",
   "content-encoding",
@@ -16,16 +45,7 @@ const EXCLUDED_PROXY_RESPONSE_HEADERS = new Set([
   "transfer-encoding",
   "upgrade",
 ]);
-const IDEMPOTENCY_KEY_HEADER = "Idempotency-Key";
-const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const AUTH_IDEMPOTENCY_EXCLUDED_PREFIXES = [
-  "/api/auth/login",
-  "/api/auth/ldap/login",
-  "/api/auth/external/login",
-  "/api/auth/refresh",
-  "/api/auth/logout",
-  "/api/auth/oidc",
-];
+const MAX_PROXY_BODY_BYTES = 200 * 1024 * 1024;
 
 function getSetCookieHeaders(headers: Headers): string[] {
   const getSetCookie = (headers as Headers & { getSetCookie?: () => string[] })
@@ -38,40 +58,6 @@ function getSetCookieHeaders(headers: Headers): string[] {
   return single ? [single] : [];
 }
 
-export function getCookieValue(
-  cookieHeader: string,
-  name: string
-): string | null {
-  for (const part of cookieHeader.split(/;\s*/)) {
-    const [key, ...valueParts] = part.split("=");
-    if (key === name) {
-      return decodeURIComponent(valueParts.join("="));
-    }
-  }
-  return null;
-}
-
-/**
- * Forwards the app's selected language to the backend so translated
- * error/response text matches the UI, falling back to the browser's
- * Accept-Language when the app hasn't sent an explicit X-Language header.
- */
-export function getLanguageHeaders(
-  request: NextRequest
-): Record<string, string> {
-  const xLanguage = request.headers.get("x-language");
-  if (xLanguage) {
-    return { "X-Language": xLanguage };
-  }
-
-  const acceptLanguage = request.headers.get("accept-language");
-  if (acceptLanguage) {
-    return { "Accept-Language": acceptLanguage };
-  }
-
-  return {};
-}
-
 export interface ProxyOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   withCredentials?: boolean;
@@ -80,35 +66,38 @@ export interface ProxyOptions {
   queryParams?: Record<string, string>;
 }
 
-function inferBackendService(backendUrl: string): BackendService {
-  try {
-    const parsed = new URL(backendUrl);
-    if (
-      backendUrl === USER_SERVICE_URL ||
-      parsed.hostname.includes("user-service") ||
-      parsed.pathname.startsWith("/user-service")
-    ) {
-      return "user";
-    }
-  } catch {
-    if (backendUrl === USER_SERVICE_URL) {
-      return "user";
-    }
-  }
+/**
+ * Legacy callers pass auth operations as string targets shaped
+ * `/auth/api/v1/<operation>`; the canonical user-service endpoint for the same
+ * operation is `/api/v1/auth/<operation>`.
+ */
+const LEGACY_AUTH_PATH = /^\/auth\/api\/v1(\/.*)?$/;
 
-  return "agent";
+function canonicalAuthTarget(path: string): BackendTarget | undefined {
+  const match = LEGACY_AUTH_PATH.exec(path);
+  if (!match) return undefined;
+  return { service: "user", path: `/api/v1/auth${match[1] ?? ""}` };
 }
 
-function shouldForwardIdempotencyKey(
-  method: string,
-  pathname: string
-): boolean {
-  if (!MUTATING_METHODS.has(method.toUpperCase())) {
-    return false;
-  }
-  return !AUTH_IDEMPOTENCY_EXCLUDED_PREFIXES.some((prefix) =>
-    pathname.startsWith(prefix)
-  );
+function proxyErrorResponse(
+  request: Request,
+  statusCode: number,
+  code: string,
+  translationKey: string
+): NextResponse {
+  const locale = getRequestLanguage(request);
+  const message = tServer(translationKey, { lng: locale });
+  const requestId = request.headers.get("x-request-id");
+  const body: ResponseModel<null> = {
+    statusCode,
+    message,
+    data: null,
+    error: { code, message, ...(requestId ? { request_id: requestId } : {}) },
+  };
+  return NextResponse.json(body, {
+    status: statusCode,
+    headers: { "Content-Language": locale },
+  });
 }
 
 /**
@@ -116,87 +105,62 @@ function shouldForwardIdempotencyKey(
  */
 export async function proxyToBackend(
   request: NextRequest,
-  pathname: string,
+  target: string | BackendTarget,
   options: ProxyOptions = {}
 ): Promise<NextResponse> {
+  const pathname = typeof target === "string" ? target : target.path;
   try {
-    const {
-      method = request.method,
-      withCredentials = true,
-      backendUrl = BACKEND_URL,
-      backendService = inferBackendService(backendUrl),
-      queryParams,
-    } = options;
-
-    // Build URL with query params
-    const url = buildServiceUrl(backendUrl, backendService, pathname);
-    if (request.nextUrl.search) {
-      url.search = request.nextUrl.search;
+    const declaredLength = request.headers.get("content-length");
+    if (declaredLength && Number(declaredLength) > MAX_PROXY_BODY_BYTES) {
+      return proxyErrorResponse(
+        request,
+        413,
+        "request.payload_too_large",
+        "common.apiErrors.payloadTooLarge"
+      );
     }
-    Object.entries(queryParams ?? {}).forEach(([key, value]) => {
-      url.searchParams.set(key, value);
+
+    const method = options.method ?? request.method;
+    const withCredentials = options.withCredentials ?? true;
+    // Auth traffic always goes through the Gateway so the session cookies are
+    // set on the gateway origin, so these paths ignore the per-service URL
+    // settings and resolve against GATEWAY_URL.
+    const authTarget =
+      typeof target === "string" ? canonicalAuthTarget(target) : undefined;
+    const backendService =
+      authTarget?.service ??
+      options.backendService ??
+      (typeof target === "string" ? undefined : target.service) ??
+      "agent";
+    const targetPath = authTarget?.path ?? pathname;
+    const targetBaseUrl =
+      options.backendUrl ?? (authTarget ? appSettings.GATEWAY_URL : undefined);
+    const query = new URLSearchParams(request.nextUrl.searchParams);
+    Object.entries(options.queryParams ?? {}).forEach(([key, value]) => {
+      query.set(key, value);
     });
 
-    const requestCookie = request.headers.get("cookie") || "";
-    const isAuthRefreshRequest =
-      pathname === "/api/auth/refresh" || pathname === "/api/v1/auth/refresh";
     let body: BodyInit | undefined;
     if (["POST", "PUT", "PATCH"].includes(method)) {
-      body = await request.arrayBuffer();
+      body = request.body ?? undefined;
     }
 
-    const buildHeaders = (
-      cookieHeader: string,
-      accessTokenOverride?: string | null
-    ): HeadersInit => {
-      const headers: HeadersInit = {
+    const response = await backendRequest({
+      service: backendService,
+      path: targetPath,
+      ...(targetBaseUrl ? { baseUrl: targetBaseUrl } : {}),
+      request,
+      query,
+      method,
+      headers: {
         "Content-Type":
           request.headers.get("content-type") || "application/json",
-      };
-
-      Object.assign(headers, getLanguageHeaders(request));
-
-      const authorization = request.headers.get("authorization");
-      if (authorization && !accessTokenOverride && !isAuthRefreshRequest) {
-        headers["Authorization"] = authorization;
-      } else {
-        const cookieAccessToken =
-          accessTokenOverride ||
-          (isAuthRefreshRequest
-            ? null
-            : getCookieValue(cookieHeader, "access_token"));
-        if (cookieAccessToken) {
-          headers["Authorization"] = `Bearer ${cookieAccessToken}`;
-        }
-      }
-
-      if (withCredentials) {
-        let cookie = cookieHeader;
-        if (
-          process.env.DEBUG_AUTH_COOKIE &&
-          process.env.NODE_ENV === "development" &&
-          !cookie.split(/;\s*/).some((c) => c.startsWith("fastapiusersauth="))
-        ) {
-          const debugCookie = `fastapiusersauth=${process.env.DEBUG_AUTH_COOKIE}`;
-          cookie = cookie ? `${cookie}; ${debugCookie}` : debugCookie;
-        }
-        if (cookie) {
-          headers["Cookie"] = cookie;
-        }
-      }
-
-      const idempotencyKey = request.headers.get("idempotency-key");
-      if (idempotencyKey && shouldForwardIdempotencyKey(method, pathname)) {
-        headers[IDEMPOTENCY_KEY_HEADER] = idempotencyKey;
-      }
-
-      return headers;
-    };
-
-    const response = await fetch(url.toString(), {
-      method,
-      headers: buildHeaders(requestCookie),
+      },
       body,
+      duplex: body ? "half" : undefined,
+      withCredentials,
+      deriveAuthorizationFromCookie: true,
+      includeDebugAuthCookie: true,
     });
 
     const noContent = new Set([204, 205, 304]).has(response.status);
@@ -220,10 +184,23 @@ export async function proxyToBackend(
 
     return result;
   } catch (error) {
+    if (
+      request.signal.aborted ||
+      ((error instanceof Error || error instanceof DOMException) &&
+        error.name === "AbortError")
+    ) {
+      throw error;
+    }
     console.error(`Proxy error for ${pathname}:`, error);
-    return NextResponse.json(
-      { error: "Backend service unavailable" },
-      { status: 503 }
+    const timedOut =
+      (error instanceof ApiRequestError && error.status === 504) ||
+      ((error instanceof Error || error instanceof DOMException) &&
+        error.name === "TimeoutError");
+    return proxyErrorResponse(
+      request,
+      timedOut ? 504 : 503,
+      timedOut ? "dependency.timeout" : "dependency.unavailable",
+      timedOut ? "common.apiErrors.timeout" : "common.apiErrors.unavailable"
     );
   }
 }

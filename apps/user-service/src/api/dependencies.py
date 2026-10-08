@@ -1,113 +1,47 @@
-import uuid
+import hmac
 from typing import Annotated
+import uuid
 
-from fastapi import Depends, HTTPException, Request
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from i18n import t
+from config_manager import env
+from error_contract import (
+    ApplicationError,
+    DependencyUnavailableError,
+    ForbiddenError,
+    UnauthorizedError,
+)
+from fastapi import Depends, Request
 
-from src.repository import UserRepository
-from src.service import get_auth_service
+from src.core.gateway_identity import gateway_user_id
+from src.core.observability import get_logger
 from src.service.permission_resolver_service import get_permission_resolver_service
 
-_security = HTTPBearer(auto_error=False)
+logger = get_logger(__name__)
+
+
+async def keycloak_request_scope():
+    """Share admin connections through auth and nested reads for one request."""
+    from src.service.keycloak_service import get_keycloak_service
+
+    async with get_keycloak_service().admin_request_scope():
+        yield
 
 
 async def get_current_user_id(
     request: Request,
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_security)],
 ) -> str | None:
-    from src.config import get_settings
-
-    settings = get_settings()
-    token = None
-
-    if credentials:
-        token = credentials.credentials
-    else:
-        cookie_token = request.cookies.get("access_token")
-        if cookie_token:
-            token = cookie_token
-
-    if not token:
-        if not settings.KEYCLOAK_ENABLED and not settings.AUTH_SECRET:
-            return "dev-user"
-        return None
-
-    auth = get_auth_service()
-    payload = await auth.validate_token(token)
-    if payload:
-        return payload.get("sub")
-
-    if not settings.KEYCLOAK_ENABLED:
-        return "dev-user"
-
-    return None
+    return gateway_user_id(request.headers, env.INTERNAL_SERVICE_TOKEN)
 
 
 async def require_auth(
-    request: Request,
     user_id: Annotated[str | None, Depends(get_current_user_id)],
 ) -> str:
     if not user_id:
-        raise HTTPException(status_code=401, detail=t("auth.required"))
+        raise UnauthorizedError(message_key="errors.user_service.auth.required", message_params={})
     return user_id
 
 
 async def verify_api_key(request: Request) -> str | None:
-    return await get_current_user_id(request, None)
-
-
-async def require_admin(
-    request: Request,
-    user_id: Annotated[str, Depends(require_auth)],
-) -> str:
-    return await _require_any_permission(
-        request,
-        user_id,
-        (
-            "role:list",
-            "user:list",
-            "permission:list",
-            "system.settings:read",
-        ),
-        t("auth.admin_required"),
-    )
-
-
-async def require_system_admin(
-    request: Request,
-    user_id: Annotated[str, Depends(require_auth)],
-) -> str:
-    return await _require_any_permission(
-        request,
-        user_id,
-        ("system.settings:update",),
-        t("auth.sysadmin_required"),
-    )
-
-
-async def _require_any_permission(
-    request: Request,
-    user_id: str,
-    permissions: tuple[str, ...],
-    detail: str,
-) -> str:
-    try:
-        repo = UserRepository()
-        user = await repo.get_by_id(uuid.UUID(user_id))
-        if not user:
-            raise HTTPException(status_code=403, detail=detail)
-        effective_permissions = set(
-            await get_permission_resolver_service().resolve_effective_permissions(user.id)
-        )
-        if "*" in effective_permissions or effective_permissions.intersection(permissions):
-            return user_id
-    except HTTPException:
-        raise
-    except Exception:
-        pass
-
-    raise HTTPException(status_code=403, detail=detail)
+    return await get_current_user_id(request)
 
 
 def require_permission(permission: str):
@@ -115,8 +49,8 @@ def require_permission(permission: str):
 
     Usage: ``user_id: str = Depends(require_permission("role:manage"))``
 
-    Checks the current user's role from the database and verifies the role
-    includes the required permission. Superusers bypass the check.
+    Resolves the current user's effective Keycloak role permissions.
+    The system-admin wildcard grants all permissions.
     Denied access is recorded in the audit log.
     """
 
@@ -129,19 +63,23 @@ def require_permission(permission: str):
 
         try:
             repo = UserRepository()
-            user = await repo.get_by_id(uuid.UUID(user_id))
-            if not user:
-                raise HTTPException(status_code=401, detail=t("user.not_found"))
+            subject = uuid.UUID(user_id)
+            # Existence only: the permission set comes from Keycloak, not the profile.
+            if not await repo.exists_by_id(subject):
+                raise UnauthorizedError(message_key="errors.user_service.user.not_found", message_params={})
 
-            permissions = await get_permission_resolver_service().resolve_effective_permissions(
-                user.id
-            )
+            permissions = await get_permission_resolver_service().resolve_effective_permissions(subject)
             if "*" in permissions or permission in permissions:
                 return user_id
-        except HTTPException:
+        except ApplicationError:
             raise
         except Exception:
-            pass
+            # An unavailable dependency is not a permission denial: report 503 and
+            # do not audit it as one, or an outage looks like a role misconfiguration.
+            logger.exception("Permission resolution failed for %s; refusing as unavailable", permission)
+            raise DependencyUnavailableError(
+                message_key="errors.user_service.common.service_unavailable", message_params={}
+            ) from None
 
         audit = get_audit_service()
         await audit.log(
@@ -153,10 +91,7 @@ def require_permission(permission: str):
             user_agent=request.headers.get("user-agent"),
         )
 
-        raise HTTPException(
-            status_code=403,
-            detail=t("auth.forbidden"),
-        )
+        raise ForbiddenError(message_key="errors.user_service.auth.forbidden", message_params={})
 
     return _require_permission
 
@@ -170,42 +105,40 @@ def _safe_uuid(val: str | None) -> uuid.UUID | None:
         return None
 
 
-async def verify_internal_service_token(request: Request) -> bool:
-    from src.config import get_settings
-
-    token = request.headers.get("X-Internal-Service-Token")
-    if not token:
-        return False
-    settings = get_settings()
-    return token == settings.INTERNAL_SERVICE_TOKEN
-
-
-async def get_current_user_optional(
-    request: Request,
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_security)],
-) -> str | None:
-    return await get_current_user_id(request, credentials)
-
-
 async def require_auth_or_internal_service_token(
     request: Request,
     user_id: Annotated[str | None, Depends(get_current_user_id)],
 ) -> str:
-    """Accept either a valid user JWT or X-Internal-Service-Token.
+    """Accept a gateway-authenticated user or X-Internal-Service-Token.
 
     Used on internal routes that must work both for user-scoped calls
-    (when agent-service forwards the user's Bearer token) and for
-    machine-only flows (when no user context exists, e.g. Airbyte
-    ingestion, Keycloak sync).
+    (when agent-service forwards gateway identity) and for
+    machine-only flows (when no user context exists, e.g. scheduled
+    connector syncs, Keycloak sync).
     """
     if user_id:
         return user_id
 
-    from src.config import get_settings
+    from config_manager import env
 
-    settings = get_settings()
+    settings = env
     token = request.headers.get("X-Internal-Service-Token")
-    if token and settings.INTERNAL_SERVICE_TOKEN and token == settings.INTERNAL_SERVICE_TOKEN:
+    if token and settings.INTERNAL_SERVICE_TOKEN and hmac.compare_digest(token, settings.INTERNAL_SERVICE_TOKEN):
         return "internal-service"
 
-    raise HTTPException(status_code=401, detail=t("auth.required"))
+    raise UnauthorizedError(message_key="errors.user_service.auth.required", message_params={})
+
+
+async def require_internal_service_token(request: Request) -> None:
+    """Accept only X-Internal-Service-Token; a gateway identity is not enough.
+
+    For routes that hand out material no end user may read back, such as the
+    decrypted connector configurations. ``require_auth_or_internal_service_token``
+    would let the owner's own identity through the public gateway route.
+    """
+    token = request.headers.get("X-Internal-Service-Token")
+    expected = env.INTERNAL_SERVICE_TOKEN
+    if token and expected and hmac.compare_digest(token, expected):
+        return
+
+    raise ForbiddenError(message_key="errors.user_service.auth.forbidden", message_params={})

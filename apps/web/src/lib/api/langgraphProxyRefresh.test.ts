@@ -1,8 +1,11 @@
 import { NextRequest } from "next/server";
 import { GET } from "@/app/api/langgraph/[...path]/route";
 
-jest.mock("@/lib/env.server", () => ({
-  getInternalUrl: () => "http://agent-service",
+jest.mock("@/lib/settings", () => ({
+  appSettings: {
+    ...jest.requireActual("@/lib/settings").appSettings,
+    AGENT_SERVICE_URL: "http://agent-service",
+  },
 }));
 
 describe("/api/langgraph proxy auth refresh", () => {
@@ -59,7 +62,7 @@ describe("/api/langgraph proxy auth refresh", () => {
     expect(response.status).toBe(401);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(fetchSpy).toHaveBeenCalledWith(
-      "http://agent-service/threads/search",
+      "http://agent-service/api/v1/threads/search",
       expect.any(Object)
     );
   });

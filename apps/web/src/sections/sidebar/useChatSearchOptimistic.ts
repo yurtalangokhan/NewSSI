@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import useSWRInfinite from "swr/infinite";
-import useChatSessions from "@/hooks/useChatSessions";
-import { useProjects } from "@/lib/hooks/useProjects";
-import { errorHandlingFetcher } from "@/lib/fetcher";
-import { ChatSearchResponse, ChatSession } from "@/app/app/interfaces";
+import { useChatSessions } from "@/lib/api/domains/chat/hooks";
+import { useProjects } from "@/lib/api/domains/projects/hooks";
+import { fetchChatSearchPage } from "@/lib/api/domains/chat/api";
+import { ChatSearchResponse, ChatSession } from "@/lib/api/domains/chat/types";
 import { UNNAMED_CHAT } from "@/lib/constants";
 import {
   getChatSessionActivityTime,
@@ -119,27 +119,35 @@ export function useChatSearchOptimistic(
       if (previousPageData && !previousPageData.has_more) return null;
 
       const page = pageIndex + 1;
-      const params = new URLSearchParams();
-      params.set("page", page.toString());
-      params.set("page_size", PAGE_SIZE.toString());
-
-      if (debouncedQuery.trim()) {
-        params.set("query", debouncedQuery);
-      }
-
-      return `/api/chat/search?${params.toString()}`;
+      return ["chat:search", page, PAGE_SIZE, debouncedQuery] as const;
     },
     [enabled, debouncedQuery]
   );
 
   // 4. Use SWR for paginated data (replaces fallback after fetch)
   const { data, size, setSize, isValidating } =
-    useSWRInfinite<ChatSearchResponse>(getKey, errorHandlingFetcher, {
-      revalidateOnFocus: false,
-      dedupingInterval: 30000,
-      revalidateFirstPage: false,
-      persistSize: true,
-    });
+    useSWRInfinite<ChatSearchResponse>(
+      getKey,
+      (key) => {
+        const [, page, pageSize, query] = key as readonly [
+          string,
+          number,
+          number,
+          string,
+        ];
+        return fetchChatSearchPage<ChatSearchResponse>({
+          page,
+          pageSize,
+          query,
+        });
+      },
+      {
+        revalidateOnFocus: false,
+        dedupingInterval: 30000,
+        revalidateFirstPage: false,
+        persistSize: true,
+      }
+    );
 
   // Transform SWR data to FilterableChat[]
   const swrResults = useMemo<FilterableChat[]>(() => {

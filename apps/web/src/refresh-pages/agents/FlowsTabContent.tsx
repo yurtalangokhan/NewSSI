@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import type { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import FlowCard from "@/sections/cards/FlowCard";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";

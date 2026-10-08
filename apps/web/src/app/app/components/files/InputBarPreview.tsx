@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { FileDescriptor } from "@/app/app/interfaces";
+import { FileDescriptor } from "@/lib/api/domains/chat/types";
 import { FiLoader, FiFileText } from "react-icons/fi";
 import { InputBarPreviewImage } from "./images/InputBarPreviewImage";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";

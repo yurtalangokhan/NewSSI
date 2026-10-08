@@ -1,8 +1,7 @@
-import React from "react";
 import { render, screen, setupUser, waitFor } from "@tests/setup/test-utils";
 import AgentEditorPage from "@/refresh-pages/AgentEditorPage";
-import { createPersona, updatePersona } from "@/app/admin/agents/lib";
-import { FullPersona } from "@/app/admin/agents/interfaces";
+import { createPersona, updatePersona } from "@/lib/api/domains/agents/api";
+import { FullPersona } from "@/lib/api/domains/agents/types";
 
 // Polyfill for Radix UI Select which uses methods not implemented in jsdom
 beforeAll(() => {
@@ -47,15 +46,12 @@ jest.mock("@/providers/SettingsProvider", () => ({
   }),
 }));
 
-jest.mock("@/hooks/useCompositionCatalog", () => ({
+jest.mock("@/lib/api/domains/agents/hooks", () => ({
   useCompositionCatalog: () => ({
     components: [],
-    // The strategy list is catalog-driven; the editor renders only what the
-    // backend advertises, so the flow strategy has to be in here.
     graphStrategies: [
       { key: "zero_shot", kind: "graph_strategy", available: true },
       { key: "react", kind: "graph_strategy", available: true },
-      { key: "flow", kind: "graph_strategy", available: true },
     ],
     brains: [{ key: "standard_model", kind: "brain", available: true }],
     perceptrons: [],
@@ -63,71 +59,60 @@ jest.mock("@/hooks/useCompositionCatalog", () => ({
     isLoading: false,
     error: undefined,
   }),
-}));
-
-jest.mock("@/hooks/useAgents", () => ({
   useAgents: () => ({
     agents: [],
     refresh: refreshAgents,
   }),
 }));
 
-jest.mock("@/hooks/useMcpServersForAgentEditor", () => ({
+jest.mock("@/lib/api/domains/tools/hooks", () => ({
+  ...jest.requireActual("@/lib/api/domains/tools/hooks"),
   __esModule: true,
-  default: () => ({
+  useMcpServersForAgentEditor: () => ({
     mcpData: { mcp_servers: [] },
     isLoading: false,
   }),
-}));
-
-jest.mock("@/hooks/useOpenApiTools", () => ({
-  __esModule: true,
-  default: () => ({
+  useOpenApiTools: () => ({
     openApiTools: mockOpenApiTools,
     isLoading: false,
   }),
-}));
-
-jest.mock("@/hooks/useAvailableModels", () => ({
-  useAvailableModels: () => ({
-    llmProviders: [],
-  }),
-}));
-
-jest.mock("@/hooks/useAvailableTools", () => ({
   useAvailableTools: () => ({
     tools: [],
     isLoading: false,
   }),
-}));
-
-jest.mock("@/hooks/useBuiltInTools", () => ({
-  __esModule: true,
-  default: () => ({
+  useBuiltInTools: () => ({
     tools: [],
     isLoading: false,
   }),
 }));
 
-jest.mock("@/hooks/useConnectorToolOptions", () => ({
-  __esModule: true,
-  CONNECTOR_OPERATIONS: ["list_resources", "read"],
-  default: () => ({
+jest.mock("@/lib/api/domains/datasources/hooks", () => ({
+  ...jest.requireActual("@/lib/api/domains/datasources/hooks"),
+  useConnectorToolOptions: () => ({
     options: mockConnectorOptions,
     isLoading: false,
     error: undefined,
   }),
 }));
 
-jest.mock("@/lib/mailConfigs", () => ({
+jest.mock("@/lib/api/domains/model-providers/hooks", () => ({
+  ...jest.requireActual("@/lib/api/domains/model-providers/hooks"),
+  useAvailableModels: () => ({
+    llmProviders: [],
+  }),
+}));
+
+jest.mock("@/lib/api/domains/system/api", () => ({
   buildMcpToolConfigs: () => ({}),
+}));
+jest.mock("@/lib/api/domains/system/hooks", () => ({
   useMailConfigs: () => ({
     mailConfigs: [],
     isLoading: false,
   }),
 }));
 
-jest.mock("@/app/admin/agents/lib", () => ({
+jest.mock("@/lib/api/domains/agents/api", () => ({
   createPersona: jest.fn(),
   updatePersona: jest.fn(),
 }));
@@ -172,11 +157,6 @@ jest.mock("@/refresh-components/agents/McpToolSelectionCard", () => ({
   buildMcpOnlyToolSelectionGroups: () => mockToolSelectionGroups,
   buildToolSelectionGroups: () => [],
   default: () => <div data-testid="mcp-tool-selection-card" />,
-}));
-
-jest.mock("@/components/flow-canvas/InlineFlowDesigner", () => ({
-  __esModule: true,
-  default: () => <div data-testid="inline-flow-designer" />,
 }));
 
 const existingAgent: FullPersona = {
@@ -374,101 +354,20 @@ describe("AgentEditorPage navigation", () => {
     });
   });
 
-  test("shows the inline flow designer instead of tool/RAG sections when graph_schema is flow", async () => {
-    render(
-      <AgentEditorPage
-        agent={{
-          ...existingAgent,
-          base_agent: "dynamic-agent",
-          graph_schema: "flow",
-        }}
-      />
-    );
-
-    expect(
-      await screen.findByTestId("inline-flow-designer")
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("mcp-tool-selection-card")
-    ).not.toBeInTheDocument();
-  });
-
-  test("blocks creating a flow agent until the canvas has Chat Input and Chat Output nodes", async () => {
+  test("does not offer Visual Flow as a graph_schema choice", async () => {
     const user = setupUser();
 
     render(<AgentEditorPage />);
 
-    await user.type(
-      screen.getByPlaceholderText("agentEditor.agentNamePlaceholder"),
-      "Flow agent"
-    );
-
-    // Only the base_agent select exists until "Dynamic Agent" is chosen;
-    // choosing it reveals the graph_schema select as a second combobox.
     await user.click(screen.getByRole("combobox"));
     await user.click(
       screen.getByRole("option", { name: "agentEditor.dynamicAgentOption" })
     );
 
-    // graph_schema is the second combobox — rendered right after base_agent,
-    // before brain_type/memory (which also appear for a dynamic agent).
     const comboboxes = await screen.findAllByRole("combobox");
     await user.click(comboboxes[1]!);
-    await user.click(
-      screen.getByRole("option", { name: "agentEditor.strategyFlow" })
-    );
-
-    const createButton = screen.getByRole("button", {
-      name: "agentEditor.createButton",
-    });
-
-    // The inline canvas is empty (InlineFlowDesigner is mocked), so it has
-    // no Chat Input / Chat Output node — creation must stay blocked.
-    await waitFor(() => {
-      expect(createButton).toBeDisabled();
-    });
     expect(
-      screen.getByText("agentEditor.flowMissingChatNodes")
-    ).toBeInTheDocument();
-
-    await user.click(createButton);
-    expect(createPersona).not.toHaveBeenCalled();
-  });
-
-  test("creating a dynamic agent with graph_schema flow still goes through the normal persona create path", async () => {
-    const user = setupUser();
-
-    render(
-      <AgentEditorPage
-        agent={{
-          ...existingAgent,
-          base_agent: "dynamic-agent",
-          graph_schema: "flow",
-        }}
-      />
-    );
-
-    await screen.findByTestId("inline-flow-designer");
-
-    await user.type(
-      screen.getByPlaceholderText("agentEditor.agentNamePlaceholder"),
-      " updated"
-    );
-    const saveButton = screen.getByRole("button", {
-      name: "agentEditor.saveButton",
-    });
-
-    await waitFor(() => {
-      expect(saveButton).toBeEnabled();
-    });
-    await user.click(saveButton);
-
-    await waitFor(() => {
-      expect(updatePersona).toHaveBeenCalledWith(
-        existingAgent.id,
-        expect.objectContaining({ graph_schema: "flow" })
-      );
-      expect(routerPush).toHaveBeenCalledWith("/admin/agents");
-    });
+      screen.queryByRole("option", { name: "agentEditor.strategyFlow" })
+    ).not.toBeInTheDocument();
   });
 });

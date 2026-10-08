@@ -1,10 +1,10 @@
 /**
  * End-to-end client pipeline for a paused FlowAgent run: the exact SSE line
- * AgentsRoute emits when a HumanInput node calls `interrupt()`, through
+ * agents_route emits when a HumanInput node calls `interrupt()`, through
  * handleSSEStream and the packet processor, to the renderer that draws the
  * buttons.
  */
-import { Packet, PacketType } from "@/app/app/services/streamingModels";
+import { Packet, PacketType } from "@/lib/api/domains/chat/streaming-types";
 import { handleSSEStream } from "@/lib/search/streamingUtils";
 import {
   createInitialState,
@@ -13,7 +13,7 @@ import {
 import { findRenderer } from "@/app/app/message/messageComponents/renderMessageComponent";
 import { HumanInputRenderer } from "@/app/app/message/messageComponents/renderers/HumanInputRenderer";
 
-// Byte-for-byte what AgentsRoute yields for a human_input interrupt.
+// Byte-for-byte what agents_route yields for a human_input interrupt.
 const HUMAN_INPUT =
   'data: {"type":"human_input","node_id":"hi-1","prompt":"Bu gönderi taslağı için ne yapalım?","decisions":["yayinla","revize","iptal"]}\n';
 

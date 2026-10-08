@@ -1,5 +1,5 @@
 import { GroupedPacket } from "./hooks/packetProcessor";
-import { PacketType } from "@/app/app/services/streamingModels";
+import { PacketType } from "@/lib/api/domains/chat/streaming-types";
 import { getReasoningTextContent } from "@/app/app/services/packetUtils";
 
 /**

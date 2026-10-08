@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { resetPassword } from "../forgot-password/utils";
+import { resetPassword } from "@/lib/api/domains/session/api";
 import AuthFlowContainer from "@/components/auth/AuthFlowContainer";
 import Title from "@/components/ui/title";
 import Text from "@/components/ui/text";
@@ -11,12 +11,10 @@ import * as Yup from "yup";
 import { TextFormField } from "@/components/Field";
 import { toast } from "@/hooks/useToast";
 import { redirect, useSearchParams } from "next/navigation";
-import {
-  NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED,
-  TENANT_ID_COOKIE_NAME,
-} from "@/lib/constants";
+import { TENANT_ID_COOKIE_NAME } from "@/lib/constants";
 import Cookies from "js-cookie";
 import { useTranslation } from "react-i18next";
+import { appSettings } from "@/lib/settings";
 
 const ResetPasswordPage: React.FC = () => {
   const [isWorking, setIsWorking] = useState(false);
@@ -34,7 +32,7 @@ const ResetPasswordPage: React.FC = () => {
     }
   }, [tenantId]);
 
-  if (!NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED) {
+  if (!appSettings.NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED) {
     redirect("/auth/login");
   }
 

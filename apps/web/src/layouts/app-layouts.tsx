@@ -27,19 +27,20 @@ import Text from "@/refresh-components/texts/Text";
 import RefreshButton from "@/refresh-components/buttons/Button";
 import { useCallback, useMemo, useState, useEffect } from "react";
 import { useAppBackground } from "@/providers/AppBackgroundProvider";
+import { TurksatBackgroundCanvas } from "@/refresh-components/backgrounds/TurksatBackgroundCanvas";
 import { useTheme } from "next-themes";
 import ShareChatSessionModal from "@/sections/modals/ShareChatSessionModal";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import { useProjectsContext } from "@/providers/ProjectsContext";
-import useChatSessions from "@/hooks/useChatSessions";
+import { useChatSessions } from "@/lib/api/domains/chat/hooks";
 import {
   handleMoveOperation,
   shouldShowMoveModal,
   showErrorNotification,
 } from "@/sections/sidebar/sidebarUtils";
 import { LOCAL_STORAGE_KEYS } from "@/sections/sidebar/constants";
-import { deleteChatSession } from "@/app/app/services/lib";
+import { deleteChatSession } from "@/lib/api/domains/chat/api";
 import { useRouter } from "next/navigation";
 import MoveCustomAgentChatModal from "@/components/modals/MoveCustomAgentChatModal";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
@@ -63,10 +64,14 @@ import MinimalMarkdown from "@/components/chat/MinimalMarkdown";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import { AppMode, useAppMode } from "@/providers/AppModeProvider";
 import useAppFocus from "@/hooks/useAppFocus";
-import { useQueryController } from "@/providers/QueryControllerProvider";
-import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
 import { useTranslation } from "react-i18next";
 import { buildAppFooterMarkdown } from "@/lib/appInfo";
+import ChatHistoryDropdown from "@/sections/chat/ChatHistoryDropdown";
+import {
+  resolveChatPersonaId,
+  shouldShowChatHistory,
+} from "@/lib/chat/agentChatSession";
+import { useChatSessionPersonaId } from "@/app/app/stores/useChatSessionStore";
 
 /**
  * App Header Component
@@ -80,12 +85,11 @@ import { buildAppFooterMarkdown } from "@/lib/appInfo";
  * - Delete chat with confirmation
  * - Mobile-responsive sidebar toggle
  * - Custom header content from enterprise settings
- * - App-Mode toggle (EE gated)
+ * - App-mode toggle (Chat / Search) on new sessions
  */
 function Header() {
   const { t } = useTranslation();
-  const isPaidEnterpriseFeaturesEnabled = usePaidEnterpriseFeaturesEnabled();
-  const { appMode, setAppMode } = useAppMode();
+  const { appMode, setAppMode, isSearchAvailable } = useAppMode();
   const settings = useSettingsContext();
   const { isMobile } = useScreenSize();
   const { setFolded } = useAppSidebarContext();
@@ -111,7 +115,6 @@ function Header() {
     useChatSessions();
   const router = useRouter();
   const appFocus = useAppFocus();
-  const { classification } = useQueryController();
 
   const customHeaderContent =
     settings?.enterpriseSettings?.custom_header_content;
@@ -122,18 +125,19 @@ function Header() {
 
   const effectiveMode: AppMode = appFocus.isNewSession() ? appMode : "chat";
 
-  const hasLeftContent =
-    isMobile ||
-    Boolean(
-      isPaidEnterpriseFeaturesEnabled &&
-        settings.isSearchModeAvailable &&
-        appFocus.isNewSession() &&
-        !classification
-    );
+  const showModeSwitcher = isSearchAvailable && appFocus.isNewSession();
+  const hasLeftContent = isMobile || showModeSwitcher;
   const hasCenterContent = Boolean(
     pageWithHeaderContent && customHeaderContent
   );
-  const hasRightContent = Boolean(appFocus.isChat() && currentChatSession);
+  const openChatId = appFocus.isChat() ? appFocus.getId() : null;
+  const loadedPersonaId = useChatSessionPersonaId(openChatId);
+  const showChatHistory = shouldShowChatHistory(
+    appFocus,
+    resolveChatPersonaId(loadedPersonaId, currentChatSession)
+  );
+  const hasChatControls = Boolean(appFocus.isChat() && currentChatSession);
+  const hasRightContent = hasChatControls || showChatHistory;
 
   const availableProjects = useMemo(() => {
     if (!projects) return [];
@@ -339,49 +343,48 @@ function Header() {
               internal
             />
           )}
-          {isPaidEnterpriseFeaturesEnabled &&
-            settings.isSearchModeAvailable &&
-            appFocus.isNewSession() &&
-            !classification && (
-              <Popover open={modePopoverOpen} onOpenChange={setModePopoverOpen}>
-                <Popover.Trigger asChild>
-                  <OpenButton
-                    aria-label="Change app mode"
-                    icon={
-                      effectiveMode === "search" ? SvgSearchMenu : SvgBubbleText
-                    }
+          {showModeSwitcher && (
+            <Popover open={modePopoverOpen} onOpenChange={setModePopoverOpen}>
+              <Popover.Trigger asChild>
+                <OpenButton
+                  aria-label={t("appMode.change")}
+                  icon={
+                    effectiveMode === "search" ? SvgSearchMenu : SvgBubbleText
+                  }
+                >
+                  {effectiveMode === "search"
+                    ? t("appMode.search")
+                    : t("appMode.chat")}
+                </OpenButton>
+              </Popover.Trigger>
+              <Popover.Content align="start" width="lg">
+                <Popover.Menu>
+                  <LineItem
+                    icon={SvgSearchMenu}
+                    selected={effectiveMode === "search"}
+                    description={t("appMode.searchDescription")}
+                    onClick={noProp(() => {
+                      setAppMode("search");
+                      setModePopoverOpen(false);
+                    })}
                   >
-                    {effectiveMode === "search" ? "Search" : "Chat"}
-                  </OpenButton>
-                </Popover.Trigger>
-                <Popover.Content align="start" width="lg">
-                  <Popover.Menu>
-                    <LineItem
-                      icon={SvgSearchMenu}
-                      selected={effectiveMode === "search"}
-                      description="Quick search for documents"
-                      onClick={noProp(() => {
-                        setAppMode("search");
-                        setModePopoverOpen(false);
-                      })}
-                    >
-                      Search
-                    </LineItem>
-                    <LineItem
-                      icon={SvgBubbleText}
-                      selected={effectiveMode === "chat"}
-                      description="Conversation and research"
-                      onClick={noProp(() => {
-                        setAppMode("chat");
-                        setModePopoverOpen(false);
-                      })}
-                    >
-                      Chat
-                    </LineItem>
-                  </Popover.Menu>
-                </Popover.Content>
-              </Popover>
-            )}
+                    {t("appMode.search")}
+                  </LineItem>
+                  <LineItem
+                    icon={SvgBubbleText}
+                    selected={effectiveMode === "chat"}
+                    description={t("appMode.chatDescription")}
+                    onClick={noProp(() => {
+                      setAppMode("chat");
+                      setModePopoverOpen(false);
+                    })}
+                  >
+                    {t("appMode.chat")}
+                  </LineItem>
+                </Popover.Menu>
+              </Popover.Content>
+            </Popover>
+          )}
         </div>
 
         {/*
@@ -404,40 +407,50 @@ function Header() {
 
         {/*
           Right:
+          - chat history dropdown (agent and flow chats only)
           - share button
           - more-options buttons
         */}
         <div className="flex flex-1 justify-end items-center h-[3.3rem]">
-          {appFocus.isChat() && currentChatSession && (
+          {hasRightContent && (
             <FrostedDiv className="flex shrink flex-row items-center">
-              <Button
-                icon={SvgShare}
-                prominence="tertiary"
-                transient={showShareModal}
-                responsiveHideText
-                onClick={() => setShowShareModal(true)}
-                aria-label="share-chat-button"
-              >
-                {t("sidebar.share")}
-              </Button>
-              <SimplePopover
-                trigger={
-                  <IconButton
-                    icon={SvgMoreHorizontal}
-                    className="ml-2"
-                    transient={popoverOpen}
-                    tertiary
-                  />
-                }
-                onOpenChange={(state) => {
-                  setPopoverOpen(state);
-                  if (!state) setShowMoveOptions(false);
-                }}
-                side="bottom"
-                align="end"
-              >
-                <PopoverMenu>{popoverItems}</PopoverMenu>
-              </SimplePopover>
+              {showChatHistory && (
+                <div className={cn(hasChatControls && "mr-2")}>
+                  <ChatHistoryDropdown currentChatSessionId={openChatId} />
+                </div>
+              )}
+              {hasChatControls && (
+                <>
+                  <Button
+                    icon={SvgShare}
+                    prominence="tertiary"
+                    transient={showShareModal}
+                    responsiveHideText
+                    onClick={() => setShowShareModal(true)}
+                    aria-label="share-chat-button"
+                  >
+                    {t("sidebar.share")}
+                  </Button>
+                  <SimplePopover
+                    trigger={
+                      <IconButton
+                        icon={SvgMoreHorizontal}
+                        className="ml-2"
+                        transient={popoverOpen}
+                        tertiary
+                      />
+                    }
+                    onOpenChange={(state) => {
+                      setPopoverOpen(state);
+                      if (!state) setShowMoveOptions(false);
+                    }}
+                    side="bottom"
+                    align="end"
+                  >
+                    <PopoverMenu>{popoverItems}</PopoverMenu>
+                  </SimplePopover>
+                </>
+              )}
             </FrostedDiv>
           )}
         </div>
@@ -541,7 +554,8 @@ export interface AppRootProps {
 }
 
 function Root({ children, enableBackground }: AppRootProps) {
-  const { hasBackground, appBackgroundUrl } = useAppBackground();
+  const { hasBackground, appBackgroundUrl, appBackgroundCanvas } =
+    useAppBackground();
   const { resolvedTheme } = useTheme();
   const appFocus = useAppFocus();
   const [mounted, setMounted] = useState(false);
@@ -551,6 +565,8 @@ function Root({ children, enableBackground }: AppRootProps) {
   // identical to the SSR output and avoid a hydration mismatch.
   const isLightMode = mounted && resolvedTheme === "light";
   const showBackground = hasBackground && enableBackground;
+  const showImageBackground = showBackground && !appBackgroundCanvas;
+  const showCanvasBackground = showBackground && !!appBackgroundCanvas;
 
   return (
     /* NOTE: Some elements, markdown tables in particular, refer to this `@container` in order to
@@ -563,14 +579,28 @@ function Root({ children, enableBackground }: AppRootProps) {
       data-main-container
       className={cn(
         "@container flex flex-col h-full w-full relative overflow-hidden",
-        showBackground && "bg-cover bg-center bg-fixed"
+        showImageBackground && "bg-cover bg-center bg-fixed"
       )}
       style={
-        showBackground
+        showImageBackground
           ? { backgroundImage: `url(${appBackgroundUrl})` }
           : undefined
       }
     >
+      {/* A TÜRKSAT animated scene stands in for the CSS background-image
+          above when the active background is canvas-kind. It renders first
+          so the vignette/readability overlays below (Effects 1-2) and the
+          page content paint on top of it, the same stacking the image
+          background gets from being the container's own background. */}
+      {showCanvasBackground && appBackgroundCanvas && (
+        <TurksatBackgroundCanvas
+          company={appBackgroundCanvas.company}
+          mode={appBackgroundCanvas.mode}
+          animate={appBackgroundCanvas.animate}
+          className="absolute inset-0 z-0"
+        />
+      )}
+
       {/* Effect 1 */}
       {/* Vignette overlay for custom backgrounds (disabled in light mode) */}
       {showBackground && !isLightMode && (

@@ -37,15 +37,14 @@ out of routine planning context.
   domain exception type and translate it at the controller boundary.
 
 ### AS-CLIENT-SHIMS — service-layer external client compatibility shims
-- **Finding:** `service/AirbyteApiClientService.py` and
-  `service/AuthorizationClient.py` remain as compatibility re-export shims for
-  the canonical `integrations/airbyte_api_client.py` and
-  `integrations/authorization_client.py` modules. Several production call sites
-  and test monkeypatch paths still import the old service-layer names.
+- **Finding:** `service/AuthorizationClient.py` remains as a compatibility
+  re-export shim for the canonical `integrations/authorization_client.py`
+  module. Several production call sites and test monkeypatch paths still import
+  the old service-layer name.
 - **Why deferred:** Low-to-medium risk because it is mostly import migration, but
   it touches datasource, schedule, auth, and persona paths plus tests.
 - **Plan:** Migrate all callers to `integrations.*`, update monkeypatch targets,
-  delete the two shims, and run the full agent-service gate.
+  delete the shim, and run the full agent-service gate.
 
 ### AS-USER-SERVICE-CLIENT — user-service client boundary
 - **Finding:** `service/UserServiceClient.py` is a real external client still
@@ -113,7 +112,7 @@ out of routine planning context.
 
 ## RAG-SERVICE
 
-### RAG-0 — `PERF401` in `langconnect/api/documents.py`
+### RAG-0 — `PERF401` in `src/documents/router.py`
 - **Finding:** Lines 102 and 246 use an explicit list-comprehension-in-call
   (`list(...)` / `[...]`) where a generator would avoid a temporary list. WARN-only
   (performance), not blocking.

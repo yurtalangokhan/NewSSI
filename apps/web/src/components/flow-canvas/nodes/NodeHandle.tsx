@@ -24,13 +24,14 @@
 
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Handle as XyHandle, Position } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import type { Handle as HandleSpec } from "../types/componentTemplate";
 import { portColor } from "../utils/portColors";
+import { handleDotStyle } from "../utils/handleVisuals";
 
 /** vendor/langflow/.../handleRenderComponent/index.tsx:23-31, verbatim. */
 const BASE_HANDLE_STYLES = {
@@ -42,31 +43,6 @@ const BASE_HANDLE_STYLES = {
   border: "none",
 };
 
-/** upstream :108-124 — `getNeonShadow`, minus the null/muted branches.
- *
- * Bugfix (Post-P4): the active branch's first layer was `0 0 0 1px
- * hsl(var(--border))` — a *thinner*, duller ring than the resting state's
- * `0 0 0 3px ${color}`. Since the dot itself never changes size, replacing
- * a bold 3px coloured ring with a faint 1px grey one reads to the eye as
- * the handle *shrinking*, not glowing — confirmed live (hover showed a
- * "shrink" with no visible glow). Upstream's real first layer is `0 0 0
- * 3px hsl(var(--node-ring))` (`--lf-node-ring` here) in every keyframe of
- * its pulse animation — the ring is kept, not thinned, precisely so the
- * transition never reads as shrinking. */
-function neonShadow(color: string, isActive: boolean): string {
-  if (!isActive) return `0 0 0 3px ${color}`;
-  return [
-    "0 0 0 3px hsl(var(--lf-node-ring))",
-    `0 0 2px ${color}`,
-    `0 0 4px ${color}`,
-    `0 0 6px ${color}`,
-    `0 0 8px ${color}`,
-    `0 0 10px ${color}`,
-    `0 0 15px ${color}`,
-    `0 0 20px ${color}`,
-  ].join(", ");
-}
-
 export type NodeHandleProps = {
   handle: HandleSpec;
   direction: "source" | "target";
@@ -74,6 +50,14 @@ export type NodeHandleProps = {
    * handle this one can legally accept — glows the same way hover does,
    * without waiting for the pointer to actually reach it. */
   isPotentialTarget?: boolean;
+  /** Forwarded straight to xyflow's `<Handle>`. Left undefined (xyflow's own
+   * default is `true`) for normal editing; the read-only canvas passes
+   * `false` so xyflow never adds its `connectionindicator` class — that's
+   * what puts `pointer-events: all` + the crosshair cursor on the handle
+   * and lets a drag start a connection. Without this, `nodesConnectable`
+   * on `<ReactFlow>` has no effect here, since this component never told
+   * xyflow which node it belongs to. */
+  isConnectable?: boolean;
   /** A plain click (no drag) doesn't reliably surface through xyflow's own
    * `connectionClickStartHandle` for this glow (its `dragThreshold`-gated
    * pointer machinery only ever populates `state.connection` once the
@@ -89,6 +73,7 @@ export function NodeHandle({
   handle,
   direction,
   isPotentialTarget,
+  isConnectable,
   onHandleClick,
 }: NodeHandleProps) {
   const { t } = useTranslation();
@@ -110,6 +95,7 @@ export function NodeHandle({
         type={direction}
         position={left ? Position.Left : Position.Right}
         id={handle.name}
+        isConnectable={isConnectable}
         // Rendered inside its own row (see TemplateNode's HandleRow), so
         // xyflow measures the dot against that row and the handle lands on
         // the card's border level with its label — upstream's arrangement.
@@ -134,16 +120,7 @@ export function NodeHandle({
             "noflow nowheel nopan noselect pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-crosshair rounded-full",
             glowing && "lf-handle-glow"
           )}
-          style={
-            {
-              background: color,
-              width: "10px",
-              height: "10px",
-              transition: "all 0.2s",
-              boxShadow: neonShadow(color, glowing),
-              "--lf-handle-glow-color": color,
-            } as CSSProperties
-          }
+          style={handleDotStyle(color, glowing)}
           data-testid={`div-handle-${direction}-${handle.name}`}
         />
       </XyHandle>

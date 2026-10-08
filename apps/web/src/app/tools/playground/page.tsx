@@ -15,20 +15,21 @@ import { SvgArrowLeft } from "@opal/icons";
 import { toast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 import { BuiltInTool } from "@/lib/tools/interfaces";
+import { ToolExecuteResponse } from "@/lib/api/domains/tools/mcp-types";
 import {
   getBuiltInTools,
-  executeBuiltInTool,
   executeMcpServerTool,
   refreshMCPServerTools,
-  ToolExecuteResponse,
-} from "@/lib/tools/mcpService";
+} from "@/lib/api/domains/tools/api";
+import { executeBuiltInTool } from "@/lib/api/domains/tools/api";
 import {
   buildCategoryLabelMap,
   groupToolsByCategory,
   parseToolCategory,
   ToolWithCategory,
 } from "@/lib/tools/builtInToolUtils";
-import { MailConfig, useMailConfigs } from "@/lib/mailConfigs";
+import type { MailConfig } from "@/lib/api/domains/system/types";
+import { useMailConfigs } from "@/lib/api/domains/system/hooks";
 import _ from "lodash";
 
 function getSendEmailPlaygroundSchema(mailConfigs: MailConfig[]) {
@@ -786,13 +787,17 @@ export default function ToolsPlaygroundPage() {
     }
   }, [inputValues, selectedSchema, selectedTool, t, isMcpMode, mcpServerId]);
 
+  const selectedToolDisplayName = selectedTool
+    ? selectedTool.title || _.startCase(selectedTool.name)
+    : "";
+
   const pageTitle = selectedTool
     ? isMcpMode
-      ? `${serverName || t("admin.mcp.serverFallback")} — ${_.startCase(
-          selectedTool.name
-        )}`
+      ? `${
+          serverName || t("admin.mcp.serverFallback")
+        } — ${selectedToolDisplayName}`
       : t("toolPlayground.toolPlaygroundTitle", {
-          name: _.startCase(selectedTool.name),
+          name: selectedToolDisplayName,
         })
     : t("toolPlayground.toolsPlayground");
 
@@ -853,7 +858,7 @@ export default function ToolsPlaygroundPage() {
                     </InputSelect.Label>
                     {(groupedTools[category] ?? []).map((tool) => (
                       <InputSelect.Item key={tool.name} value={tool.name}>
-                        {_.startCase(tool.name)}
+                        {tool.title || _.startCase(tool.name)}
                       </InputSelect.Item>
                     ))}
                   </InputSelect.Group>
@@ -878,7 +883,7 @@ export default function ToolsPlaygroundPage() {
           <div className="rounded-lg border border-border-01 bg-background-neutral-00 p-6">
             <div className="mb-4 space-y-2">
               <Text as="p" text05 className="text-sm font-semibold">
-                {_.startCase(selectedTool.name)}
+                {selectedToolDisplayName}
               </Text>
               <Text as="p" text03 mainContentBody className="text-sm">
                 {selectedTool.description}
@@ -971,7 +976,7 @@ export default function ToolsPlaygroundPage() {
                           mainUiAction
                           className="mb-2 text-sm font-semibold"
                         >
-                          {_.startCase(tool.name)}
+                          {tool.title || _.startCase(tool.name)}
                         </Text>
                         <Text
                           as="p"

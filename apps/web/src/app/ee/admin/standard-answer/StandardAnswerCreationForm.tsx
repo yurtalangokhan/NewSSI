@@ -9,12 +9,12 @@ import { Form, Formik } from "formik";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import * as Yup from "yup";
+import { StandardAnswerCreationRequest } from "./lib";
 import {
   createStandardAnswer,
   createStandardAnswerCategory,
-  StandardAnswerCreationRequest,
   updateStandardAnswer,
-} from "./lib";
+} from "@/lib/api/domains/agents/api";
 import {
   TextFormField,
   MarkdownFormField,

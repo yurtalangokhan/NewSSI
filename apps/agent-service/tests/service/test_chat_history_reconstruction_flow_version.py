@@ -1,6 +1,6 @@
 """A reloaded FlowAgent run replays which published flow version it ran.
 
-AgentsRoute persists ``thread_metadata["flow_versions"][<trailing AI id>]``
+agents_route persists ``thread_metadata["flow_versions"][<trailing AI id>]``
 after a FlowAgent run. On reload the reconstruction must re-emit that as a
 ``flow_version`` packet on the run's turn, so the chat-side flow strip pins
 to the version that actually ran instead of the currently published one.
@@ -8,7 +8,7 @@ to the version that actually ran instead of the currently published one.
 
 from langchain_core.messages import AIMessage, HumanMessage
 
-from service.ChatHistoryReconstruction import (
+from service.chat.chat_history_reconstruction import (
     reconstruct_message_tree,
     reconstruct_messages,
 )
@@ -24,7 +24,7 @@ def _flow_version_packets(packets_2d):
 
 
 def test_linear_reload_replays_the_pinned_flow_version():
-    messages, packets_2d = reconstruct_messages(
+    _messages, packets_2d = reconstruct_messages(
         [HumanMessage(content="soru", id="h1"), AIMessage(content="cevap", id="ai-1")],
         thread_metadata={"flow_versions": {"ai-1": 4}},
         chat_session_id="s1",

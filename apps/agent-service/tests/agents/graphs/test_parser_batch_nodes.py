@@ -11,9 +11,9 @@ import pandas as pd
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
-from agents.graphs.flow_builder import _make_batch_run_node, _make_parser_node
+from agents.graphs.flow import _make_batch_run_node, _make_parser_node
 from core.exceptions import FlowBuildError
-from models.flows import FlowNode
+from schemas.flows import FlowNode
 
 
 @pytest.fixture(autouse=True)
@@ -111,9 +111,11 @@ class _BatchSpy:
     def __init__(self, replies=None):
         self.replies = replies
         self.conversations = None
+        self.abatch_config = None
 
-    async def abatch(self, conversations):
+    async def abatch(self, conversations, config=None):
         self.conversations = conversations
+        self.abatch_config = config
         replies = self.replies or [f"cevap-{i}" for i in range(len(conversations))]
         return [AIMessage(content=r) for r in replies]
 
@@ -200,3 +202,25 @@ async def test_the_output_column_can_be_renamed():
     )
     out = await _run(fn, scratch={"up": ROWS})
     assert "ozet" in out["scratch"]["b-1"].columns
+
+
+@pytest.mark.asyncio
+async def test_batch_run_caps_the_model_concurrency():
+    """abatch() with no config fans every row out as one simultaneous call —
+    a table with hundreds of rows became hundreds of concurrent requests."""
+    from agents.graphs.flow import MAX_BATCH_CONCURRENCY
+
+    spy = _BatchSpy(["A", "B"])
+    fn = _make_batch_run_node(_batch_node(), spy, port_sources={"df": "up"})
+    await _run(fn, scratch={"up": ROWS})
+    assert spy.abatch_config == {"max_concurrency": MAX_BATCH_CONCURRENCY}
+
+
+@pytest.mark.asyncio
+async def test_batch_run_rejects_a_table_over_the_row_limit():
+    from agents.graphs.flow import MAX_BATCH_ROWS
+
+    huge = pd.DataFrame({"ad": ["x"] * (MAX_BATCH_ROWS + 1)})
+    fn = _make_batch_run_node(_batch_node(), _BatchSpy(), port_sources={"df": "up"})
+    with pytest.raises(FlowBuildError, match="row"):
+        await _run(fn, scratch={"up": huge})

@@ -6,8 +6,8 @@ import { useDropzone } from "react-dropzone";
 import Separator from "@/refresh-components/Separator";
 import { useProjectsContext } from "@/providers/ProjectsContext";
 import FilePickerPopover from "@/refresh-components/popovers/FilePickerPopover";
-import type { ProjectFile } from "../../projects/projectsService";
-import { MinimalOnyxDocument } from "@/lib/search/interfaces";
+import type { ProjectFile } from "@/lib/api/domains/projects/types";
+import { MinimalAtlasDocument } from "@/lib/search/interfaces";
 import Button from "@/refresh-components/buttons/Button";
 
 import AddInstructionModal from "@/components/modals/AddInstructionModal";
@@ -19,14 +19,14 @@ import { FileCard, FileCardSkeleton } from "@/sections/cards/FileCard";
 import { hasNonImageFiles } from "@/lib/utils";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import ButtonRenaming from "@/refresh-components/buttons/ButtonRenaming";
-import { UserFileStatus } from "../../projects/projectsService";
+import { UserFileStatus } from "@/lib/api/domains/projects/types";
 import { SvgAddLines, SvgEdit, SvgFiles, SvgFolderOpen } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 
 export interface ProjectContextPanelProps {
   projectTokenCount?: number;
   availableContextTokens?: number;
-  setPresentingDocument?: (document: MinimalOnyxDocument) => void;
+  setPresentingDocument?: (document: MinimalAtlasDocument) => void;
 }
 export default function ProjectContextPanel({
   projectTokenCount = 0,
@@ -38,12 +38,12 @@ export default function ProjectContextPanel({
   const { t } = useTranslation();
   // Edit project name state
   const [isEditingName, setIsEditingName] = useState(false);
-  // Convert ProjectFile to MinimalOnyxDocument format for viewing
+  // Convert ProjectFile to MinimalAtlasDocument format for viewing
   const handleOnView = useCallback(
     (file: ProjectFile) => {
       if (!setPresentingDocument) return;
 
-      const documentForViewer: MinimalOnyxDocument = {
+      const documentForViewer: MinimalAtlasDocument = {
         document_id: `project_file__${file.file_id}`,
         semantic_identifier: file.name,
       };

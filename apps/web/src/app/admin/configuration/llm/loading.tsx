@@ -3,7 +3,7 @@
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 import LLMConfigurationSkeleton from "@/refresh-components/skeletons/LLMConfigurationSkeleton";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { useTranslation } from "react-i18next";
 
 export default function Loading() {

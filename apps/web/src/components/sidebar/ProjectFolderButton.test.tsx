@@ -1,7 +1,7 @@
 import { render, screen } from "@tests/setup/test-utils";
 import ProjectFolderButton from "@/sections/sidebar/ProjectFolderButton";
-import { ChatSessionSharedStatus } from "@/app/app/interfaces";
-import type { Project } from "@/app/app/projects/projectsService";
+import { ChatSessionSharedStatus } from "@/lib/api/domains/chat/types";
+import type { Project } from "@/lib/api/domains/projects/types";
 import { DRAG_TYPES } from "@/sections/sidebar/constants";
 
 let mockIsOver = false;

@@ -15,7 +15,7 @@
 
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
   Tree,
   NodeRendererProps,
@@ -115,6 +115,7 @@ interface OrganizationNodeRendererProps
   ) => Promise<void>;
   onDeleteOrg: (id: string) => Promise<void>;
   selectedOrgId?: string | null;
+  isSelectionAncestor: boolean;
   searchQuery: string;
   language: string;
   activeSearchMatchId?: string;
@@ -205,6 +206,7 @@ function Node({
   onUpdateOrg,
   onDeleteOrg,
   selectedOrgId,
+  isSelectionAncestor,
   searchQuery,
   language,
   activeSearchMatchId,
@@ -274,28 +276,44 @@ function Node({
       className="box-border w-full max-w-full min-w-0 overflow-hidden pr-1"
     >
       <div
+        data-selection-state={
+          node.isSelected
+            ? "selected"
+            : isSelectionAncestor
+              ? "ancestor"
+              : "none"
+        }
         data-search-state={
           isSearchMatch ? "match" : hasSearch ? "dimmed" : "idle"
         }
         className={cn(
           "group flex w-full min-w-0 max-w-full items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer transition-[background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none overflow-hidden",
-          "hover:bg-background-neutral-02",
+          "border-l-[3px] border-l-transparent hover:bg-background-neutral-02",
           isSearchMatch &&
             "bg-background-neutral-03 ring-1 ring-action-link-05",
           activeSearchMatchId === node.data.id && "ring-2 shadow-md",
-          hasSearch && !isSearchMatch && "opacity-30",
+          hasSearch &&
+            !isSearchMatch &&
+            !node.isSelected &&
+            !isSelectionAncestor &&
+            "opacity-30",
           selectedOrgId &&
             node.data.parent_id === selectedOrgId &&
             "bg-background-neutral-02",
+          isSelectionAncestor &&
+            "border-l-action-link-05/40 bg-action-link-05/5 hover:bg-action-link-05/10",
           node.isSelected &&
-            "bg-background-neutral-02 border border-border-primary"
+            "border-l-action-link-05 bg-action-link-05/10 ring-1 ring-inset ring-action-link-05/25 hover:bg-action-link-05/15"
         )}
         onClick={handleToggleNode}
       >
         {/* Expand/Collapse Icon */}
         {isExpandable ? (
           <div
-            className={cn("flex h-4 w-4 shrink-0 items-center justify-center")}
+            className={cn(
+              "flex h-4 w-4 shrink-0 items-center justify-center",
+              (node.isSelected || isSelectionAncestor) && "text-action-link-05"
+            )}
             aria-hidden="true"
           >
             {isExpanding ? (
@@ -357,7 +375,11 @@ function Node({
             as="p"
             text05
             title={node.data.name}
-            className={cn("min-w-0 flex-1 truncate text-sm font-medium")}
+            className={cn(
+              "min-w-0 flex-1 truncate text-sm font-medium",
+              (node.isSelected || isSelectionAncestor) && "text-action-link-05",
+              node.isSelected && "font-semibold"
+            )}
           >
             {node.data.name}
           </Text>
@@ -522,6 +544,27 @@ export function OrganizationTree({
   onRevealReady = onSelectOrg,
 }: OrganizationTreeProps) {
   const { t, i18n } = useTranslation();
+  const flatOrganizations = useMemo(
+    () => flattenOrganizations(organizations),
+    [organizations]
+  );
+  const selectionAncestorIds = useMemo(() => {
+    const byId = new Map(
+      flatOrganizations.map((organization) => [organization.id, organization])
+    );
+    const ancestors = new Set<string>();
+    let parentId = selectedOrgId ? byId.get(selectedOrgId)?.parent_id : null;
+    while (
+      parentId &&
+      byId.has(parentId) &&
+      parentId !== selectedOrgId &&
+      !ancestors.has(parentId)
+    ) {
+      ancestors.add(parentId);
+      parentId = byId.get(parentId)?.parent_id;
+    }
+    return ancestors;
+  }, [flatOrganizations, selectedOrgId]);
   const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSearchMatchIndex, setActiveSearchMatchIndex] = useState(-1);
@@ -676,7 +719,10 @@ export function OrganizationTree({
       </div>
 
       {/* Tree */}
-      <div ref={containerRef} className={cn("flex-1 overflow-hidden p-4")}>
+      <div
+        ref={containerRef}
+        className={cn("min-h-0 flex-1 overflow-hidden px-4")}
+      >
         {organizations.length === 0 ? (
           <div
             className={cn(
@@ -721,6 +767,8 @@ export function OrganizationTree({
             )}
             width="100%"
             height={treeHeight}
+            paddingTop={16}
+            paddingBottom={16}
             indent={20}
             rowHeight={(node) =>
               showMembers &&
@@ -745,10 +793,13 @@ export function OrganizationTree({
                 onUpdateOrg={onUpdateOrg}
                 onDeleteOrg={onDeleteOrg}
                 selectedOrgId={selectedOrgId}
+                isSelectionAncestor={selectionAncestorIds.has(
+                  props.node.data.id
+                )}
                 searchQuery={searchQuery}
                 language={i18n.language}
                 activeSearchMatchId={activeSearchMatchId}
-                organizations={flattenOrganizations(organizations)}
+                organizations={flatOrganizations}
                 onRequestMove={(organization, parent) =>
                   setPendingMove({ organization, parent })
                 }

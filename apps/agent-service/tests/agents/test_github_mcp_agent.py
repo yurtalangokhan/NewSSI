@@ -4,8 +4,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from agents.github_mcp_agent.github_mcp_agent import GitHubMCPAgent, prompt
-from core.settings import settings
+from agents.implementations.github_mcp_agent import GitHubMCPAgent, prompt
 
 
 class TestGitHubMCPAgent:
@@ -19,12 +18,12 @@ class TestGitHubMCPAgent:
         assert agent._mcp_client is None
 
     @pytest.mark.asyncio
-    async def test_load_without_github_pat(self):
+    async def test_load_without_github_pat(self, monkeypatch):
         """Test load when GITHUB_PAT is not set."""
         agent = GitHubMCPAgent()
 
-        with patch.object(settings, "GITHUB_PAT", None):
-            await agent.load()
+        monkeypatch.delenv("GITHUB_PAT", raising=False)
+        await agent.load()
 
         assert agent._loaded
         assert agent._mcp_tools == []
@@ -32,7 +31,7 @@ class TestGitHubMCPAgent:
         assert agent._graph is not None
 
     @pytest.mark.asyncio
-    async def test_load_with_github_pat(self):
+    async def test_load_with_github_pat(self, monkeypatch):
         """Test load when GITHUB_PAT is set and configured."""
         agent = GitHubMCPAgent()
         mock_client = Mock()
@@ -44,16 +43,14 @@ class TestGitHubMCPAgent:
         mock_tool2 = Tool(name="test_tool_2", description="Test tool 2", func=lambda x: x)
         mock_tools = [mock_tool1, mock_tool2]
 
+        monkeypatch.setenv("GITHUB_PAT", "test_token")
+        monkeypatch.setenv("MCP_GITHUB_SERVER_URL", "https://api.githubcopilot.com/mcp/")
         with (
-            patch.object(
-                settings, "GITHUB_PAT", Mock(get_secret_value=Mock(return_value="test_token"))
-            ),
-            patch.object(settings, "MCP_GITHUB_SERVER_URL", "https://api.githubcopilot.com/mcp/"),
             patch(
-                "agents.github_mcp_agent.github_mcp_agent.MultiServerMCPClient"
+                "agents.implementations.github_mcp_agent.MultiServerMCPClient"
             ) as mock_client_class,
-            patch("agents.github_mcp_agent.github_mcp_agent.StreamableHttpConnection"),
-            patch("agents.github_mcp_agent.github_mcp_agent.get_model") as mock_get_model,
+            patch("agents.implementations.github_mcp_agent.StreamableHttpConnection"),
+            patch("agents.implementations.github_mcp_agent.get_model") as mock_get_model,
         ):
             mock_client_class.return_value = mock_client
             mock_client.get_tools = AsyncMock(return_value=mock_tools)
@@ -67,20 +64,18 @@ class TestGitHubMCPAgent:
         assert agent._graph is not None
 
     @pytest.mark.asyncio
-    async def test_load_with_mcp_error(self):
+    async def test_load_with_mcp_error(self, monkeypatch):
         """Test load when MCP client creation fails."""
         agent = GitHubMCPAgent()
 
+        monkeypatch.setenv("GITHUB_PAT", "test_token")
+        monkeypatch.setenv("MCP_GITHUB_SERVER_URL", "https://api.githubcopilot.com/mcp/")
         with (
-            patch.object(
-                settings, "GITHUB_PAT", Mock(get_secret_value=Mock(return_value="test_token"))
-            ),
-            patch.object(settings, "MCP_GITHUB_SERVER_URL", "https://api.githubcopilot.com/mcp/"),
             patch(
-                "agents.github_mcp_agent.github_mcp_agent.MultiServerMCPClient",
+                "agents.implementations.github_mcp_agent.MultiServerMCPClient",
                 side_effect=Exception("Connection failed"),
             ),
-            patch("agents.github_mcp_agent.github_mcp_agent.get_model") as mock_get_model,
+            patch("agents.implementations.github_mcp_agent.get_model") as mock_get_model,
         ):
             mock_get_model.return_value = Mock()
 
@@ -97,8 +92,8 @@ class TestGitHubMCPAgent:
         agent._mcp_tools = [Mock(), Mock()]
 
         with (
-            patch("agents.github_mcp_agent.github_mcp_agent.get_model") as mock_get_model,
-            patch("agents.github_mcp_agent.github_mcp_agent.create_agent") as mock_create_agent,
+            patch("agents.implementations.github_mcp_agent.get_model") as mock_get_model,
+            patch("agents.implementations.github_mcp_agent.create_agent") as mock_create_agent,
         ):
             mock_model = Mock()
             mock_get_model.return_value = mock_model

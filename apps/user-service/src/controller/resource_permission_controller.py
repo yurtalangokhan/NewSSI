@@ -1,12 +1,15 @@
 """HTTP error translation for resource permission operations."""
 
-import uuid
 from typing import Any
+import uuid
 
-from src.core.exceptions import ForbiddenError, NotFoundError
+from error_contract.identity import ForbiddenError, NotFoundError
+
 from src.service import get_permission_audit_service, get_resource_permission_service
+from src.service.resource_permission_service import PERMISSION_LEVELS
+from src.service.user_service import get_user_service
 
-from .base import BaseController
+from .base import BaseController, translate_domain_errors
 
 
 class ResourcePermissionController(BaseController):
@@ -15,7 +18,12 @@ class ResourcePermissionController(BaseController):
     def __init__(self) -> None:
         self.service = get_resource_permission_service()
         self.audit_service = get_permission_audit_service()
+        self.identity_service = get_user_service()
 
+    async def _resolve_user_id(self, identity: uuid.UUID | str) -> uuid.UUID:
+        return await self.identity_service.resolve_target_user_id(str(identity))
+
+    @translate_domain_errors
     async def get_scoped_direct_permissions(
         self,
         actor_id: uuid.UUID,
@@ -33,13 +41,12 @@ class ResourcePermissionController(BaseController):
                 resource_type=resource_type,
             )
             return {"permissions": permissions, "count": len(permissions)}
-        except ForbiddenError as error:
-            self._raise_forbidden(str(error))
-        except NotFoundError as error:
-            self._raise_not_found(str(error))
-        except ValueError as error:
-            self._raise_bad_request(str(error))
+        except ForbiddenError:
+            raise
+        except NotFoundError:
+            raise
 
+    @translate_domain_errors
     async def sync_scoped_direct_permissions(
         self,
         actor_id: uuid.UUID,
@@ -59,27 +66,27 @@ class ResourcePermissionController(BaseController):
                 desired_permissions=desired_permissions,
             )
             return {"permissions": permissions, "count": len(permissions)}
-        except ForbiddenError as error:
-            self._raise_forbidden(str(error))
-        except NotFoundError as error:
-            self._raise_not_found(str(error))
-        except ValueError as error:
-            self._raise_bad_request(str(error))
+        except ForbiddenError:
+            raise
+        except NotFoundError:
+            raise
 
+    @translate_domain_errors
     async def check_permission(
         self,
-        user_id: uuid.UUID,
+        user_id: uuid.UUID | str,
         resource_type: str,
         resource_id: str,
         required_permission: str = "read",
     ) -> dict[str, Any]:
         return await self.service.check_resource_access(
-            user_id=user_id,
+            user_id=await self._resolve_user_id(user_id),
             resource_type=resource_type,
             resource_id=resource_id,
             required_permission=required_permission,
         )
 
+    @translate_domain_errors
     async def grant_organization_permission(
         self,
         org_id: uuid.UUID,
@@ -98,15 +105,20 @@ class ResourcePermissionController(BaseController):
                 permission_level=permission_level,
                 granted_by=granted_by,
             )
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ForbiddenError:
+            raise
 
+    @translate_domain_errors
     async def get_organization_permissions(
-        self, organization_id: uuid.UUID, resource_type: str | None = None
+        self,
+        organization_id: uuid.UUID,
+        resource_type: str | None = None,
+        actor_id: uuid.UUID | None = None,
     ) -> dict[str, Any]:
-        perms = await self.service.get_organization_permissions(organization_id, resource_type)
+        perms = await self.service.get_organization_permissions(organization_id, resource_type, actor_id=actor_id)
         return {"permissions": perms, "count": len(perms)}
 
+    @translate_domain_errors
     async def grant_user_permission(
         self,
         target_user_id: uuid.UUID,
@@ -125,27 +137,50 @@ class ResourcePermissionController(BaseController):
                 permission_level=permission_level,
                 granted_by=granted_by,
             )
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ForbiddenError:
+            raise
 
+    @translate_domain_errors
     async def get_user_permissions_listing(
-        self, user_id: uuid.UUID, resource_type: str | None = None
+        self,
+        user_id: uuid.UUID,
+        resource_type: str | None = None,
+        actor_id: uuid.UUID | None = None,
     ) -> dict[str, Any]:
+        if actor_id is not None:
+            await self.service.require_global_read(actor_id)
         perms = await self.service.get_user_permissions_listing(user_id, resource_type)
         return {"permissions": perms, "count": len(perms)}
 
+    @translate_domain_errors
     async def get_user_accessible_resources(
-        self, user_id: uuid.UUID, resource_type: str | None = None
+        self,
+        user_id: uuid.UUID | str,
+        resource_type: str | None = None,
+        required_permission: str | None = None,
     ) -> dict[str, Any]:
-        resources = await self.service.get_user_accessible_resources(user_id, resource_type)
+        resources = await self.service.get_user_accessible_resources(
+            await self._resolve_user_id(user_id), resource_type
+        )
+        if required_permission is not None:
+            resources = [
+                resource
+                for resource in resources
+                if required_permission in PERMISSION_LEVELS
+                and PERMISSION_LEVELS.get(resource["permission_level"], 0) >= PERMISSION_LEVELS[required_permission]
+            ]
         return {"resources": resources, "count": len(resources)}
 
+    @translate_domain_errors
     async def get_resource_permissions(
-        self, resource_type: str, resource_id: str
+        self, resource_type: str, resource_id: str, actor_id: uuid.UUID | None = None
     ) -> dict[str, Any]:
+        if actor_id is not None:
+            await self.service.require_global_read(actor_id)
         perms = await self.service.get_resource_permissions(resource_type, resource_id)
         return {"permissions": perms, "count": len(perms)}
 
+    @translate_domain_errors
     async def update_permission(
         self,
         permission_id: uuid.UUID,
@@ -154,20 +189,20 @@ class ResourcePermissionController(BaseController):
     ) -> dict[str, Any]:
         try:
             return await self.service.update_permission(permission_id, permission_level, updated_by)
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ForbiddenError:
+            raise
 
-    async def revoke_permission(
-        self, permission_id: uuid.UUID, revoked_by: uuid.UUID
-    ) -> dict[str, Any]:
+    @translate_domain_errors
+    async def revoke_permission(self, permission_id: uuid.UUID, revoked_by: uuid.UUID) -> dict[str, Any]:
         try:
             deleted = await self.service.revoke_permission(permission_id, revoked_by)
             if not deleted:
                 self._raise_not_found("permission.not_found")
             return {"success": True}
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ForbiddenError:
+            raise
 
+    @translate_domain_errors
     async def bulk_grant_permissions(
         self,
         resource_type: str,
@@ -184,31 +219,46 @@ class ResourcePermissionController(BaseController):
             granted_by=granted_by,
         )
 
+    @translate_domain_errors
     async def get_resource_audit_logs(
-        self, resource_type: str, resource_id: str, skip: int = 0, limit: int = 50
+        self,
+        resource_type: str,
+        resource_id: str,
+        skip: int = 0,
+        limit: int = 50,
+        actor_id: uuid.UUID | None = None,
     ) -> dict[str, Any]:
-        logs, total = await self.audit_service.get_resource_audit_logs(
-            resource_type, resource_id, skip, limit
-        )
+        if actor_id is not None:
+            await self.service.require_global_read(actor_id)
+        logs, total = await self.audit_service.get_resource_audit_logs(resource_type, resource_id, skip, limit)
         return {"logs": logs, "total": total, "skip": skip, "limit": limit}
 
+    @translate_domain_errors
     async def get_organization_audit_logs(
-        self, org_id: uuid.UUID, skip: int = 0, limit: int = 50
+        self, org_id: uuid.UUID, skip: int = 0, limit: int = 50, actor_id: uuid.UUID | None = None
     ) -> dict[str, Any]:
-        logs, total = await self.audit_service.get_target_audit_logs(
-            "organization", org_id, skip, limit
-        )
+        if actor_id is not None:
+            await self.service.require_organization_access(actor_id, org_id)
+        logs, total = await self.audit_service.get_target_audit_logs("organization", org_id, skip, limit)
         return {"logs": logs, "total": total, "skip": skip, "limit": limit}
 
+    @translate_domain_errors
     async def get_user_audit_logs(
-        self, target_user_id: uuid.UUID, skip: int = 0, limit: int = 50
+        self,
+        target_user_id: uuid.UUID,
+        skip: int = 0,
+        limit: int = 50,
+        actor_id: uuid.UUID | None = None,
     ) -> dict[str, Any]:
-        logs, total = await self.audit_service.get_target_audit_logs(
-            "user", target_user_id, skip, limit
-        )
+        if actor_id is not None:
+            await self.service.require_global_read(actor_id)
+        logs, total = await self.audit_service.get_target_audit_logs("user", target_user_id, skip, limit)
         return {"logs": logs, "total": total, "skip": skip, "limit": limit}
 
-    async def get_recent_audit_logs(self, limit: int = 100) -> dict[str, Any]:
+    @translate_domain_errors
+    async def get_recent_audit_logs(self, limit: int = 100, actor_id: uuid.UUID | None = None) -> dict[str, Any]:
+        if actor_id is not None:
+            await self.service.require_global_read(actor_id)
         logs = await self.audit_service.get_recent_audit_logs(limit)
         return {"logs": logs, "count": len(logs)}
 

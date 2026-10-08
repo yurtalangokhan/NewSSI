@@ -1,30 +1,25 @@
-import { authenticatedFetch } from "@/lib/fetcher";
-import { UserGroupUpdate, SetCuratorRequest } from "../types";
+import { accessEndpoints } from "@/lib/api/domains/access/endpoints";
+
+import { updateUserGroupResponse } from "@/lib/api/domains/access/api";
+import { updateCuratorStatusResponse } from "@/lib/api/domains/access/api";
+
+import {
+  UserGroupUpdate,
+  SetCuratorRequest,
+} from "@/lib/api/domains/access/group-types";
 
 export const updateUserGroup = async (
   groupId: number,
   userGroup: UserGroupUpdate
 ) => {
-  const url = `/api/manage/admin/user-group/${groupId}`;
-  return await authenticatedFetch(url, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(userGroup),
-  });
+  const url = accessEndpoints.deleteUserGroup(groupId).browserPath;
+  return await updateUserGroupResponse(groupId, userGroup);
 };
 
 export const updateCuratorStatus = async (
   groupId: number,
   curatorRequest: SetCuratorRequest
 ) => {
-  const url = `/api/manage/admin/user-group/${groupId}/set-curator`;
-  return await authenticatedFetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(curatorRequest),
-  });
+  const url = accessEndpoints.updateCuratorStatus(groupId).browserPath;
+  return await updateCuratorStatusResponse(groupId, curatorRequest);
 };

@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.api.routes.organizations_route import router as organizations_router
+from tests.route_support import override_route_dependencies
 
 
 @pytest.fixture
@@ -21,11 +22,7 @@ def app():
     app = FastAPI()
     register_error_handlers(app, service_name="user-service-test")
     app.include_router(organizations_router)
-    for route in app.routes:
-        dependant = getattr(route, "dependant", None)
-        if dependant:
-            for dependency in dependant.dependencies:
-                app.dependency_overrides[dependency.call] = lambda: str(uuid.uuid4())
+    override_route_dependencies(app, lambda: str(uuid.uuid4()))
     return app
 
 
@@ -81,7 +78,7 @@ class TestOrganizationRoutes:
         )
 
         assert response.status_code == 201
-        data = response.json()
+        data = response.json()["data"]
         assert data["name"] == "Engineering"
         assert data["parent_id"] is None
 
@@ -110,7 +107,7 @@ class TestOrganizationRoutes:
         )
 
         assert response.status_code == 201
-        data = response.json()
+        data = response.json()["data"]
         assert data["name"] == "Backend Team"
         assert data["parent_id"] == str(parent_id)
 
@@ -132,14 +129,13 @@ class TestOrganizationRoutes:
         )
 
         assert response.status_code == 409
-        assert response.json() == {
-            "error": {
-                "code": "request.conflict",
-                "message": "A root organization already exists",
-                "details": {},
-                "field_errors": [],
-                "request_id": None,
-            }
+        error = response.json()["error"]
+        uuid.UUID(error.pop("request_id"))  # generated server-side when the caller sent none
+        assert error == {
+            "code": "request.conflict",
+            "message": "A root organization already exists",
+            "details": {},
+            "field_errors": [],
         }
 
     @patch("src.api.routes.organizations_route.get_organization_controller")
@@ -158,7 +154,7 @@ class TestOrganizationRoutes:
         response = client.get(f"/organizations/{org_id}")
 
         assert response.status_code == 200
-        data = response.json()
+        data = response.json()["data"]
         assert data["name"] == "Marketing"
 
     @patch("src.api.routes.organizations_route.get_organization_controller")
@@ -187,7 +183,7 @@ class TestOrganizationRoutes:
         )
 
         assert response.status_code == 200
-        assert response.json() == {"editable": True}
+        assert response.json()["data"] == {"editable": True}
 
     @patch("src.api.routes.organizations_route.get_organization_controller")
     def test_get_management_capability_returns_404_for_missing_organization(
@@ -223,7 +219,7 @@ class TestOrganizationRoutes:
         )
 
         assert response.status_code == 200
-        data = response.json()
+        data = response.json()["data"]
         assert data["name"] == "Updated Name"
 
     @patch("src.api.routes.organizations_route.get_organization_controller")
@@ -235,7 +231,8 @@ class TestOrganizationRoutes:
 
         response = client.delete(f"/organizations/{uuid.uuid4()}")
 
-        assert response.status_code == 204
+        assert response.status_code == 200
+        assert response.json()["data"] is None
 
     @patch("src.api.routes.organizations_route.get_organization_controller")
     def test_delete_organization_with_children(self, mock_get_ctrl, client, mock_controller):
@@ -269,7 +266,7 @@ class TestOrganizationRoutes:
         response = client.get("/organizations")
 
         assert response.status_code == 200
-        data = response.json()
+        data = response.json()["data"]
         assert len(data["items"]) == 2
         assert data["total"] == 2
 
@@ -281,21 +278,23 @@ class TestOrganizationRoutes:
         root_id = uuid.uuid4()
         child_id = uuid.uuid4()
 
-        mock_controller.get_organization_tree.return_value = [
-            {
-                "id": str(root_id),
-                "name": "Root",
-                "children": [{"id": str(child_id), "name": "Child", "children": []}],
-            }
-        ]
+        mock_controller.get_organization_tree.return_value = {
+            "roots": [
+                {
+                    "id": str(root_id),
+                    "name": "Root",
+                    "children": [{"id": str(child_id), "name": "Child", "children": []}],
+                }
+            ]
+        }
 
         response = client.get("/organizations/tree")
 
         assert response.status_code == 200
-        data = response.json()
-        assert len(data) == 1
-        assert data[0]["name"] == "Root"
-        assert len(data[0]["children"]) == 1
+        roots = response.json()["data"]["roots"]
+        assert len(roots) == 1
+        assert roots[0]["name"] == "Root"
+        assert len(roots[0]["children"]) == 1
 
     @patch("src.api.routes.organizations_route.get_organization_controller")
     def test_move_organization(self, mock_get_ctrl, client, mock_controller):
@@ -316,7 +315,7 @@ class TestOrganizationRoutes:
         )
 
         assert response.status_code == 200
-        data = response.json()
+        data = response.json()["data"]
         assert data["parent_id"] == str(new_parent_id)
 
     @patch("src.api.routes.organizations_route.get_organization_controller")
@@ -335,5 +334,5 @@ class TestOrganizationRoutes:
         response = client.get(f"/organizations/{uuid.uuid4()}/children")
 
         assert response.status_code == 200
-        data = response.json()
+        data = response.json()["data"]
         assert len(data["children"]) == 2

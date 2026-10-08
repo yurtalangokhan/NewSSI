@@ -7,13 +7,17 @@ STEP=0
 
 cd "$ROOT"
 
+# shellcheck source=lib/changed_files.sh
+source "$ROOT/scripts/quality/lib/changed_files.sh"
+# shellcheck source=lib/docker_services.sh
+source "$ROOT/scripts/quality/lib/docker_services.sh"
+
 if [[ -t 1 ]]; then
   BOLD="$(tput bold 2>/dev/null || true)"
   DIM="$(tput dim 2>/dev/null || true)"
   GREEN="$(tput setaf 2 2>/dev/null || true)"
   RED="$(tput setaf 1 2>/dev/null || true)"
   CYAN="$(tput setaf 6 2>/dev/null || true)"
-  YELLOW="$(tput setaf 3 2>/dev/null || true)"
   RESET="$(tput sgr0 2>/dev/null || true)"
 else
   BOLD=""
@@ -21,7 +25,6 @@ else
   GREEN=""
   RED=""
   CYAN=""
-  YELLOW=""
   RESET=""
 fi
 
@@ -50,34 +53,6 @@ run() {
   fi
 }
 
-changed_files() {
-  if [[ -n "${QUALITY_FILES:-}" ]]; then
-    printf '%s\n' "$QUALITY_FILES"
-    return
-  fi
-
-  case "$MODE" in
-    staged)
-      git diff --cached --name-only --diff-filter=ACMR
-      ;;
-    push)
-      if git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' >/dev/null 2>&1; then
-        git diff --name-only --diff-filter=ACMR '@{upstream}...HEAD'
-      else
-        git diff --name-only --diff-filter=ACMR HEAD~1...HEAD 2>/dev/null \
-          || git diff --name-only --diff-filter=ACMR HEAD
-      fi
-      ;;
-    all)
-      git ls-files
-      ;;
-    *)
-      echo "Unknown quality mode: $MODE" >&2
-      exit 2
-      ;;
-  esac
-}
-
 has_changed_path() {
   local pattern="$1"
   grep -Eq "$pattern" <<<"$FILES"
@@ -86,125 +61,6 @@ has_changed_path() {
 run_python_service_checks() {
   local service="$1"
   run "$service validate" make -C "apps/$service" validate
-}
-
-run_python_service_fixes() {
-  local service="$1"
-  local ruff_args=()
-  local file
-
-  while IFS= read -r file; do
-    [[ -z "$file" ]] && continue
-    [[ -f "$file" ]] || continue
-    ruff_args+=("${file#apps/$service/}")
-  done < <(grep -E "^apps/$service/(src|tests|alembic|migrations)/.*\.py$" <<<"$FILES" || true)
-
-  ((${#ruff_args[@]} > 0)) || return 0
-
-  if [[ "$service" == "agent-service" ]]; then
-    (
-      cd "apps/$service"
-      uv run ruff format --config ruff.toml "${ruff_args[@]}"
-      uv run ruff check --config ruff.toml --fix "${ruff_args[@]}"
-    )
-    return
-  fi
-
-  (
-    cd "apps/$service"
-    uv run ruff format "${ruff_args[@]}"
-    uv run ruff check --fix "${ruff_args[@]}"
-  )
-}
-
-run_web_fixes() {
-  local eslint_args=()
-  local prettier_args=()
-  local file
-
-  while IFS= read -r file; do
-    [[ -z "$file" ]] && continue
-    [[ -f "$file" ]] || continue
-    prettier_args+=("${file#apps/web/}")
-  done < <(grep -E '^apps/web/(src|tests)/.*\.(ts|tsx|js|jsx|json|css|md)$' <<<"$FILES" || true)
-
-  while IFS= read -r file; do
-    [[ -z "$file" ]] && continue
-    [[ -f "$file" ]] || continue
-    eslint_args+=("${file#apps/web/}")
-  done < <(grep -E '^apps/web/(src|tests)/.*\.(ts|tsx|js|jsx)$' <<<"$FILES" || true)
-
-  ((${#prettier_args[@]} > 0 || ${#eslint_args[@]} > 0)) || return 0
-
-  (
-    cd apps/web
-    if ((${#prettier_args[@]} > 0)); then
-      npm exec -- prettier --write "${prettier_args[@]}"
-    fi
-    if ((${#eslint_args[@]} > 0)); then
-      npm exec -- eslint --fix --quiet "${eslint_args[@]}"
-    fi
-  )
-}
-
-autofix_candidate_files() {
-  grep -E '^(apps/(agent-service|rag-service|user-service|tools-service)/(src|tests|alembic|migrations)/.*\.py|apps/web/(src|tests)/.*\.(ts|tsx|js|jsx|json|css|md))$' <<<"$FILES" || true
-}
-
-ensure_staged_files_can_be_refreshed() {
-  local partially_staged
-  local candidates
-
-  [[ "$MODE" == "staged" ]] || return 0
-
-  candidates="$(autofix_candidate_files)"
-  [[ -n "$candidates" ]] || return 0
-
-  partially_staged="$(
-    comm -12 \
-      <(printf '%s\n' "$candidates" | sort) \
-      <(git diff --name-only --diff-filter=ACMR | sort)
-  )"
-
-  if [[ -n "$partially_staged" ]]; then
-    printf '%s[FAIL]%s Cannot auto-format partially staged files without also staging unstaged hunks.%s\n' "$RED" "$RESET" "$RESET" >&2
-    printf '%sStage or stash the unstaged changes in these files, then retry:%s\n' "$YELLOW" "$RESET" >&2
-    printf '%s\n' "$partially_staged" | sed 's/^/ - /' >&2
-    exit 1
-  fi
-}
-
-refresh_staged_files() {
-  local file
-  local candidates
-
-  [[ "$MODE" == "staged" ]] || return 0
-
-  candidates="$(autofix_candidate_files)"
-  [[ -n "$candidates" ]] || return 0
-
-  while IFS= read -r file; do
-    [[ -z "$file" ]] && continue
-    [[ -e "$file" ]] && git add -f -- "$file"
-  done <<<"$candidates"
-}
-
-changed_docker_services() {
-  local service
-  local services=()
-
-  if has_changed_path '^(configs/docker-compose.*\.ya?ml|docker-compose.*\.ya?ml|Makefile|scripts/)'; then
-    printf '%s\n' "agent-service user-service rag-service tools-service"
-    return
-  fi
-
-  for service in agent-service rag-service user-service tools-service; do
-    if has_changed_path "^apps/$service/(src|models|schema|tests|alembic|migrations|pyproject.toml|uv.lock|Makefile|Dockerfile|docker/Dockerfile.*|compose\.ya?ml)"; then
-      services+=("$service")
-    fi
-  done
-
-  printf '%s\n' "${services[*]}"
 }
 
 run_web_checks() {
@@ -231,7 +87,7 @@ print_file_summary() {
   fi
 }
 
-FILES="$(changed_files | sed '/^[[:space:]]*$/d')"
+FILES="$(quality_changed_files "$MODE" | sed '/^[[:space:]]*$/d')"
 
 if [[ -z "$FILES" ]]; then
   echo "No changed files for quality gate."
@@ -250,21 +106,12 @@ run "shell syntax check" bash -n \
   scripts/validate-spec.sh \
   scripts/validate-task.sh \
   scripts/validation/quiet-run.sh \
-  scripts/quality/check.sh
+  scripts/quality/check.sh \
+  scripts/quality/fix.sh \
+  scripts/quality/lib/changed_files.sh \
+  scripts/quality/lib/docker_services.sh
 
-ensure_staged_files_can_be_refreshed
-
-for service in agent-service rag-service user-service tools-service; do
-  if has_changed_path "^apps/$service/(src|tests|alembic|migrations|pyproject.toml|uv.lock|Makefile)"; then
-    run "$service autofix" run_python_service_fixes "$service"
-  fi
-done
-
-if has_changed_path '^apps/web/(src|tests|package.json|package-lock.json|next.config|tsconfig|jest.config|playwright.config)'; then
-  run "web autofix" run_web_fixes
-fi
-
-refresh_staged_files
+run "autofix" bash scripts/quality/fix.sh "$MODE" --strict
 
 if [[ "$MODE" == "staged" ]]; then
   run "staged whitespace check" git diff --cached --check
@@ -278,13 +125,24 @@ if [[ "$MODE" != "staged" ]]; then
   done
 fi
 
-if has_changed_path '^(apps/(agent-service|rag-service|user-service|tools-service)/|packages/i18n-py/|scripts/quality/check_i18n.py)'; then
-  run "backend i18n check" python3 scripts/quality/check_i18n.py
+# Shared packages: ruff on every changed package file, mypy on the packages
+# this gate enforces (see Makefile packages-typecheck for the split between
+# enforced and report-only packages).
+if has_changed_path '^packages/[^/]+/(src|tests)/.*\.py$'; then
+  run "packages lint" make packages-lint
+  run "packages typecheck" make packages-typecheck
+fi
+
+if has_changed_path '^(apps/(agent-service|rag-service|user-service|tools-service)/|packages/localization/|scripts/quality/check_localization.py)'; then
+  # check_localization.py imports the i18n package, whose only declared dependency is
+  # starlette; that is only guaranteed to be installed in localization's own venv,
+  # not whatever `python3` happens to resolve to on the caller's PATH.
+  run "backend i18n check" packages/localization/.venv/bin/python3 scripts/quality/check_localization.py
 fi
 
 # Architecture & code-quality gate (blocking). Enforces docs/oop-solid-architecture.md
 # and the "Architecture & code-quality gate" section of docs/coding-standards.md.
-# Runs on commit and push; pre-existing offenders do not block unless they are part
+# Runs on push and quality-staged; pre-existing offenders do not block unless they are part
 # of the current diff (changed-files-only policy).
 if has_changed_path '^(apps/(agent-service|rag-service|user-service|tools-service)/|apps/web/)'; then
   # In "all" mode the file list is the whole repository, which exceeds the
@@ -310,15 +168,20 @@ if [[ "$MODE" != "staged" ]] && has_changed_path '^apps/web/(src|tests|package.j
   run "web validate" run_web_checks
 fi
 
-if [[ "$MODE" != "staged" ]] && has_changed_path '^(configs/docker-compose.*\.ya?ml|docker-compose.*\.ya?ml|apps/.*/compose\.ya?ml|apps/.*/Dockerfile|apps/.*/docker/Dockerfile.*|apps/.*/pyproject\.toml|apps/.*/uv\.lock|apps/.*/package(-lock)?\.json|Makefile|scripts/)'; then
+if [[ "$MODE" != "staged" ]] && has_changed_path '^(deploy/docker/docker-compose.*\.ya?ml|configs/docker-compose.*\.ya?ml|docker-compose.*\.ya?ml|apps/.*/compose\.ya?ml|apps/.*/Dockerfile|apps/.*/docker/Dockerfile.*|apps/.*/pyproject\.toml|apps/.*/uv\.lock|apps/.*/package(-lock)?\.json|Makefile)'; then
   run "docker compose config" make docker-config
 fi
 
-DOCKER_SERVICES="$(changed_docker_services)"
-if [[ "$MODE" != "staged" ]] && [[ -n "$DOCKER_SERVICES" ]] && has_changed_path '^(configs/docker-compose.*\.ya?ml|docker-compose.*\.ya?ml|apps/.*/compose\.ya?ml|apps/.*/Dockerfile|apps/.*/docker/Dockerfile.*|apps/.*/pyproject\.toml|apps/.*/uv\.lock|apps/(agent-service|rag-service|user-service|tools-service)/(src|models|schema|tests|alembic|migrations|Makefile)|Makefile|scripts/)'; then
-  run "docker image build ($DOCKER_SERVICES)" make docker-build-services PYTHON_SERVICES="$DOCKER_SERVICES"
-  if grep -qw 'agent-service' <<<"$DOCKER_SERVICES"; then
-    run "agent-service docker import smoke" make docker-smoke-agent-service
+if [[ "$MODE" != "staged" ]]; then
+  DOCKER_SERVICES="$(quality_docker_services <<<"$FILES")" || {
+    printf '%s[FAIL]%s docker build scope\n' "$RED" "$RESET" >&2
+    exit 1
+  }
+  if [[ -n "$DOCKER_SERVICES" ]]; then
+    run "docker image build ($DOCKER_SERVICES)" make docker-build-services PYTHON_SERVICES="$DOCKER_SERVICES"
+    if grep -qw 'agent-service' <<<"$DOCKER_SERVICES"; then
+      run "agent-service docker import smoke" make docker-smoke-agent-service
+    fi
   fi
 fi
 

@@ -1,9 +1,9 @@
-import uuid
 from datetime import datetime
+import uuid
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text
+from sqlalchemy import Boolean, DateTime, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
 
@@ -14,7 +14,6 @@ class UserSettingsModel(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
         unique=True,
         nullable=False,
     )
@@ -34,13 +33,9 @@ class UserSettingsModel(Base):
     work_role: Mapped[str] = mapped_column(Text, default="", nullable=False)
     prompt_shortcuts: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     pinned_assistants: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
-    time_created: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=False
-    )
+    time_created: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     time_updated: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
-
-    user: Mapped["UserModel"] = relationship("UserModel", back_populates="settings")
 
     __table_args__ = (Index("ix_user_settings_user_id", "user_id"),)

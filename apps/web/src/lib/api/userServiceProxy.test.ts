@@ -4,14 +4,47 @@ import {
   isUserServiceCollectionPath,
 } from "@/lib/api/userServicePath";
 import { NextRequest } from "next/server";
+import { accessEndpoints } from "@/lib/api/domains/access/endpoints";
+import { agentsEndpoints } from "@/lib/api/domains/agents/endpoints";
+
+const mocked = { USER_SERVICE_URL: "http://user-service" };
+
+jest.mock("@/lib/settings", () => ({
+  appSettings: {
+    get USER_SERVICE_URL() {
+      return mocked.USER_SERVICE_URL;
+    },
+    AGENT_SERVICE_URL: "http://agent-service",
+    RAG_SERVICE_URL: "http://rag-service",
+    TOOLS_SERVICE_URL: "http://tools-service",
+  },
+}));
+
+it("keeps catch-all target construction in domain catalogs", () => {
+  expect(accessEndpoints).toHaveProperty("userServiceProxy");
+  expect(agentsEndpoints).toHaveProperty("apiProxy");
+  const userTarget = Reflect.get(accessEndpoints, "userServiceProxy");
+  const agentTarget = Reflect.get(agentsEndpoints, "apiProxy");
+  expect(userTarget(["users"], true).backend).toEqual({
+    service: "user",
+    path: "/api/v1/users/",
+  });
+  expect(userTarget(["users", "me"], false).backend).toEqual({
+    service: "user",
+    path: "/api/v1/users/me",
+  });
+  expect(userTarget(["users", "me/"], true).backend.path).toBe(
+    "/api/v1/users/me/"
+  );
+  expect(agentTarget(["agent-definitions", "a b"]).backend).toEqual({
+    service: "agent",
+    path: "/api/v1/agent-definitions/a b",
+  });
+});
 
 describe("user-service API proxy routing", () => {
   beforeEach(() => {
-    process.env.USER_SERVICE_URL = "http://user-service";
-  });
-
-  afterEach(() => {
-    delete process.env.USER_SERVICE_URL;
+    mocked.USER_SERVICE_URL = "http://user-service";
   });
 
   it("strips the frontend user-service alias before forwarding", () => {
@@ -34,13 +67,13 @@ describe("user-service API proxy routing", () => {
     expect(usersUrl.pathname).toBe("/api/v1/users/");
   });
 
-  it("adds the user-service scope for Kong bases", () => {
-    process.env.USER_SERVICE_URL = "http://kong:8000";
+  it("uses the service scope explicitly configured in the base URL", () => {
+    mocked.USER_SERVICE_URL = "http://apisix:8000/user-service";
 
     const url = getBackendUrl(["user-service", "users", "me"]);
 
     expect(url.toString()).toBe(
-      "http://kong:8000/user-service/api/v1/users/me"
+      "http://apisix:8000/user-service/api/v1/users/me"
     );
   });
 
@@ -71,26 +104,22 @@ describe("user-service API proxy routing", () => {
     );
   });
 
-  it("forwards organization layout paths without treating them as collections", () => {
-    const layoutUrl = getBackendUrl([
-      "user-service",
-      "organizations",
-      "layout",
-    ]);
+  it("forwards organization tree paths without treating them as collections", () => {
+    const treeUrl = getBackendUrl(["user-service", "organizations", "tree"]);
     const request = new NextRequest(
-      "http://localhost/api/user-service/organizations/layout"
+      "http://localhost/api/user-service/organizations/tree"
     );
     const trailingSlashRequest = new NextRequest(
-      "http://localhost/api/user-service/organizations/layout/"
+      "http://localhost/api/user-service/organizations/tree/"
     );
 
-    expect(layoutUrl.pathname).toBe("/api/v1/organizations/layout");
-    expect(buildUserServicePath(["organizations", "layout"], request)).toBe(
-      "/api/v1/organizations/layout"
+    expect(treeUrl.pathname).toBe("/api/v1/organizations/tree");
+    expect(buildUserServicePath(["organizations", "tree"], request)).toBe(
+      "/api/v1/organizations/tree"
     );
     expect(
-      buildUserServicePath(["organizations", "layout"], trailingSlashRequest)
-    ).toBe("/api/v1/organizations/layout/");
+      buildUserServicePath(["organizations", "tree"], trailingSlashRequest)
+    ).toBe("/api/v1/organizations/tree/");
   });
 
   it("does not expose a user-organizations collection the backend does not define", () => {

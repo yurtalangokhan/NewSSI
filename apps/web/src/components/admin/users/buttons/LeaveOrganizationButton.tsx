@@ -1,7 +1,8 @@
+import { errorMessageFromUnknown } from "@/lib/api/errors";
 import { type User } from "@/lib/types";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
-import userMutationFetcher from "@/lib/admin/users/userMutationFetcher";
+import { leaveOrganization } from "@/lib/api/domains/access/api";
 import useSWRMutation from "swr/mutation";
 import Button from "@/refresh-components/buttons/Button";
 import { useState } from "react";
@@ -22,22 +23,26 @@ export const LeaveOrganizationButton = ({
   const { t } = useTranslation();
   const router = useRouter();
   const { trigger, isMutating } = useSWRMutation(
-    "/api/tenants/leave-team",
-    userMutationFetcher,
+    ["leave-organization", user.email],
+    () => leaveOrganization(user.email),
     {
       onSuccess: () => {
         mutate();
         toast.success(t("admin.users.leaveTeamSuccess"));
       },
       onError: (errorMsg) =>
-        toast.error(t("admin.users.leaveTeamError", { error: errorMsg })),
+        toast.error(
+          t("admin.users.leaveTeamError", {
+            error: errorMessageFromUnknown(errorMsg),
+          })
+        ),
     }
   );
 
   const [showLeaveModal, setShowLeaveModal] = useState(false);
 
   const handleLeaveOrganization = async () => {
-    await trigger({ user_email: user.email, method: "POST" });
+    await trigger();
     router.push("/");
   };
 

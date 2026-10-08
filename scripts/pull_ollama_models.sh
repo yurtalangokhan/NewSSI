@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 ENV_FILE="${OLLAMA_ENV_FILE:-$ROOT/configs/.env}"
-COMPOSE_FILE="${OLLAMA_COMPOSE_FILE:-$ROOT/configs/docker-compose-services.yml}"
+COMPOSE_FILE="${OLLAMA_COMPOSE_FILE:-$ROOT/deploy/docker/docker-compose-services.yml}"
 SERVICE_NAME="${OLLAMA_SERVICE_NAME:-ollama}"
 DEFAULT_MODELS="llama3.1:8b nomic-embed-text"
 

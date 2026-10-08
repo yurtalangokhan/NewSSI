@@ -13,7 +13,10 @@ if config.config_file_name is not None and config.attributes.get("configure_logg
 
 target_metadata = Base.metadata
 
-config.set_main_option("sqlalchemy.url", _build_url(driver="psycopg"))
+# The bootstrap invocation overrides the URL so the first revision can run
+# against the configured maintenance database with the admin role.
+_url_override = config.attributes.get("url_override")
+config.set_main_option("sqlalchemy.url", _url_override or _build_url(driver="psycopg"))
 
 version_table_name = "alembic_version_user"
 
@@ -25,7 +28,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        version_table=version_table_name,
+        version_table=config.attributes.get("version_table_override", version_table_name),
         compare_type=True,
         render_as_batch=True,
     )
@@ -44,7 +47,7 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            version_table=version_table_name,
+            version_table=config.attributes.get("version_table_override", version_table_name),
             compare_type=True,
             render_as_batch=True,
         )

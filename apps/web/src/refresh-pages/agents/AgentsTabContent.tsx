@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useRef } from "react";
 import AgentCard from "@/sections/cards/AgentCard";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import { isFlowAgent } from "@/lib/flows/flowAgent";
 import Text from "@/refresh-components/texts/Text";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
@@ -12,13 +12,13 @@ import FilterButton from "@/refresh-components/buttons/FilterButton";
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import {
-  SEARCH_TOOL_ID,
   IMAGE_GENERATION_TOOL_ID,
   OPEN_URL_TOOL_ID,
   OPEN_URL_TOOL_NAME,
   WEB_SEARCH_TOOL_ID,
   SYSTEM_TOOL_ICONS,
 } from "@/app/app/components/tools/constants";
+import { SEARCH_TOOL_ID } from "@/lib/api/domains/tools/constants";
 import { SvgActions } from "@opal/icons";
 import useOnMount from "@/hooks/useOnMount";
 import { useTranslation } from "react-i18next";
@@ -52,7 +52,12 @@ function AgentsSection({ title, description, agents }: AgentsSectionProps) {
             return String(b.id).localeCompare(String(a.id));
           })
           .map((agent) => (
-            <AgentCard key={agent.id} agent={agent} />
+            <AgentCard
+              key={`${agent.builtin_persona ? "builtin" : "agent"}-${
+                agent.external_id ?? agent.id
+              }`}
+              agent={agent}
+            />
           ))}
       </div>
     </div>

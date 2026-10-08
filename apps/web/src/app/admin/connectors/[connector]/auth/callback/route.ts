@@ -1,5 +1,5 @@
-import { getDomain } from "@/lib/redirectSS";
-import { buildUrl } from "@/lib/utilsSS";
+import { integrationsEndpoints } from "@/lib/api/domains/integrations/endpoints";
+import { getDomain } from "@/lib/navigation/redirect.server";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import {
@@ -10,18 +10,17 @@ import {
   CRAFT_OAUTH_COOKIE_NAME,
   CRAFT_CONFIGURE_PATH,
 } from "@/app/craft/v1/constants";
-import { processCookies } from "@/lib/userSS";
+import { serializeServerCookies } from "@/lib/api/server-context";
+import { backendRequest } from "@/lib/api/http/server";
 
 export const GET = async (request: NextRequest) => {
   const requestCookies = await cookies();
   const connector = request.url.includes("gmail") ? "gmail" : "google-drive";
-  const callbackEndpoint = `/manage/connector/${connector}/callback`;
-  const url = new URL(buildUrl(callbackEndpoint));
-  url.search = request.nextUrl.search;
-
-  const response = await fetch(url.toString(), {
+  const response = await backendRequest({
+    ...integrationsEndpoints.connectorOAuthCallbackBackend(connector).backend,
+    query: request.nextUrl.searchParams,
     headers: {
-      cookie: processCookies(requestCookies),
+      cookie: serializeServerCookies(requestCookies),
     },
   });
 

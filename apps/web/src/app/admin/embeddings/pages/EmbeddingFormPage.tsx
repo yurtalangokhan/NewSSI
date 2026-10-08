@@ -1,4 +1,8 @@
 "use client";
+import { systemEndpoints } from "@/lib/api/domains/system/endpoints";
+
+import { updateInferenceSettings } from "@/lib/api/domains/knowledge/api";
+import { reindexSearchSettings } from "@/lib/api/domains/knowledge/api";
 
 import { toast } from "@/hooks/useToast";
 
@@ -9,10 +13,10 @@ import Button from "@/refresh-components/buttons/Button";
 import { WarningCircle, Warning, CaretDownIcon } from "@phosphor-icons/react";
 import {
   CloudEmbeddingModel,
-  EmbeddingProvider,
   HostedEmbeddingModel,
 } from "@/components/embedding/interfaces";
-import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
+import { fetchCurrentSearchSettings } from "@/lib/api/domains/system/api";
+
 import { ErrorCallout } from "@/components/ErrorCallout";
 import useSWR from "swr";
 import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
@@ -20,10 +24,11 @@ import AdvancedEmbeddingFormPage from "./AdvancedEmbeddingFormPage";
 import {
   AdvancedSearchConfiguration,
   EmbeddingPrecision,
+  EmbeddingProvider,
   RerankingDetails,
   SavedSearchSettings,
   SwitchoverType,
-} from "../interfaces";
+} from "@/lib/api/domains/knowledge/search-settings-types";
 import RerankingDetailsForm from "../RerankingFormPage";
 import { useEmbeddingFormContext } from "@/components/context/EmbeddingContext";
 import Modal from "@/refresh-components/Modal";
@@ -88,18 +93,9 @@ export default function EmbeddingForm() {
   };
 
   async function updateSearchSettings(searchSettings: SavedSearchSettings) {
-    const response = await authenticatedFetch(
-      "/api/search-settings/update-inference-settings",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...searchSettings,
-        }),
-      }
-    );
+    const response = await updateInferenceSettings({
+      ...searchSettings,
+    });
     return response;
   }
 
@@ -119,8 +115,11 @@ export default function EmbeddingForm() {
     isLoading: isLoadingCurrentModel,
     error: currentEmbeddingModelError,
   } = useSWR<CloudEmbeddingModel | HostedEmbeddingModel | null>(
-    "/api/search-settings/get-current-search-settings",
-    errorHandlingFetcher,
+    systemEndpoints.searchSettingsCurrent.browserPath,
+    () =>
+      fetchCurrentSearchSettings<
+        CloudEmbeddingModel | HostedEmbeddingModel | null
+      >(),
     { refreshInterval: 5000 } // 5 seconds
   );
 
@@ -130,8 +129,8 @@ export default function EmbeddingForm() {
 
   const { data: searchSettings, isLoading: isLoadingSearchSettings } =
     useSWR<SavedSearchSettings | null>(
-      "/api/search-settings/get-current-search-settings",
-      errorHandlingFetcher,
+      systemEndpoints.searchSettingsCurrent.browserPath,
+      () => fetchCurrentSearchSettings<SavedSearchSettings | null>(),
       { refreshInterval: 5000 } // 5 seconds
     );
 
@@ -485,16 +484,7 @@ export default function EmbeddingForm() {
 
     searchSettings.index_name = null;
 
-    const response = await authenticatedFetch(
-      "/api/search-settings/set-new-search-settings",
-      {
-        method: "POST",
-        body: JSON.stringify(searchSettings),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await reindexSearchSettings(searchSettings);
 
     if (response.ok) {
       navigateToEmbeddingPage("embedding model");

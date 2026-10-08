@@ -15,6 +15,8 @@ interface ActionbarProps {
   className?: string;
   buttonText?: string;
   barText?: string;
+  /** Hides the add button for callers whose user lacks the create permission. */
+  canAddAction?: boolean;
 }
 
 const Actionbar: React.FC<ActionbarProps> = ({
@@ -25,6 +27,7 @@ const Actionbar: React.FC<ActionbarProps> = ({
   className,
   buttonText,
   barText,
+  canAddAction = true,
 }) => {
   const { t } = useTranslation();
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,11 +61,13 @@ const Actionbar: React.FC<ActionbarProps> = ({
         </div>
       )}
 
-      <div className="flex gap-2 items-center justify-end">
-        <Button main primary leftIcon={SvgPlusCircle} onClick={onAddAction}>
-          {buttonText || t("admin.mcp.addServer")}
-        </Button>
-      </div>
+      {canAddAction && (
+        <div className="flex gap-2 items-center justify-end">
+          <Button main primary leftIcon={SvgPlusCircle} onClick={onAddAction}>
+            {buttonText || t("admin.mcp.addServer")}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

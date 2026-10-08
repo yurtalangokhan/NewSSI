@@ -288,3 +288,34 @@ describe("OrganizationFlowNode", () => {
     );
   });
 });
+
+it("keeps rename available but disables deletion of a scope root", () => {
+  renderFlowNode(
+    <OrganizationFlowNode
+      id="unit"
+      data={
+        {
+          organizationId: "unit",
+          name: "Unit",
+          path: "/",
+          childCount: 0,
+          readOnly: false,
+          canManage: true,
+          canDelete: false,
+        } as any
+      }
+      selected
+      selectable
+      draggable={false}
+      deletable={false}
+      dragging={false}
+      zIndex={0}
+      isConnectable={false}
+      type="organization"
+      positionAbsoluteX={0}
+      positionAbsoluteY={0}
+    />
+  );
+  expect(screen.getByRole("button", { name: "Delete Unit" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Rename Unit" })).toBeEnabled();
+});

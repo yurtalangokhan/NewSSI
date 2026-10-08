@@ -1,4 +1,6 @@
 "use client";
+import { errorMessageFromUnknown } from "@/lib/api/errors";
+import { fetchRateLimitUserGroups } from "@/lib/api/domains/access/api";
 
 import * as Yup from "yup";
 import Button from "@/refresh-components/buttons/Button";
@@ -7,7 +9,7 @@ import Modal from "@/refresh-components/Modal";
 import { Form, Formik } from "formik";
 import { SelectorFormField, TextFormField } from "@/components/Field";
 import { UserGroup } from "@/lib/types";
-import { Scope } from "./types";
+import { Scope } from "@/lib/api/domains/system/token-rate-limit-types";
 import { toast } from "@/hooks/useToast";
 import { SvgSettings } from "@opal/icons";
 import { useTranslation } from "react-i18next";
@@ -40,7 +42,7 @@ export default function CreateRateLimitModal({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("/api/manage/admin/user-group");
+        const response = await fetchRateLimitUserGroups();
         const data = await response.json();
         const options = data.map((userGroup: UserGroup) => ({
           name: userGroup.name,
@@ -49,7 +51,11 @@ export default function CreateRateLimitModal({
         setModalUserGroups(options);
         setShouldFetchUserGroups(false);
       } catch (error) {
-        toast.error(t("admin.tokenRateLimits.fetchUserGroupsError", { error }));
+        toast.error(
+          t("admin.tokenRateLimits.fetchUserGroupsError", {
+            error: errorMessageFromUnknown(error),
+          })
+        );
       }
     };
 

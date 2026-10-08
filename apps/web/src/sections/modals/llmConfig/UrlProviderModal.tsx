@@ -1,6 +1,8 @@
 "use client";
+import { modelProvidersEndpoints } from "@/lib/api/domains/model-providers/endpoints";
 
-import { authenticatedFetch } from "@/lib/fetcher";
+import { testNewUrlProviderConnection } from "@/lib/api/domains/model-providers/api";
+import { createSharedUrlProvider } from "@/lib/api/domains/model-providers/api";
 
 import { useState } from "react";
 import { useSWRConfig } from "swr";
@@ -68,18 +70,11 @@ export function UrlProviderModal({
     setTestStatus("testing");
     setTestError(null);
     try {
-      const res = await authenticatedFetch(
-        "/api/admin/providers/test-connection",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            provider_type: providerType,
-            base_url: baseUrl.trim(),
-            api_key: apiKey.trim() || undefined,
-          }),
-        }
-      );
+      const res = await testNewUrlProviderConnection({
+        provider_type: providerType,
+        base_url: baseUrl.trim(),
+        api_key: apiKey.trim() || undefined,
+      });
       const data = await res.json();
       setTestLatency(data.latency_ms ?? null);
       if (data.success) {
@@ -115,27 +110,23 @@ export function UrlProviderModal({
 
     setSubmitting(true);
     try {
-      const res = await authenticatedFetch("/api/admin/providers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          provider_type: providerType,
-          base_url: baseUrl.trim(),
-          api_key: apiKey.trim() || undefined,
-          default_model: defaultModel.trim() || undefined,
-          config: {
-            api_version: apiVersion.trim() || null,
-            custom_config: customConfig,
-          },
-        }),
+      const res = await createSharedUrlProvider({
+        name: name.trim(),
+        provider_type: providerType,
+        base_url: baseUrl.trim(),
+        api_key: apiKey.trim() || undefined,
+        default_model: defaultModel.trim() || undefined,
+        config: {
+          api_version: apiVersion.trim() || null,
+          custom_config: customConfig,
+        },
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || t("admin.llm.failedToAddProvider"));
       }
       toast({ message: t("admin.llm.providerAdded") });
-      await mutate("/api/admin/providers");
+      await mutate(modelProvidersEndpoints.listProviders.browserPath);
       reset();
       onOpenChange(false);
     } catch (e: unknown) {

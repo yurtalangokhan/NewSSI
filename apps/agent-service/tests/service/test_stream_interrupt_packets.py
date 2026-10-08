@@ -13,7 +13,7 @@ import pytest
 from langchain_core.messages import AIMessage
 from langgraph.types import Interrupt
 
-from service.AgentStreamService import _collect_update_messages
+from service.orchestration.agent_stream_service import _collect_update_messages
 
 
 async def _collect(value, interrupt_id="int-1"):

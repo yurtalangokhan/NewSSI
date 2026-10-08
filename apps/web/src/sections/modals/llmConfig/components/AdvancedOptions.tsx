@@ -4,7 +4,7 @@ import { IsPublicGroupSelector } from "@/components/IsPublicGroupSelector";
 import { AgentsMultiSelect } from "@/components/AgentsMultiSelect";
 import Text from "@/refresh-components/texts/Text";
 import { useState } from "react";
-import { useAgents } from "@/hooks/useAgents";
+import { useAgents } from "@/lib/api/domains/agents/hooks";
 import { useTranslation } from "react-i18next";
 
 export function AdvancedOptions({

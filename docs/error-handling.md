@@ -29,7 +29,7 @@ responses:
 
 ## Backend Rules
 
-FastAPI services register the shared `error-contract` handlers during app
+FastAPI services register the shared `error_contract` handlers during app
 startup. Domain and service code should raise `ApplicationError` subclasses
 from `error_contract` or service-local aliases. Routes/controllers are the
 transport edge and may translate legacy errors to the contract.

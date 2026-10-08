@@ -1,10 +1,17 @@
 "use client";
+import { preferencesEndpoints } from "@/lib/api/domains/preferences/endpoints";
+
+import { SvgExpand } from "@opal/icons";
+
+import { updateDefaultAssistantTools } from "@/lib/api/domains/preferences/api";
+import { updateAdminChatSettings } from "@/lib/api/domains/preferences/api";
+import { updateDefaultAssistantPreferences } from "@/lib/api/domains/preferences/api";
+import { fetchDefaultAssistantConfiguration } from "@/lib/api/domains/preferences/api";
 
 import React, { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Formik, Form, useFormikContext } from "formik";
 import useSWR from "swr";
-import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 import { getErrorMsg } from "@/lib/fetchUtils";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import * as InputLayouts from "@/layouts/input-layouts";
@@ -18,32 +25,24 @@ import InputTypeInField from "@/refresh-components/form/InputTypeInField";
 import InputTextAreaField from "@/refresh-components/form/InputTextAreaField";
 import InputSelectField from "@/refresh-components/form/InputSelectField";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
-import {
-  SvgAddLines,
-  SvgActions,
-  SvgExpand,
-  SvgFold,
-  SvgExternalLink,
-} from "@opal/icons";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { SvgAddLines, SvgActions, SvgFold, SvgExternalLink } from "@opal/icons";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { Content } from "@opal/layouts";
 import { useSettingsContext } from "@/providers/SettingsProvider";
-import useCCPairs from "@/hooks/useCCPairs";
+import { useCCPairs } from "@/lib/api/domains/datasources/hooks";
 import { getSourceMetadata } from "@/lib/sources";
 import EmptyMessage from "@/refresh-components/EmptyMessage";
 import { Settings } from "@/interfaces/settings";
 import { toast } from "@/hooks/useToast";
-import { useAvailableTools } from "@/hooks/useAvailableTools";
-import {
-  SEARCH_TOOL_ID,
-  WEB_SEARCH_TOOL_ID,
-} from "@/app/app/components/tools/constants";
+import { useAvailableTools } from "@/lib/api/domains/tools/hooks";
+import { WEB_SEARCH_TOOL_ID } from "@/app/app/components/tools/constants";
+import { SEARCH_TOOL_ID } from "@/lib/api/domains/tools/constants";
 import { Button } from "@opal/components";
 import Modal from "@/refresh-components/Modal";
 import InputTextArea from "@/refresh-components/inputs/InputTextArea";
 import Switch from "@/refresh-components/inputs/Switch";
-import useMcpServersForAgentEditor from "@/hooks/useMcpServersForAgentEditor";
-import useOpenApiTools from "@/hooks/useOpenApiTools";
+import { useMcpServersForAgentEditor } from "@/lib/api/domains/tools/hooks";
+import { useOpenApiTools } from "@/lib/api/domains/tools/hooks";
 import * as ExpandableCard from "@/layouts/expandable-card-layouts";
 import * as ActionsLayouts from "@/layouts/actions-layouts";
 import { getActionIcon } from "@/lib/tools/mcpUtils";
@@ -222,8 +221,8 @@ function ChatPreferencesForm() {
   // Default agent configuration (system prompt)
   const { data: defaultAgentConfig, mutate: mutateDefaultAgent } =
     useSWR<DefaultAgentConfiguration>(
-      "/api/admin/default-assistant/configuration",
-      errorHandlingFetcher
+      preferencesEndpoints.defaultAssistantConfiguration.browserPath,
+      () => fetchDefaultAssistantConfiguration<DefaultAgentConfiguration>()
     );
 
   const enabledToolIds = defaultAgentConfig?.tool_ids ?? [];
@@ -242,14 +241,9 @@ function ChatPreferencesForm() {
       try {
         await mutateDefaultAgent(
           async () => {
-            const response = await authenticatedFetch(
-              "/api/admin/default-assistant",
-              {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ tool_ids: newToolIds }),
-              }
-            );
+            const response = await updateDefaultAssistantTools({
+              tool_ids: newToolIds,
+            });
             if (!response.ok) {
               const errorMsg = (await getErrorMsg(response)) ?? "Unknown error";
               throw new Error(errorMsg);
@@ -298,11 +292,7 @@ function ChatPreferencesForm() {
       const newSettings = { ...currentSettings, ...updates };
 
       try {
-        const response = await authenticatedFetch("/api/admin/settings", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newSettings),
-        });
+        const response = await updateAdminChatSettings(newSettings);
 
         if (!response.ok) {
           const errorMsg = (await getErrorMsg(response)) ?? "Unknown error";
@@ -754,16 +744,9 @@ function ChatPreferencesForm() {
               prominence="primary"
               onClick={async () => {
                 try {
-                  const response = await authenticatedFetch(
-                    "/api/admin/default-assistant",
-                    {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        system_prompt: systemPromptValue,
-                      }),
-                    }
-                  );
+                  const response = await updateDefaultAssistantPreferences({
+                    system_prompt: systemPromptValue,
+                  });
                   if (!response.ok) {
                     const errorMsg =
                       (await getErrorMsg(response)) ?? "Unknown error";

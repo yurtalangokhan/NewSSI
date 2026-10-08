@@ -46,18 +46,36 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
   );
 };
 
-export const ThreeDotsLoader = () => {
+interface ThreeDotsLoaderProps {
+  label?: string;
+  variant?: "neutral" | "primary";
+}
+
+export function ThreeDotsLoader({
+  label = "Loading...",
+  variant = "neutral",
+}: ThreeDotsLoaderProps) {
+  const dotClass = cn(
+    "h-2.5 w-2.5 rounded-full animate-pulse motion-reduce:animate-none",
+    variant === "primary" ? "bg-theme-primary-04" : "bg-background-tint-04"
+  );
   return (
     <div
       className="flex my-auto items-center justify-center py-4"
       role="status"
-      aria-label="Loading..."
+      aria-label={label}
     >
       <div className="flex items-center gap-1.5">
-        <div className="h-2.5 w-2.5 rounded-full bg-background-tint-04 animate-pulse" />
-        <div className="h-2.5 w-2.5 rounded-full bg-background-tint-04 animate-pulse [animation-delay:200ms]" />
-        <div className="h-2.5 w-2.5 rounded-full bg-background-tint-04 animate-pulse [animation-delay:400ms]" />
+        <div aria-hidden="true" className={dotClass} />
+        <div
+          aria-hidden="true"
+          className={cn(dotClass, "[animation-delay:200ms]")}
+        />
+        <div
+          aria-hidden="true"
+          className={cn(dotClass, "[animation-delay:400ms]")}
+        />
       </div>
     </div>
   );
-};
+}

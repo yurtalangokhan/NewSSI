@@ -1,8 +1,9 @@
 "use client";
+import { craftEndpoints } from "@/lib/api/domains/craft/endpoints";
 
 import { useEffect } from "react";
 import useSWR from "swr";
-import { fetchFileContent } from "@/app/craft/services/apiServices";
+import { fetchFileContent } from "@/lib/api/domains/craft/api";
 import Text from "@/refresh-components/texts/Text";
 import { SvgFileText } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
@@ -154,7 +155,7 @@ function FetchedFilePreview({
   refreshKey,
 }: FetchedFilePreviewProps) {
   const { data, error, isLoading, mutate } = useSWR(
-    `/api/build/sessions/${sessionId}/artifacts/${filePath}`,
+    craftEndpoints.craftArtifactCacheKey(sessionId, filePath).browserPath,
     () => fetchFileContent(sessionId, filePath),
     {
       revalidateOnFocus: false,

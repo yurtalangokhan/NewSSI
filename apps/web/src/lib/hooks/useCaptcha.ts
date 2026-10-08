@@ -18,6 +18,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { appSettings } from "@/lib/settings";
 
 // Declare the global grecaptcha object
 declare global {
@@ -32,7 +33,7 @@ declare global {
   }
 }
 
-const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
+const RECAPTCHA_SITE_KEY = appSettings.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
 export function useCaptcha() {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -91,7 +92,10 @@ export function useCaptcha() {
 
   const getCaptchaToken = useCallback(
     async (action: string = "submit"): Promise<string | undefined> => {
-      if (!isCaptchaEnabled) {
+      // Checked through the key itself rather than `isCaptchaEnabled` so the
+      // narrowing reaches the execute() call below; the two are the same
+      // condition.
+      if (!RECAPTCHA_SITE_KEY) {
         return undefined;
       }
 

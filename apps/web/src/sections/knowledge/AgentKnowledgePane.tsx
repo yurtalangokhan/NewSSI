@@ -566,7 +566,8 @@ export default function AgentKnowledgePane({
 }: AgentKnowledgePaneProps) {
   const { t } = useTranslation();
   const [view, setView] = useState<KnowledgeView>("main");
-  const { collections, isLoading } = useKnowledgeCollections(enableKnowledge);
+  const { collections, isLoading, error } =
+    useKnowledgeCollections(enableKnowledge);
 
   useEffect(() => {
     if (!collections || !onCollectionDisplayNamesChange) {
@@ -712,6 +713,11 @@ export default function AgentKnowledgePane({
 
           <Disabled disabled={!enableKnowledge}>
             <GeneralLayouts.Section alignItems="stretch" height="auto">
+              {error && (
+                <Text as="p" role="alert">
+                  {error}
+                </Text>
+              )}
               {renderedContent}
             </GeneralLayouts.Section>
           </Disabled>

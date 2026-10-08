@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import { useUser } from "@/providers/UserProvider";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { fetchKnowledgeGraphExposed } from "@/lib/api/domains/knowledge/api";
 import useSWR from "swr";
 import { KGConfig, KGConfigRaw } from "./interfaces";
 
@@ -9,8 +9,8 @@ export type KgExposedStatus = { kgExposed: boolean; isLoading: boolean };
 export function useIsKGExposed(): KgExposedStatus {
   const { isAdmin } = useUser();
   const { data: kgExposedRaw, isLoading } = useSWR<boolean>(
-    isAdmin ? "/api/admin/kg/exposed" : null,
-    errorHandlingFetcher,
+    isAdmin ? "knowledge-graph-exposed" : null,
+    fetchKnowledgeGraphExposed,
     {
       revalidateOnFocus: false,
       revalidateIfStale: false,

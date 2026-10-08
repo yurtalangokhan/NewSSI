@@ -123,4 +123,4 @@ def test_table_header_background_command_uses_theme_color():
     table = _pdf_table_flowable(block, styles)
 
     default_theme = resolve_theme("default")
-    assert any(c[3] == HexColor(default_theme.table_header_bg) for c in table._bkgrndcmds)  # noqa: SLF001
+    assert any(c[3] == HexColor(default_theme.table_header_bg) for c in table._bkgrndcmds)

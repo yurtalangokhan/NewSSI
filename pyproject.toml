@@ -1,0 +1,46 @@
+# Repository-level Python project metadata for the Agentic AI Platform monorepo.
+#
+# The runnable code lives in the per-service and per-package projects under
+# `apps/*` and `packages/*`; each has its own pyproject.toml, lockfile and
+# virtual environment, and is built and deployed independently. This file exists
+# to hold common tool configuration and the repository-level dev tooling.
+#
+# Deliberately NOT a uv workspace: the services pin their dependencies
+# separately and are released on their own cadence, so a shared lockfile would
+# couple them. Adding `[tool.uv.workspace]` here would change how `uv` resolves
+# every subproject.
+
+[project]
+name = "agenticai-platform"
+version = "1.0.0"
+description = "Enterprise multi-agent orchestration platform: agent, user, RAG and tools services with shared governance packages."
+requires-python = ">=3.11,<3.14"
+
+[dependency-groups]
+# Tooling used by repository-level scripts (scripts/, scripts/tests/).
+dev = [
+    "pytest>=8.0",
+    "pyyaml>=6.0",
+    "ruff>=0.8",
+]
+
+# The standard every project here is expected to meet. Each app and package
+# repeats it locally so `uv run ruff check .` inside a project behaves the same
+# way; this copy governs repository-level code under scripts/.
+#
+# Note: scripts/ does not fully meet it yet — `ruff check scripts/` reports
+# pre-existing E501 violations in the env_manager spec tables. They are left
+# visible rather than silenced with per-file ignores.
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [
+    "apps/web",
+    "**/migrations/versions",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["scripts/tests"]

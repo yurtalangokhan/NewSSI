@@ -1,11 +1,11 @@
 export { isEmbeddingModel, isChatModel } from "./modelClassification";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import {
   DefaultModel,
   LLMProviderDescriptor,
   ModelConfiguration,
 } from "@/interfaces/llm";
-import { LlmDescriptor } from "@/lib/hooks";
+import { LlmDescriptor } from "@/lib/api/domains/model-providers/hooks";
 
 export function getFinalLLM(
   llmProviders: LLMProviderDescriptor[],

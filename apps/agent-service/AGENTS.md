@@ -11,10 +11,12 @@ definitions, built-in recipes, memory, and the tools-service gateway.
 
 ```text
 src/api/routes/                 HTTP routes
-src/controller/                 Use-case orchestration
-src/service/                    Business logic
+src/api/helpers/                HTTP route pure helpers
+src/service/                    Business logic and framework-free use cases
+src/service/stream/             Streaming pipeline and timeline tracking
+src/service/chat_runs/          Resumable chat-run domain, supervisor, reader, and reaper
 src/repository/                 Data access
-src/schema/                     Request and response schemas
+src/schemas/                    Request and response schemas (Pydantic DTOs)
 src/domain/                     Domain types
 src/agent_composition/domain/   Ports and definitions
 src/agent_composition/application/ Factory, composer, and recipes
@@ -35,8 +37,8 @@ Use the narrowest row that matches the task.
 
 | Change | Start in | Direct tests |
 |---|---|---|
-| API or schema | `src/api/routes/`, `src/schema/`, then controller | Matching route/controller tests |
-| Use case | `src/controller/`, `src/service/` | `tests/controller/`, `tests/service/` |
+| API or schema | `src/api/routes/`, `src/schemas/`, then the service | Matching route/service tests |
+| Use case | `src/service/` (`*_application_service.py`) | `tests/service/` |
 | Agent definition or composition | `src/agent_composition/` | `tests/agent_composition/` |
 | Graph strategy | `src/agents/graphs/strategies/` | `tests/agents/graphs/` |
 | Persistence or migration | `src/repository/`, `src/core/db/` | Matching repository and migration tests |
@@ -60,7 +62,31 @@ Open only a document whose condition matches the change.
 
 ## Invariants
 
-- Keep `route -> controller -> service -> repository` boundaries.
+- Keep `route -> service -> repository` boundaries. Routes own transport and
+  the response envelope; `*_application_service` modules orchestrate use cases
+  and raise typed `ApplicationError`s. There is no controller layer and no
+  `src/controller/` path.
+- Keep request and response DTOs in `src/schemas/` (for example
+  `schemas/chat.py`, `schemas/chat_runs.py`). The old `src/models/` path no
+  longer exists.
+- Every outbound HTTP call goes through `core/http/outbound.py` — never
+  `httpx.AsyncClient(...)` per request. One pooled client per dependency name,
+  and that name must exist under `dependencies:` in `configs/resilience.yaml`.
+  Pass timeouts per request; the shared client is process-wide and is closed by
+  `security.close_all()` in the lifespan shutdown.
+- Do not hand a raw `asyncpg.connect` to a request path: acquire from a pool and
+  release it.
+- Datasource syncs run in-process through `packages/connector-py`
+  (`service/ingest/connector_runtime.py`). Connector configurations are never
+  stored in this service: keep only `config_id`/`owner_user_id` and read the
+  configuration from user-service when a sync or a live tool needs it.
+- Repository sessions are split by intent. SELECT-only methods use
+  `self._read_session()` (AUTOCOMMIT: no BEGIN/COMMIT round trip); anything that
+  writes uses `self._session()` (one transaction, commit on success).
+  `tests/core/test_repository_read_session.py` enforces both directions.
+- Blocking callers use `outbound.get_sync_client(dependency)` rather than
+  module-level `httpx.get`/`httpx.post`, which build and discard a client — and a
+  connection pool — per call.
 - Keep FastAPI types out of services and concrete I/O out of domain modules.
 - Preserve `ToolsServiceToolGateway`; credentials never enter model-visible
   arguments.
@@ -69,11 +95,13 @@ Open only a document whose condition matches the change.
   `strategies/registry.py`.
 - Preserve the compatibility exports in `src/agents/__init__.py` unless the
   task explicitly changes that API.
-- Use Ruff line length 100 and `from i18n import t` for user-facing messages.
+- Use Ruff line length 100 and `from localization import t` for user-facing messages.
+- Read configuration only through config_manager's typed accessor
+  (`from config_manager import env`); direct `os.environ`/`os.getenv` reads are
+  not allowed in application code (migrations and bootstrap excepted).
 
 ## Test scope
 
 Use `make test-file FILE=<path>` inside the quiet task/spec wrappers. Default
-core tests exclude `tests/app`, `tests/voice`, and `tests/integration`; include
-those suites only when their surfaces change. Full `make validate` runs only
-through the push wrapper.
+core tests exclude `tests/integration`; include that suite only when its
+surface changes. Full `make validate` runs only through the push wrapper.

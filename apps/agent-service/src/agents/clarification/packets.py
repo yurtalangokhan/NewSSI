@@ -17,10 +17,14 @@ cevaplar ``ToolMessage.artifact``'tan (§3.5).
 from typing import Any
 
 from agents.clarification.formatting import normalise_resume
-from agents.clarification.schema import InvalidQuestions, validate_questions
 from agents.clarification.tool import PAYLOAD_VERSION
+from agents.clarification.validation import InvalidQuestions, validate_questions
+from agents.interrupts.classify import USER_CLARIFICATION
 
-CLARIFICATION_PACKET = "user_clarification"
+# The request packet carries the interrupt's own type: the card the client draws
+# and the interrupt the runtime waits on are the same thing, so the literal is
+# owned by the classifier instead of being written out a second time here.
+CLARIFICATION_PACKET = USER_CLARIFICATION
 ANSWERED_PACKET = "user_clarification_answered"
 
 

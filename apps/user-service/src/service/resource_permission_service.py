@@ -1,15 +1,27 @@
 """Resource permission management service with caching."""
 
-import uuid
 from typing import Any
+import uuid
 
-from src.core.exceptions import ForbiddenError, NotFoundError
+from error_contract import (
+    BadRequestError,
+    ConflictError,
+    DatabaseOperationError,
+    render_error_message,
+)
+from error_contract.identity import ForbiddenError, NotFoundError
+
 from src.repository import (
     OrganizationRepository,
     PermissionAuditRepository,
     ResourcePermissionRepository,
     UserOrganizationRepository,
 )
+from src.repository.keycloak_resource_authorization import (
+    ResourceAuthorizationProjectionRepository,
+)
+from src.service.organization_scope_service import OrganizationScopeService
+from src.service.permission_resolver_service import get_permission_resolver_service
 from src.service.user_organization_service import get_user_organization_service
 
 # Permission level hierarchy
@@ -32,14 +44,16 @@ class ResourcePermissionService:
         user_org_repo: UserOrganizationRepository | None = None,
         audit_repo: PermissionAuditRepository | None = None,
         user_organization_service: Any | None = None,
+        authorization_projection: ResourceAuthorizationProjectionRepository | None = None,
     ):
         self.perm_repo = permission_repo or ResourcePermissionRepository()
         self.audit_repo = audit_repo or PermissionAuditRepository()
         self.org_repo = organization_repo or OrganizationRepository()
         self.user_org_repo = user_org_repo or UserOrganizationRepository()
-        self.user_organization_service = (
-            user_organization_service or get_user_organization_service()
-        )
+        self.user_organization_service = user_organization_service or get_user_organization_service()
+        self.permission_resolver = get_permission_resolver_service()
+        self.scope_service = OrganizationScopeService()
+        self.authorization_projection = authorization_projection or ResourceAuthorizationProjectionRepository()
 
     async def check_resource_access(
         self,
@@ -64,45 +78,47 @@ class ResourcePermissionService:
                 "organization_name": str | None
             }
         """
-        # 1. Check direct user permission
+        candidates = []
         user_perm = await self.perm_repo.get_by_user_resource(user_id, resource_type, resource_id)
         if user_perm:
-            allowed = self._check_level(user_perm["permission_level"], required_permission)
+            candidates.append(
+                {
+                    "permission_level": user_perm["permission_level"],
+                    "source": "user",
+                    "organization_id": None,
+                    "organization_name": None,
+                }
+            )
+        memberships = await self.user_org_repo.get_user_organizations(user_id, include_inactive=False)
+        for membership in memberships:
+            org_id = membership["organization_id"]
+            permission = await self.perm_repo.get_by_org_resource(org_id, resource_type, resource_id)
+            if permission:
+                candidates.append(
+                    {
+                        "permission_level": permission["permission_level"],
+                        "source": "organization",
+                        "organization_id": org_id,
+                        "organization_name": (membership.get("organization") or {}).get("name"),
+                    }
+                )
+        if not candidates:
             return {
-                "allowed": allowed,
-                "permission_level": user_perm["permission_level"],
-                "source": "user",
+                "allowed": False,
+                "permission_level": None,
+                "source": None,
                 "organization_id": None,
                 "organization_name": None,
             }
-
-        # 2. Check user's organizations
-        user_orgs = await self.user_org_repo.get_user_organizations(user_id, include_inactive=False)
-
-        for user_org in user_orgs:
-            org_id = user_org["organization_id"]
-
-            # 2a. Direct organization permission
-            org_perm = await self.perm_repo.get_by_org_resource(org_id, resource_type, resource_id)
-            if org_perm:
-                allowed = self._check_level(org_perm["permission_level"], required_permission)
-                if allowed:
-                    return {
-                        "allowed": True,
-                        "permission_level": org_perm["permission_level"],
-                        "source": "organization",
-                        "organization_id": org_id,
-                        "organization_name": user_org.get("organization", {}).get("name"),
-                    }
-
-        # No permission found
-        return {
-            "allowed": False,
-            "permission_level": None,
-            "source": None,
-            "organization_id": None,
-            "organization_name": None,
-        }
+        best = max(
+            candidates,
+            key=lambda candidate: (
+                PERMISSION_LEVELS.get(candidate["permission_level"], 0),
+                candidate["source"] == "user",
+                str(candidate["organization_id"] or ""),
+            ),
+        )
+        return {"allowed": self._check_level(best["permission_level"], required_permission), **best}
 
     async def grant_permission(
         self,
@@ -118,22 +134,31 @@ class ResourcePermissionService:
         """Grant permission to organization or user."""
         resource_name = resource_name or resource_id
         if not organization_id and not user_id:
-            raise ValueError("Either organization_id or user_id must be provided")
+            raise BadRequestError(
+                message_key="errors.user_service.resource_permission.either_organization_id_or_user_id_must_be_provided"
+            )
         if organization_id and user_id:
-            raise ValueError("Only one of organization_id or user_id can be provided")
+            raise BadRequestError(
+                message_key="errors.user_service.resource_permission.only_one_of_organization_id_or_user_id_can"
+            )
+
+        if granted_by is not None:
+            await self._authorize_mutation(granted_by, organization_id)
+            await self._require_delegable(granted_by, resource_type, resource_id, permission_level)
 
         # Validate permission level
         if permission_level not in PERMISSION_LEVELS:
-            raise ValueError(
-                f"Invalid permission level '{permission_level}'. "
-                f"Must be one of: {list(PERMISSION_LEVELS.keys())}"
+            raise BadRequestError(
+                message_key="errors.user_service.resource_permission.invalid_permission_level_must_be_one_of",
+                message_params={
+                    "permission_level": permission_level,
+                    "param2": list(PERMISSION_LEVELS.keys()),
+                },
             )
 
         # Check if permission already exists
         if organization_id:
-            existing = await self.perm_repo.get_by_org_resource(
-                organization_id, resource_type, resource_id
-            )
+            existing = await self.perm_repo.get_by_org_resource(organization_id, resource_type, resource_id)
         else:
             existing = await self.perm_repo.get_by_user_resource(
                 user_id,
@@ -142,20 +167,22 @@ class ResourcePermissionService:
             )
 
         if existing:
-            raise ValueError(
-                "Permission already exists for this resource. Use update_permission to modify it."
+            raise ConflictError(
+                message_key="errors.user_service.resource_permission.permission_already_exists_for_this_resource_use_update_permission"
             )
 
         # Create permission
-        perm = await self.perm_repo.create(
-            resource_type=resource_type,
-            resource_id=resource_id,
-            resource_name=resource_name,
-            organization_id=organization_id,
-            user_id=user_id,
-            permission_level=permission_level,
-            is_inherited=is_inherited,
-            granted_by=granted_by,
+        perm = await self.authorization_projection.project_mutation(
+            lambda: self.perm_repo.create(
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_name=resource_name,
+                organization_id=organization_id,
+                user_id=user_id,
+                permission_level=permission_level,
+                is_inherited=is_inherited,
+                granted_by=granted_by,
+            )
         )
 
         # Audit log
@@ -167,17 +194,24 @@ class ResourcePermissionService:
 
         return perm
 
-    async def revoke_permission(
-        self, permission_id: uuid.UUID, revoked_by: uuid.UUID | None = None
-    ) -> bool:
+    async def revoke_permission(self, permission_id: uuid.UUID, revoked_by: uuid.UUID | None = None) -> bool:
         """Revoke permission."""
         # Get permission before deleting (for audit)
         perm = await self.perm_repo.get_by_id(permission_id)
         if not perm:
-            raise ValueError(f"Permission {permission_id} not found")
+            raise NotFoundError(
+                message_key="errors.user_service.resource_permission.permission_not_found",
+                message_params={"permission_id": permission_id},
+            )
+
+        if revoked_by is not None:
+            await self._authorize_mutation(revoked_by, perm.get("organization_id"))
+            await self._require_delegable(
+                revoked_by, perm["resource_type"], perm["resource_id"], perm["permission_level"]
+            )
 
         # Delete permission
-        deleted = await self.perm_repo.delete(permission_id)
+        deleted = await self.authorization_projection.project_mutation(lambda: self.perm_repo.delete(permission_id))
 
         if deleted:
             # Audit log
@@ -199,21 +233,38 @@ class ResourcePermissionService:
         # Get existing permission
         perm = await self.perm_repo.get_by_id(permission_id)
         if not perm:
-            raise ValueError(f"Permission {permission_id} not found")
+            raise NotFoundError(
+                message_key="errors.user_service.resource_permission.permission_not_found",
+                message_params={"permission_id": permission_id},
+            )
+
+        if updated_by is not None:
+            await self._authorize_mutation(updated_by, perm.get("organization_id"))
+            await self._require_delegable(
+                updated_by, perm["resource_type"], perm["resource_id"], perm["permission_level"]
+            )
+            await self._require_delegable(updated_by, perm["resource_type"], perm["resource_id"], permission_level)
 
         # Validate new level
         if permission_level not in PERMISSION_LEVELS:
-            raise ValueError(
-                f"Invalid permission level '{permission_level}'. "
-                f"Must be one of: {list(PERMISSION_LEVELS.keys())}"
+            raise BadRequestError(
+                message_key="errors.user_service.resource_permission.invalid_permission_level_must_be_one_of",
+                message_params={
+                    "permission_level": permission_level,
+                    "param2": list(PERMISSION_LEVELS.keys()),
+                },
             )
 
         old_level = perm["permission_level"]
 
         # Update
-        updated = await self.perm_repo.update(permission_id, permission_level=permission_level)
+        updated = await self.authorization_projection.project_mutation(
+            lambda: self.perm_repo.update(permission_id, permission_level=permission_level)
+        )
         if not updated:
-            raise ValueError("Failed to update permission")
+            raise DatabaseOperationError(
+                message_key="errors.user_service.resource_permission.failed_to_update_permission"
+            )
 
         # Audit log
         await self._log_permission_change(
@@ -225,11 +276,32 @@ class ResourcePermissionService:
 
         return updated
 
-    async def get_resource_permissions(
-        self, resource_type: str, resource_id: str
-    ) -> list[dict[str, Any]]:
+    async def get_resource_permissions(self, resource_type: str, resource_id: str) -> list[dict[str, Any]]:
         """Get all permissions for a resource (organizations + users)."""
         return await self.perm_repo.get_resource_permissions(resource_type, resource_id)
+
+    async def _authorize_mutation(self, actor_id: uuid.UUID, organization_id: uuid.UUID | None) -> None:
+        effective, is_admin = await self.permission_resolver.resolve_effective_access(actor_id)
+        if is_admin or "*" in effective:
+            return
+        if (
+            organization_id is None
+            or "org:manage-resources" not in effective
+            or not (await self.user_organization_service.can_manage_organization(actor_id, organization_id))
+        ):
+            raise ForbiddenError(
+                message_key="errors.user_service.resource_permission.actor_cannot_change_permissions_outside_their_organization_scope"
+            )
+
+    async def _require_delegable(self, actor_id, resource_type, resource_id, permission_level):
+        effective, is_admin = await self.permission_resolver.resolve_effective_access(actor_id)
+        if is_admin or "*" in effective:
+            return
+        access = await self.check_resource_access(actor_id, resource_type, resource_id, permission_level)
+        if not access["allowed"]:
+            raise ForbiddenError(
+                message_key="errors.user_service.resource_permission.cannot_delegate_a_resource_permission_the_actor_does_not"
+            )
 
     async def check_permission(
         self,
@@ -245,32 +317,6 @@ class ResourcePermissionService:
             resource_id=resource_id,
             required_permission=required_permission,
         )
-
-    async def list_resource_permissions(
-        self,
-        resource_type: str,
-        resource_id: str,
-    ) -> list[dict[str, Any]]:
-        """Backward-compatible alias for resource permission listing."""
-        return await self.get_resource_permissions(resource_type, resource_id)
-
-    async def bulk_check_permissions(
-        self,
-        user_id: uuid.UUID,
-        resource_type: str,
-        resource_ids: list[str],
-        required_permission: str = "read",
-    ) -> dict[str, dict[str, Any]]:
-        """Check access for several resources."""
-        results = {}
-        for resource_id in resource_ids:
-            results[resource_id] = await self.check_resource_access(
-                user_id=user_id,
-                resource_type=resource_type,
-                resource_id=resource_id,
-                required_permission=required_permission,
-            )
-        return results
 
     async def get_scoped_direct_permissions(
         self,
@@ -288,6 +334,11 @@ class ResourcePermissionService:
             target_id,
             resource_type,
         )
+        effective, is_admin = await self.permission_resolver.resolve_effective_access(actor_id)
+        if not is_admin and "*" not in effective and "org:read" not in effective:
+            raise ForbiddenError(
+                message_key="errors.user_service.resource_permission.actor_cannot_read_organization_resources"
+            )
         return await self.perm_repo.get_direct_permissions(target_type, target_id, resource_type)
 
     async def sync_scoped_direct_permissions(
@@ -307,18 +358,48 @@ class ResourcePermissionService:
             target_id,
             resource_type,
         )
-        desired_by_resource_id = {
-            permission["resource_id"]: permission for permission in desired_permissions
-        }
+        desired_by_resource_id = {permission["resource_id"]: permission for permission in desired_permissions}
         if len(desired_by_resource_id) != len(desired_permissions):
-            raise ValueError("Resource IDs must be unique")
+            raise BadRequestError(message_key="errors.user_service.resource_permission.resource_ids_must_be_unique")
 
-        permissions, changes = await self.perm_repo.sync_direct_permissions(
+        effective, is_admin = await self.permission_resolver.resolve_effective_access(actor_id)
+        if not is_admin and "*" not in effective:
+            if "org:manage-resources" not in effective:
+                raise ForbiddenError(
+                    message_key="errors.user_service.resource_permission.actor_cannot_manage_organization_resources"
+                )
+            existing_permissions = await self.perm_repo.get_direct_permissions(target_type, target_id, resource_type)
+            changed_existing = [
+                permission
+                for permission in existing_permissions
+                if permission["resource_id"] not in desired_by_resource_id
+                or desired_by_resource_id[permission["resource_id"]]["permission_level"]
+                != permission["permission_level"]
+            ]
+            for permission in [*desired_permissions, *changed_existing]:
+                access = await self.check_resource_access(
+                    actor_id,
+                    resource_type,
+                    permission["resource_id"],
+                    permission["permission_level"],
+                )
+                if not access["allowed"]:
+                    raise ForbiddenError(
+                        message_key="errors.user_service.resource_permission.cannot_delegate_a_resource_permission_the_actor_does_not"
+                    )
+
+        permissions, changes = await self.authorization_projection.project_scoped_mutation(
+            lambda: self.perm_repo.sync_direct_permissions(
+                target_type=target_type,
+                target_id=target_id,
+                resource_type=resource_type,
+                desired_permissions=desired_permissions,
+                granted_by=actor_id,
+            ),
             target_type=target_type,
             target_id=target_id,
             resource_type=resource_type,
-            desired_permissions=desired_permissions,
-            granted_by=actor_id,
+            desired_resource_ids=set(desired_by_resource_id),
         )
         for change in changes:
             await self._log_permission_change(
@@ -339,32 +420,55 @@ class ResourcePermissionService:
     ) -> None:
         """Validate actor scope and target membership for a scoped permission operation."""
         if target_type not in {"organization", "user"}:
-            raise ValueError("target_type must be 'organization' or 'user'")
+            raise BadRequestError(
+                message_key="errors.user_service.resource_permission.target_type_must_be_organization_or_user"
+            )
         if resource_type not in {"agent", "rag_collection"}:
-            raise ValueError("resource_type must be 'agent' or 'rag_collection'")
+            raise BadRequestError(
+                message_key="errors.user_service.resource_permission.resource_type_must_be_agent_or_rag_collection"
+            )
         if not await self.org_repo.get_by_id(organization_id):
-            raise NotFoundError("Organization not found")
+            raise NotFoundError(message_key="errors.user_service.resource_permission.organization_not_found")
         if target_type == "organization" and target_id != organization_id:
-            raise ValueError("Organization target must match the organization scope")
+            raise BadRequestError(
+                message_key="errors.user_service.resource_permission.organization_target_must_match_the_organization_scope"
+            )
         if not await self.user_organization_service.can_manage_organization(
             actor_id,
             organization_id,
         ):
-            raise ForbiddenError("Actor cannot manage the selected organization")
-        if (
-            target_type == "user"
-            and not await self.user_organization_service.check_user_organization_permission(
-                target_id,
-                organization_id,
+            raise ForbiddenError(
+                message_key="errors.user_service.resource_permission.actor_cannot_manage_the_selected_organization"
             )
+        if target_type == "user" and not await self.user_organization_service.check_user_organization_permission(
+            target_id,
+            organization_id,
         ):
-            raise ValueError("User target must be an active member of the selected organization")
+            raise BadRequestError(
+                message_key="errors.user_service.resource_permission.user_target_must_be_an_active_member_of_the"
+            )
 
     async def get_organization_permissions(
-        self, organization_id: uuid.UUID, resource_type: str | None = None
+        self,
+        organization_id: uuid.UUID,
+        resource_type: str | None = None,
+        actor_id: uuid.UUID | None = None,
     ) -> list[dict[str, Any]]:
         """Get all permissions for an organization, optionally filtered by resource type."""
+        if actor_id is not None:
+            await self.require_organization_access(actor_id, organization_id)
         return await self.perm_repo.get_organization_permissions(organization_id, resource_type)
+
+    async def require_global_read(self, actor_id: uuid.UUID) -> None:
+        effective, is_admin = await self.permission_resolver.resolve_effective_access(actor_id)
+        if not is_admin and "*" not in effective:
+            raise ForbiddenError(
+                message_key="errors.user_service.resource_permission.global_permission_listings_require_a_global_administrator"
+            )
+
+    async def require_organization_access(self, actor_id: uuid.UUID, organization_id: uuid.UUID) -> None:
+        scope = await self.scope_service.resolve(actor_id)
+        scope.require(await self.org_repo.get_by_id(organization_id))
 
     async def get_user_permissions_listing(
         self, user_id: uuid.UUID, resource_type: str | None = None
@@ -401,7 +505,10 @@ class ResourcePermissionService:
             org_perms = await self.perm_repo.get_organization_permissions(org_id, resource_type)
             for perm in org_perms:
                 key = (perm["resource_type"], perm["resource_id"])
-                if key not in accessible_resources:
+                existing = accessible_resources.get(key)
+                if existing is None or PERMISSION_LEVELS.get(perm["permission_level"], 0) > (
+                    PERMISSION_LEVELS.get(existing["permission_level"], 0)
+                ):
                     accessible_resources[key] = {
                         **perm,
                         "access_via": "organization",
@@ -440,11 +547,11 @@ class ResourcePermissionService:
                     granted_by=granted_by,
                 )
                 results.append(perm)
-            except ValueError as e:
+            except (BadRequestError, ConflictError, NotFoundError) as e:
                 errors.append(
                     {
                         "target": grant.get("organization_id") or grant.get("user_id"),
-                        "error": str(e),
+                        "error": render_error_message(e),
                     }
                 )
 
@@ -452,13 +559,11 @@ class ResourcePermissionService:
 
     def _check_level(self, user_level: str, required_level: str) -> bool:
         """Check if user permission level meets requirement."""
+        if user_level not in PERMISSION_LEVELS or required_level not in PERMISSION_LEVELS:
+            return False
         user_score = PERMISSION_LEVELS.get(user_level, 0)
         required_score = PERMISSION_LEVELS.get(required_level, 0)
         return user_score >= required_score
-
-    def _has_sufficient_permission(self, user_level: str, required_level: str) -> bool:
-        """Backward-compatible alias for permission level comparison."""
-        return self._check_level(user_level, required_level)
 
     async def _log_permission_change(
         self,
@@ -493,9 +598,7 @@ class ResourcePermissionService:
             performed_by=performed_by,
             details={
                 "is_inherited": permission.get("is_inherited", False),
-                "granted_by": str(permission.get("granted_by"))
-                if permission.get("granted_by")
-                else None,
+                "granted_by": str(permission.get("granted_by")) if permission.get("granted_by") else None,
             },
         )
 

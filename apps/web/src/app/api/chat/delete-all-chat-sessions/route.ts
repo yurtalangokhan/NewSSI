@@ -1,28 +1,17 @@
-import { getInternalUrl } from "@/lib/env.server";
-import { buildServiceUrl } from "@/lib/api/gatewayRouting";
-import { getIncomingIdempotencyHeaders } from "@/lib/api/idempotency";
+import { chatEndpoints } from "@/lib/api/domains/chat/endpoints";
+import { backendRequest } from "@/lib/api/http/server";
+
 import { forwardBackendResponse } from "@/lib/api/backendResponse";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-const INTERNAL_URL = getInternalUrl();
-
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   try {
-    const cookie = request.headers.get("cookie") || "";
-    const response = await fetch(
-      buildServiceUrl(
-        INTERNAL_URL,
-        "agent",
-        "/api/chat/delete-all-chat-sessions"
-      ).toString(),
-      {
-        method: "DELETE",
-        headers: {
-          ...(cookie ? { Cookie: cookie } : {}),
-          ...getIncomingIdempotencyHeaders(request),
-        },
-      }
-    );
+    const response = await backendRequest({
+      ...chatEndpoints.deleteAllSessions.backend,
+      request,
+      method: "DELETE",
+      deriveAuthorizationFromCookie: true,
+    });
     return await forwardBackendResponse(response);
   } catch (error) {
     console.error("Failed to delete all chat sessions:", error);
@@ -34,6 +23,6 @@ export async function DELETE(request: Request) {
 }
 
 // Also support POST for backward compatibility
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   return DELETE(request);
 }

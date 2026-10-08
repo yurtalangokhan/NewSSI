@@ -8,37 +8,25 @@ SRC_ROOT = AGENT_SERVICE_ROOT / "src"
 
 def test_agent_definition_storage_uses_repository_and_core_model_layers() -> None:
     """Agent-definition persistence must not live under the runtime agents package."""
-    assert (SRC_ROOT / "core/db/models/agent_definition.py").is_file()
-    assert (SRC_ROOT / "repository/agent_definition_repository.py").is_file()
+    assert (SRC_ROOT / "infrastructure/db/models/agent_definition.py").is_file()
+    assert (SRC_ROOT / "infrastructure/db/repositories/agent_definition_repo.py").is_file()
     assert not (SRC_ROOT / "agents/storage").exists()
 
-    from core.db.models.agent_definition import AgentDefinitionModel
-    from repository.agent_definition_repository import AgentDefinitionRepository
+    from infrastructure.db.models.agent_definition import AgentDefinitionModel
+    from infrastructure.db.repositories.agent_definition_repo import AgentDefinitionRepository
 
     assert AgentDefinitionModel.__tablename__ == "agent_definitions"
     assert AgentDefinitionRepository.__name__ == "AgentDefinitionRepository"
 
 
-def test_agent_service_does_not_keep_local_calculator_tool() -> None:
-    """Generic tools with tools-service equivalents must not live in agent-service."""
-    source = (SRC_ROOT / "agents/tools.py").read_text()
-
-    assert "def calculator_func" not in source
-    assert "calculator: BaseTool" not in source
-
-
-def test_agent_service_does_not_keep_unused_context_tool() -> None:
-    """Request/user context belongs in trusted runtime config, not a local tool."""
-    source = (SRC_ROOT / "agents/tools.py").read_text()
-
-    assert "def get_current_user_id" not in source
-
-
-def test_agent_service_does_not_keep_local_rag_tool_wrappers() -> None:
-    """RAG search tools are tools-service capabilities backed by rag-service."""
-    source = (SRC_ROOT / "agents/tools.py").read_text()
-
-    assert "def database_search_func" not in source
-    assert "def graph_search_func" not in source
-    assert "database_search: BaseTool" not in source
-    assert "graph_search: BaseTool" not in source
+def test_agent_service_has_no_local_tools_module() -> None:
+    """``agents/tools.py`` used to hold, in turn, a local calculator tool, an
+    unused request-context tool, local RAG search wrappers, and finally raw
+    Milvus/embeddings connection code for the datasource pipeline — each
+    stripped out as its equivalent moved to tools-service or rag-service.
+    The last of those (Milvus access) moved to rag-service's
+    ``/datasources/{id}/records`` and ``/datasources/{id}/entities``
+    endpoints, called via ``client.rag_client``, leaving nothing left to
+    strip: the module itself is gone.
+    """
+    assert not (SRC_ROOT / "agents/tools.py").exists()

@@ -1,22 +1,27 @@
 "use client";
 
+import {
+  ApiRequestError,
+  errorMessageFromUnknown,
+  parseApiErrorResponse,
+} from "@/lib/api/errors";
 import { Form, Formik } from "formik";
 import * as Yup from "yup";
 import { toast } from "@/hooks/useToast";
+import { DocumentSetCreationRequest } from "@/lib/api/domains/knowledge/document-set-types";
 import {
   createDocumentSet,
   updateDocumentSet,
-  DocumentSetCreationRequest,
-} from "./lib";
+} from "@/lib/api/domains/knowledge/api";
 import { ConnectorStatus, DocumentSetSummary, UserGroup } from "@/lib/types";
 import { TextFormField } from "@/components/Field";
 import Button from "@/refresh-components/buttons/Button";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
 import { IsPublicGroupSelector } from "@/components/IsPublicGroupSelector";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ConnectorMultiSelect } from "@/components/ConnectorMultiSelect";
 import { FederatedConnectorSelector } from "@/components/FederatedConnectorSelector";
-import { useFederatedConnectors } from "@/lib/hooks";
+import { useFederatedConnectors } from "@/lib/api/domains/integrations/hooks";
 import { useTranslation } from "react-i18next";
 
 interface SetCreationPopupProps {
@@ -94,31 +99,36 @@ export const DocumentSetCreationForm = ({
             groups: values.is_public ? [] : values.groups,
           };
 
-          let response;
-          if (isUpdate) {
-            response = await updateDocumentSet({
-              id: existingDocumentSet.id,
-              ...processedValues,
-              users: processedValues.users,
-            });
-          } else {
-            response = await createDocumentSet(processedValues);
-          }
-          formikHelpers.setSubmitting(false);
-          if (response.ok) {
+          try {
+            const response = isUpdate
+              ? await updateDocumentSet({
+                  id: existingDocumentSet.id,
+                  ...processedValues,
+                  users: processedValues.users,
+                })
+              : await createDocumentSet(processedValues);
+            if (!response.ok) {
+              throw new ApiRequestError(await parseApiErrorResponse(response));
+            }
             toast.success(
               isUpdate
                 ? t("documentSetForm.updateSuccess")
                 : t("documentSetForm.createSuccess")
             );
             onClose();
-          } else {
-            const errorMsg = await response.text();
+          } catch (error) {
             toast.error(
-              isUpdate
-                ? t("documentSetForm.updateError", { error: errorMsg })
-                : t("documentSetForm.createError", { error: errorMsg })
+              t(
+                isUpdate
+                  ? "documentSetForm.updateError"
+                  : "documentSetForm.createError",
+                {
+                  error: errorMessageFromUnknown(error),
+                }
+              )
             );
+          } finally {
+            formikHelpers.setSubmitting(false);
           }
         }}
       >

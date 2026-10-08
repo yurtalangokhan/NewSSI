@@ -1,12 +1,13 @@
 """HTTP error translation for user-organization relationship operations."""
 
-import uuid
 from typing import Any
+import uuid
 
-from src.core.exceptions import ForbiddenError
+from error_contract.identity import ForbiddenError
+
 from src.service import get_user_organization_service
 
-from .base import BaseController
+from .base import BaseController, translate_domain_errors
 
 
 class UserOrganizationController(BaseController):
@@ -15,17 +16,30 @@ class UserOrganizationController(BaseController):
     def __init__(self) -> None:
         self.service = get_user_organization_service()
 
+    @translate_domain_errors
+    async def get_assignable_users(
+        self,
+        organization_id: uuid.UUID,
+        actor_id: uuid.UUID,
+        query: str = "",
+        limit: int = 20,
+    ) -> dict[str, Any]:
+        return await self.service.get_assignable_users(organization_id, actor_id, query, limit)
+
+    @translate_domain_errors
     async def get_organization_users(
         self,
         organization_id: uuid.UUID,
         role_in_org: str | None = None,
         include_inactive: bool = False,
+        actor_id: uuid.UUID | None = None,
     ) -> dict[str, Any]:
         users = await self.service.get_organization_users(
-            organization_id, role_in_org, include_inactive
+            organization_id, role_in_org, include_inactive, actor_id=actor_id
         )
         return {"users": users, "count": len(users)}
 
+    @translate_domain_errors
     async def assign_user_to_organization(
         self,
         organization_id: uuid.UUID,
@@ -42,11 +56,10 @@ class UserOrganizationController(BaseController):
                 is_primary=is_primary,
                 assigned_by=assigned_by,
             )
-        except ForbiddenError as error:
-            self._raise_forbidden(str(error))
-        except ValueError as error:
-            self._raise_bad_request(str(error))
+        except ForbiddenError:
+            raise
 
+    @translate_domain_errors
     async def bulk_assign_users(
         self,
         organization_id: uuid.UUID,
@@ -62,9 +75,10 @@ class UserOrganizationController(BaseController):
                 assigned_by=assigned_by,
             )
             return result
-        except ForbiddenError as error:
-            self._raise_forbidden(str(error))
+        except ForbiddenError:
+            raise
 
+    @translate_domain_errors
     async def update_user_organization(
         self,
         organization_id: uuid.UUID,
@@ -82,11 +96,10 @@ class UserOrganizationController(BaseController):
                 )
             else:
                 self._raise_bad_request("common.bad_request")
-        except ForbiddenError as error:
-            self._raise_forbidden(str(error))
-        except ValueError as error:
-            self._raise_bad_request(str(error))
+        except ForbiddenError:
+            raise
 
+    @translate_domain_errors
     async def remove_user_from_organization(
         self,
         organization_id: uuid.UUID,
@@ -100,37 +113,31 @@ class UserOrganizationController(BaseController):
             if not deleted:
                 self._raise_not_found("user_organization.not_found")
             return {"success": True}
-        except ForbiddenError as error:
-            self._raise_forbidden(str(error))
-        except ValueError as error:
-            self._raise_bad_request(str(error))
+        except ForbiddenError:
+            raise
 
-    async def get_user_organizations(
-        self, user_id: uuid.UUID, include_inactive: bool = False
-    ) -> dict[str, Any]:
+    @translate_domain_errors
+    async def get_user_organizations(self, user_id: uuid.UUID, include_inactive: bool = False) -> dict[str, Any]:
         orgs = await self.service.get_user_organizations(user_id, include_inactive)
         return {"organizations": orgs, "count": len(orgs)}
 
-    async def get_my_organizations(
-        self, user_id: uuid.UUID, include_inactive: bool = False
-    ) -> dict[str, Any]:
+    @translate_domain_errors
+    async def get_my_organizations(self, user_id: uuid.UUID, include_inactive: bool = False) -> dict[str, Any]:
         orgs = await self.service.get_user_organizations(user_id, include_inactive)
         return {"organizations": orgs, "count": len(orgs)}
 
-    async def set_primary_organization(
-        self, user_id: uuid.UUID, organization_id: uuid.UUID
-    ) -> dict[str, Any]:
-        try:
-            return await self.service.set_primary_organization(user_id, organization_id)
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+    @translate_domain_errors
+    async def set_primary_organization(self, user_id: uuid.UUID, organization_id: uuid.UUID) -> dict[str, Any]:
+        return await self.service.set_primary_organization(user_id, organization_id)
 
+    @translate_domain_errors
     async def get_primary_organization(self, user_id: uuid.UUID) -> dict[str, Any]:
         org = await self.service.get_user_primary_organization(user_id)
         if not org:
             self._raise_not_found("organization.primary_not_found")
         return org
 
+    @translate_domain_errors
     async def get_managed_organizations(self, user_id: uuid.UUID) -> dict[str, Any]:
         orgs = await self.service.get_user_managed_organizations(user_id)
         return {"organizations": orgs, "count": len(orgs)}

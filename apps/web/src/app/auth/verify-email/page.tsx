@@ -1,8 +1,8 @@
 import {
-  AuthTypeMetadata,
   getAuthTypeMetadataSS,
   getCurrentUserSS,
-} from "@/lib/userSS";
+} from "@/lib/api/domains/session/server";
+import type { AuthTypeMetadata } from "@/lib/api/domains/session/types";
 import Verify from "./Verify";
 import { User } from "@/lib/types";
 import { redirect } from "next/navigation";

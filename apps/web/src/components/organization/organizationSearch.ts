@@ -14,11 +14,10 @@ export function organizationMatchesSearch(
   language: string
 ) {
   const normalizedQuery = normalizeOrganizationSearch(query, language);
+  const name = normalizeOrganizationSearch(organization.name, language);
   return (
     normalizedQuery.length > 0 &&
-    normalizeOrganizationSearch(organization.name, language).includes(
-      normalizedQuery
-    )
+    normalizedQuery.split(/\s+/).every((word) => name.includes(word))
   );
 }
 

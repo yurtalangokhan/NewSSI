@@ -5,7 +5,7 @@
  * Uses @testing-library/react's renderHook with fake timers.
  */
 import { renderHook, act } from "@testing-library/react";
-import { PacketType, Packet } from "@/app/app/services/streamingModels";
+import { PacketType, Packet } from "@/lib/api/domains/chat/streaming-types";
 import { TurnGroup, TransformedStep } from "../transformers";
 import { GroupedPacket } from "./packetProcessor";
 import { usePacedTurnGroups } from "./usePacedTurnGroups";
@@ -20,7 +20,8 @@ import { usePacedTurnGroups } from "./usePacedTurnGroups";
 function createStep(
   turnIndex: number,
   tabIndex: number,
-  packetType: PacketType = PacketType.SEARCH_TOOL_START
+  packetType: PacketType = PacketType.SEARCH_TOOL_START,
+  replayed = false
 ): TransformedStep {
   return {
     key: `${turnIndex}-${tabIndex}`,
@@ -30,10 +31,15 @@ function createStep(
       {
         placement: { turn_index: turnIndex, tab_index: tabIndex },
         obj: { type: packetType },
+        ...(replayed ? { replayed: true } : {}),
       } as Packet,
     ],
   };
 }
+
+/** A step whose packets all arrived while the stream replayed history. */
+const createReplayedStep = (turnIndex: number, tabIndex = 0) =>
+  createStep(turnIndex, tabIndex, PacketType.SEARCH_TOOL_START, true);
 
 /**
  * Create a TurnGroup from steps
@@ -648,6 +654,135 @@ describe("usePacedTurnGroups", () => {
 
       // Only one step for new nodeId
       expect(result.current.pacedTurnGroups.length).toBe(1);
+    });
+  });
+
+  describe("replayed steps (reload / re-attach)", () => {
+    test("reveals every replayed step at once, with no timer", () => {
+      const steps = [0, 1, 2].map((turn) => createReplayedStep(turn));
+      const turnGroups = steps.map((step) => createTurnGroup([step]));
+
+      const { result } = renderHook(() =>
+        usePacedTurnGroups(turnGroups, [], false, 1, false)
+      );
+
+      expect(result.current.pacedTurnGroups.length).toBe(3);
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
+    test("shows the text and the final-answer signal with the replayed steps", () => {
+      const turnGroups = [0, 1].map((turn) =>
+        createTurnGroup([createReplayedStep(turn)])
+      );
+      const displayGroups = [createDisplayGroup(2)];
+
+      const { result } = renderHook(() =>
+        usePacedTurnGroups(turnGroups, displayGroups, false, 1, true)
+      );
+
+      expect(result.current.pacedTurnGroups.length).toBe(2);
+      expect(result.current.pacedDisplayGroups.length).toBe(1);
+      expect(result.current.pacedFinalAnswerComing).toBe(true);
+    });
+
+    test("still paces a live step that follows the replayed ones", () => {
+      const replayed = [0, 1].map((turn) => createReplayedStep(turn));
+      const live = createStep(2, 0);
+      const replayedGroups = replayed.map((s) => createTurnGroup([s]));
+
+      const { result, rerender } = renderHook(
+        ({ turnGroups }) => usePacedTurnGroups(turnGroups, [], false, 1, false),
+        { initialProps: { turnGroups: replayedGroups } }
+      );
+      expect(result.current.pacedTurnGroups.length).toBe(2);
+
+      rerender({ turnGroups: [...replayedGroups, createTurnGroup([live])] });
+      // The live step waits its turn; the replayed ones stay on screen.
+      expect(result.current.pacedTurnGroups.length).toBe(2);
+
+      act(() => {
+        jest.advanceTimersByTime(200);
+      });
+      expect(result.current.pacedTurnGroups.length).toBe(3);
+    });
+
+    test("replayed and live steps landing in the same update are told apart", () => {
+      const replayed = createReplayedStep(0);
+      const live = createStep(1, 0);
+      const turnGroups = [createTurnGroup([replayed]), createTurnGroup([live])];
+
+      const { result } = renderHook(() =>
+        usePacedTurnGroups(turnGroups, [], false, 1, false)
+      );
+
+      expect(result.current.pacedTurnGroups.length).toBe(1);
+      act(() => {
+        jest.advanceTimersByTime(200);
+      });
+      expect(result.current.pacedTurnGroups.length).toBe(2);
+    });
+
+    test("keeps freezing the text while a live step is being paced in", () => {
+      const replayed = createReplayedStep(0);
+      const live = createStep(1, 0);
+      const displayGroups = [createDisplayGroup(5)];
+
+      const { result, rerender } = renderHook(
+        ({ turnGroups }) =>
+          usePacedTurnGroups(turnGroups, displayGroups, false, 1, true),
+        { initialProps: { turnGroups: [createTurnGroup([replayed])] } }
+      );
+      expect(result.current.pacedDisplayGroups.length).toBe(1);
+
+      rerender({
+        turnGroups: [createTurnGroup([replayed]), createTurnGroup([live])],
+      });
+      // Same rule as for live output: text already on screen must not vanish.
+      expect(result.current.pacedDisplayGroups.length).toBe(1);
+    });
+
+    test("a replayed step arriving later is revealed at once too", () => {
+      const first = createReplayedStep(0);
+      const second = createReplayedStep(1);
+
+      const { result, rerender } = renderHook(
+        ({ turnGroups }) => usePacedTurnGroups(turnGroups, [], false, 1, false),
+        { initialProps: { turnGroups: [createTurnGroup([first])] } }
+      );
+      rerender({
+        turnGroups: [createTurnGroup([first]), createTurnGroup([second])],
+      });
+
+      expect(result.current.pacedTurnGroups.length).toBe(2);
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
+    test("a step counts as replayed when its first packet was", () => {
+      const step = createReplayedStep(0);
+      // Its later deltas arrive live, but the step itself was already there.
+      step.packets.push({
+        placement: { turn_index: 0, tab_index: 0 },
+        obj: { type: PacketType.SEARCH_TOOL_QUERIES_DELTA },
+      } as Packet);
+
+      const { result } = renderHook(() =>
+        usePacedTurnGroups([createTurnGroup([step])], [], false, 1, false)
+      );
+      expect(result.current.pacedTurnGroups.length).toBe(1);
+    });
+
+    test("live-only steps are paced exactly as before", () => {
+      const turnGroups = [0, 1, 2].map((turn) =>
+        createTurnGroup([createStep(turn, 0)])
+      );
+      const { result } = renderHook(() =>
+        usePacedTurnGroups(turnGroups, [], false, 1, false)
+      );
+      expect(result.current.pacedTurnGroups.length).toBe(1);
+      act(() => {
+        jest.advanceTimersByTime(200);
+      });
+      expect(result.current.pacedTurnGroups.length).toBe(2);
     });
   });
 });

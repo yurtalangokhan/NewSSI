@@ -148,7 +148,7 @@ class TestLangChainToolAdapter:
 
         result = await adapter._arun("test_input")
 
-        assert result == "delegated"
+        assert result == ("delegated", None)
         mock_binding.invoke.assert_called_once()
 
 
@@ -192,3 +192,76 @@ class TestFactoryFunctions:
         assert len(tools) == 3
         assert all(hasattr(t, "name") for t in tools)
         assert [t.name for t in tools] == ["tool_0", "tool_1", "tool_2"]
+
+
+class _RecordingPolicy:
+    def __init__(self, artifact=None, error: Exception | None = None) -> None:
+        self.artifact = artifact
+        self.error = error
+        self.calls: list[tuple[str, ToolResult]] = []
+
+    async def artifact_for(self, tool_name: str, result: ToolResult):
+        self.calls.append((tool_name, result))
+        if self.error is not None:
+            raise self.error
+        return self.artifact
+
+
+def _binding(result: ToolResult) -> MagicMock:
+    binding = MagicMock()
+    binding.descriptor = ToolDescriptor(key="database_search", description="Search documents")
+    binding.invoke = AsyncMock(return_value=result)
+    return binding
+
+
+def _tool_call() -> dict:
+    return {"name": "database_search", "args": {"query": "q"}, "id": "call-1", "type": "tool_call"}
+
+
+class TestToolArtifactPolicy:
+    @pytest.mark.asyncio
+    async def test_artifact_from_policy_lands_on_the_tool_message(self) -> None:
+        result = ToolResult(output=[{"type": "text", "text": "[1] (a.pdf)\nchunk"}], structured={"k": "v"})
+        policy = _RecordingPolicy(artifact={"knowledge_evidence_id": "abc"})
+        adapter = LangChainToolAdapter(binding=_binding(result), artifact_policy=policy)
+
+        message = await adapter.ainvoke(_tool_call())
+
+        assert message.content == "[1] (a.pdf)\nchunk"
+        assert message.artifact == {"knowledge_evidence_id": "abc"}
+        assert policy.calls == [("database_search", result)]
+
+    @pytest.mark.asyncio
+    async def test_without_policy_the_message_has_no_artifact(self) -> None:
+        adapter = LangChainToolAdapter(binding=_binding(ToolResult(output="plain")))
+
+        message = await adapter.ainvoke(_tool_call())
+
+        assert message.content == "plain"
+        assert message.artifact is None
+
+    @pytest.mark.asyncio
+    async def test_a_failing_policy_never_fails_the_tool_call(self) -> None:
+        policy = _RecordingPolicy(error=RuntimeError("boom"))
+        adapter = LangChainToolAdapter(binding=_binding(ToolResult(output="plain")), artifact_policy=policy)
+
+        message = await adapter.ainvoke(_tool_call())
+
+        assert message.content == "plain"
+        assert message.artifact is None
+
+    @pytest.mark.asyncio
+    async def test_plain_argument_invocation_still_returns_text(self) -> None:
+        policy = _RecordingPolicy(artifact={"knowledge_evidence_id": "abc"})
+        adapter = LangChainToolAdapter(binding=_binding(ToolResult(output="plain")), artifact_policy=policy)
+
+        assert await adapter.ainvoke({"query": "q"}) == "plain"
+
+    @pytest.mark.asyncio
+    async def test_bindings_helper_passes_the_policy_to_every_tool(self) -> None:
+        policy = _RecordingPolicy(artifact={"x": 1})
+        tools = tool_bindings_to_langchain_tools((_binding(ToolResult(output="a")),), artifact_policy=policy)
+
+        message = await tools[0].ainvoke(_tool_call())
+
+        assert message.artifact == {"x": 1}

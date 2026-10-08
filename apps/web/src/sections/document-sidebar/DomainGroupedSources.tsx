@@ -1,7 +1,7 @@
 "use client";
 
 import { Dispatch, SetStateAction, useState } from "react";
-import { MinimalOnyxDocument } from "@/lib/search/interfaces";
+import { MinimalAtlasDocument } from "@/lib/search/interfaces";
 import { DomainGroup } from "./webSourceGrouping";
 import ChatDocumentDisplay from "@/sections/document-sidebar/ChatDocumentDisplay";
 import { WebResultIcon } from "@/components/WebResultIcon";
@@ -12,7 +12,7 @@ interface DomainGroupedSourcesProps {
   groups: DomainGroup[];
   modal?: boolean;
   selectedDocumentIds: string[];
-  setPresentingDocument: Dispatch<SetStateAction<MinimalOnyxDocument | null>>;
+  setPresentingDocument: Dispatch<SetStateAction<MinimalAtlasDocument | null>>;
 }
 
 function CollapsedDomainGroup({
@@ -24,7 +24,7 @@ function CollapsedDomainGroup({
   group: DomainGroup;
   modal?: boolean;
   selectedDocumentIds: string[];
-  setPresentingDocument: Dispatch<SetStateAction<MinimalOnyxDocument | null>>;
+  setPresentingDocument: Dispatch<SetStateAction<MinimalAtlasDocument | null>>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const firstDocument = group.documents[0];

@@ -6,11 +6,11 @@ import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import {
-  searchGraph,
   type GraphSearchResult,
   type GraphSearchInput,
   type SearchType,
-} from "@/lib/langconnect";
+} from "@/lib/api/domains/knowledge/types";
+import { searchGraph } from "@/lib/api/domains/knowledge/api";
 import { toast } from "@/hooks/useToast";
 import { SvgSearch } from "@opal/icons";
 import { cn } from "@/lib/utils";

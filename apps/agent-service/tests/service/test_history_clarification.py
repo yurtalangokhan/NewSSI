@@ -7,7 +7,7 @@ aynı soruyu iki kez görür (E4).
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from service.ChatHistoryReconstruction import (
+from service.chat.chat_history_reconstruction import (
     reconstruct_message_tree,
     reconstruct_messages,
 )
@@ -174,7 +174,7 @@ def test_the_card_survives_the_checkpoint_tree_walk():
 def test_a_paused_turn_keeps_its_reasoning_turn():
     """The reload the user actually sees: timeline first, then the card.
 
-    The card itself is appended by `chat_controller` from the pending
+    The card itself is appended by `chat_service` from the pending
     interrupt, so it is absent here by design (E4). What must survive is
     everything the model did BEFORE it asked — that is what went missing when
     the pause discarded the node's writes.

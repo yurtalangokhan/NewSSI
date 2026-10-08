@@ -18,7 +18,7 @@ from unittest.mock import AsyncMock
 import pytest
 from langchain_core.tools import StructuredTool
 
-from agents.mail_tooling import wrap_send_email_tool
+from agents.tooling.mail_tooling import wrap_send_email_tool
 
 SMTP_CONFIG = {
     "host": "smtp.example.com",
@@ -30,9 +30,16 @@ SMTP_CONFIG = {
 }
 
 
-def _raw_tool(captured: dict) -> StructuredTool:
+def _raw_tool(_captured: dict) -> StructuredTool:
+    """The MCP tool the wrapper stands in for.
+
+    It is never invoked any more -- agent-service sends the mail itself so
+    SMTP credentials never cross the service boundary -- so this fails loudly
+    if the wrapper ever forwards to it again. The resolved attachments are
+    observed on the mail service instead (see the ``_mail_service`` fixture).
+    """
+
     async def raw_send_email(
-        smtp_config: dict,
         to: list[str],
         subject: str,
         body: str,
@@ -42,8 +49,7 @@ def _raw_tool(captured: dict) -> StructuredTool:
         reply_to: str | None = None,
         attachments: list[dict] | None = None,
     ) -> str:
-        captured["attachments"] = attachments
-        return "sent"
+        raise AssertionError("the send must not be forwarded over MCP")
 
     return StructuredTool.from_function(
         coroutine=raw_send_email,
@@ -52,14 +58,26 @@ def _raw_tool(captured: dict) -> StructuredTool:
     )
 
 
+#: What the wrapper handed to the mail service on the last send. The tests
+#: read the resolved attachments from here now that nothing goes over MCP.
+_CAPTURED: dict = {}
+
+
 @pytest.fixture
 def _mail_service(monkeypatch):
+    _CAPTURED.clear()
+
+    async def _send_email(user_id, config_id, payload, owner_user_id=None):
+        _CAPTURED.update(payload)
+        return {"success": True, "message": "Email sent."}
+
     service = SimpleNamespace(
         get_decrypted_config=AsyncMock(return_value=SMTP_CONFIG),
         get_effective_user_smtp_config=AsyncMock(return_value=SMTP_CONFIG),
+        send_email=_send_email,
     )
     monkeypatch.setattr(
-        "service.MailConfigService.get_mail_config_service",
+        "service.auth.mail_config_service.get_mail_config_service",
         lambda: service,
     )
     return service
@@ -68,7 +86,7 @@ def _mail_service(monkeypatch):
 @pytest.mark.asyncio
 async def test_send_email_attaches_document_generated_earlier_in_thread(monkeypatch, _mail_service):
     """A file created by create_document this run is attachable by its name."""
-    captured: dict = {}
+    captured = _CAPTURED
     thread_id = "11111111-1111-1111-1111-111111111111"
     pdf_bytes = b"%PDF-1.7 generated report"
 
@@ -85,11 +103,11 @@ async def test_send_email_attaches_document_generated_earlier_in_thread(monkeypa
         )
     )
     monkeypatch.setattr(
-        "core.db.repositories.document_repo.DocumentRepository",
+        "infrastructure.db.repositories.document_repo.DocumentRepository",
         lambda: repo,
     )
     monkeypatch.setattr(
-        "service.FileService.get_file",
+        "service.storage.file_service.get_file",
         lambda file_id: SimpleNamespace(data=pdf_bytes) if file_id == "gen-file-1" else None,
     )
 
@@ -110,7 +128,7 @@ async def test_send_email_attaches_document_generated_earlier_in_thread(monkeypa
         config={"configurable": {"thread_id": thread_id, "user_id": "user-1"}},
     )
 
-    assert result == "sent"
+    assert result == "Email sent."
     assert captured["attachments"] == [
         {
             "filename": "rapor.pdf",
@@ -123,7 +141,7 @@ async def test_send_email_attaches_document_generated_earlier_in_thread(monkeypa
 @pytest.mark.asyncio
 async def test_send_email_falls_back_to_minio_when_cache_evicted(monkeypatch, _mail_service):
     """When the in-memory cache has dropped the file, MinIO bytes are used."""
-    captured: dict = {}
+    captured = _CAPTURED
     thread_id = "22222222-2222-2222-2222-222222222222"
     xlsx_bytes = b"PK\x03\x04 generated sheet"
 
@@ -140,12 +158,12 @@ async def test_send_email_falls_back_to_minio_when_cache_evicted(monkeypatch, _m
         )
     )
     monkeypatch.setattr(
-        "core.db.repositories.document_repo.DocumentRepository",
+        "infrastructure.db.repositories.document_repo.DocumentRepository",
         lambda: repo,
     )
-    monkeypatch.setattr("service.FileService.get_file", lambda file_id: None)
+    monkeypatch.setattr("service.storage.file_service.get_file", lambda file_id: None)
     monkeypatch.setattr(
-        "service.MinioService.download_file",
+        "service.storage.minio_service.download_file",
         lambda object_key: xlsx_bytes if object_key == "user-1/gen-file-2/veriler.xlsx" else b"",
     )
 
@@ -166,7 +184,7 @@ async def test_send_email_falls_back_to_minio_when_cache_evicted(monkeypatch, _m
         config={"configurable": {"thread_id": thread_id, "user_id": "user-1"}},
     )
 
-    assert result == "sent"
+    assert result == "Email sent."
     assert captured["attachments"][0]["content_base64"] == base64.b64encode(xlsx_bytes).decode(
         "ascii"
     )
@@ -175,12 +193,12 @@ async def test_send_email_falls_back_to_minio_when_cache_evicted(monkeypatch, _m
 @pytest.mark.asyncio
 async def test_send_email_still_reports_truly_unknown_attachment(monkeypatch, _mail_service):
     """A name that is neither uploaded nor generated stays an error."""
-    captured: dict = {}
+    captured = _CAPTURED
     thread_id = "33333333-3333-3333-3333-333333333333"
 
     repo = SimpleNamespace(list_by_thread=AsyncMock(return_value=[]))
     monkeypatch.setattr(
-        "core.db.repositories.document_repo.DocumentRepository",
+        "infrastructure.db.repositories.document_repo.DocumentRepository",
         lambda: repo,
     )
 
@@ -209,7 +227,7 @@ async def test_send_email_still_reports_truly_unknown_attachment(monkeypatch, _m
 @pytest.mark.asyncio
 async def test_send_email_mixes_uploaded_and_generated_attachments(monkeypatch, _mail_service):
     """Uploaded files keep working alongside a generated one in the same call."""
-    captured: dict = {}
+    captured = _CAPTURED
     thread_id = "44444444-4444-4444-4444-444444444444"
     uploaded_b64 = base64.b64encode(b"uploaded contract").decode("ascii")
     gen_bytes = b"%PDF-1.7 summary"
@@ -227,11 +245,11 @@ async def test_send_email_mixes_uploaded_and_generated_attachments(monkeypatch, 
         )
     )
     monkeypatch.setattr(
-        "core.db.repositories.document_repo.DocumentRepository",
+        "infrastructure.db.repositories.document_repo.DocumentRepository",
         lambda: repo,
     )
     monkeypatch.setattr(
-        "service.FileService.get_file",
+        "service.storage.file_service.get_file",
         lambda file_id: SimpleNamespace(data=gen_bytes) if file_id == "gen-file-3" else None,
     )
 
@@ -258,6 +276,6 @@ async def test_send_email_mixes_uploaded_and_generated_attachments(monkeypatch, 
         config={"configurable": {"thread_id": thread_id, "user_id": "user-1"}},
     )
 
-    assert result == "sent"
+    assert result == "Email sent."
     names = {a["filename"] for a in captured["attachments"]}
     assert names == {"sozlesme.pdf", "ozet.pdf"}

@@ -13,6 +13,11 @@ This directory contains mock implementations used in Jest tests.
 | **transformIgnorePatterns**  | All ESM packages                                              | `@radix-ui`, `@headlessui`, `react-markdown`, `remark-*`, `rehype-*` |
 | **moduleNameMapper (mocks)** | Non-executable assets/files, or components with complex setup | CSS files, images, UserProvider                                      |
 
+`mermaid` is mapped to `mocks/mermaid.ts` through `moduleNameMapper`. jsdom cannot
+lay out SVG, so the real renderer cannot run under Jest. Lines containing
+`BROKEN` fail with a jison-style `Parse error on line N:`. Playwright
+(`tests/e2e/chat/mermaid_rendering.spec.ts`) covers real rendering.
+
 ### Why Use transformIgnorePatterns:
 
 Modern npm packages ship as ES Modules (ESM) by default. Jest runs in a Node environment that expects CommonJS. The `transformIgnorePatterns` configuration tells Jest which packages in `node_modules` to transform from ESM to CommonJS.

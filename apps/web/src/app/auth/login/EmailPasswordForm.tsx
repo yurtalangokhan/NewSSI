@@ -1,11 +1,16 @@
 "use client";
 
 import { toast } from "@/hooks/useToast";
-import { basicLogin, basicSignup, externalKeycloakLogin } from "@/lib/user";
+import {
+  basicLogin,
+  basicSignup,
+  externalKeycloakLogin,
+  requestExternalLoginRedirect,
+} from "@/lib/api/domains/session/api";
 import Button from "@/refresh-components/buttons/Button";
 import { Form, Formik } from "formik";
 import * as Yup from "yup";
-import { requestEmailVerification } from "../lib";
+import { requestVerifyToken as requestEmailVerification } from "@/lib/api/domains/session/api";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useUser } from "@/providers/UserProvider";
@@ -16,7 +21,7 @@ import PasswordInputTypeIn from "@/refresh-components/inputs/PasswordInputTypeIn
 import { validateInternalRedirect } from "@/lib/auth/redirectValidation";
 import { parseApiErrorResponse } from "@/lib/api/errors";
 import { APIFormFieldState } from "@/refresh-components/form/types";
-import { SvgArrowRightCircle } from "@opal/icons";
+import { SvgArrowRightCircle, SvgAlertTriangle } from "@opal/icons";
 import { useCaptcha } from "@/lib/hooks/useCaptcha";
 import { useTranslation } from "react-i18next";
 import { formatErrorMessage } from "@/components/ErrorCallout";
@@ -46,6 +51,7 @@ export default function EmailPasswordForm({
   const [apiStatus, setApiStatus] = useState<APIFormFieldState>("loading");
   const [showApiMessage, setShowApiMessage] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [isCapsLockOn, setIsCapsLockOn] = useState<boolean>(false);
   const { getCaptchaToken } = useCaptcha();
 
   const apiMessages = useMemo(
@@ -63,22 +69,27 @@ export default function EmailPasswordForm({
     [isSignup, isJoin, errorMessage, t]
   );
 
-  const readErrorMessage = async (response: Response): Promise<string> => {
+  const readApiError = async (
+    response: Response
+  ): Promise<{ code: string; message: string }> => {
     try {
       const errorResponse =
         typeof response.clone === "function" ? response.clone() : response;
       const parsedError = await parseApiErrorResponse(errorResponse);
-      return parsedError.userMessage;
+      return { code: parsedError.code, message: parsedError.userMessage };
     } catch {
       // Fall back to raw text below.
     }
 
     try {
-      return (await response.text()).trim();
+      return { code: "", message: (await response.text()).trim() };
     } catch {
-      return "";
+      return { code: "", message: "" };
     }
   };
+
+  const readErrorMessage = async (response: Response): Promise<string> =>
+    (await readApiError(response)).message;
 
   return (
     <>
@@ -214,6 +225,33 @@ export default function EmailPasswordForm({
           }
 
           if (loginResponse.ok) {
+            if (loginProvider === "external") {
+              const payload = (await loginResponse.json()) as {
+                authorization_url?: string;
+                authorize_url?: string;
+                access_token?: string;
+              };
+              const authorizationUrl =
+                payload.authorization_url || payload.authorize_url;
+              if (!authorizationUrl && payload.access_token) {
+                // The gateway completed the external IdP login server-side and
+                // already set the session cookies.
+                setApiStatus("success");
+                const validatedNextUrl = validateInternalRedirect(nextUrl);
+                window.location.href = validatedNextUrl ?? "/app";
+                return;
+              }
+              if (!authorizationUrl) {
+                setIsWorking(false);
+                const errorMsg = t("auth.unknownError");
+                setErrorMessage(errorMsg);
+                setApiStatus("error");
+                toast.error(t("auth.toastLoginFailed", { error: errorMsg }));
+                return;
+              }
+              window.location.href = authorizationUrl;
+              return;
+            }
             setApiStatus("success");
             if (isSignup && shouldVerify) {
               await requestEmailVerification(email);
@@ -232,13 +270,30 @@ export default function EmailPasswordForm({
                 : `/app${isSignup && !isJoin ? "?new_team=true" : ""}`;
             }
           } else {
+            if (loginProvider === "external" && loginResponse.status === 409) {
+              // The IdP needs an interactive step (e.g. first broker login):
+              // continue in the browser through the gateway's redirect flow.
+              const fallback = await requestExternalLoginRedirect().catch(
+                () => null
+              );
+              if (fallback?.ok) {
+                const payload = (await fallback.json()) as {
+                  authorization_url?: string;
+                  authorize_url?: string;
+                };
+                const url = payload.authorization_url || payload.authorize_url;
+                if (url) {
+                  window.location.href = url;
+                  return;
+                }
+              }
+            }
             setIsWorking(false);
-            const errorDetail = await readErrorMessage(loginResponse);
+            const { code: errorCode, message: errorDetail } =
+              await readApiError(loginResponse);
             let errorMsg: string = t("auth.unknownError");
-            if (errorDetail === "LOGIN_BAD_CREDENTIALS") {
+            if (errorCode === "auth.invalid_credentials") {
               errorMsg = t("auth.invalidCredentials");
-            } else if (errorDetail === "NO_WEB_LOGIN_AND_HAS_NO_PASSWORD") {
-              errorMsg = t("auth.noPasswordSet");
             } else if (errorDetail) {
               errorMsg = formatErrorMessage(errorDetail);
             }
@@ -264,6 +319,7 @@ export default function EmailPasswordForm({
                     <FormField.Control>
                       <InputTypeIn
                         {...field}
+                        autoComplete="username"
                         onChange={(e) => {
                           if (showApiMessage && apiStatus === "error") {
                             setShowApiMessage(false);
@@ -395,6 +451,9 @@ export default function EmailPasswordForm({
                     <FormField.Control>
                       <PasswordInputTypeIn
                         {...field}
+                        autoComplete={
+                          isSignup ? "new-password" : "current-password"
+                        }
                         onChange={(e) => {
                           if (showApiMessage && apiStatus === "error") {
                             setShowApiMessage(false);
@@ -403,6 +462,7 @@ export default function EmailPasswordForm({
                           }
                           field.onChange(e);
                         }}
+                        onCapsLockChange={setIsCapsLockOn}
                         placeholder="∗∗∗∗∗∗∗∗∗∗∗∗∗∗"
                         onClear={() => helper.setValue("")}
                         data-testid="password"
@@ -411,9 +471,21 @@ export default function EmailPasswordForm({
                         alwaysShowToggle
                         showPasswordLabel={t("auth.showPassword")}
                         hidePasswordLabel={t("auth.hidePassword")}
+                        capsLockLabel={t("auth.capsLockOn")}
                         style={{ color: "var(--text-05)" }}
                       />
                     </FormField.Control>
+                    {isCapsLockOn && (
+                      <div
+                        data-testid="caps-lock-warning"
+                        role="status"
+                        aria-live="polite"
+                        className="flex items-center gap-1.5 mt-1.5 text-xs text-amber-300 font-medium select-none animate-in fade-in duration-150"
+                      >
+                        <SvgAlertTriangle className="size-3.5 stroke-amber-300 shrink-0" />
+                        <span>{t("auth.capsLockOn")}</span>
+                      </div>
+                    )}
                     {showApiMessage ? (
                       <FormField.APIMessage
                         state={apiStatus}

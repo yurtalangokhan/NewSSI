@@ -1,4 +1,12 @@
-import { authenticatedFetch } from "@/lib/fetcher";
+import {
+  errorMessageFromUnknown,
+  parseApiErrorResponse,
+} from "@/lib/api/errors";
+import { accessEndpoints } from "@/lib/api/domains/access/endpoints";
+
+import { inviteDirectoryUsersBulk as inviteDirectoryUser } from "@/lib/api/domains/access/api";
+import { uninviteDirectoryUser } from "@/lib/api/domains/access/api";
+
 import {
   type InvitedUserSnapshot,
   type AcceptedUserSnapshot,
@@ -22,17 +30,11 @@ export const InviteUserButton = ({
 }) => {
   const { t } = useTranslation();
   const { trigger: inviteTrigger, isMutating: isInviting } = useSWRMutation(
-    "/api/user-service/users/invite",
+    accessEndpoints.inviteDirectoryUsersBulk.browserPath,
     async (url, { arg }: { arg: { emails: string[] } }) => {
-      const response = await authenticatedFetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(arg),
-      });
+      const response = await inviteDirectoryUser(arg);
       if (!response.ok) {
-        throw new Error(await response.text());
+        throw new Error((await parseApiErrorResponse(response)).userMessage);
       }
       return response.json();
     },
@@ -48,19 +50,23 @@ export const InviteUserButton = ({
       },
       onError: (errorMsg) => {
         setShowInviteModal(false);
-        toast.error(t("admin.users.singleInviteError", { error: errorMsg }));
+        toast.error(
+          t("admin.users.singleInviteError", {
+            error: errorMessageFromUnknown(errorMsg),
+          })
+        );
       },
     }
   );
 
   const { trigger: uninviteTrigger, isMutating: isUninviting } = useSWRMutation(
-    invited && user.id ? `/api/user-service/users/${user.id}` : null,
+    invited && user.id
+      ? accessEndpoints.directoryUser(user.id).browserPath
+      : null,
     async (url: string) => {
-      const response = await authenticatedFetch(url, {
-        method: "DELETE",
-      });
+      const response = await uninviteDirectoryUser(user.id);
       if (!response.ok) {
-        throw new Error(await response.text());
+        throw new Error((await parseApiErrorResponse(response)).userMessage);
       }
       return response.json();
     },
@@ -76,7 +82,11 @@ export const InviteUserButton = ({
       },
       onError: (errorMsg) => {
         setShowInviteModal(false);
-        toast.error(t("admin.users.singleUninviteError", { error: errorMsg }));
+        toast.error(
+          t("admin.users.singleUninviteError", {
+            error: errorMessageFromUnknown(errorMsg),
+          })
+        );
       },
     }
   );
@@ -88,7 +98,9 @@ export const InviteUserButton = ({
     if (invited) {
       if (!user.id) {
         toast.error(
-          t("admin.users.singleUninviteError", { error: "Missing user id" })
+          t("admin.users.singleUninviteError", {
+            error: errorMessageFromUnknown(undefined),
+          })
         );
         return;
       }

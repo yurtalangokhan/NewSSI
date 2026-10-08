@@ -63,11 +63,10 @@ import { ProviderContextProvider } from "@/components/chat/ProviderContext";
 import { SettingsProvider } from "@/providers/SettingsProvider";
 import { User } from "@/lib/types";
 import { ModalProvider } from "@/components/context/ModalContext";
-import { AuthTypeMetadata } from "@/lib/userSS";
+import type { AuthTypeMetadata } from "@/lib/api/domains/session/types";
 import { AppSidebarProvider } from "@/providers/AppSidebarProvider";
 import { AppModeProvider } from "@/providers/AppModeProvider";
 import { AppBackgroundProvider } from "@/providers/AppBackgroundProvider";
-import { QueryControllerProvider } from "@/providers/QueryControllerProvider";
 import ToastProvider from "@/providers/ToastProvider";
 import I18nProvider from "@/providers/I18nProvider";
 import AppHealthBanner from "@/sections/AppHealthBanner";
@@ -82,6 +81,7 @@ interface AppProviderProps {
   authTypeMetadata: AuthTypeMetadata;
   folded?: boolean;
   initialLocale: SupportedLanguage;
+  initialBackgroundId?: string | null;
 }
 
 export default function AppProvider({
@@ -91,22 +91,21 @@ export default function AppProvider({
   authTypeMetadata,
   folded,
   initialLocale,
+  initialBackgroundId,
 }: AppProviderProps) {
   const pathname = usePathname();
   const renderAppShell = shouldRenderAppShell(pathname);
 
   const content = renderAppShell ? (
-    <AppBackgroundProvider>
+    <AppBackgroundProvider initialBackgroundId={initialBackgroundId}>
       <ProviderContextProvider>
         <ModalProvider user={user}>
           <AppSidebarProvider folded={!!folded}>
             <AppModeProvider>
-              <QueryControllerProvider>
-                <ToastProvider>
-                  <AppHealthBanner />
-                  {children}
-                </ToastProvider>
-              </QueryControllerProvider>
+              <ToastProvider>
+                <AppHealthBanner />
+                {children}
+              </ToastProvider>
             </AppModeProvider>
           </AppSidebarProvider>
         </ModalProvider>

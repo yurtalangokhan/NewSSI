@@ -2,12 +2,12 @@
 
 import pytest
 
-from core.providers.base import ModelInfo
 from core.utils.model_classifier import (
     gemini_supports_reasoning,
     is_chat_model,
     is_embedding_model,
 )
+from infrastructure.llm.adapters.base import ModelInfo
 
 
 def test_is_embedding_model_with_flag():

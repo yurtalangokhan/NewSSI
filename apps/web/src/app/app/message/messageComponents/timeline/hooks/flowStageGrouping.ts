@@ -1,4 +1,4 @@
-import { Packet, PacketType } from "@/app/app/services/streamingModels";
+import { Packet, PacketType } from "@/lib/api/domains/chat/streaming-types";
 import { TransformedStep, TurnGroup } from "../transformers";
 
 /**
@@ -18,6 +18,9 @@ export interface StageGroup {
   status: "running" | "done" | "error" | "cancelled";
   durationMs: number | null;
   isFinal?: boolean;
+  /** Structurally known to sit on a Loop/While cycle, before this run has
+   *  proven it by looping twice — see collapseLoops. */
+  isLoopBody?: boolean;
   outputText: string;
   turnGroups: TurnGroup[];
 }
@@ -64,6 +67,7 @@ interface StageMeta {
   status: StageGroup["status"];
   durationMs: number | null;
   isFinal: boolean;
+  isLoopBody: boolean;
   outputText: string;
 }
 
@@ -106,6 +110,7 @@ function extractStageMeta(packets: Packet[]): {
         status: "running",
         durationMs: null,
         isFinal: false,
+        isLoopBody: false,
         outputText: "",
       };
       metaByKey.set(key, m);
@@ -128,6 +133,7 @@ function extractStageMeta(packets: Packet[]): {
       if (typeof o.iteration === "number") m.iteration = o.iteration;
       m.isFinal = Boolean(o.is_final_stage ?? packet.placement?.is_final_stage);
       if (m.isFinal) finalStageKey = key;
+      m.isLoopBody = Boolean(o.is_loop_body ?? packet.placement?.is_loop_body);
     } else if (type === PacketType.FLOW_STAGE_END) {
       const m = ensure(key, packet.placement);
       const st = String(o.status ?? "done");
@@ -215,6 +221,7 @@ export function buildStageGroups(
     status: m.status,
     durationMs: m.durationMs,
     isFinal: m.isFinal,
+    isLoopBody: m.isLoopBody,
     // the final stage's text is the answer bubble, never a folded "Çıktı" block
     outputText: m.isFinal ? "" : m.outputText,
     turnGroups: flattenTurnGroups(byStage.get(m.stageKey) ?? []),
@@ -254,17 +261,26 @@ export function buildStageGroups(
   };
 }
 
-/** Fold stage groups whose node ran more than once into one LoopGroup. */
+/** Fold stage groups whose node ran more than once into one LoopGroup.
+ *
+ * A node the backend marked `isLoopBody` (B18: structurally on a Loop/While
+ * cycle, known before this run proves it) folds from its very first
+ * iteration — otherwise the card renders standalone until a second
+ * iteration arrives, then gets pulled into a group and disappears; over a
+ * fast loop that reads as separate messages flashing by. A node with no
+ * such backend signal still falls back to the iteration-count heuristic. */
 function collapseLoops(stageGroups: StageGroup[]): TimelineSection[] {
   const maxIterByNode = new Map<string, number>();
+  const knownLoopBodyNodes = new Set<string>();
   for (const s of stageGroups) {
     maxIterByNode.set(
       s.nodeId,
       Math.max(maxIterByNode.get(s.nodeId) ?? 1, s.iteration)
     );
+    if (s.isLoopBody) knownLoopBodyNodes.add(s.nodeId);
   }
   const isLoopStage = (s: StageGroup) =>
-    (maxIterByNode.get(s.nodeId) ?? 1) >= 2;
+    knownLoopBodyNodes.has(s.nodeId) || (maxIterByNode.get(s.nodeId) ?? 1) >= 2;
   if (!stageGroups.some(isLoopStage)) return [...stageGroups];
 
   const loopMembers = stageGroups.filter(isLoopStage);

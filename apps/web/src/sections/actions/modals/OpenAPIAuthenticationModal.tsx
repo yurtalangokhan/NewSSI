@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Formik, Form, FormikHelpers } from "formik";
 import * as Yup from "yup";
 import Modal from "@/refresh-components/Modal";
@@ -16,9 +16,9 @@ import KeyValueInput, {
   KeyValue,
 } from "@/refresh-components/inputs/InputKeyValue";
 import { OAuthConfig } from "@/lib/tools/interfaces";
-import { getOAuthConfig } from "@/lib/oauth/api";
+import { getOAuthConfig } from "@/lib/api/domains/integrations/api";
 import { SvgArrowExchange } from "@opal/icons";
-import { useAuthType } from "@/lib/hooks";
+import { useAuthType } from "@/lib/api/domains/session/hooks";
 import { AuthType } from "@/lib/constants";
 import Message from "@/refresh-components/messages/Message";
 import { useTranslation } from "react-i18next";

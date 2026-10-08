@@ -1,6 +1,6 @@
-import { SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED } from "@/lib/constants";
 import { StandardAnswerCategory } from "@/lib/types";
-import { fetchSS } from "@/lib/utilsSS";
+import { fetchStandardAnswerCategoriesSS } from "@/lib/api/domains/knowledge/server";
+import { appSettings } from "@/lib/settings";
 
 export type StandardAnswerCategoryResponse =
   | EEStandardAnswerCategoryResponse
@@ -19,15 +19,14 @@ interface EEStandardAnswerCategoryResponse {
 }
 
 export async function getStandardAnswerCategoriesIfEE(): Promise<StandardAnswerCategoryResponse> {
-  if (!SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED) {
+  if (!appSettings.SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED) {
     return {
       paidEnterpriseFeaturesEnabled: false,
     };
   }
 
-  const standardAnswerCategoriesResponse = await fetchSS(
-    "/manage/admin/standard-answer/category"
-  );
+  const standardAnswerCategoriesResponse =
+    await fetchStandardAnswerCategoriesSS();
   if (!standardAnswerCategoriesResponse.ok) {
     return {
       paidEnterpriseFeaturesEnabled: true,

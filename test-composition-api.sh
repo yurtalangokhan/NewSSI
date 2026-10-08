@@ -96,30 +96,40 @@ HTTP_CODE=$(curl -s -w "%{http_code}" -o /dev/null -X POST \
 [ "$HTTP_CODE" == "200" ] || [ "$HTTP_CODE" == "401" ] && echo -e "${GREEN}✓ validate-composition working (${HTTP_CODE})${NC}" || echo -e "${RED}✗ validate-composition (${HTTP_CODE})${NC}"
 echo ""
 
-# Test 6: Kong routing check
-echo -e "${YELLOW}Test 6: Kong Routing Check${NC}"
+# Test 6: Apache APISIX routing check
+echo -e "${YELLOW}Test 6: Apache APISIX Routing Check${NC}"
+
 HTTP_CODE=$(curl -s -w "%{http_code}" -o /dev/null -X POST \
-    "http://localhost:8000/api/agent-definitions/available-for-composition" \
+    "http://localhost:8000/agent-service/api/v1/agent-definitions/available-for-composition" \
     -H "Content-Type: application/json" \
     -d '{"schema": "SUPERVISOR"}')
 
-if [ "$HTTP_CODE" == "200" ] || [ "$HTTP_CODE" == "401" ] || [ "$HTTP_CODE" == "403" ]; then
-    echo -e "${GREEN}✓ Kong routing working (${HTTP_CODE})${NC}\n"
+if [ "$HTTP_CODE" == "200" ] || \
+   [ "$HTTP_CODE" == "401" ] || \
+   [ "$HTTP_CODE" == "403" ]; then
+
+    echo -e "${GREEN}✓ Apache APISIX routing working (${HTTP_CODE})${NC}\n"
+
 elif [ "$HTTP_CODE" == "422" ]; then
-    echo -e "${RED}✗ Still getting 422 through Kong - Kong config might need restart${NC}"
-    echo -e "${YELLOW}   Fix: docker-compose -f configs/docker-compose-services.yml restart kong${NC}\n"
+
+    echo -e "${RED}✗ Unexpected 422 through Apache APISIX${NC}"
+    echo -e "${YELLOW}   Check APISIX proxy-rewrite configuration${NC}\n"
+
 else
-    echo -e "${YELLOW}~ Kong returned ${HTTP_CODE}${NC}\n"
+
+    echo -e "${YELLOW}~ Apache APISIX returned ${HTTP_CODE}${NC}\n"
+
 fi
 
-# Summary
 echo -e "${YELLOW}=== Test Summary ===${NC}"
 echo -e "${GREEN}✓ POST endpoint tests should pass${NC}"
 echo -e "${GREEN}✓ GET endpoint should return 405/404${NC}"
-echo -e "${GREEN}✓ Kong should properly route requests${NC}"
+echo -e "${GREEN}✓ Apache APISIX should properly route requests${NC}"
+
 echo ""
+
 echo -e "${YELLOW}If any tests fail:${NC}"
 echo "  1. Check agent-service is running: make run"
-echo "  2. Restart Kong: docker-compose -f configs/docker-compose-services.yml restart kong"
+echo "  2. Restart APISIX: docker compose -f configs/docker-compose-services.yml restart apisix"
 echo "  3. Check migration: alembic upgrade head"
-echo "  4. Review Kong logs: docker-compose logs kong"
+echo "  4. Review APISIX logs: docker compose -f configs/docker-compose-services.yml logs apisix"

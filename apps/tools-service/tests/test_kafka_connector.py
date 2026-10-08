@@ -105,11 +105,14 @@ async def test_empty_topic_returns_empty_and_stops(monkeypatch):
 
     monkeypatch.setattr("src.connectors.kafka.AIOKafkaConsumer", Consumer)
 
-    assert await read_kafka_connector(
-        {"bootstrap_servers": "kafka:9092", "protocol": {"security_protocol": "PLAINTEXT"}},
-        "empty",
-        10,
-    ) == []
+    assert (
+        await read_kafka_connector(
+            {"bootstrap_servers": "kafka:9092", "protocol": {"security_protocol": "PLAINTEXT"}},
+            "empty",
+            10,
+        )
+        == []
+    )
     assert calls["stopped"] is True
 
 
@@ -151,7 +154,7 @@ def test_sasl_config_is_mapped_and_unsupported_auth_fails_closed():
                 "security_protocol": "SASL_SSL",
                 "sasl_mechanism": "SCRAM-SHA-256",
                 "sasl_jaas_config": (
-                    'org.apache.kafka.common.security.scram.ScramLoginModule required '
+                    "org.apache.kafka.common.security.scram.ScramLoginModule required "
                     'username="reader" password="secret";'
                 ),
             },

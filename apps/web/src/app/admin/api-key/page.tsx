@@ -1,8 +1,8 @@
 "use client";
+import { accessEndpoints } from "@/lib/api/domains/access/endpoints";
 
 import { notFound } from "next/navigation";
 import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
-import { errorHandlingFetcher } from "@/lib/fetcher";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import useSWR, { mutate } from "swr";
@@ -20,19 +20,23 @@ import { toast } from "@/hooks/useToast";
 import { useState } from "react";
 import { DeleteButton } from "@/components/DeleteButton";
 import Modal from "@/refresh-components/Modal";
-import { deleteApiKey, regenerateApiKey } from "@/app/admin/api-key/lib";
-import OnyxApiKeyForm from "@/app/admin/api-key/OnyxApiKeyForm";
+import {
+  deleteApiKey,
+  fetchApiKeys,
+  regenerateApiKey,
+} from "@/lib/api/domains/access/api";
+import AtlasApiKeyForm from "@/app/admin/api-key/AtlasApiKeyForm";
 import {
   APIKey,
   DISCORD_SERVICE_API_KEY_NAME,
-} from "@/app/admin/api-key/types";
+} from "@/lib/api/domains/access/api-key-types";
 import CreateButton from "@/refresh-components/buttons/CreateButton";
 import Button from "@/refresh-components/buttons/Button";
 import CopyIconButton from "@/refresh-components/buttons/CopyIconButton";
 import Text from "@/refresh-components/texts/Text";
 import { SvgEdit, SvgKey, SvgRefreshCw } from "@opal/icons";
 import { useCloudSubscription } from "@/hooks/useCloudSubscription";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { useTranslation } from "react-i18next";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
@@ -44,7 +48,7 @@ function Main() {
     data: apiKeys,
     isLoading,
     error,
-  } = useSWR<APIKey[]>("/api/admin/api-key", errorHandlingFetcher);
+  } = useSWR<APIKey[]>("api-keys", () => fetchApiKeys<APIKey[]>());
 
   const canCreateKeys = useCloudSubscription();
 
@@ -150,14 +154,14 @@ function Main() {
         {introSection}
 
         {showCreateUpdateForm && (
-          <OnyxApiKeyForm
+          <AtlasApiKeyForm
             onCreateApiKey={(apiKey) => {
               setFullApiKey(apiKey.api_key);
             }}
             onClose={() => {
               setShowCreateUpdateForm(false);
               setSelectedApiKey(undefined);
-              mutate("/api/admin/api-key");
+              mutate(accessEndpoints.createApiKey.browserPath);
             }}
             apiKey={selectedApiKey}
           />
@@ -237,7 +241,7 @@ function Main() {
                         }
                         const newKey = (await response.json()) as APIKey;
                         setFullApiKey(newKey.api_key);
-                        mutate("/api/admin/api-key");
+                        mutate(accessEndpoints.createApiKey.browserPath);
                       }}
                     >
                       {t("admin.apiKey.refreshButton")}
@@ -254,7 +258,7 @@ function Main() {
                           );
                           return;
                         }
-                        mutate("/api/admin/api-key");
+                        mutate(accessEndpoints.createApiKey.browserPath);
                       }}
                     />
                   </TableCell>
@@ -264,14 +268,14 @@ function Main() {
           </Table>
 
           {showCreateUpdateForm && (
-            <OnyxApiKeyForm
+            <AtlasApiKeyForm
               onCreateApiKey={(apiKey) => {
                 setFullApiKey(apiKey.api_key);
               }}
               onClose={() => {
                 setShowCreateUpdateForm(false);
                 setSelectedApiKey(undefined);
-                mutate("/api/admin/api-key");
+                mutate(accessEndpoints.createApiKey.browserPath);
               }}
               apiKey={selectedApiKey}
             />

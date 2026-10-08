@@ -1,20 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { cn, ensureHrefProtocol, noProp } from "@/lib/utils";
+import { cn, ensureHrefProtocol } from "@/lib/utils";
 import type { Components } from "react-markdown";
 import Text from "@/refresh-components/texts/Text";
-import Popover from "@/refresh-components/Popover";
-import { OpenButton } from "@opal/components";
-import LineItem from "@/refresh-components/buttons/LineItem";
 import IconButton from "@/refresh-components/buttons/IconButton";
-import { SvgBubbleText, SvgSearchMenu, SvgSidebar } from "@opal/icons";
+import { SvgSidebar } from "@opal/icons";
 import MinimalMarkdown from "@/components/chat/MinimalMarkdown";
 import { useSettingsContext } from "@/providers/SettingsProvider";
-import { AppMode, useAppMode } from "@/providers/AppModeProvider";
-import useAppFocus from "@/hooks/useAppFocus";
-import { useQueryController } from "@/providers/QueryControllerProvider";
-import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
 import { useAppSidebarContext } from "@/providers/AppSidebarProvider";
 import useScreenSize from "@/hooks/useScreenSize";
 import { buildAppFooterMarkdown } from "@/lib/appInfo";
@@ -58,28 +50,14 @@ const footerMarkdownComponents = {
  * extension doesn't need.
  */
 export default function NRFChrome() {
-  const isPaidEnterpriseFeaturesEnabled = usePaidEnterpriseFeaturesEnabled();
-  const { appMode, setAppMode } = useAppMode();
   const settings = useSettingsContext();
   const { isMobile } = useScreenSize();
   const { setFolded } = useAppSidebarContext();
-  const appFocus = useAppFocus();
-  const { classification } = useQueryController();
-  const [modePopoverOpen, setModePopoverOpen] = useState(false);
-
-  const effectiveMode: AppMode = appFocus.isNewSession() ? appMode : "chat";
-
   const customFooterContent =
     settings?.enterpriseSettings?.custom_lower_disclaimer_content ||
     buildAppFooterMarkdown(settings?.webVersion);
 
-  const showModeToggle =
-    isPaidEnterpriseFeaturesEnabled &&
-    settings.isSearchModeAvailable &&
-    appFocus.isNewSession() &&
-    !classification;
-
-  const showHeader = isMobile || showModeToggle;
+  const showHeader = isMobile;
 
   return (
     <>
@@ -92,45 +70,6 @@ export default function NRFChrome() {
               onClick={() => setFolded(false)}
               internal
             />
-          )}
-          {showModeToggle && (
-            <Popover open={modePopoverOpen} onOpenChange={setModePopoverOpen}>
-              <Popover.Trigger asChild>
-                <OpenButton
-                  icon={
-                    effectiveMode === "search" ? SvgSearchMenu : SvgBubbleText
-                  }
-                >
-                  {effectiveMode === "search" ? "Search" : "Chat"}
-                </OpenButton>
-              </Popover.Trigger>
-              <Popover.Content align="start" width="lg">
-                <Popover.Menu>
-                  <LineItem
-                    icon={SvgSearchMenu}
-                    selected={effectiveMode === "search"}
-                    description="Quick search for documents"
-                    onClick={noProp(() => {
-                      setAppMode("search");
-                      setModePopoverOpen(false);
-                    })}
-                  >
-                    Search
-                  </LineItem>
-                  <LineItem
-                    icon={SvgBubbleText}
-                    selected={effectiveMode === "chat"}
-                    description="Conversation and research"
-                    onClick={noProp(() => {
-                      setAppMode("chat");
-                      setModePopoverOpen(false);
-                    })}
-                  >
-                    Chat
-                  </LineItem>
-                </Popover.Menu>
-              </Popover.Content>
-            </Popover>
           )}
         </div>
       )}

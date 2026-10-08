@@ -3,8 +3,8 @@ import {
   getCurrentUserSS,
   getAuthUrlSS,
   getAuthTypeMetadataSS,
-  AuthTypeMetadata,
-} from "@/lib/userSS";
+} from "@/lib/api/domains/session/server";
+import type { AuthTypeMetadata } from "@/lib/api/domains/session/types";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import AuthFlowContainer from "@/components/auth/AuthFlowContainer";
@@ -65,6 +65,7 @@ export default async function Page(props: PageProps) {
 
   // get where to send the user to authenticate
   let authUrl: string | null = null;
+  let spAuthUrl: string | null = null;
   if (authTypeMetadata) {
     try {
       if (
@@ -74,6 +75,14 @@ export default async function Page(props: PageProps) {
         authUrl = await getAuthUrlSS(AuthType.GOOGLE_OAUTH, nextUrl);
       } else {
         authUrl = await getAuthUrlSS(authTypeMetadata.authType, nextUrl);
+      }
+      if (
+        authTypeMetadata.authType === AuthType.OIDC &&
+        authTypeMetadata.keycloakEnabled
+      ) {
+        spAuthUrl = await getAuthUrlSS(AuthType.OIDC, nextUrl, null, {
+          prompt: "login",
+        });
       }
     } catch (e) {
       console.log(`Some fetch failed for the login page - ${e}`);
@@ -100,6 +109,7 @@ export default async function Page(props: PageProps) {
       >
         <LoginPage
           authUrl={authUrl}
+          spAuthUrl={spAuthUrl}
           authTypeMetadata={authTypeMetadata}
           nextUrl={nextUrl}
           oidcError={oidcError}

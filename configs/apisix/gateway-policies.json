@@ -1,0 +1,5468 @@
+[
+  {
+    "path": "^/internal/user-service/api/v1/system-settings/keycloak/external-idp/sync/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "system.settings#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/web-search/content-providers/reset-default/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "web_search#manage"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/system-settings/keycloak/realm-session/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "system.settings#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/flow/playground/runs/stream/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "flow#execute",
+      "flow#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/available-for-composition/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/upsert-from-keycloak/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/internal/upsert-from-keycloak/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/settings/prompt-shortcuts/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "settings#update"
+    ]
+  },
+  {
+    "path": "^/internal/agent-service/api/v1/internal/connector-tools/resolve/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/coarse-roles/service-clients/list/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#list"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/system-settings/keycloak/external-idp/sync/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "system.settings#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/web-search/content-providers/crawl/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "web_search#manage"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/web-search/content-providers/test/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "web_search#test"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/validate-composition/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/users/me/resources/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/datasources/knowledge-selector/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "datasource#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/system-settings/keycloak/realm-session/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "system.settings#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/update-chat-session-temperature/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#send"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/web-search/content-providers/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "web_search#manage"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mail-configs/user-credentials/test/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/user-service/api/v1/users/internal/upsert-from-keycloak/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/llm/ollama/available-models/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/web-search/search-providers/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "web_search#manage"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/create-chat-message-feedback/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#send"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/remove-chat-message-feedback/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/remove_chat_session/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#update"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/settings/prompt-shortcuts/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "settings#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/providers/available-models/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/search/graph/neighborhood/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/authorize/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/audit/recent/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/system-settings/keycloak/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "system.settings#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/system-settings/keycloak/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "system.settings#update"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/coarse-roles/service-clients/list/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#list"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/providers/test-connection/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/validate-flow/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "flow#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/coarse-roles/aggregated/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#list"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/role-distribution/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#list"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/schemas/list/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#list"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/update-chat-session-model/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#send"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/organizations/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/brains/list/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#list"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/memory/list/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#list"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/delete-all-chat-sessions/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mail-configs/user-credentials/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/mail-configs/user-credentials/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/mail-configs/user-credentials/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/members/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/users/me/resources/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/batch/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/search/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/coverage/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/entities/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#list"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/services/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#list"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/permissions/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/rag-service/api/v1/datasources/knowledge-selector/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "datasource#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/file/statuses/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/audit-logs/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/scope/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/stats/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/llm/built-in/options/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/persona/upload-image/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "persona#create"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/providers/well-known/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/agents/composition/catalog/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "persona#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/set-message-as-latest/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#send"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/tree/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/download/csv/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#list"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/mcp/server/validate/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#create"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/file/upload/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#update"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/check/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/api-keys/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "api_key#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/api-keys/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "api_key#create"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/memories/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "memory#delete"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/memories/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "memory#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/memories/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "memory#create"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/password/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/settings/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "settings#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/settings/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "settings#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/mcp/servers/create/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/rename-chat-session/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#send"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/tool-options/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "datasource#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/collections/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/sync/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#manage"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/default-assistant/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "assistant#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/mcp/oauth/connect/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/proxy/mcp/tools-builtin/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_tool#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/auth/sync-users/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#manage"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/search/graph/neighborhood/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/audit/recent/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/system-settings/keycloak/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "system.settings#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/system-settings/keycloak/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "system.settings#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/llm/test/default/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/ollama/models/.+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/connectors/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "datasource#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mail-configs/available/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/roles/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/user-service/api/v1/coarse-roles/aggregated/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#list"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/role-distribution/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#list"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/providers/order/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/schedules/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "schedule#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/ingest/source-preview/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "datasource#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/proxy/rag/collections/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "collection#list"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/search/sources/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#search"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#list"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#create"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/invited/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#list"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/organizations/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/user-providers/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#create"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mcp-tools/categories/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_tool#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/create/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#create"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/memory/search/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "memory#search"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/coarse-roles/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#list"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/coarse-roles/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/invite/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#create"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/members/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/ollama/models/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/ollama/status/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mcp-tools/available/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_tool#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/proxy/ollama/models/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/cypher/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#search"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/search/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#search"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/memory/facts/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "memory#write"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/memory/facts/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "memory#write"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#list"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/search/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/coverage/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/entities/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#list"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/services/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#list"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/permissions/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/llm/provider/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/llm/provider/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#create"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/llm/provider/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mcp/oauth/callback/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/collections/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "collection#list"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/collections/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "collection#create"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/build/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#build"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/scope/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/stats/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/llm/default/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/mcp/servers/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/ollama/pull/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/tool/status/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/vllm/models/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#list"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#create"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/assistants/search/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "assistant#search"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/proxy/mcp/execute/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "tool#execute"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/files/recent/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/tree/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/download/csv/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#list"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/mcp/server/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#create"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/retrieval/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#search"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/check/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/api-keys/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "api_key#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/api-keys/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "api_key#create"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/memories/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "memory#delete"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/memories/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "memory#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/memories/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "memory#create"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/password/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/settings/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "settings#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/settings/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "settings#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/providers/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/providers/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#create"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agents/feedback/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#feedback"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/flow-components/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "flow#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/persona/options/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "persona#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/proxy/mcp/tools/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_tool#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/auth/me/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/collections/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/sync/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#manage"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/llm/test/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agents/catalog/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "persona#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agents/history/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mcp-tools/sync/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_tool#sync"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/persona/labels/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "persona#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/threads/search/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "thread#search"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/auth/sync-users/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#manage"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/messages/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#send"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/sessions/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/sessions/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#send"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mcp-providers/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mcp-providers/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#create"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/search/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#search"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/roles/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#list"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/roles/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#list"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#create"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/roles/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/llm/provider/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mail-configs/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mail_config#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mail-configs/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mail_config#create"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/search/sources/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#search"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#list"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#create"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/invited/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#list"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agents/info/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#list"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "datasource#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "datasource#create"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/coarse-roles/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#list"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/coarse-roles/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/invite/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#create"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/assistants/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "assistant#create"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/cypher/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#search"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/search/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#search"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#list"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/documents/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/mcp-tools/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_tool#read"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/collections/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "collection#list"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/collections/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "collection#create"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/build/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#build"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/persona/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "persona#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/persona/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "persona#create"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/threads/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "thread#create"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/retrieval/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#search"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/user-service/api/v1/auth/me/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/tools-service/mcp/?$",
+    "methods": [
+      "GET",
+      "POST",
+      "DELETE"
+    ],
+    "audience": "tools-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/rag-service/api/v1/search/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#search"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/roles/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#list"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/roles/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#list"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#create"
+    ]
+  },
+  {
+    "path": "^/tools-service/mcp/?$",
+    "methods": [
+      "GET",
+      "POST",
+      "DELETE"
+    ],
+    "audience": "tools-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/collections/[^/]+/stats/relationship-types/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/settings/prompt-shortcuts/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/collections/[^/]+/documents/upload-jobs/status/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/collections/[^/]+/search/entity-clusters/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#search"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/users/[^/]+/accessible-resources/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/web-search/content-providers/[^/]+/deactivate/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "web_search#manage"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/[^/]+/flow/playground/runs/stream/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "flow#execute",
+      "flow#update"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/effective-permissions/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/web-search/content-providers/[^/]+/activate/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "web_search#manage"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/[^/]+/management-capability/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/organizations/[^/]+/resources/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/organizations/[^/]+/resources/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#manage-resources"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/settings/prompt-shortcuts/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "settings#update"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/settings/prompt-shortcuts/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "settings#update"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/collections/[^/]+/documents/upload-jobs/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#create"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/collections/[^/]+/search/entities/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#search"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/connector-configs/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/connector-configs/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/collections/[^/]+/stats/relationship-types/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/audit/organizations/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/collections/[^/]+/data/scalable/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/memories/recall/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/[^/]+/assignable-users/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/rag-service/api/v1/collections/[^/]+/documents/upload-jobs/status/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#read"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/collections/[^/]+/search/entity-clusters/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#search"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/collections/[^/]+/neighborhood/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/collections/[^/]+/stats/labels/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/by-keycloak-id/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/users/[^/]+/accessible-resources/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/memories/bulk/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/collections/[^/]+/documents/search/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#search"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/users/[^/]+/resources/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/users/[^/]+/resources/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#grant"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/[^/]+/organizations/managed/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/[^/]+/organizations/primary/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/[^/]+/composition-info/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/permissions/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/[^/]+/management-capability/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/organizations/[^/]+/resources/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/organizations/[^/]+/resources/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#manage-resources"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/session/[^/]+/token-count/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/datasources/[^/]+/records/retire/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "datasource#sync"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/settings/prompt-shortcuts/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "settings#update"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/settings/prompt-shortcuts/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "settings#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/mcp/server/[^/]+/tools/snapshots/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#sync"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/[^/]+/flow/published/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "flow#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/coarse-roles/[^/]+/permissions/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#list"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/coarse-roles/[^/]+/permissions/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/[^/]+/users/bulk/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/[^/]+/flow/rollback/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "flow#publish"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/[^/]+/flow/versions/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "flow#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/connectors/[^/]+/validate/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "datasource#create"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/[^/]+/move_chat_session/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#update"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/collections/[^/]+/expand/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/memories/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/memories/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/memories/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/settings/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/settings/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/[^/]+/ancestors/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/audit/users/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/permissions/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#manage"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/permissions/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#manage"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/collections/[^/]+/documents/upload-jobs/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#create"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/collections/[^/]+/search/entities/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#search"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/[^/]+/flow/publish/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "flow#publish"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/connectors/[^/]+/streams/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "datasource#create"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/collections/[^/]+/edges/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/collections/[^/]+/nodes/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/collections/[^/]+/stats/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/[^/]+/children/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/audit/organizations/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/providers/[^/]+/default-model/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/available-context-tokens/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/collections/[^/]+/data/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/collections/[^/]+/data/scalable/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/[^/]+/assignable-users/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/[^/]+/flow/draft/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "flow#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/[^/]+/flow/draft/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "flow#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/[^/]+/flow/draft/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "flow#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/[^/]+/sub-agents/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#update"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/collections/[^/]+/documents/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/collections/[^/]+/documents/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#create"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/roles/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/[^/]+/reset-password/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/collections/[^/]+/neighborhood/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/collections/[^/]+/stats/labels/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/providers/[^/]+/sync-models/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/[^/]+/schedule/status/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "schedule#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/connectors/[^/]+/spec/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "datasource#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/session/[^/]+/files/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/datasources/[^/]+/entities/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "datasource#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/[^/]+/users/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/[^/]+/users/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/[^/]+/organizations/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/[^/]+/instructions/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/[^/]+/instructions/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#update"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/datasources/[^/]+/records/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "datasource#sync"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/datasources/[^/]+/records/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "datasource#sync"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/[^/]+/move/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#move"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/collections/[^/]+/documents/search/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#search"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/users/[^/]+/resources/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/users/[^/]+/resources/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#grant"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/[^/]+/organizations/managed/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/[^/]+/organizations/primary/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/mcp/servers/[^/]+/connect/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#connect"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/mcp/servers/[^/]+/connect/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#connect"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/[^/]+/token-count/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/build/[^/]+/resume/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#build"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/build/[^/]+/status/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/roles/[^/]+/permissions/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/roles/[^/]+/permissions/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/api-keys/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "api_key#delete"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/memories/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "memory#delete"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/memories/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "memory#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/me/memories/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "memory#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/[^/]+/expand/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#create"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/assistants/[^/]+/tools/reorder/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "assistant#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/sessions/[^/]+/active-run/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/[^/]+/sync-history/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "datasource#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/collections/[^/]+/force/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "collection#delete"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/build/[^/]+/pause/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#build"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/collections/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#delete"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/datasources/[^/]+/records/retire/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "datasource#sync"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/mcp/server/[^/]+/status/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/mcp/servers/[^/]+/tools/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_tool#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/flow-components/options/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "flow#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mcp-tools/provider/[^/]+/sync/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_tool#sync"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/graph/build/[^/]+/stop/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#build"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/coarse-roles/[^/]+/permissions/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#list"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/coarse-roles/[^/]+/permissions/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/[^/]+/users/bulk/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/providers/[^/]+/models/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/stop-chat-session/[^/]+/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#send"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/roles/[^/]+/role-ids/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/roles/[^/]+/role-ids/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/[^/]+/password/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/collections/[^/]+/expand/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/[^/]+/ancestors/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/audit/users/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/permissions/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#manage"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/permissions/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#manage"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/llm/persona/[^/]+/providers/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/[^/]+/details/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#delete"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#update"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/collections/[^/]+/edges/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/collections/[^/]+/nodes/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/collections/[^/]+/stats/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/[^/]+/children/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/user-providers/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/user-providers/[^/]+/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/[^/]+/schedule/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "schedule#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/[^/]+/schedule/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "schedule#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/[^/]+/schedule/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "schedule#create"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/[^/]+/schedule/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "schedule#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mcp-tools/categories/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_tool#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/coarse-roles/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/coarse-roles/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#list"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/coarse-roles/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/[^/]+/active/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/collections/[^/]+/data/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/[^/]+/details/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "datasource#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/documents/[^/]+/revisions/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/threads/[^/]+/runs/stream/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "run#create"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/files/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/memory/facts/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "memory#write"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/[^/]+/roles/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/[^/]+/roles/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/collections/[^/]+/documents/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#read"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/collections/[^/]+/documents/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#create"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/[^/]+/reset-password/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/assistants/[^/]+/schemas/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "assistant#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/sessions/[^/]+/seen/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/[^/]+/status/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "datasource#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mcp-providers/[^/]+/sync/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#sync"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mcp-tools/provider/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_tool#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/file/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/file/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/collections/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "collection#delete"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/collections/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "collection#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/collections/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "collection#update"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/[^/]+/role/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/datasources/[^/]+/entities/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "datasource#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/[^/]+/users/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/[^/]+/users/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/user-service/api/v1/users/[^/]+/organizations/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/mcp/servers/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/[^/]+/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/documents/by-file/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/mail-configs/[^/]+/send/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mail_config#send"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mail-configs/[^/]+/test/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mail_config#test"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/datasources/[^/]+/records/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "datasource#sync"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/datasources/[^/]+/records/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "datasource#sync"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/[^/]+/move/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#move"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/mcp/server/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/mcp/server/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/mcp/server/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/assistants/[^/]+/tools/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_tool#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/assistants/[^/]+/tools/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "assistant#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/runs/[^/]+/events/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/[^/]+/sync/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "datasource#sync"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/build/[^/]+/resume/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#build"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/build/[^/]+/status/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/roles/[^/]+/permissions/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/roles/[^/]+/permissions/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/api-keys/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "api_key#delete"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/memories/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "memory#delete"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/memories/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "memory#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/me/memories/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "memory#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/providers/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/providers/[^/]+/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "provider#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/flow-components/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "flow#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/threads/[^/]+/history/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "run#read"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/collections/[^/]+/force/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "collection#delete"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/build/[^/]+/pause/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#build"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/collections/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/file/[^/]+/text/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/rag-service/api/v1/graph/build/[^/]+/stop/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "graph#build"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agents/[^/]+/invoke/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#invoke"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agents/[^/]+/stream/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "agent#stream"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/sessions/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/sessions/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "chat#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mcp-providers/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mcp-providers/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mcp-providers/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/threads/[^/]+/state/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "thread#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#update"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/roles/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/roles/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/roles/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#delete"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/roles/[^/]+/role-ids/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/roles/[^/]+/role-ids/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/[^/]+/password/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mail-configs/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mail_config#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mail-configs/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mail_config#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mail-configs/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mail_config#update"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#delete"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "org#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "datasource#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/datasources/[^/]+/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "datasource#update"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/coarse-roles/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/coarse-roles/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#list"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/coarse-roles/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/[^/]+/active/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/assistants/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "assistant#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/assistants/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "assistant#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/assistants/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "assistant#update"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/[^/]+/roles/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/[^/]+/roles/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/chat/file/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/documents/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/mcp-tools/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_tool#sync"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/mcp-tools/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_tool#read"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/collections/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "collection#delete"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/collections/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "collection#read"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/collections/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "collection#update"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/[^/]+/role/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/persona/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "persona#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/persona/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "persona#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/persona/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "persona#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/threads/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "thread#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/threads/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "thread#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/threads/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "thread#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agents/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "persona#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/roles/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/roles/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/roles/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "role#manage"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#delete"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/settings/prompt-shortcuts/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/settings/prompt-shortcuts/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/connector-configs/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/connector-configs/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/connector-configs/[^/]+/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/resources/[^/]+/[^/]+/bulk-grant/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#manage"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/[^/]+/organizations/[^/]+/set-primary/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/collections/[^/]+/documents/[^/]+/chunks/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/audit/resources/[^/]+/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/agent-definitions/[^/]+/flow/versions/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "flow#read"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/memories/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/memories/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/internal/users/[^/]+/memories/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/resources/[^/]+/[^/]+/bulk-grant/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#manage"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/admin/mcp/server/[^/]+/tools/[^/]+/execute/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "mcp_provider#sync"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/[^/]+/organizations/[^/]+/set-primary/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/resources/[^/]+/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/internal/rag-service/api/v1/collections/[^/]+/documents/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#delete"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/documents/[^/]+/revisions/[^/]+/restore/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/[^/]+/users/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/organizations/[^/]+/users/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/[^/]+/roles/[^/]+/primary/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/documents/[^/]+/revisions/[^/]+/export/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/rag-service/api/v1/collections/[^/]+/documents/[^/]+/chunks/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/audit/resources/[^/]+/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/resources/[^/]+/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "permission#read"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/documents/[^/]+/revisions/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/agent-service/api/v1/threads/[^/]+/runs/[^/]+/cancel/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "run#cancel"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/[^/]+/files/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/user/projects/[^/]+/files/[^/]+/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "project#update"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/users/[^/]+/roles/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/rag-service/api/v1/collections/[^/]+/documents/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "rag-service-client",
+    "permissions": [
+      "document#delete"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/[^/]+/users/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/user-service/api/v1/organizations/[^/]+/users/[^/]+/?$",
+    "methods": [
+      "PATCH"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/user-service/api/v1/users/[^/]+/roles/[^/]+/primary/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/assistants/[^/]+/tools/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "assistant#update"
+    ]
+  },
+  {
+    "path": "^/agent-service/api/v1/assistants/[^/]+/tools/[^/]+/?$",
+    "methods": [
+      "POST"
+    ],
+    "audience": "agent-service-client",
+    "permissions": [
+      "assistant#update"
+    ]
+  },
+  {
+    "path": "^/user-service/api/v1/users/[^/]+/roles/[^/]+/?$",
+    "methods": [
+      "DELETE"
+    ],
+    "audience": "user-service-client",
+    "permissions": [
+      "user#update"
+    ]
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/organizations/[^/]+/targets/[^/]+/[^/]+/resources/[^/]+/workspace/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/organizations/[^/]+/targets/[^/]+/[^/]+/resources/[^/]+/workspace/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/organizations/[^/]+/targets/[^/]+/[^/]+/resources/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/internal/user-service/api/v1/permissions/organizations/[^/]+/targets/[^/]+/[^/]+/resources/[^/]+/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/organizations/[^/]+/targets/[^/]+/[^/]+/resources/[^/]+/?$",
+    "methods": [
+      "GET"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  },
+  {
+    "path": "^/user-service/api/v1/permissions/organizations/[^/]+/targets/[^/]+/[^/]+/resources/[^/]+/?$",
+    "methods": [
+      "PUT"
+    ],
+    "audience": "user-service-client",
+    "permissions": [],
+    "authenticated_only": true
+  }
+]

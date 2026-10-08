@@ -128,6 +128,26 @@ def test_image_from_data_uri_is_embedded():
     assert PdfReader(io.BytesIO(data)).pages[0].images
 
 
+def test_attachment_image_is_embedded_from_the_supplied_bytes():
+    import base64
+
+    from pypdf import PdfReader
+
+    png = base64.b64decode(_PNG_DATA_URI.split(",", 1)[1])
+
+    data = render_pdf(None, "![foto](attachment:file-1)", attachment_images={"file-1": png})
+
+    assert PdfReader(io.BytesIO(data)).pages[0].images
+
+
+def test_attachment_image_without_bytes_is_skipped():
+    from pypdf import PdfReader
+
+    data = render_pdf(None, "![foto](attachment:file-1)\n\nsonrası metin")
+
+    assert not PdfReader(io.BytesIO(data)).pages[0].images
+
+
 def test_image_with_unloadable_source_does_not_break_document():
     from pypdf import PdfReader
 

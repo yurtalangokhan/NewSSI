@@ -6,7 +6,7 @@ import { InstantSSRAutoRefresh } from "@/components/SSRAutoRefresh";
 import { SlackBotTable } from "./SlackBotTable";
 import { useSlackBots } from "./[bot-id]/hooks";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import CreateButton from "@/refresh-components/buttons/CreateButton";
 import { DOCS_ADMINS_PATH } from "@/lib/constants";
 import { useTranslation } from "react-i18next";

@@ -11,7 +11,7 @@ import CardSection from "@/components/admin/CardSection";
 import {
   handleOAuthConfluenceFinalize,
   handleOAuthPrepareFinalization,
-} from "@/lib/oauth_utils";
+} from "@/lib/api/domains/integrations/api";
 import { SelectorFormField } from "@/components/Field";
 import { ErrorMessage, Field, Form, Formik, useFormikContext } from "formik";
 import * as Yup from "yup";

@@ -20,6 +20,7 @@ from src.api.routes import roles_route as roles_router_module
 from src.api.routes import user_route as user_route_module
 from src.controller.resource_permission_controller import ResourcePermissionController
 from src.core.exceptions import ForbiddenError, NotFoundError
+from tests.route_support import override_route_dependencies
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -34,11 +35,7 @@ def _make_app(*routers: FastAPI | object) -> FastAPI:
     register_error_handlers(app, service_name=_SERVICE_NAME)
     for router in routers:
         app.include_router(router)
-    for route in app.routes:
-        dependant = getattr(route, "dependant", None)
-        if dependant:
-            for dependency in dependant.dependencies:
-                app.dependency_overrides[dependency.call] = lambda: str(uuid.uuid4())
+    override_route_dependencies(app, lambda: str(uuid.uuid4()))
     return app
 
 
@@ -56,9 +53,16 @@ def _assert_envelope(
     assert isinstance(error["message"], str) and error["message"], (
         "error.message must be a non-empty string"
     )
-    assert isinstance(error["details"], dict), "error.details must be a dict"
-    assert isinstance(error["field_errors"], list), "error.field_errors must be a list"
-    assert "request_id" in error, "error.request_id must be present"
+    if "statusCode" in body:
+        # Errors the route itself reports travel in the ResponseModel envelope.
+        assert body["statusCode"] == expected_status
+        assert body["data"] is None
+    else:
+        # Errors raised outside a route body (dependencies, validation) use the
+        # canonical error envelope rendered by the registered handlers.
+        assert isinstance(error["details"], dict), "error.details must be a dict"
+        assert isinstance(error["field_errors"], list), "error.field_errors must be a list"
+        assert "request_id" in error, "error.request_id must be present"
     if message_contains:
         assert message_contains in error["message"], (
             f"Expected {message_contains!r} in message, got {error['message']!r}"
@@ -196,7 +200,7 @@ class TestUserErrorContract:
 
         mock_user_service = MagicMock()
         mock_user_service.update_user = AsyncMock(
-            side_effect=DomainForbiddenError("Cannot modify admin user")
+            side_effect=DomainForbiddenError(message="Cannot modify admin user")
         )
         monkeypatch.setattr(
             "src.controller.user_controller.get_user_service", lambda: mock_user_service
@@ -357,7 +361,7 @@ class TestRoleErrorContract:
         app = _make_app(roles_router_module.router)
         client = TestClient(app, raise_server_exceptions=False)
 
-        response = client.post("/roles/", params={"name": "admin"})
+        response = client.post("/roles/", json={"name": "admin"})
 
         assert response.status_code == 409
         _assert_envelope(
@@ -404,7 +408,7 @@ class TestPermissionErrorContract:
         actor_id = uuid.uuid4()
         service = MagicMock()
         service.get_scoped_direct_permissions = AsyncMock(
-            side_effect=ForbiddenError("Not an organization manager")
+            side_effect=ForbiddenError(message="Not an organization manager")
         )
         ctrl = ResourcePermissionController()
         ctrl.service = service
@@ -431,7 +435,7 @@ class TestPermissionErrorContract:
         actor_id = uuid.uuid4()
         service = MagicMock()
         service.get_scoped_direct_permissions = AsyncMock(
-            side_effect=NotFoundError("Organization not found")
+            side_effect=NotFoundError(message="Organization not found")
         )
         ctrl = ResourcePermissionController()
         ctrl.service = service

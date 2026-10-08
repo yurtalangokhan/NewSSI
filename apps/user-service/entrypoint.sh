@@ -7,7 +7,7 @@ import psycopg
 import os
 import sys
 try:
-    psycopg.connect(f'host={os.environ[\"POSTGRES_HOST\"]} port={os.environ[\"POSTGRES_PORT\"]} user={os.environ[\"POSTGRES_USER\"]} password={os.environ[\"POSTGRES_PASSWORD\"]}')
+    psycopg.connect(f'host={os.environ[\"POSTGRES_HOST\"]} port={os.environ[\"POSTGRES_PORT\"]} user={os.environ[\"POSTGRES_USER_SERVICE_USER\"]} password={os.environ[\"POSTGRES_USER_SERVICE_PASSWORD\"]}')
     print('PostgreSQL is ready!')
 except Exception as e:
     print(f'PostgreSQL not ready: {e}', file=sys.stderr)

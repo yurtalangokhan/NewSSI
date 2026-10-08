@@ -73,9 +73,7 @@ class ValidateAgentDefinition:
                 issues,
             )
         for perceptron in definition.perceptrons:
-            self._check_component(
-                perceptron.key, ComponentKind.PERCEPTRON, perceptron.settings, selected, issues
-            )
+            self._check_component(perceptron.key, ComponentKind.PERCEPTRON, perceptron.settings, selected, issues)
         if definition.graph is not None:
             self._check_component(
                 definition.graph.key,
@@ -135,15 +133,15 @@ class ValidateAgentDefinition:
                 )
             )
             return
-        for required in descriptor.required_settings:
-            if required not in settings:
-                issues.append(
-                    ValidationIssue(
-                        code=MissingRequiredSettingError.code,
-                        message=f"Component '{key}' requires setting '{required}'.",
-                        context={"key": key, "setting": required},
-                    )
-                )
+        issues.extend(
+            ValidationIssue(
+                code=MissingRequiredSettingError.code,
+                message=f"Component '{key}' requires setting '{required}'.",
+                context={"key": key, "setting": required},
+            )
+            for required in descriptor.required_settings
+            if required not in settings
+        )
         for name, expected_type in (descriptor.settings_schema or {}).items():
             if name in settings and not isinstance(settings[name], _SETTING_TYPES[expected_type]):
                 issues.append(
@@ -153,19 +151,17 @@ class ValidateAgentDefinition:
                         context={"key": key, "setting": name, "type": expected_type},
                     )
                 )
-        for other in descriptor.incompatible_with:
-            if other in selected:
-                issues.append(
-                    ValidationIssue(
-                        code=IncompatibleComponentError.code,
-                        message=f"Component '{key}' is incompatible with '{other}'.",
-                        context={"key": key, "other": other},
-                    )
-                )
+        issues.extend(
+            ValidationIssue(
+                code=IncompatibleComponentError.code,
+                message=f"Component '{key}' is incompatible with '{other}'.",
+                context={"key": key, "other": other},
+            )
+            for other in descriptor.incompatible_with
+            if other in selected
+        )
 
-    def _check_cycles(
-        self, definition: AgentDefinition, path: list[str], issues: list[ValidationIssue]
-    ) -> None:
+    def _check_cycles(self, definition: AgentDefinition, path: list[str], issues: list[ValidationIssue]) -> None:
         if definition.identity in path:
             issues.append(
                 ValidationIssue(
@@ -178,9 +174,7 @@ class ValidateAgentDefinition:
         for child in definition.nested:
             self._check_cycles(child, [*path, definition.identity], issues)
 
-    def _check_depth(
-        self, definition: AgentDefinition, depth: int, issues: list[ValidationIssue]
-    ) -> None:
+    def _check_depth(self, definition: AgentDefinition, depth: int, issues: list[ValidationIssue]) -> None:
         if depth > MAX_NESTED_DEPTH:
             issues.append(
                 ValidationIssue(
@@ -212,4 +206,3 @@ class ValidateAgentDefinition:
                 raise IncompatibleComponentError(issue.message, details=issue.context)
             if issue.code == MissingRequiredSettingError.code:
                 raise MissingRequiredSettingError(issue.message, details=issue.context)
-        return None

@@ -1,181 +1,96 @@
 """API dependencies - shared FastAPI dependencies.
 
 This module lives at the API boundary. It owns the HTTP-framework concerns
-(``Request``, ``HTTPBearer``, ``Depends``) and delegates token validation and
-user-profile resolution to the pure domain logic in ``service.AuthService``.
+(``Request``, ``Depends``) and turns the trusted headers Gateway sets into an
+``AuthenticatedUser``.
 
-The functions here are re-exported from ``service.AuthService`` as a documented
-backward-compatibility shim, so existing ``from service.AuthService import
-require_user`` imports continue to work.
+Agent-service does not verify user tokens. Gateway introspects the token with
+Keycloak and applies the route's authorization decision before forwarding, so a
+request that arrives here has already been authenticated. Identity comes from
+``security.gateway``; fine-grained permissions still resolve through
+user-service in :func:`require_permission`.
+
+These dependencies live here rather than in ``service.auth``: they are HTTP
+concerns (``Request``/``Depends``), and the service layer must not import them.
 """
 
-from typing import Annotated, Any
-
+from config_manager import env
 from fastapi import Depends, Request
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from i18n import t
+from localization import t
+from security import (
+    INTERNAL_SERVICE_USER_ID,
+    GatewayIdentity,
+    resolve_gateway_identity,
+)
 
-from core.exceptions import (
-    ApplicationError,
-    ForbiddenError,
-    UnauthorizedError,
-)
-from core.logger import get_logger
-from core.settings import settings
-from service.AuthService import (
-    AuthenticatedUser,
-    AuthService,
-)
-from service.UserServiceClient import (
-    set_current_access_token,
-)
+from core.exceptions import ForbiddenError, UnauthorizedError
+from core.observability.logger import get_logger
+from integrations.user_service_client import get_current_access_token, set_current_access_token
+from service.auth.auth_service import AuthenticatedUser, AuthService, get_primary_user_id
 
 logger = get_logger(__name__)
 
 
-def _get_valid_api_keys() -> set:
-    keys = settings.VALID_API_KEYS
-    if keys:
-        return set(k.strip() for k in keys.split(",") if k.strip())
-    return set()
+def _extract_auth_token(request: Request) -> str | None:
+    """The bearer token Gateway forwarded, for downstream user-service calls.
 
-
-def _extract_auth_token(
-    http_auth: HTTPAuthorizationCredentials | None,
-    request: Request,
-) -> str | None:
-    if http_auth and http_auth.credentials:
-        return http_auth.credentials
-    return (
-        request.cookies.get("fastapiusersauth")
-        or request.cookies.get("session")
-        or request.cookies.get("access_token")
-        or request.cookies.get("id_token")
-    )
-
-
-def _extract_auth_tokens(
-    http_auth: HTTPAuthorizationCredentials | None,
-    request: Request,
-) -> list[str]:
-    tokens: list[str] = []
-    if http_auth and http_auth.credentials:
-        tokens.append(http_auth.credentials)
-    for cookie_name in ("fastapiusersauth", "session", "access_token", "id_token"):
-        token = request.cookies.get(cookie_name)
-        if token and token not in tokens:
-            tokens.append(token)
-    return tokens
-
-
-def extract_auth_token_from_request(request: Request) -> str | None:
-    """Extract the bearer/cookie token from a request (no HTTP auth object)."""
-    return _extract_auth_token(None, request)
-
-
-def _is_keycloak_enabled() -> bool:
-    return AuthService.is_keycloak_enabled()
-
-
-def _decode_keycloak_token(token: str) -> dict:
-    return AuthService.decode_keycloak_token(token)
-
-
-def extract_user_id_from_token(token: str) -> str | None:
-    return AuthService.extract_user_id_from_token(token)
-
-
-def get_primary_user_id(
-    identity: dict[str, Any] | None, fallback_user_id: str | None
-) -> str | None:
-    if identity and identity.get("primary_user_id"):
-        return str(identity["primary_user_id"])
-    if fallback_user_id:
-        return str(fallback_user_id)
+    This value is never trusted for authentication. It is passed on so
+    user-service can resolve permissions for the same principal.
+    """
+    header = (request.headers.get("Authorization") or "").strip()
+    if header.lower().startswith("bearer "):
+        candidate = header[7:].strip()
+        if candidate and candidate != (env.INTERNAL_SERVICE_TOKEN or "").strip():
+            return candidate
     return None
 
 
-def _has_valid_internal_service_token(request: Request) -> bool:
-    internal_token = (settings.INTERNAL_SERVICE_TOKEN or "").strip()
-    if not internal_token:
-        return False
+def extract_auth_token_from_request(request: Request) -> str | None:
+    """Extract the forwarded bearer token from a request."""
+    return get_current_access_token() or _extract_auth_token(request)
 
-    header_token = (request.headers.get("X-Internal-Service-Token") or "").strip()
-    if header_token == internal_token:
+
+def _resolve_identity(request: Request) -> GatewayIdentity | None:
+    return resolve_gateway_identity(request.headers, env.INTERNAL_SERVICE_TOKEN)
+
+
+async def require_user(request: Request) -> AuthenticatedUser:
+    """Return the caller Gateway authenticated.
+
+    Raises UnauthorizedError when the request did not arrive through Gateway
+    with a trusted identity.
+    """
+    identity = _resolve_identity(request)
+    if identity is None:
+        raise UnauthorizedError(message=t("auth.missing_bearer_token"))
+
+    token = None if identity.is_internal else _extract_auth_token(request)
+    set_current_access_token(token)
+    return AuthService.build_authenticated_user_from_gateway(identity, token)
+
+
+async def has_permission(user: AuthenticatedUser, permission: str) -> bool:
+    """Does ``user`` hold ``permission``? Internal-service callers hold every one.
+
+    Fine-grained permissions live ONLY in user-service, not in the JWT.
+    """
+    if user.user_id == INTERNAL_SERVICE_USER_ID:
         return True
 
-    authorization = (request.headers.get("Authorization") or "").strip()
-    if authorization.lower().startswith("bearer "):
-        return authorization[7:].strip() == internal_token
+    from service.auth.auth_service import get_auth_service
 
-    return False
-
-
-def _internal_service_user(token: str | None = None) -> AuthenticatedUser:
-    return AuthenticatedUser(
-        user_id="internal-service",
-        email="internal@service.local",
-        roles=["internal"],
-        access_token=token,
+    # Resolve application identity before checking resource permissions.
+    identity = await get_auth_service().resolve_user_identity(
+        token=user.access_token, user_id=user.user_id, user=user
     )
+    permission_user_id = identity.get("primary_user_id") or user.user_id
 
+    from integrations.authorization_client import get_authorization_client
 
-async def require_user(
-    request: Request,
-    http_auth: Annotated[
-        HTTPAuthorizationCredentials | None,
-        Depends(HTTPBearer(description="Please provide a bearer token", auto_error=False)),
-    ],
-) -> AuthenticatedUser:
-    """Validate bearer token and return authenticated user context.
-
-    Raises UnauthorizedError if token is missing or invalid.
-    """
-    token = _extract_auth_token(http_auth, request)
-    set_current_access_token(token)
-
-    if _is_keycloak_enabled():
-        if not token:
-            raise UnauthorizedError(
-                message=t("auth.missing_bearer_token"),
-            )
-        try:
-            claims = _decode_keycloak_token(token)
-            return AuthService.build_authenticated_user(claims, token)
-        except ApplicationError:
-            user = await AuthService.authenticate_with_user_service(token)
-            if user:
-                return user
-            raise
-
-    valid_keys = _get_valid_api_keys()
-    if not valid_keys:
-        # No keys configured — dev mode, allow all
-        return AuthenticatedUser(user_id="dev-user", email="dev@local.dev")
-
-    if not token:
-        raise UnauthorizedError(
-            message=t("auth.missing_bearer_token"),
-        )
-
-    if token in valid_keys:
-        uid = extract_user_id_from_token(token)
-        return AuthenticatedUser(
-            user_id=uid or token,
-            email=f"{uid or token}@local.dev",
-            access_token=token,
-        )
-
-    uid = extract_user_id_from_token(token)
-    if uid in valid_keys:
-        return AuthenticatedUser(
-            user_id=uid,
-            email=f"{uid}@local.dev",
-            access_token=token,
-        )
-
-    raise UnauthorizedError(
-        message=t("auth.invalid_bearer_token"),
+    return await get_authorization_client().has_permission(
+        permission_user_id,
+        permission,
+        user.access_token,
     )
 
 
@@ -186,32 +101,16 @@ def require_permission(permission: str):
 
     Authenticates via require_user, then fetches the user's resolved permissions
     from user-service (the source of truth) and verifies membership.
-    Dev mode and internal-service bypass.
+    Internal-service callers bypass.
 
-    Fine-grained permissions live ONLY in the user-service database, not in the
-    JWT. The JWT contains only coarse client roles for service-level grouping.
+    Fine-grained permissions live ONLY in user-service, not in the JWT. Gateway
+    authorizes the route; this protects the resource-level operation.
     """
 
     async def _check_permission(
         user: AuthenticatedUser = Depends(require_user),
     ) -> AuthenticatedUser:
-        if user.user_id in ("dev-user", "internal-service"):
-            return user
-
-        user_service_user = user.claims.get("user_service_user")
-        permission_user_id = (
-            str(user_service_user["id"])
-            if isinstance(user_service_user, dict) and user_service_user.get("id")
-            else user.user_id
-        )
-
-        from service.AuthorizationClient import get_authorization_client
-
-        if await get_authorization_client().has_permission(
-            permission_user_id,
-            permission,
-            user.access_token,
-        ):
+        if await has_permission(user, permission):
             return user
 
         raise ForbiddenError(
@@ -221,114 +120,62 @@ def require_permission(permission: str):
     return _check_permission
 
 
-async def require_user_or_internal_service_token(
-    request: Request,
-    http_auth: Annotated[
-        HTTPAuthorizationCredentials | None,
-        Depends(HTTPBearer(description="Please provide a bearer token", auto_error=False)),
-    ],
-) -> AuthenticatedUser:
-    """Like require_user, but also accepts the INTERNAL_SERVICE_TOKEN header."""
-    if _has_valid_internal_service_token(request):
-        return _internal_service_user(settings.INTERNAL_SERVICE_TOKEN)
+async def require_user_or_internal_service_token(request: Request) -> AuthenticatedUser:
+    """Alias of :func:`require_user`.
 
-    return await require_user(request=request, http_auth=http_auth)
+    Gateway identity already covers both the user and the machine caller, so
+    this exists only for call sites that document the internal path explicitly.
+    """
+    return await require_user(request)
 
 
-def verify_bearer(
-    request: Request,
-    http_auth: Annotated[
-        HTTPAuthorizationCredentials | None,
-        Depends(HTTPBearer(description="Please provide a bearer token", auto_error=False)),
-    ],
-) -> None:
-    """Deprecated: use require_user instead."""
-    token = _extract_auth_token(http_auth, request)
-
-    if _is_keycloak_enabled():
-        if not token:
-            raise UnauthorizedError(
-                message=t("auth.missing_bearer_token"),
-            )
-        _decode_keycloak_token(token)
-        return
-
-    valid_keys = _get_valid_api_keys()
-    if not valid_keys:
-        return
-
-    if token:
-        if token in valid_keys:
-            return
-        uid = extract_user_id_from_token(token)
-        if uid in valid_keys:
-            return
-
-    raise UnauthorizedError(
-        message=t("auth.invalid_bearer_token"),
-    )
+def verify_bearer(request: Request) -> None:
+    """Reject a request that did not arrive through Gateway."""
+    if _resolve_identity(request) is None:
+        raise UnauthorizedError(message=t("auth.missing_bearer_token"))
 
 
-def verify_api_key(
-    request: Request,
-    http_auth: Annotated[
-        HTTPAuthorizationCredentials | None,
-        Depends(HTTPBearer(description="Please provide API key", auto_error=False)),
-    ],
-) -> str | None:
-    """Deprecated: use require_user instead."""
-    if _is_keycloak_enabled():
-        candidate_tokens = _extract_auth_tokens(http_auth, request)
-        if not candidate_tokens:
-            return None
-        for token in candidate_tokens:
-            try:
-                claims = _decode_keycloak_token(token)
-                return claims.get("sub") or claims.get("preferred_username") or claims.get("email")
-            except ApplicationError:
-                continue
-        raise UnauthorizedError(
-            message=t("auth.invalid_bearer_token"),
+def verify_bearer_or_internal_service_token(request: Request) -> None:
+    """Alias of :func:`verify_bearer`; internal callers are covered by it."""
+    verify_bearer(request)
+
+
+def verify_api_key(request: Request) -> str | None:
+    """Return the caller's id when Gateway authenticated it, else None."""
+    identity = _resolve_identity(request)
+    return identity.user_id if identity else None
+
+
+def require_internal_service_identity(request: Request) -> str:
+    """Validate internal service token and return the associated user ID.
+
+    Used by internal service-to-service endpoints like connector tool execution.
+    """
+    import secrets
+
+    from fastapi import HTTPException
+
+    expected = (env.INTERNAL_SERVICE_TOKEN or "").strip()
+    supplied = request.headers.get("x-internal-service-token", "")
+    user_id = request.headers.get("x-user-id", "").strip()
+    if not expected or not secrets.compare_digest(expected, supplied) or not user_id or user_id == "internal-service":
+        raise HTTPException(
+            status_code=403,
+            detail=t("connectors.internal_required", default="Trusted internal identity is required."),
         )
-
-    token = _extract_auth_token(http_auth, request)
-    valid_keys = _get_valid_api_keys()
-    if not valid_keys:
-        return "dev-user"
-    if not token:
-        return None
-    if token in valid_keys:
-        return extract_user_id_from_token(token)
-    uid = extract_user_id_from_token(token)
-    if uid in valid_keys:
-        return uid
-    raise UnauthorizedError(
-        message=t("auth.invalid_api_key"),
-    )
-
-
-def verify_bearer_or_internal_service_token(
-    request: Request,
-    http_auth: Annotated[
-        HTTPAuthorizationCredentials | None,
-        Depends(HTTPBearer(description="Please provide a bearer token", auto_error=False)),
-    ],
-) -> None:
-    """Deprecated: use require_user_or_internal_service_token instead."""
-    if _has_valid_internal_service_token(request):
-        return
-
-    verify_bearer(request=request, http_auth=http_auth)
+    return user_id
 
 
 __all__ = [
     "AuthenticatedUser",
+    "extract_auth_token_from_request",
+    "get_primary_user_id",
+    "has_permission",
+    "require_internal_service_identity",
     "require_permission",
     "require_user",
     "require_user_or_internal_service_token",
-    "verify_bearer",
     "verify_api_key",
-    "extract_user_id_from_token",
-    "extract_auth_token_from_request",
-    "get_primary_user_id",
+    "verify_bearer",
+    "verify_bearer_or_internal_service_token",
 ]

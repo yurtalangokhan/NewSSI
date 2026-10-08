@@ -11,26 +11,26 @@ def test_format_web_search_results_joins_blocks_with_separator():
     formatted = format_web_search_results(
         [
             {
-                "title": "Onyx: Open Source AI Platform",
-                "url": "https://onyx.app",
-                "snippet": "Onyx is the open source generative AI platform.",
+                "title": "Atlas: Open Source AI Platform",
+                "url": "https://atlas.app",
+                "snippet": "Atlas is the open source generative AI platform.",
             },
             {
-                "title": "Onyx Docs",
-                "url": "https://docs.onyx.app",
-                "snippet": "Documentation for Onyx.",
+                "title": "Atlas Docs",
+                "url": "https://docs.atlas.app",
+                "snippet": "Documentation for Atlas.",
             },
         ]
     )
 
     assert formatted == (
-        "TITLE: Onyx: Open Source AI Platform\n"
-        "URL: https://onyx.app\n"
-        "SNIPPET: Onyx is the open source generative AI platform.\n"
+        "TITLE: Atlas: Open Source AI Platform\n"
+        "URL: https://atlas.app\n"
+        "SNIPPET: Atlas is the open source generative AI platform.\n"
         "---\n"
-        "TITLE: Onyx Docs\n"
-        "URL: https://docs.onyx.app\n"
-        "SNIPPET: Documentation for Onyx."
+        "TITLE: Atlas Docs\n"
+        "URL: https://docs.atlas.app\n"
+        "SNIPPET: Documentation for Atlas."
     )
 
 
@@ -54,7 +54,7 @@ class _FakeDDGS:
 
 def test_web_search_results_uses_ddgs_when_available(monkeypatch):
     fake_results = [
-        {"title": "Onyx", "body": "Open source AI platform.", "href": "https://onyx.app"},
+        {"title": "Atlas", "body": "Open source AI platform.", "href": "https://atlas.app"},
     ]
 
     def _fake_ddgs_import():
@@ -65,33 +65,33 @@ def test_web_search_results_uses_ddgs_when_available(monkeypatch):
         _fake_ddgs_import,
     )
 
-    result = web_search_results("Onyx", max_results=5)
+    result = web_search_results("Atlas", max_results=5)
 
-    assert "TITLE: Onyx" in result
-    assert "URL: https://onyx.app" in result
+    assert "TITLE: Atlas" in result
+    assert "URL: https://atlas.app" in result
     assert "SNIPPET: Open source AI platform." in result
 
 
 def test_extract_title_and_description_finds_both():
     html = """
     <html><head>
-      <title>Onyx: Open Source AI Platform</title>
-      <meta name="description" content="Onyx connects your company's docs, apps, and people.">
+      <title>Atlas: Open Source AI Platform</title>
+      <meta name="description" content="Atlas connects your company's docs, apps, and people.">
     </head><body><p>hello</p></body></html>
     """
 
     title, description = extract_title_and_description(html)
 
-    assert title == "Onyx: Open Source AI Platform"
-    assert description == "Onyx connects your company's docs, apps, and people."
+    assert title == "Atlas: Open Source AI Platform"
+    assert description == "Atlas connects your company's docs, apps, and people."
 
 
 def test_extract_title_and_description_missing_description_returns_none():
-    html = "<html><head><title>Onyx</title></head><body></body></html>"
+    html = "<html><head><title>Atlas</title></head><body></body></html>"
 
     title, description = extract_title_and_description(html)
 
-    assert title == "Onyx"
+    assert title == "Atlas"
     assert description is None
 
 
@@ -102,8 +102,36 @@ def test_extract_title_and_description_no_title_returns_none_none():
 
 
 def test_extract_title_and_description_decodes_html_entities():
-    html = "<html><head><title>Onyx &amp; Friends</title></head></html>"
+    html = "<html><head><title>Atlas &amp; Friends</title></head></html>"
 
     title, _ = extract_title_and_description(html)
 
-    assert title == "Onyx & Friends"
+    assert title == "Atlas & Friends"
+
+
+def test_extract_title_and_description_finds_meta_regardless_of_attribute_order():
+    # A regex requiring name= to appear textually before content= misses this
+    # -- a real parser (matching attributes by name, not source position)
+    # does not care about attribute order.
+    html = (
+        "<html><head><title>Atlas</title>"
+        '<meta content="Reversed attribute order." name="description"></head></html>'
+    )
+
+    _, description = extract_title_and_description(html)
+
+    assert description == "Reversed attribute order."
+
+
+def test_extract_title_and_description_recovers_a_title_missing_its_close_tag():
+    # No literal </title> appears anywhere in this document, so a regex
+    # requiring one to match finds nothing at all (title = None). A real
+    # parser still recovers a non-empty title from the malformed input
+    # (per HTML5, <title> is RCDATA: everything up to </title> or EOF is
+    # its text, tags included) instead of silently discarding it.
+    html = "<html><head><title>Broken<body><p>Actual page content.</p></body></html>"
+
+    title, _ = extract_title_and_description(html)
+
+    assert title is not None
+    assert "Broken" in title

@@ -2,7 +2,7 @@
 
 The agent creation UI (``/app/agents/create``) posts to ``POST /api/persona``,
 which is gated on ``persona:create`` (see
-``apps/agent-service/src/api/routes/PersonaRoute.py``). The
+``apps/agent-service/src/api/routes/persona_route.py``). The
 ``agent-workspace-manager`` feature bundle seeded by migration 0010 only ever
 carried ``persona:read`` even though its description promises operational
 management of personas, so ``enterprise-admin`` -- which resolves its agent
@@ -20,11 +20,11 @@ Revises: 0041
 Create Date: 2026-09-04
 """
 
-import json
 from collections.abc import Sequence
+import json
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
 
 revision: str = "0042"
 down_revision: str | None = "0041"

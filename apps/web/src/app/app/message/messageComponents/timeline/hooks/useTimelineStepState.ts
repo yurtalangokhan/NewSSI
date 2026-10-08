@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { MemoryToolPacket } from "@/app/app/services/streamingModels";
+import { MemoryToolPacket } from "@/lib/api/domains/chat/streaming-types";
 import { TurnGroup } from "@/app/app/message/messageComponents/timeline/transformers";
 import { constructCurrentMemoryState } from "@/app/app/message/messageComponents/timeline/renderers/memory/memoryStateUtils";
 import { isMemoryToolPackets } from "@/app/app/message/messageComponents/timeline/packetHelpers";

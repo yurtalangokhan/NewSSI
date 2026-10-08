@@ -1,15 +1,47 @@
 export {
+  SvgAlertTriangle,
+  SvgArrowExchange,
   SvgCheck,
-  SvgExpand,
+  SvgChevronLeft,
+  SvgChevronRight,
+  SvgClock,
+  SvgCopy,
+  SvgCpu,
+  SvgDownload,
   SvgEdit,
+  SvgExpand,
+  SvgFileText,
+  SvgFolder,
   SvgFolderPlus,
+  SvgHistory,
+  SvgImage,
   SvgLock,
   SvgMaximize2,
   SvgMinimize2,
   SvgNetworkGraph,
   SvgOrganization,
+  SvgRefreshCw,
   SvgShield,
+  SvgSparkle,
   SvgTrash,
+  SvgUser,
   SvgUsers,
   SvgX,
+  SvgZoomIn,
+  SvgZoomOut,
 } from "@opal/icons";
+
+export {
+  SvgLayoutVertical,
+  SvgLayoutHorizontal,
+} from "./OrganizationLayoutIcons";
+
+export {
+  SvgFile,
+  SvgFileCsv,
+  SvgFileDoc,
+  SvgFilePdf,
+  SvgFilePpt,
+  SvgFileTxt,
+  SvgFileXls,
+} from "./KnowledgeSearchIcons";

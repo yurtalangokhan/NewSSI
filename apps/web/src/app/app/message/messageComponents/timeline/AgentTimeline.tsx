@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useCallback } from "react";
-import { StopReason } from "@/app/app/services/streamingModels";
+import { StopReason } from "@/lib/api/domains/chat/streaming-types";
 import { FullChatState, RenderType } from "../interfaces";
 import { TurnGroup } from "./transformers";
 import { cn } from "@/lib/utils";

@@ -13,13 +13,13 @@ from __future__ import annotations
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
-from agents.graphs.flow_builder import (
+from agents.graphs.flow import (
     FlowGraphBuilder,
     _make_foreach_node,
     _make_foreach_route_fn,
     _resolve_loop_items,
 )
-from models.flows import FlowNode, FlowSpec
+from schemas.flows import FlowNode, FlowSpec
 
 
 @pytest.fixture(autouse=True)
@@ -88,7 +88,7 @@ async def test_no_source_iterates_the_latest_message_lines():
 
 
 def test_route_fn_picks_item_then_done():
-    from models.flows import FlowEdge
+    from schemas.flows import FlowEdge
 
     route = _make_foreach_route_fn(
         _node(),

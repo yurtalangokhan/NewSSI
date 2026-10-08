@@ -5,7 +5,11 @@ import { KeyedMutator } from "swr";
 import MCPActionCard from "@/sections/actions/MCPActionCard";
 import Actionbar from "@/sections/actions/Actionbar";
 import ActionCardSkeleton from "@/sections/actions/skeleton/ActionCardSkeleton";
-import { getActionIcon } from "@/lib/tools/mcpUtils";
+import {
+  getActionIcon,
+  isBuiltinMcpServer,
+  isRegisteredMcpProvider,
+} from "@/lib/tools/mcpUtils";
 import {
   ActionStatus,
   MCPServerStatus,
@@ -16,20 +20,30 @@ import { toast } from "@/hooks/useToast";
 import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
 import MCPAuthenticationModal from "@/sections/actions/modals/MCPAuthenticationModal";
 import AddMCPServerModal from "@/sections/actions/modals/AddMCPServerModal";
+import MCPProviderPickerModal from "@/sections/actions/modals/MCPProviderPickerModal";
 import DisconnectEntityModal from "./modals/DisconnectEntityModal";
 import {
-  deleteMCPServer,
+  disconnectMCPServer,
   refreshMCPServerTools,
-  updateToolStatus,
   updateMCPServerStatus,
   updateMCPServer,
+} from "@/lib/api/domains/tools/api";
+import {
+  updateToolStatus,
   updateToolsStatus,
-} from "@/lib/tools/mcpService";
+} from "@/lib/api/domains/tools/api";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import useMcpServers from "@/hooks/useMcpServers";
+import { useMcpServers } from "@/lib/api/domains/tools/hooks";
 import BuiltInToolsSection from "./BuiltInToolsSection";
 import { useTranslation } from "react-i18next";
+import { useUser } from "@/providers/UserProvider";
+
+// Adding an MCP server now means authenticating a provider a system admin
+// already registered, so the affordance is gated on `mcp_provider:connect`
+// (held by both admin tiers). Registering a provider — the URL path — stays
+// system-admin only via `mcp_provider:configure` on the MCP Configuration page.
+const MCP_CONNECT_PERMISSION = "mcp_provider:connect";
 
 export default function MCPPageContent() {
   // Data fetching
@@ -39,11 +53,15 @@ export default function MCPPageContent() {
     mutateMcpServers,
   } = useMcpServers();
 
+  const { hasPermission } = useUser();
+  const canAddServer = hasPermission(MCP_CONNECT_PERMISSION);
+
   // Modal management
   const authModal = useCreateModal();
   const { t } = useTranslation();
   const disconnectModal = useCreateModal();
   const manageServerModal = useCreateModal();
+  const pickerModal = useCreateModal();
 
   // Local state
   const [activeServer, setActiveServer] = useState<MCPServer | null>(null);
@@ -55,10 +73,13 @@ export default function MCPPageContent() {
   >([]);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Every provider a system admin registered (built-in excluded). Registered
+  // providers are offered in the "Add MCP server" picker; only ones that have
+  // actually been added render as cards (see `filteredServers` below).
   const mcpServers = useMemo(
     () =>
       ((mcpData?.mcp_servers || []) as MCPServer[]).filter(
-        (server) => server.id !== 1
+        (server) => !isBuiltinMcpServer(server)
       ),
     [mcpData?.mcp_servers]
   );
@@ -95,15 +116,18 @@ export default function MCPPageContent() {
 
           await refreshMCPServerTools(serverIdInt);
 
-          toast.success("Successfully connected and fetched tools");
+          toast.success(t("admin.mcp.toastToolsConnected"));
 
           await mutateMcpServers();
         } catch (error) {
           console.error("Failed to fetch tools:", error);
           toast.error(
-            `Failed to fetch tools: ${
-              error instanceof Error ? error.message : "Unknown error"
-            }`
+            t("admin.mcp.fetchToolsFailed", {
+              message:
+                error instanceof Error
+                  ? error.message
+                  : t("admin.mcp.unknownError"),
+            })
           );
           await mutateMcpServers();
         }
@@ -132,9 +156,17 @@ export default function MCPPageContent() {
   // Track if any modal is open to manage the shared overlay
   useEffect(() => {
     const anyModalOpen =
-      authModal.isOpen || disconnectModal.isOpen || manageServerModal.isOpen;
+      authModal.isOpen ||
+      disconnectModal.isOpen ||
+      manageServerModal.isOpen ||
+      pickerModal.isOpen;
     setShowSharedOverlay(anyModalOpen);
-  }, [authModal.isOpen, disconnectModal.isOpen, manageServerModal.isOpen]);
+  }, [
+    authModal.isOpen,
+    disconnectModal.isOpen,
+    manageServerModal.isOpen,
+    pickerModal.isOpen,
+  ]);
 
   // Determine action status based on server status field
   const getActionStatusForServer = useCallback(
@@ -176,7 +208,7 @@ export default function MCPPageContent() {
         MCPServerStatus.DISCONNECTED
       );
 
-      toast.success("MCP Server disconnected successfully");
+      toast.success(t("admin.mcp.toastServerDisconnected"));
 
       await mutateMcpServers();
       disconnectModal.toggle(false);
@@ -184,9 +216,7 @@ export default function MCPPageContent() {
     } catch (error) {
       console.error("Error disconnecting server:", error);
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to disconnect MCP Server"
+        error instanceof Error ? error.message : t("admin.mcp.disconnectFailed")
       );
     } finally {
       setIsDisconnecting(false);
@@ -198,17 +228,17 @@ export default function MCPPageContent() {
 
     setIsDisconnecting(true);
     try {
-      await deleteMCPServer(activeServer.id);
+      await disconnectMCPServer(activeServer.id);
 
-      toast.success("MCP Server deleted successfully");
+      toast.success(t("admin.mcp.toastServerRemoved"));
 
       await mutateMcpServers();
       disconnectModal.toggle(false);
       setActiveServer(null);
     } catch (error) {
-      console.error("Error deleting server:", error);
+      console.error("Error removing server:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to delete MCP Server"
+        error instanceof Error ? error.message : t("admin.mcp.removeFailed")
       );
     } finally {
       setIsDisconnecting(false);
@@ -243,15 +273,15 @@ export default function MCPPageContent() {
   const handleDelete = useCallback(
     async (serverId: number) => {
       try {
-        await deleteMCPServer(serverId);
+        await disconnectMCPServer(serverId);
 
-        toast.success("MCP Server deleted successfully");
+        toast.success(t("admin.mcp.toastServerRemoved"));
 
         await mutateMcpServers();
       } catch (error) {
-        console.error("Error deleting server:", error);
+        console.error("Error removing server:", error);
         toast.error(
-          error instanceof Error ? error.message : "Failed to delete MCP Server"
+          error instanceof Error ? error.message : t("admin.mcp.removeFailed")
         );
       }
     },
@@ -284,15 +314,18 @@ export default function MCPPageContent() {
 
         await refreshMCPServerTools(serverId);
 
-        toast.success("Successfully connected and fetched tools");
+        toast.success(t("admin.mcp.toastToolsConnected"));
 
         await mutateMcpServers();
       } catch (error) {
         console.error("Failed to fetch tools:", error);
         toast.error(
-          `Failed to fetch tools: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`
+          t("admin.mcp.fetchToolsFailed", {
+            message:
+              error instanceof Error
+                ? error.message
+                : t("admin.mcp.unknownError"),
+          })
         );
         await mutateMcpServers();
       }
@@ -305,7 +338,7 @@ export default function MCPPageContent() {
       try {
         await updateMCPServerStatus(serverId, MCPServerStatus.CONNECTED);
 
-        toast.success("MCP Server reconnected successfully");
+        toast.success(t("admin.mcp.toastServerReconnected"));
 
         await mutateMcpServers();
       } catch (error) {
@@ -313,7 +346,7 @@ export default function MCPPageContent() {
         toast.error(
           error instanceof Error
             ? error.message
-            : "Failed to reconnect MCP Server"
+            : t("admin.mcp.reconnectFailed")
         );
       }
     },
@@ -344,7 +377,13 @@ export default function MCPPageContent() {
         // Revalidate to get fresh data from server
         await mutateServerTools();
 
-        toast.success(`Tool ${enabled ? "enabled" : "disabled"} successfully`);
+        toast.success(
+          t(
+            enabled
+              ? "admin.mcp.toastToolEnabled"
+              : "admin.mcp.toastToolDisabled"
+          )
+        );
       } catch (error) {
         console.error("Error toggling tool:", error);
 
@@ -352,7 +391,9 @@ export default function MCPPageContent() {
         await mutateServerTools();
 
         toast.error(
-          error instanceof Error ? error.message : "Failed to update tool"
+          error instanceof Error
+            ? error.message
+            : t("admin.mcp.toolUpdateFailed")
         );
       }
     },
@@ -374,11 +415,13 @@ export default function MCPPageContent() {
         // Also refresh the servers list to update tool counts
         await mutateMcpServers();
 
-        toast.success("Tools refreshed successfully");
+        toast.success(t("admin.mcp.toastToolsRefreshed"));
       } catch (error) {
         console.error("Error refreshing tools:", error);
         toast.error(
-          error instanceof Error ? error.message : "Failed to refresh tools"
+          error instanceof Error
+            ? error.message
+            : t("admin.mcp.refreshToolsFailed")
         );
       }
     },
@@ -415,9 +458,12 @@ export default function MCPPageContent() {
         await mutateServerTools();
 
         toast.success(
-          `${result.updated_count} tool${
-            result.updated_count !== 1 ? "s" : ""
-          } ${enabled ? "enabled" : "disabled"} successfully`
+          t(
+            enabled
+              ? "admin.mcp.toastToolsEnabled"
+              : "admin.mcp.toastToolsDisabled",
+            { count: result.updated_count }
+          )
         );
       } catch (error) {
         console.error(
@@ -431,7 +477,11 @@ export default function MCPPageContent() {
         toast.error(
           error instanceof Error
             ? error.message
-            : `Failed to ${enabled ? "enable" : "disable"} all tools`
+            : t(
+                enabled
+                  ? "admin.mcp.enableAllToolsFailed"
+                  : "admin.mcp.disableAllToolsFailed"
+              )
         );
       }
     },
@@ -447,20 +497,31 @@ export default function MCPPageContent() {
   );
 
   const handleAddServer = useCallback(() => {
+    // Enterprise admins pick a system-admin provider and authenticate it here;
+    // they never enter a URL (that lives on the MCP Configuration page).
     setActiveServer(null);
-    manageServerModal.toggle(true);
-  }, [manageServerModal]);
+    pickerModal.toggle(true);
+  }, [pickerModal]);
+
+  const handlePickProvider = useCallback(
+    (server: MCPServer) => {
+      pickerModal.toggle(false);
+      setActiveServer(server);
+      authModal.toggle(true);
+    },
+    [pickerModal, authModal]
+  );
 
   const handleRenameServer = useCallback(
     async (serverId: number, newName: string) => {
       try {
         await updateMCPServer(serverId, { name: newName });
-        toast.success("MCP Server renamed successfully");
+        toast.success(t("admin.mcp.toastServerRenamed"));
         await mutateMcpServers();
       } catch (error) {
         console.error("Error renaming server:", error);
         toast.error(
-          error instanceof Error ? error.message : "Failed to rename MCP Server"
+          error instanceof Error ? error.message : t("admin.mcp.renameFailed")
         );
         throw error; // Re-throw so ButtonRenaming can handle it
       }
@@ -470,10 +531,15 @@ export default function MCPPageContent() {
 
   // Filter servers based on search query
   const filteredServers = useMemo(() => {
-    if (!searchQuery.trim()) return mcpServers;
+    // A registered-but-not-added provider lives in the picker, not on the list:
+    // registering it on the config page must not look like adding a server here.
+    const listed = mcpServers.filter(
+      (server) => !isRegisteredMcpProvider(server)
+    );
+    if (!searchQuery.trim()) return listed;
 
     const query = searchQuery.toLowerCase();
-    return mcpServers.filter(
+    return listed.filter(
       (server) =>
         server.name.toLowerCase().includes(query) ||
         server.description?.toLowerCase().includes(query) ||
@@ -499,6 +565,7 @@ export default function MCPPageContent() {
             searchQuery={searchQuery}
             onSearchQueryChange={setSearchQuery}
             onAddAction={handleAddServer}
+            canAddAction={canAddServer}
             buttonText={t("admin.mcp.addServer")}
             barText={t("admin.mcp.connectServerHint")}
           />
@@ -556,6 +623,14 @@ export default function MCPPageContent() {
           mutateMcpServers={mutateMcpServers}
         />
       </authModal.Provider>
+
+      <pickerModal.Provider>
+        <MCPProviderPickerModal
+          skipOverlay
+          providers={mcpServers}
+          onSelect={handlePickProvider}
+        />
+      </pickerModal.Provider>
 
       <manageServerModal.Provider>
         <AddMCPServerModal

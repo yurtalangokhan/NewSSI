@@ -25,6 +25,12 @@ interface OrganizationDesignerInspectorProps {
   members: OrganizationMember[];
   editable: boolean;
   capabilityLoading: boolean;
+  /**
+   * Whether the signed-in viewer's organization scope is global. A scoped
+   * viewer may only assign the enduser role, so this must never be defaulted
+   * to true — it gates role escalation in the users panel.
+   */
+  globalAccess: boolean;
   mobileOpen?: boolean;
   onBackToMap?: () => void;
   onAccessSaveComplete?: () => void | Promise<void>;
@@ -65,6 +71,7 @@ export function OrganizationDesignerInspector({
   members,
   editable,
   capabilityLoading,
+  globalAccess,
   mobileOpen = true,
   onBackToMap,
   onAccessSaveComplete,
@@ -266,7 +273,9 @@ export function OrganizationDesignerInspector({
                     danger
                     secondary
                     size="md"
-                    disabled={!canMutate || !onBeginDelete}
+                    disabled={
+                      !canMutate || !onBeginDelete || organization.is_scope_root
+                    }
                     onClick={() => onBeginDelete?.(organization.id)}
                   >
                     {t("admin.organizations.inspector.deleteOrganization")}
@@ -275,6 +284,8 @@ export function OrganizationDesignerInspector({
               </div>
             ) : activeTab === "users" ? (
               <OrganizationUserAssignmentsPanel
+                organizationId={organization.id}
+                globalAccess={globalAccess}
                 assignments={members}
                 onAdd={onAddUser}
                 onRoleChange={onRoleChange}

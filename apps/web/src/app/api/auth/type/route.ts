@@ -1,9 +1,9 @@
-import { fetchUserServiceSS } from "@/lib/utilsSS";
+import { fetchAuthTypeResponseSS } from "@/lib/api/domains/session/server";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const response = await fetchUserServiceSS("/api/auth/type");
+    const response = await fetchAuthTypeResponseSS();
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch {

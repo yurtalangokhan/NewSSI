@@ -1,7 +1,7 @@
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from agents import chatbot as chatbot_module
+import agents.implementations.chatbot as chatbot_module
 
 
 @pytest.mark.asyncio

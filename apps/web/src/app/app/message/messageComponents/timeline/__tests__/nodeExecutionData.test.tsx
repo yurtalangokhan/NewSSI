@@ -1,4 +1,4 @@
-import { Packet, PacketType } from "@/app/app/services/streamingModels";
+import { Packet, PacketType } from "@/lib/api/domains/chat/streaming-types";
 import type { CanvasNode } from "@/components/flow-canvas/types/flow";
 import { buildNodeExecutionData } from "../nodeExecutionData";
 
@@ -608,5 +608,158 @@ describe("buildNodeExecutionData", () => {
     expect(data["node-agent-1"]!.durationMs).toBe(1500);
     expect(data["node-agent-1"]!.output).toBe("Hello, world!");
     expect(data["node-agent-1"]!.thinking).toBe("Thinking about the prompt...");
+  });
+
+  it("collects knowledge evidence of a retrieval node as its sources", () => {
+    const evidence = {
+      schema_version: 1,
+      kind: "document",
+      tool: "document_search",
+      query: "izin devri",
+      chunks: [{ ref: 1, content: "Kullanılmayan izin devredilir." }],
+      model_context: "Kullanılmayan izin devredilir.",
+    };
+    const nodes: CanvasNode[] = [
+      {
+        id: "search-1",
+        type: "templateNode",
+        position: { x: 0, y: 0 },
+        data: { type: "DocumentSearch", templateVersion: 1, values: {} },
+      },
+    ];
+    const placement = { turn_index: 0, stage_key: "search-1#1" };
+    const packets = [
+      {
+        placement,
+        obj: {
+          type: PacketType.FLOW_STAGE_START,
+          stage_key: "search-1#1",
+          node_id: "search-1",
+          label: "Politika belgeleri",
+          iteration: 1,
+          timestamp: 1000,
+        },
+      },
+      {
+        placement,
+        obj: {
+          type: PacketType.CUSTOM_TOOL_START,
+          tool_name: "document_search",
+          call_id: "search-1:ev",
+          args: { query: "izin devri" },
+          timestamp: 1100,
+        },
+      },
+      {
+        placement,
+        obj: {
+          type: PacketType.CUSTOM_TOOL_DELTA,
+          tool_name: "document_search",
+          call_id: "search-1:ev",
+          response_type: "knowledge_retrieval",
+          evidence_id: "ev",
+          data: evidence,
+          timestamp: 1300,
+        },
+      },
+      {
+        placement,
+        obj: {
+          type: PacketType.FLOW_STAGE_END,
+          stage_key: "search-1#1",
+          status: "done",
+          duration_ms: 400,
+          timestamp: 1400,
+        },
+      },
+    ] as unknown as Packet[];
+
+    const node = buildNodeExecutionData(packets, [], nodes, [])["search-1"]!;
+
+    expect(node.evidence).toHaveLength(1);
+    expect(node.evidence![0]!.chunks[0]!.content).toBe(
+      "Kullanılmayan izin devredilir."
+    );
+    expect(node.tools[0]!.invocations[0]!.output).toBe(
+      "Kullanılmayan izin devredilir."
+    );
+  });
+
+  it("keeps each loop iteration's knowledge evidence with its iteration", () => {
+    const evidenceFor = (query: string) => ({
+      schema_version: 1,
+      kind: "document",
+      tool: "document_search",
+      query,
+      chunks: [{ ref: 1, content: `Sonuç: ${query}` }],
+      model_context: `Sonuç: ${query}`,
+    });
+    const nodes: CanvasNode[] = [
+      {
+        id: "search-1",
+        type: "templateNode",
+        position: { x: 0, y: 0 },
+        data: { type: "DocumentSearch", templateVersion: 1, values: {} },
+      },
+    ];
+    const iterationPackets = (iteration: number, query: string) => {
+      const stageKey = `search-1#${iteration}`;
+      const placement = { turn_index: iteration - 1, stage_key: stageKey };
+      const callId = `search-1:ev${iteration}`;
+      return [
+        {
+          placement,
+          obj: {
+            type: PacketType.FLOW_STAGE_START,
+            stage_key: stageKey,
+            node_id: "search-1",
+            iteration,
+          },
+        },
+        {
+          placement,
+          obj: {
+            type: PacketType.CUSTOM_TOOL_START,
+            tool_name: "document_search",
+            call_id: callId,
+            args: { query },
+          },
+        },
+        {
+          placement,
+          obj: {
+            type: PacketType.CUSTOM_TOOL_DELTA,
+            tool_name: "document_search",
+            call_id: callId,
+            response_type: "knowledge_retrieval",
+            evidence_id: `ev${iteration}`,
+            data: evidenceFor(query),
+          },
+        },
+        {
+          placement,
+          obj: {
+            type: PacketType.FLOW_STAGE_END,
+            stage_key: stageKey,
+            status: "done",
+            duration_ms: 100,
+          },
+        },
+      ];
+    };
+    const packets = [
+      ...iterationPackets(1, "birinci sorgu"),
+      ...iterationPackets(2, "ikinci sorgu"),
+    ] as unknown as Packet[];
+
+    const node = buildNodeExecutionData(packets, [], nodes, [])["search-1"]!;
+
+    expect(
+      node.iterations!.map((it) => it.evidence?.map((e) => e.query))
+    ).toEqual([["birinci sorgu"], ["ikinci sorgu"]]);
+    expect(node.evidence!.map((evidence) => evidence.query)).toEqual([
+      "birinci sorgu",
+      "ikinci sorgu",
+    ]);
   });
 });

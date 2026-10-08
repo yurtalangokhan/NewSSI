@@ -1,7 +1,7 @@
 """Permission audit log model for tracking permission changes."""
 
-import uuid
 from datetime import datetime
+import uuid
 
 from sqlalchemy import DateTime, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID

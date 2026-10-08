@@ -1,18 +1,29 @@
 import { SlackChannelConfigCreationForm } from "../SlackChannelConfigCreationForm";
-import { fetchSS } from "@/lib/utilsSS";
+import { fetchSlackChannelsSS } from "@/lib/api/domains/integrations/server";
+import { fetchDocumentSetsSS } from "@/lib/api/domains/knowledge/server";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { DocumentSetSummary, SlackChannelConfig } from "@/lib/types";
 import { InstantSSRAutoRefresh } from "@/components/SSRAutoRefresh";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { SvgSlack } from "@opal/icons";
-import { FetchAgentsResponse, fetchAgentsSS } from "@/lib/agentsSS";
+import {
+  type FetchAgentsResponse,
+  fetchAgentsSS,
+} from "@/lib/api/domains/agents/server";
 import { getStandardAnswerCategoriesIfEE } from "@/components/standardAnswers/getStandardAnswerCategoriesIfEE";
 import { tServer } from "@/i18n/server";
-import { resolveLocaleSS } from "@/lib/localeSS";
+import { resolveLocaleSS } from "@/lib/i18n/locale.server";
+import { requireAdminAuth } from "@/lib/auth/requireAuth";
+import { ADMIN_PATHS } from "@/lib/navigation/admin-routes";
+import { redirect } from "next/navigation";
+import type { Route } from "next";
 
 async function EditslackChannelConfigPage(props: {
   params: Promise<{ id: number }>;
 }) {
+  const auth = await requireAdminAuth(ADMIN_PATHS.SLACK_BOTS);
+  if (auth.redirect) redirect(auth.redirect as Route);
+
   const params = await props.params;
   const [
     slackChannelsResponse,
@@ -20,8 +31,8 @@ async function EditslackChannelConfigPage(props: {
     [assistants, agentsFetchError],
     locale,
   ] = await Promise.all([
-    fetchSS("/manage/admin/slack-app/channel") as Promise<Response>,
-    fetchSS("/manage/document-set") as Promise<Response>,
+    fetchSlackChannelsSS(),
+    fetchDocumentSetsSS(),
     fetchAgentsSS() as Promise<FetchAgentsResponse>,
     resolveLocaleSS(),
   ]);

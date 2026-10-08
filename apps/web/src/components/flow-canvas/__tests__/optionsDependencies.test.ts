@@ -1,3 +1,4 @@
+import { agentsEndpoints } from "@/lib/api/domains/agents/endpoints";
 /**
  * options_source dependencies.
  *
@@ -12,7 +13,6 @@
  * format that carries the dependency there.
  */
 
-import { flowApi } from "../api/flowApi";
 import {
   dependencyValues,
   optionsRequestKey,
@@ -70,13 +70,15 @@ describe("dependencyValues", () => {
 describe("optionsRequestKey", () => {
   it("is the plain endpoint when there is no dependency", () => {
     expect(optionsRequestKey("llm.providers", {})).toBe(
-      flowApi.componentOptions("llm.providers")
+      agentsEndpoints.flowComponentOptions("llm.providers").browserPath
     );
   });
 
   it("appends one dep parameter per dependency", () => {
     expect(optionsRequestKey("llm.models", { provider: "openai" })).toBe(
-      `${flowApi.componentOptions("llm.models")}?dep=provider%3Aopenai`
+      `${
+        agentsEndpoints.flowComponentOptions("llm.models").browserPath
+      }?dep=provider%3Aopenai`
     );
   });
 

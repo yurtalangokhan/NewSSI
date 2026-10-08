@@ -1,3 +1,4 @@
+import { ConnectorCredentialPairStatus } from "@/lib/api/domains/datasources/types";
 import { Connector } from "@/lib/connectors/connectors";
 import { Credential } from "@/lib/connectors/credentials";
 import {
@@ -7,15 +8,6 @@ import {
   AccessType,
 } from "@/lib/types";
 import { UUID } from "crypto";
-
-export enum ConnectorCredentialPairStatus {
-  SCHEDULED = "SCHEDULED",
-  INITIAL_INDEXING = "INITIAL_INDEXING",
-  ACTIVE = "ACTIVE",
-  PAUSED = "PAUSED",
-  DELETING = "DELETING",
-  INVALID = "INVALID",
-}
 
 export enum PermissionSyncStatusEnum {
   CANCELED = "canceled",

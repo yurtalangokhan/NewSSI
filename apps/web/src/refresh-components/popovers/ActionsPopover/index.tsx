@@ -4,26 +4,27 @@ import {
   FILE_READER_TOOL_ID,
   IMAGE_GENERATION_TOOL_ID,
   PYTHON_TOOL_ID,
-  SEARCH_TOOL_ID,
   WEB_SEARCH_TOOL_ID,
 } from "@/app/app/components/tools/constants";
+import { SEARCH_TOOL_ID } from "@/lib/api/domains/tools/constants";
 import { useEffect, useMemo, useCallback, useState, useRef } from "react";
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
 import SwitchList, {
   SwitchListItem,
 } from "@/refresh-components/popovers/ActionsPopover/SwitchList";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import { ToolSnapshot } from "@/lib/tools/interfaces";
 import { useForcedTools } from "@/lib/hooks/useForcedTools";
-import useAgentPreferences from "@/hooks/useAgentPreferences";
+import { useAgentPreferences } from "@/lib/api/domains/preferences/hooks";
 import { useUser } from "@/providers/UserProvider";
-import { FilterManager, useSourcePreferences } from "@/lib/hooks";
+import { FilterManager } from "@/lib/api/domains/knowledge/hooks";
+import { useSourcePreferences } from "@/lib/api/domains/preferences/hooks";
 import { listSourceMetadata } from "@/lib/sources";
 import { ValidSources } from "@/lib/types";
 import { SourceMetadata } from "@/lib/search/interfaces";
 import { SourceIcon } from "@/components/SourceIcon";
-import { useAvailableTools } from "@/hooks/useAvailableTools";
-import useCCPairs from "@/hooks/useCCPairs";
+import { useAvailableTools } from "@/lib/api/domains/tools/hooks";
+import { useCCPairs } from "@/lib/api/domains/datasources/hooks";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { useToolOAuthStatus } from "@/lib/hooks/useToolOAuthStatus";

@@ -1,3 +1,5 @@
+import { updateDirectoryUser } from "@/lib/api/domains/access/api";
+import { setDirectoryUserPassword } from "@/lib/api/domains/access/api";
 import { useMemo, useState } from "react";
 import Modal from "@/refresh-components/Modal";
 import Button from "@/refresh-components/buttons/Button";
@@ -10,7 +12,6 @@ import { LoadingAnimation } from "@/components/Loading";
 import { SvgUser } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 import DeleteUserButton from "@/components/admin/users/buttons/DeleteUserButton";
-import { authenticatedFetch } from "@/lib/fetcher";
 
 export interface EditUserModalProps {
   user: User;
@@ -68,17 +69,10 @@ export default function EditUserModal({
       let updatedUser: User | undefined;
 
       if (isProfileChanged) {
-        const profileRes = await authenticatedFetch(
-          `/api/user-service/users/${user.id}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              first_name: firstName.trim() || null,
-              last_name: lastName.trim() || null,
-            }),
-          }
-        );
+        const profileRes = await updateDirectoryUser(user.id, {
+          first_name: firstName.trim() || null,
+          last_name: lastName.trim() || null,
+        });
 
         if (!profileRes.ok) {
           const err = await profileRes.json().catch(() => ({}));
@@ -91,16 +85,9 @@ export default function EditUserModal({
       }
 
       if (isPasswordChanged) {
-        const passRes = await authenticatedFetch(
-          `/api/user-service/users/${user.id}/password`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              password: password.trim(),
-            }),
-          }
-        );
+        const passRes = await setDirectoryUserPassword(user.id, {
+          password: password.trim(),
+        });
 
         if (!passRes.ok) {
           const err = await passRes.json().catch(() => ({}));

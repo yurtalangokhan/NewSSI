@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 
 import { proxyToBackend } from "@/lib/api/proxy";
-import { USER_SERVICE_URL } from "@/lib/constants";
 import { buildUserServicePath } from "@/lib/api/userServicePath";
 
 export async function GET(
@@ -10,7 +9,7 @@ export async function GET(
 ) {
   const { path } = await params;
   return proxyToBackend(request, buildUserServicePath(path, request), {
-    backendUrl: USER_SERVICE_URL,
+    backendService: "user",
   });
 }
 
@@ -20,7 +19,7 @@ export async function POST(
 ) {
   const { path } = await params;
   return proxyToBackend(request, buildUserServicePath(path, request), {
-    backendUrl: USER_SERVICE_URL,
+    backendService: "user",
   });
 }
 
@@ -30,7 +29,7 @@ export async function PUT(
 ) {
   const { path } = await params;
   return proxyToBackend(request, buildUserServicePath(path, request), {
-    backendUrl: USER_SERVICE_URL,
+    backendService: "user",
   });
 }
 
@@ -40,7 +39,7 @@ export async function PATCH(
 ) {
   const { path } = await params;
   return proxyToBackend(request, buildUserServicePath(path, request), {
-    backendUrl: USER_SERVICE_URL,
+    backendService: "user",
   });
 }
 
@@ -50,6 +49,6 @@ export async function DELETE(
 ) {
   const { path } = await params;
   return proxyToBackend(request, buildUserServicePath(path, request), {
-    backendUrl: USER_SERVICE_URL,
+    backendService: "user",
   });
 }

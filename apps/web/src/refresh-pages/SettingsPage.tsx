@@ -1,4 +1,18 @@
 "use client";
+
+import { errorMessageFromUnknown } from "@/lib/api/http/errors";
+import { disconnectFederatedOAuthResponse } from "@/lib/api/domains/integrations/api";
+
+import { createPersonalAccessTokenResponse } from "@/lib/api/domains/session/api";
+import { deletePersonalAccessTokenResponse } from "@/lib/api/domains/session/api";
+import { changeAccountPassword } from "@/lib/api/domains/session/api";
+import { usePersonalAccessTokens } from "@/lib/api/domains/session/hooks";
+import type { PersonalAccessToken } from "@/lib/api/domains/session/types";
+
+import { deleteInputShortcut } from "@/lib/api/domains/preferences/api";
+import { createInputShortcut } from "@/lib/api/domains/preferences/api";
+import { updateInputShortcut } from "@/lib/api/domains/preferences/api";
+
 import Skeleton from "@/refresh-components/skeletons/Skeleton";
 
 import { useTranslation } from "react-i18next";
@@ -35,35 +49,38 @@ import { ThemePreference } from "@/lib/types";
 import useUserPersonalization from "@/hooks/useUserPersonalization";
 import { toast } from "@/hooks/useToast";
 import LLMPopover from "@/refresh-components/popovers/LLMPopover";
-import { deleteAllChatSessions } from "@/app/app/services/lib";
-import { useAuthType, useLlmManager } from "@/lib/hooks";
-import useChatSessions from "@/hooks/useChatSessions";
-import useSWR from "swr";
-import { authenticatedFetch, errorHandlingFetcher } from "@/lib/fetcher";
+import { deleteAllChatSessions } from "@/lib/api/domains/chat/api";
+import { useLlmManager } from "@/lib/api/domains/model-providers/hooks";
+import { useAuthType } from "@/lib/api/domains/session/hooks";
+import { useChatSessions } from "@/lib/api/domains/chat/hooks";
 import useFilter from "@/hooks/useFilter";
 import CreateButton from "@/refresh-components/buttons/CreateButton";
 import { Button as OpalButton } from "@opal/components";
-import useFederatedOAuthStatus from "@/hooks/useFederatedOAuthStatus";
-import useCCPairs from "@/hooks/useCCPairs";
+import { useFederatedOAuthStatus } from "@/lib/api/domains/integrations/hooks";
+import { useCCPairs } from "@/lib/api/domains/datasources/hooks";
 import { ValidSources } from "@/lib/types";
-import { ConnectorCredentialPairStatus } from "@/app/admin/connector/[ccPairId]/types";
+import { ConnectorCredentialPairStatus } from "@/lib/api/domains/datasources/types";
 import Separator from "@/refresh-components/Separator";
 import Text from "@/refresh-components/texts/Text";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
 import Code from "@/refresh-components/Code";
 import CharacterCount from "@/refresh-components/CharacterCount";
-import { InputPrompt } from "@/app/app/interfaces";
-import usePromptShortcuts from "@/hooks/usePromptShortcuts";
+import { InputPrompt } from "@/lib/api/domains/chat/types";
+import { usePromptShortcuts } from "@/lib/api/domains/preferences/hooks";
 import ColorSwatch from "@/refresh-components/ColorSwatch";
 import EmptyMessage from "@/refresh-components/EmptyMessage";
 import Memories from "@/sections/settings/Memories";
 import useUserMemories from "@/hooks/useUserMemories";
-import { FederatedConnectorOAuthStatus } from "@/components/chat/FederatedOAuthModal";
+import type { FederatedConnectorOAuthStatus } from "@/lib/api/domains/integrations/types";
 import {
-  CHAT_BACKGROUND_OPTIONS,
   CHAT_BACKGROUND_NONE,
+  getBackgroundById,
+  getLockedColorMode,
+  isCanvasBackground,
 } from "@/lib/constants/chatBackgrounds";
-import { SvgCheck } from "@opal/icons";
+import { BackgroundAnimationToggle } from "@/refresh-components/backgrounds/BackgroundAnimationToggle";
+import { SidebarBackgroundThemeToggle } from "@/refresh-components/backgrounds/SidebarBackgroundThemeToggle";
+import { ChatBackgroundPicker } from "@/refresh-components/backgrounds/ChatBackgroundPicker";
 import { cn } from "@/lib/utils";
 import { Interactive } from "@opal/core";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
@@ -72,7 +89,7 @@ import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import { EmailSettings } from "@/sections/settings/EmailSettings";
 import { useCloudSubscription } from "@/hooks/useCloudSubscription";
 
-interface PAT {
+interface PAT extends PersonalAccessToken {
   id: number;
   name: string;
   token_display: string;
@@ -222,6 +239,13 @@ function GeneralSettings({
   // mismatch on the select's value/placeholder state.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  const currentBackgroundId = user?.preferences?.chat_background ?? "none";
+  // A fixed photo background dictates the color mode; with no background or a
+  // TÜRKSAT scene (which follows the color mode) the user chooses it.
+  const currentBackground = getBackgroundById(currentBackgroundId);
+  const isColorModeSelectLocked =
+    !!currentBackground && getLockedColorMode(currentBackground) !== null;
 
   const {
     personalizationValues,
@@ -412,6 +436,7 @@ function GeneralSettings({
               <div className="w-60 shrink-0">
                 <InputSelect
                   value={mounted ? theme : undefined}
+                  disabled={isColorModeSelectLocked}
                   onValueChange={(value) => {
                     setTheme(value);
                     updateUserThemePreference(value as ThemePreference);
@@ -456,64 +481,31 @@ function GeneralSettings({
             <InputLayouts.Vertical
               title={t("settings.general.chatBackgroundLabel")}
             >
-              <div className="flex flex-wrap gap-2">
-                {CHAT_BACKGROUND_OPTIONS.map((bg) => {
-                  const currentBackgroundId =
-                    user?.preferences?.chat_background ?? "none";
-                  const isSelected = currentBackgroundId === bg.id;
-                  const isNone = bg.src === CHAT_BACKGROUND_NONE;
-
-                  return (
-                    <button
-                      key={bg.id}
-                      onClick={() => {
-                        updateUserChatBackground(
-                          bg.id === CHAT_BACKGROUND_NONE ? null : bg.id
-                        );
-                        if (bg.id !== CHAT_BACKGROUND_NONE) {
-                          const matchingTheme = bg.isDarkBackground
-                            ? ThemePreference.DARK
-                            : ThemePreference.LIGHT;
-                          setTheme(matchingTheme);
-                          updateUserThemePreference(matchingTheme);
-                        }
-                      }}
-                      className="relative overflow-hidden rounded-lg transition-all w-[90px] h-[68px] cursor-pointer border-none p-0 bg-transparent group"
-                      title={bg.label}
-                      aria-label={`${bg.label} background${
-                        isSelected ? " (selected)" : ""
-                      }`}
-                    >
-                      {isNone ? (
-                        <div className="absolute inset-0 bg-background flex items-center justify-center">
-                          <span className="text-xs text-text-02">
-                            {t("settings.general.colorModeNone")}
-                          </span>
-                        </div>
-                      ) : (
-                        <div
-                          className="absolute inset-0 bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
-                          style={{ backgroundImage: `url(${bg.thumbnail})` }}
-                        />
-                      )}
-                      <div
-                        className={cn(
-                          "absolute inset-0 transition-all rounded-lg",
-                          isSelected
-                            ? "ring-2 ring-inset ring-theme-primary-05"
-                            : "ring-1 ring-inset ring-border-02 group-hover:ring-border-03"
-                        )}
-                      />
-                      {isSelected && (
-                        <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-theme-primary-05 flex items-center justify-center">
-                          <SvgCheck className="w-2.5 h-2.5 stroke-text-inverted-05" />
-                        </div>
-                      )}
-                    </button>
+              <ChatBackgroundPicker
+                selectedId={currentBackgroundId}
+                noneLabel={t("settings.general.colorModeNone")}
+                onSelect={(bg) => {
+                  updateUserChatBackground(
+                    bg.id === CHAT_BACKGROUND_NONE ? null : bg.id
                   );
-                })}
-              </div>
+                  const lockedMode = getLockedColorMode(bg);
+                  if (lockedMode) {
+                    const matchingTheme =
+                      lockedMode === "dark"
+                        ? ThemePreference.DARK
+                        : ThemePreference.LIGHT;
+                    setTheme(matchingTheme);
+                    updateUserThemePreference(matchingTheme);
+                  }
+                }}
+              />
             </InputLayouts.Vertical>
+            {currentBackground && isCanvasBackground(currentBackground) && (
+              <>
+                <BackgroundAnimationToggle />
+                <SidebarBackgroundThemeToggle />
+              </>
+            )}
           </Card>
         </Section>
 
@@ -656,25 +648,21 @@ function PromptShortcuts() {
 
       // Otherwise, delete from backend
       try {
-        const response = await authenticatedFetch(
-          `/api/input_prompt/${shortcut.id}`,
-          {
-            method: "DELETE",
-          }
-        );
+        await deleteInputShortcut(shortcut.id);
 
-        if (response.ok) {
-          setShortcuts((prev) => prev.filter((_, i) => i !== index));
-          await refresh();
-          toast.success(t("settings.chatPreferences.toastShortcutDeleted"));
-        } else {
-          throw new Error("Failed to delete shortcut");
-        }
+        setShortcuts((prev) => prev.filter((_, i) => i !== index));
+        await refresh();
+        toast.success(t("settings.chatPreferences.toastShortcutDeleted"));
       } catch (error) {
-        toast.error(t("settings.chatPreferences.toastShortcutDeleteFailed"));
+        toast.error(
+          errorMessageFromUnknown(
+            error,
+            t("settings.chatPreferences.toastShortcutDeleteFailed")
+          )
+        );
       }
     },
-    [shortcuts, refresh]
+    [shortcuts, refresh, t]
   );
 
   const handleSaveShortcut = useCallback(
@@ -700,48 +688,34 @@ function PromptShortcuts() {
       try {
         if (shortcut.isNew) {
           // Create new shortcut
-          const response = await authenticatedFetch("/api/input_prompt", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              prompt: shortcut.prompt,
-              content: shortcut.content,
-              active: true,
-              is_public: false,
-            }),
+          await createInputShortcut({
+            prompt: shortcut.prompt,
+            content: shortcut.content,
+            active: true,
+            is_public: false,
           });
 
-          if (response.ok) {
-            await refresh();
-            toast.success(t("settings.chatPreferences.toastShortcutCreated"));
-          } else {
-            throw new Error("Failed to create shortcut");
-          }
+          await refresh();
+          toast.success(t("settings.chatPreferences.toastShortcutCreated"));
         } else {
           // Update existing shortcut
-          const response = await authenticatedFetch(
-            `/api/input_prompt/${shortcut.id}`,
-            {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                prompt: shortcut.prompt,
-                content: shortcut.content,
-                active: true,
-                is_public: false,
-              }),
-            }
-          );
+          await updateInputShortcut(shortcut.id, {
+            prompt: shortcut.prompt,
+            content: shortcut.content,
+            active: true,
+            is_public: false,
+          });
 
-          if (response.ok) {
-            await refresh();
-            toast.success(t("settings.chatPreferences.toastShortcutUpdated"));
-          } else {
-            throw new Error("Failed to update shortcut");
-          }
+          await refresh();
+          toast.success(t("settings.chatPreferences.toastShortcutUpdated"));
         }
       } catch (error) {
-        toast.error(t("settings.chatPreferences.toastShortcutSaveFailed"));
+        toast.error(
+          errorMessageFromUnknown(
+            error,
+            t("settings.chatPreferences.toastShortcutSaveFailed")
+          )
+        );
       }
     },
     [shortcuts, promptShortcuts, refresh, t]
@@ -1155,25 +1129,7 @@ function AccountsAccessSettings() {
     mutate,
     error,
     isLoading,
-  } = useSWR<PAT[]>(
-    showTokensSection && canCreateTokens ? "/api/user/pats" : null,
-    async (url: string) => {
-      const res = await authenticatedFetch(url, { redirectOnAuthError: false });
-      if (!res.ok) {
-        if (res.status === 401 || res.status === 403) {
-          return [];
-        }
-        throw new Error("Failed to fetch access tokens");
-      }
-      const data = await res.json();
-      return Array.isArray(data) ? data : data?.api_keys ?? [];
-    },
-    {
-      revalidateOnFocus: true,
-      dedupingInterval: 2000,
-      fallbackData: [],
-    }
-  );
+  } = usePersonalAccessTokens(showTokensSection && canCreateTokens);
 
   // Use filter hook for searching tokens
   const {
@@ -1197,15 +1153,10 @@ function AccountsAccessSettings() {
 
     setIsCreating(true);
     try {
-      const response = await authenticatedFetch("/api/user/pats", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        redirectOnAuthError: false,
-        body: JSON.stringify({
-          name: newTokenName,
-          expiration_days:
-            expirationDays === "null" ? null : parseInt(expirationDays),
-        }),
+      const response = await createPersonalAccessTokenResponse({
+        name: newTokenName,
+        expiration_days:
+          expirationDays === "null" ? null : parseInt(expirationDays),
       });
 
       if (response.ok) {
@@ -1235,10 +1186,7 @@ function AccountsAccessSettings() {
   const deletePAT = useCallback(
     async (patId: number) => {
       try {
-        const response = await authenticatedFetch(`/api/user/pats/${patId}`, {
-          method: "DELETE",
-          redirectOnAuthError: false,
-        });
+        const response = await deletePersonalAccessTokenResponse(patId);
 
         if (response.ok) {
           // Clear the newly created token if it's the one being deleted
@@ -1265,20 +1213,10 @@ function AccountsAccessSettings() {
       confirmPassword: string;
     }) => {
       try {
-        const response = await authenticatedFetch(
-          "/api/user-service/users/me/password",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            redirectOnAuthError: false,
-            body: JSON.stringify({
-              old_password: values.currentPassword,
-              new_password: values.newPassword,
-            }),
-          }
-        );
+        const response = await changeAccountPassword({
+          old_password: values.currentPassword,
+          new_password: values.newPassword,
+        });
 
         if (response.ok) {
           toast.success(t("settings.accounts.toastPasswordUpdated"));
@@ -1643,9 +1581,8 @@ function FederatedConnectorCard({
   const handleDisconnect = useCallback(async () => {
     setIsDisconnecting(true);
     try {
-      const response = await authenticatedFetch(
-        `/api/federated/${connector.federated_connector_id}/oauth`,
-        { method: "DELETE" }
+      const response = await disconnectFederatedOAuthResponse(
+        connector.federated_connector_id
       );
 
       if (response.ok) {

@@ -1,8 +1,8 @@
-import { USER_SERVICE_URL } from "@/lib/constants";
-import { buildServiceUrl } from "@/lib/api/gatewayRouting";
-import { getLanguageHeaders } from "@/lib/api/proxy";
-import { getIncomingIdempotencyHeaders } from "@/lib/api/idempotency";
+import { preferencesEndpoints } from "@/lib/api/domains/preferences/endpoints";
+import { backendRequest } from "@/lib/api/http/server";
+
 import { NextRequest, NextResponse } from "next/server";
+import { appSettings } from "@/lib/settings";
 
 async function proxyToUserService(
   request: NextRequest,
@@ -11,29 +11,14 @@ async function proxyToUserService(
 ) {
   try {
     const { id } = await params;
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      Cookie: request.headers.get("cookie") || "",
-      ...getLanguageHeaders(request),
-      ...getIncomingIdempotencyHeaders(request),
-    };
-    const auth = request.headers.get("authorization");
-    if (auth) headers["Authorization"] = auth;
-
-    const body = method === "DELETE" ? undefined : await request.json();
-
-    const response = await fetch(
-      buildServiceUrl(
-        USER_SERVICE_URL,
-        "user",
-        `/api/users/me/memories/${id}`
-      ).toString(),
-      {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-      }
-    );
+    const response = await backendRequest({
+      ...preferencesEndpoints.updateMemory(id).backend,
+      request,
+      method,
+      ...(method !== "DELETE"
+        ? { body: JSON.stringify(await request.json()) }
+        : {}),
+    });
 
     if (response.status === 204) {
       return new NextResponse(null, { status: 204 });

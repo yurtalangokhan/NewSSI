@@ -41,6 +41,7 @@ SERVICE_PERMISSIONS: list[PermissionManifestItem] = [
     _permission("memory", "delete", "Delete Memories"),
     _permission("memory", "read", "Read Memories"),
     _permission("memory", "update", "Update Memories"),
+    _permission("datasource", "view", "View Datasources", service="rag-service"),
     _permission("permission", "list", "List Permissions"),
     _permission("permission", "manage", "Manage Permissions", is_system=True),
     _permission("permission", "read", "Read Permissions"),

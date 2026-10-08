@@ -133,16 +133,7 @@ export default function AdminOverviewPanel({
   className,
   isLoading = false,
 }: AdminOverviewPanelProps) {
-  const isAnyMetricLoading =
-    metrics.length > 0 &&
-    metrics.some((m) =>
-      m.values && m.values.length > 1
-        ? !!m.isLoading
-        : m.isLoading || m.value === "..." || m.value === ""
-    );
-  const showSkeleton = isLoading || isAnyMetricLoading;
-
-  if (showSkeleton) {
+  if (isLoading) {
     return (
       <AdminOverviewPanelSkeleton
         metricsCount={metrics.length > 0 ? metrics.length : 3}

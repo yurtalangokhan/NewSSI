@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import hashlib
-import inspect
-import json
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+import hashlib
+import inspect
+import json
 from typing import Any, Protocol, TypeVar
 
 from agent_composition.domain.definitions import AgentDefinition
@@ -49,10 +49,7 @@ def _dataclass_payload(value: Any) -> Any:
     if value is None:
         return None
     if hasattr(value, "__dataclass_fields__"):
-        return {
-            field_name: _dataclass_payload(getattr(value, field_name))
-            for field_name in value.__dataclass_fields__
-        }
+        return {field_name: _dataclass_payload(getattr(value, field_name)) for field_name in value.__dataclass_fields__}
     if isinstance(value, dict):
         return {str(key): _dataclass_payload(item) for key, item in value.items()}
     if isinstance(value, tuple | list):

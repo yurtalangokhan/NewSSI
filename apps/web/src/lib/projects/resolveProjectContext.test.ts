@@ -1,5 +1,5 @@
-import type { Project } from "@/app/app/projects/projectsService";
-import { ChatSessionSharedStatus } from "@/app/app/interfaces";
+import type { Project } from "@/lib/api/domains/projects/types";
+import { ChatSessionSharedStatus } from "@/lib/api/domains/chat/types";
 import { resolveCurrentProjectId } from "@/lib/projects/resolveProjectContext";
 
 function makeProject(id: number, chatIds: string[]): Project {

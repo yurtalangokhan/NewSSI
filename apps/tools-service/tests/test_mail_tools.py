@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from i18n.core import set_locale
+from localization.core import set_locale
 
 from src.tools.mail_tools import send_email_message
 

@@ -1,33 +1,22 @@
-import { getInternalUrl } from "@/lib/env.server";
-import { buildServiceUrl } from "@/lib/api/gatewayRouting";
-import { NextResponse } from "next/server";
-
-const INTERNAL_URL = getInternalUrl();
+import { chatEndpoints } from "@/lib/api/domains/chat/endpoints";
+import { backendRequest } from "@/lib/api/http/server";
+import { forwardBackendResponse } from "@/lib/api/backendResponse";
+import { errorResponseFromException } from "@/lib/api/errorResponse";
+import { NextRequest } from "next/server";
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
     const { sessionId } = await params;
-    const cookie = request.headers.get("cookie") || "";
-    // Proxy to backend available-context-tokens endpoint
-    const response = await fetch(
-      buildServiceUrl(
-        INTERNAL_URL,
-        "agent",
-        `/api/chat/available-context-tokens/${sessionId}`
-      ).toString(),
-      {
-        headers: {
-          ...(cookie ? { Cookie: cookie } : {}),
-        },
-      }
-    );
-    const data = await response.json();
-    return NextResponse.json(data);
+    const response = await backendRequest({
+      request,
+      ...chatEndpoints.availableContextTokens(sessionId).backend,
+      deriveAuthorizationFromCookie: true,
+    });
+    return forwardBackendResponse(response);
   } catch (error) {
-    // Return mock data for now
-    return NextResponse.json({ max_tokens: 120000, selected_tokens: 120000 });
+    return errorResponseFromException(error, request);
   }
 }

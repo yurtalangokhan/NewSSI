@@ -1,7 +1,7 @@
 "use client";
 
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
-import { getAgentAvailabilityIssues } from "@/lib/agentAvailability";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
+import { getAgentAvailabilityIssues } from "@/lib/api/domains/agents/availability";
 import { cn } from "@/lib/utils";
 import Text from "@/refresh-components/texts/Text";
 import { useTranslation } from "react-i18next";

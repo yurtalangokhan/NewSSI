@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
-import { PacketType } from "@/app/app/services/streamingModels";
+import { PacketType } from "@/lib/api/domains/chat/streaming-types";
+import { isReplayedPacket } from "@/app/app/services/packetUtils";
 import { GroupedPacket } from "./packetProcessor";
 import { TurnGroup, TransformedStep } from "../transformers";
 
@@ -35,6 +36,16 @@ function getStepPacketType(step: TransformedStep): PacketType | null {
     }
   }
   return null;
+}
+
+/**
+ * A step that already existed while the stream replayed history (a page
+ * reload or re-attach). It is not new output, so pacing never holds it back:
+ * only its first packet matters, as later deltas may arrive live.
+ */
+function isReplayedStep(step: TransformedStep): boolean {
+  const first = step.packets[0];
+  return first !== undefined && isReplayedPacket(first);
 }
 
 /**
@@ -147,6 +158,14 @@ export function usePacedTurnGroups(
     state.revealedStepKeys.size === 0 &&
     toolTurnGroups.length > 0;
 
+  // Every step is replayed history: nothing is left to pace, so text and the
+  // final-answer signal show with them instead of waiting for an effect pass.
+  const allStepsReplayed =
+    toolTurnGroups.length > 0 &&
+    toolTurnGroups.every(
+      (turnGroup) =>
+        turnGroup.steps.length > 0 && turnGroup.steps.every(isReplayedStep)
+    );
   // For messages with no tool steps, mark pacing complete synchronously so
   // MessageTextRenderer mounts on the FIRST render — before the stop packet
   // arrives. Without this, the useEffect delay causes the renderer to mount
@@ -156,6 +175,10 @@ export function usePacedTurnGroups(
   if (!hasAnyToolSteps && !state.toolPacingComplete && !shouldBypassPacing) {
     state.toolPacingComplete = true;
   }
+
+  // Read after the synchronous completion above, which it depends on.
+  const showWithoutPacing =
+    shouldBypassPacing || allStepsReplayed || state.toolPacingComplete;
 
   // Handle revealing the next pending step
   // Reveals ONE step per timer fire, always with delay between steps
@@ -261,8 +284,18 @@ export function usePacedTurnGroups(
     }
 
     // Process new steps
+    let revealedReplayedStep = false;
     for (const step of newSteps) {
       const stepType = getStepPacketType(step);
+
+      // Replayed history is revealed at once, never queued behind a timer.
+      if (isReplayedStep(step)) {
+        state.revealedStepKeys.add(step.key);
+        state.lastRevealedPacketType = stepType;
+        revealedReplayedStep = true;
+        setRevealTrigger((t) => t + 1);
+        continue;
+      }
 
       // First step ever - reveal immediately
       if (
@@ -287,6 +320,12 @@ export function usePacedTurnGroups(
     // Mark pacing incomplete while we have pending steps or timer
     if (state.pendingSteps.length > 0 || state.pacingTimer) {
       state.toolPacingComplete = false;
+    } else if (
+      revealedReplayedStep &&
+      allSteps.every((step) => state.revealedStepKeys.has(step.key))
+    ) {
+      // The replay was the whole backlog: nothing left to hold the text for.
+      state.toolPacingComplete = true;
     }
   }, [
     toolTurnGroups,
@@ -314,8 +353,8 @@ export function usePacedTurnGroups(
 
     const result: TurnGroup[] = [];
     for (const turnGroup of toolTurnGroups) {
-      const revealedSteps = turnGroup.steps.filter((step) =>
-        state.revealedStepKeys.has(step.key)
+      const revealedSteps = turnGroup.steps.filter(
+        (step) => state.revealedStepKeys.has(step.key) || isReplayedStep(step)
       );
       if (revealedSteps.length > 0) {
         result.push({
@@ -364,7 +403,7 @@ export function usePacedTurnGroups(
   // complete (or bypassing) — but never regress to blank while pacing a new
   // tool step, or text already on screen would flash away and back.
   const pacedDisplayGroups = useMemo(() => {
-    if (shouldBypassPacing || state.toolPacingComplete) {
+    if (showWithoutPacing) {
       lastDisplayGroupKeysRef.current = new Set(
         displayGroups.map((g) => g.key)
       );
@@ -378,20 +417,15 @@ export function usePacedTurnGroups(
     state.toolPacingComplete,
     displayGroups,
     revealTrigger,
-    shouldBypassPacing,
+    showWithoutPacing,
   ]);
 
   // Paced signals for header state consistency
   // Only signal finalAnswerComing when tool pacing is complete (or bypassing)
   const pacedFinalAnswerComing = useMemo(
-    () => (shouldBypassPacing || state.toolPacingComplete) && finalAnswerComing,
+    () => showWithoutPacing && finalAnswerComing,
 
-    [
-      state.toolPacingComplete,
-      finalAnswerComing,
-      revealTrigger,
-      shouldBypassPacing,
-    ]
+    [showWithoutPacing, finalAnswerComing, revealTrigger]
   );
 
   return {

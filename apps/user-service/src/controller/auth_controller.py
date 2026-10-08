@@ -1,7 +1,7 @@
 import base64
 import binascii
-import json
 from datetime import UTC, datetime
+import json
 from typing import Any
 
 from fastapi import Request, Response
@@ -23,6 +23,17 @@ DEFAULT_ACCESS_TOKEN_MAX_AGE = 3600
 DEFAULT_REFRESH_TOKEN_MAX_AGE = 30 * 86400
 
 
+def cookies_should_be_secure() -> bool:
+    """Whether auth cookies get the Secure attribute.
+
+    Read through a function rather than inlined so the whole cookie set moves
+    together and tests can pin it without touching settings construction.
+    """
+    from config_manager import env
+
+    return bool(env.COOKIE_SECURE)
+
+
 class AuthController(BaseController):
     def __init__(self):
         self.auth_service = get_auth_service()
@@ -30,9 +41,7 @@ class AuthController(BaseController):
     async def get_auth_type(self) -> dict[str, Any]:
         return self.auth_service.get_auth_type()
 
-    async def login(
-        self, request: Request, response: Response, username: str, password: str
-    ) -> dict[str, Any]:
+    async def login(self, response: Response, username: str, password: str) -> dict[str, Any]:
         try:
             result = await self.auth_service.basic_login(username, password)
             self._set_cookies(
@@ -43,12 +52,11 @@ class AuthController(BaseController):
                 **self._set_cookie_kwargs(result),
             )
             return result
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ValueError:
+            self._raise_bad_request()
 
     async def external_login(
         self,
-        request: Request,
         response: Response,
         username: str,
         password: str,
@@ -68,8 +76,8 @@ class AuthController(BaseController):
                 **self._set_cookie_kwargs(result),
             )
             return result
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ValueError:
+            self._raise_bad_request()
 
     async def logout(
         self,
@@ -95,8 +103,8 @@ class AuthController(BaseController):
                 **self._set_cookie_kwargs(result),
             )
             return result
-        except ValueError as e:
-            self._raise_unauthorized(str(e))
+        except ValueError:
+            self._raise_unauthorized()
 
     async def oidc_authorize(
         self,
@@ -109,10 +117,7 @@ class AuthController(BaseController):
             idp_hint=kc_idp_hint,
             prompt=prompt,
         )
-        # Return both formats for compatibility:
-        # - authorization_url: JSON response field
-        # - authorize_url: legacy field name
-        return {"authorization_url": url, "authorize_url": url}
+        return {"authorization_url": url}
 
     async def oidc_callback(
         self,
@@ -136,7 +141,7 @@ class AuthController(BaseController):
                 **self._set_cookie_kwargs(result),
             )
             return result
-        except Exception as e:
+        except ValueError as e:
             self._raise_bad_request("auth.oidc_callback_failed", error=str(e))
 
     def _set_cookies(
@@ -156,16 +161,25 @@ class AuthController(BaseController):
             httponly=True,
             samesite="lax",
             max_age=access_max_age,
-            secure=False,
+            secure=cookies_should_be_secure(),
         )
         if refresh_token:
+            # Deliberately not path-scoped. The web app forwards this
+            # Set-Cookie to the browser verbatim, so the Path is read
+            # against *its* routes, and the two that need the cookie sit in
+            # different trees: refresh at /api/auth/refresh, and logout at
+            # /auth/logout, which needs it to revoke the Keycloak session
+            # back-channel. No single prefix covers both, so narrowing would
+            # buy defence-in-depth on one origin by breaking either every
+            # session refresh or single-sign-out. HttpOnly + SameSite +
+            # Secure are what actually contain this cookie.
             response.set_cookie(
                 key="refresh_token",
                 value=refresh_token,
                 httponly=True,
                 samesite="lax",
                 max_age=session_max_age,
-                secure=False,
+                secure=cookies_should_be_secure(),
             )
         if id_token and self._can_set_id_token_cookie(response, id_token, session_max_age):
             response.set_cookie(
@@ -174,7 +188,7 @@ class AuthController(BaseController):
                 httponly=True,
                 samesite="lax",
                 max_age=session_max_age,
-                secure=False,
+                secure=cookies_should_be_secure(),
             )
 
     @staticmethod
@@ -215,8 +229,7 @@ class AuthController(BaseController):
         total_header_bytes = self._set_cookie_header_bytes(response) + candidate_header_bytes
         if total_header_bytes > MAX_AUTH_SET_COOKIE_HEADER_BYTES:
             logger.warning(
-                "Skipping id_token cookie because auth Set-Cookie headers exceed "
-                "gateway-safe size (%s bytes)",
+                "Skipping id_token cookie because auth Set-Cookie headers exceed gateway-safe size (%s bytes)",
                 total_header_bytes,
             )
             return False
@@ -232,15 +245,13 @@ class AuthController(BaseController):
             httponly=True,
             samesite="lax",
             max_age=max_age,
-            secure=False,
+            secure=cookies_should_be_secure(),
         )
         return AuthController._set_cookie_header_bytes(response)
 
     @staticmethod
     def _set_cookie_header_bytes(response: Response) -> int:
-        return sum(
-            len(value) for key, value in response.raw_headers if key.lower() == b"set-cookie"
-        )
+        return sum(len(value) for key, value in response.raw_headers if key.lower() == b"set-cookie")
 
     def _clear_cookies(self, response: Response):
         response.delete_cookie("access_token")
@@ -250,7 +261,6 @@ class AuthController(BaseController):
 
     async def register(
         self,
-        request: Request,
         response: Response,
         username: str,
         email: str,
@@ -259,9 +269,7 @@ class AuthController(BaseController):
         last_name: str | None = None,
     ) -> dict[str, Any]:
         try:
-            result = await self.auth_service.register(
-                username, email, password, first_name, last_name
-            )
+            result = await self.auth_service.register(username, email, password, first_name, last_name)
             self._set_cookies(
                 response,
                 result.get("access_token", ""),
@@ -270,39 +278,8 @@ class AuthController(BaseController):
                 **self._set_cookie_kwargs(result),
             )
             return result
-        except ValueError as e:
-            self._raise_bad_request(str(e))
-
-    async def ldap_login(
-        self, request: Request, response: Response, username: str, password: str
-    ) -> dict[str, Any]:
-        try:
-            result = await self.auth_service.ldap_signup_signin(username, password)
-            self._set_cookies(
-                response,
-                result.get("access_token", ""),
-                result.get("refresh_token", ""),
-                result.get("id_token"),
-                **self._set_cookie_kwargs(result),
-            )
-            return result
-        except ValueError as e:
-            self._raise_bad_request(str(e))
-
-    async def search_ldap_users(
-        self, filter_str: str = "(objectClass=person)", attributes: list[str] | None = None
-    ) -> list[dict[str, Any]]:
-        try:
-            return await self.auth_service.search_ldap_users(filter_str, attributes)
-        except ValueError as e:
-            self._raise_bad_request(str(e))
-
-    async def validate_ldap_user(self, username: str) -> dict[str, Any]:
-        try:
-            exists = await self.auth_service.validate_ldap_user(username)
-            return {"username": username, "exists": exists}
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ValueError:
+            self._raise_bad_request()
 
     async def sync_users_from_keycloak(self) -> dict[str, Any]:
         """Sync users and roles from Keycloak to user-service DB."""
@@ -312,7 +289,7 @@ class AuthController(BaseController):
             user_service = get_user_service()
             result = await user_service.sync_users_from_keycloak()
             return result
-        except Exception as e:
+        except ValueError as e:
             self._raise_bad_request("auth.sync_failed", error=str(e))
 
     async def get_me(self, request: Request, user_id: str | None = None) -> dict[str, Any]:

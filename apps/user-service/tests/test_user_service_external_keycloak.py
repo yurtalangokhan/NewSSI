@@ -1,11 +1,44 @@
+import uuid
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from src.repository.user_repository import UserRepository
 from src.service.user_service import UserService
+
+
+@pytest.mark.asyncio
+async def test_delete_user_projects_resource_permission_cleanup() -> None:
+    async def project(mutation):
+        return await mutation()
+
+    service = UserService()
+    service.user_repo = MagicMock(delete=AsyncMock(return_value=True))
+    service.settings_repo = MagicMock(delete=AsyncMock())
+    service.permission_resolver = MagicMock(invalidate_user=AsyncMock())
+    user_id = uuid.uuid4()
+    permission_cleanup = AsyncMock(return_value=2)
+
+    with (
+        patch("src.repository.ApiKeyRepository") as api_keys,
+        patch("src.repository.UserMemoryRepository") as memories,
+        patch(
+            "src.repository.resource_permission_repository.ResourcePermissionRepository"
+        ) as permissions,
+        patch(
+            "src.repository.keycloak_resource_authorization.project_resource_permission_mutation",
+            AsyncMock(side_effect=project),
+        ) as projection,
+    ):
+        api_keys.return_value.delete_by_user = AsyncMock()
+        memories.return_value.delete_all = AsyncMock()
+        permissions.return_value.delete_user_permissions = permission_cleanup
+        assert await service.delete_user(user_id) is True
+
+    projection.assert_awaited_once()
+    permission_cleanup.assert_awaited_once_with(user_id)
 
 
 def _user(**overrides):
@@ -38,8 +71,8 @@ def _service(external_keycloak: bool) -> UserService:
         user_has_federated_identity=AsyncMock(return_value=external_keycloak),
     )
     service.user_repo = SimpleNamespace(
-        list_paginated=AsyncMock(return_value=([_user()], 1)),
-        get_by_keycloak_id=AsyncMock(return_value=None),
+        list_paginated=AsyncMock(return_value=([_user()], 1, True)),
+        get_by_id=AsyncMock(return_value=None),
         upsert_by_keycloak_id=AsyncMock(return_value=_user()),
     )
     service.settings_repo = SimpleNamespace(ensure_defaults=AsyncMock())
@@ -50,7 +83,7 @@ def _service(external_keycloak: bool) -> UserService:
 async def test_list_users_hides_external_keycloak_users_when_external_keycloak_is_disabled():
     service = _service(external_keycloak=False)
 
-    users, total = await service.list_users()
+    users, total, _ = await service.list_users()
 
     assert total == 1
     assert users[0]["is_external_keycloak_user"] is False
@@ -110,7 +143,8 @@ async def test_upsert_user_from_keycloak_marks_users_from_external_keycloak():
 
 
 @pytest.mark.asyncio
-async def test_create_user_sets_keycloak_password_credential():
+@pytest.mark.parametrize("role_id", [None, "953ea848-0d1d-4c65-87b2-565c29b9f5df"])
+async def test_create_user_sets_keycloak_password_credential(role_id):
     service = UserService()
     service.keycloak = SimpleNamespace(
         is_enabled=lambda: True,
@@ -122,8 +156,16 @@ async def test_create_user_sets_keycloak_password_credential():
     service.user_repo = SimpleNamespace(
         exists_by_email=AsyncMock(return_value=False),
         create=AsyncMock(return_value=_user(password_configured=True)),
+        get_by_id=AsyncMock(return_value=_user(password_configured=True)),
     )
-    service.role_repo = SimpleNamespace(exists=AsyncMock(return_value=True))
+    service.user_role_repo = SimpleNamespace(replace_roles=AsyncMock())
+    service.role_repo = SimpleNamespace(
+        get_by_ids=AsyncMock(
+            return_value=[
+                SimpleNamespace(id="953ea848-0d1d-4c65-87b2-565c29b9f5df", name="enduser")
+            ]
+        ),
+    )
     service.settings_repo = SimpleNamespace(ensure_defaults=AsyncMock())
 
     user = await service.create_user(
@@ -131,7 +173,7 @@ async def test_create_user_sets_keycloak_password_credential():
         username="newuser",
         first_name="New",
         last_name="User",
-        role="enduser",
+        role_id=role_id,
         password="securepassword123",
     )
 
@@ -157,53 +199,25 @@ async def test_create_user_sets_keycloak_password_credential():
     assert service.user_repo.create.await_args.kwargs["password_configured"] is True
     assert user["password_configured"] is True
 
-
-@pytest.mark.asyncio
-async def test_user_repository_falls_back_when_external_keycloak_flag_column_is_missing(
-    monkeypatch,
-):
-    repo = UserRepository()
-    statements = []
-
-    class CountResult:
-        def scalar_one(self):
-            return 0
-
-    class RowsResult:
-        class Scalars:
-            def all(self):
-                return []
-
-        def scalars(self):
-            return self.Scalars()
-
-    class FakeSession:
-        async def execute(self, statement):
-            statements.append(statement)
-            return CountResult() if len(statements) == 1 else RowsResult()
-
-        async def commit(self):
-            return None
-
-        async def rollback(self):
-            return None
-
-    class FakeSessionContext:
-        async def __aenter__(self):
-            return FakeSession()
-
-        async def __aexit__(self, exc_type, exc, tb):
-            return None
-
-    monkeypatch.setattr(repo, "_session", lambda: FakeSessionContext())
-    monkeypatch.setattr(
-        repo, "_external_keycloak_user_column_exists", AsyncMock(return_value=False)
+    service.user_role_repo.replace_roles.assert_awaited_once_with(
+        _user().id, ["enduser"], primary_role="enduser"
     )
 
-    users, total = await repo.list_paginated(include_external_keycloak_users=False)
 
-    assert users == []
-    assert total == 0
-    compiled_count_query = str(statements[0])
-    assert "users.keycloak_id IS NULL" in compiled_count_query
-    assert "is_external_keycloak_user" not in compiled_count_query
+@pytest.mark.asyncio
+async def test_user_repository_filters_external_identities_without_local_schema():
+    repo = UserRepository(keycloak=AsyncMock())
+
+    async def profiles(path, **filters):
+        yield {
+            "id": str(uuid.uuid4()),
+            "attributes": {"agentic.is_external_keycloak_user": ["true"]},
+        }
+        yield {"id": str(uuid.uuid4())}
+
+    repo._pages = profiles
+    repo._roles = AsyncMock(return_value=[])
+    repo._group_paths = AsyncMock(return_value=[])
+    users, total, _ = await repo.list_paginated(include_external_keycloak_users=False)
+    assert total == 1
+    assert users[0].is_external_keycloak_user is False

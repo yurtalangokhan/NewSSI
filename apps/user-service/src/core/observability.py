@@ -1,463 +1,150 @@
-"""Observability helpers for user-service."""
+"""Service binding for the shared observability core.
+
+The mechanism lives in the ``observability`` package; this module owns the
+user-service names: the service name stamped on every record, the mapping from this
+service's environment onto one logging configuration, its own noisy-logger
+policy, ``pseudonym`` for log-safe identifiers, the per-process dependency
+registry, and the readiness payload built from
+it.
+"""
 
 from __future__ import annotations
 
-import asyncio
-import json
-import logging
-import random
-import re
-import threading
-import time
-from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
-from datetime import UTC, datetime
-from enum import StrEnum
-from typing import TypeVar
+import hashlib
 
-T = TypeVar("T")
-
-_REDACTION_PATTERNS = (
-    re.compile(r"://([^:/\s]+):([^@\s]+)@"),
-    re.compile(r"(?i)\b(password|token|secret|api_key|apikey)=([^&\s]+)"),
+from config_manager import env
+from observability import (
+    DependencyPolicy,
+    DependencyRegistry,
+    DependencyStartupError,
+    DependencyStatus,
+    LoggerConfig,
+    RetryPolicy,
+    TelemetryConfig,
+    build_logger_config,
+    configure,
+    dependency_error_fields,
+    get_logger,
+    retry_async,
+    retry_sync,
+    sanitize_exception,
+    setup_telemetry,
 )
-_RESET = "\033[0m"
-_LEVEL_COLORS = {
-    "DEBUG": "\033[36m",
-    "INFO": "\033[32m",
-    "WARNING": "\033[33m",
-    "ERROR": "\033[31m",
-    "CRITICAL": "\033[35m",
-}
-_STATUS_COLORS = {
-    "ok": "\033[32m",
-    "ready": "\033[32m",
-    "retrying": "\033[33m",
-    "degraded": "\033[33m",
-    "failed": "\033[31m",
-    "not_ready": "\033[31m",
-}
+from observability.health import readiness_payload as package_readiness_payload
+
+__all__ = [
+    "DependencyPolicy",
+    "DependencyRegistry",
+    "DependencyStartupError",
+    "DependencyStatus",
+    "LoggerConfig",
+    "RetryPolicy",
+    "configure_logging",
+    "configure_telemetry",
+    "dependency_error_fields",
+    "dependency_registry",
+    "get_logger",
+    "logger_config",
+    "pseudonym",
+    "readiness_payload",
+    "retry_async",
+    "retry_sync",
+    "sanitize_exception",
+    "telemetry_config",
+]
+
+SERVICE_NAME = "user-service"
+
+# httpx/httpcore narrate every outbound request at INFO while the access log
+# belongs to the gateway, so the client libraries are pinned to WARNING.
 _NOISY_DEPENDENCY_LOGGERS = ("httpx", "httpcore")
-
-
-@dataclass(frozen=True)
-class RetryPolicy:
-    """Configuration for bounded startup retries."""
-
-    attempts: int = 5
-    initial_delay_seconds: float = 0.5
-    max_delay_seconds: float = 8.0
-    jitter: bool = True
-
-
-class DependencyStartupError(RuntimeError):
-    """Clean startup error for dependency failures."""
-
-    def __init__(self, *, dependency: str, operation_name: str, remediation: str) -> None:
-        super().__init__(
-            f"{dependency} is unavailable during startup {operation_name}. {remediation}"
-        )
-        self.dependency = dependency
-        self.operation_name = operation_name
-        self.remediation = remediation
-
-
-class DependencyPolicy(StrEnum):
-    """Policy class for a startup dependency."""
-
-    REQUIRED = "required"
-    DEGRADED = "degraded"
-    OPTIONAL = "optional"
-
-
-@dataclass(frozen=True)
-class DependencyStatus:
-    """Immutable snapshot of one dependency's startup state."""
-
-    name: str
-    policy: DependencyPolicy
-    status: str
-    hint: str | None = None
-    checked_at: str | None = None
-
-    @property
-    def ready(self) -> bool:
-        """Whether this dependency allows the service to serve requests."""
-        if self.status == "ok":
-            return True
-        if self.status == "degraded":
-            return self.policy is not DependencyPolicy.REQUIRED
-        return False
-
-
-class DependencyRegistry:
-    """In-memory registry of startup dependency states."""
-
-    def __init__(self) -> None:
-        """Initialise the dependency state store."""
-        self._states: dict[str, DependencyStatus] = {}
-        self._lock = threading.Lock()
-
-    def record(self, status: DependencyStatus) -> None:
-        """Store or replace the state for one dependency."""
-        with self._lock:
-            self._states[status.name] = status
-
-    def record_ok(self, name: str, *, policy: DependencyPolicy = DependencyPolicy.REQUIRED) -> None:
-        """Record a healthy dependency state."""
-        self.record(
-            DependencyStatus(
-                name=name,
-                policy=policy,
-                status="ok",
-                checked_at=datetime.now(UTC).isoformat(),
-            )
-        )
-
-    def record_degraded(self, name: str, *, hint: str | None = None) -> None:
-        """Record a degraded dependency state."""
-        self.record(
-            DependencyStatus(
-                name=name,
-                policy=DependencyPolicy.DEGRADED,
-                status="degraded",
-                hint=hint,
-                checked_at=datetime.now(UTC).isoformat(),
-            )
-        )
-
-    def get(self, name: str) -> DependencyStatus | None:
-        """Return the current state for one dependency."""
-        with self._lock:
-            return self._states.get(name)
-
-    def snapshot(self) -> dict[str, DependencyStatus]:
-        """Return a copy of all recorded dependency states."""
-        with self._lock:
-            return dict(self._states)
-
-    def ready(self) -> bool:
-        """True when no required dependency is unavailable."""
-        with self._lock:
-            return all(
-                status.ready
-                for status in self._states.values()
-                if status.policy is DependencyPolicy.REQUIRED
-            )
-
 
 dependency_registry = DependencyRegistry()
 
 
-def readiness_payload(*, service_name: str) -> dict[str, object]:
-    """Build the readiness response payload from the dependency registry."""
-    dependencies = {
-        name: {
-            "status": status.status,
-            "required": status.policy is DependencyPolicy.REQUIRED,
-            "hint": status.hint,
-        }
-        for name, status in dependency_registry.snapshot().items()
-    }
-    ready = dependency_registry.ready()
-    return {
-        "status": "ready" if ready else "not_ready",
-        "service": service_name,
-        "dependencies": dependencies,
-    }
+def logger_config(
+    *,
+    service_name: str = SERVICE_NAME,
+    log_level: str | None = None,
+    log_format: str | None = None,
+) -> LoggerConfig:
+    """Return this service's logging configuration.
 
-
-class JsonLogFormatter(logging.Formatter):
-    """Format logs as compact JSON with the platform field contract."""
-
-    def __init__(self, *, service_name: str) -> None:
-        super().__init__()
-        self._service_name = service_name
-
-    def format(self, record: logging.LogRecord) -> str:
-        payload = {
-            "timestamp": datetime.fromtimestamp(record.created, UTC).isoformat(),
-            "level": record.levelname,
-            "service": getattr(record, "service", self._service_name),
-            "logger": record.name,
-            "event": getattr(record, "event", None),
-            "message": record.getMessage(),
-            "request_id": getattr(record, "request_id", None),
-            "dependency": getattr(record, "dependency", None),
-            "operation": getattr(record, "operation", None),
-            "attempt": getattr(record, "attempt", None),
-            "max_attempts": getattr(record, "max_attempts", None),
-            "elapsed_ms": getattr(record, "elapsed_ms", None),
-            "status": getattr(record, "status", None),
-        }
-        if record.exc_info:
-            payload.update(sanitize_exception(record.exc_info[1]))
-        return json.dumps(payload, separators=(",", ":"))
-
-
-class TextLogFormatter(logging.Formatter):
-    """Format logs as compact text for local development."""
-
-    def __init__(self, *, service_name: str) -> None:
-        super().__init__()
-        self._service_name = service_name
-
-    def format(self, record: logging.LogRecord) -> str:
-        timestamp = datetime.fromtimestamp(record.created, UTC).isoformat()
-        service = getattr(record, "service", self._service_name)
-        event = getattr(record, "event", "app.log")
-        level = _color(record.levelname, _LEVEL_COLORS.get(record.levelname))
-        status = getattr(record, "status", None)
-        fields = [
-            f"service={service}",
-            f"event={event}",
-            *_optional_log_fields(record),
-        ]
-        if status:
-            fields.append(f"status={_color(str(status), _STATUS_COLORS.get(str(status)))}")
-        fields.append(f'message="{record.getMessage()}"')
-        return f"{timestamp} {level} {' '.join(fields)}"
-
-
-class LogFormat(StrEnum):
-    TEXT = "text"
-    JSON = "json"
+    The arguments exist so a test or an embedding process can point the service
+    somewhere else without changing the environment; everything else comes from
+    this service's own environment names.
+    """
+    return build_logger_config(
+        service_name,
+        level=log_level or env.LOG_LEVEL,
+        format=log_format or env.LOG_FORMAT,
+        output=env.LOG_OUTPUT,
+        file_path=env.LOG_FILE_PATH,
+        max_bytes=env.LOG_MAX_SIZE,
+        backup_count=env.LOG_BACKUP_COUNT,
+        include_source=env.LOG_INCLUDE_SOURCE,
+        quiet_loggers=_NOISY_DEPENDENCY_LOGGERS + tuple(env.LOG_QUIET_LOGGERS),
+        syslog_address=env.LOG_SYSLOG_ADDRESS,
+        syslog_facility=env.LOG_SYSLOG_FACILITY,
+        external_url=env.LOG_EXTERNAL_URL,
+        external_bearer_token=env.LOG_EXTERNAL_BEARER_TOKEN,
+        external_batch_size=env.LOG_EXTERNAL_BATCH_SIZE,
+        external_flush_interval=env.LOG_EXTERNAL_FLUSH_INTERVAL,
+        external_max_queue=env.LOG_EXTERNAL_MAX_QUEUE,
+        external_max_retries=env.LOG_EXTERNAL_MAX_RETRIES,
+        external_retry_backoff=env.LOG_EXTERNAL_RETRY_BACKOFF,
+        external_shutdown_timeout=env.LOG_EXTERNAL_SHUTDOWN_TIMEOUT,
+    )
 
 
 def configure_logging(
     *,
-    service_name: str = "user-service",
-    log_level: str = "INFO",
-    log_format: str = "text",
+    service_name: str = SERVICE_NAME,
+    log_level: str | None = None,
+    log_format: str | None = None,
 ) -> None:
-    """Configure root logging once for user-service."""
-
-    root = logging.getLogger()
-    root.handlers.clear()
-    root.setLevel(getattr(logging, log_level.upper(), logging.INFO))
-
-    handler = logging.StreamHandler()
-    selected_format = LogFormat(log_format.lower())
-    if selected_format == LogFormat.JSON:
-        handler.setFormatter(JsonLogFormatter(service_name=service_name))
-    else:
-        handler.setFormatter(TextLogFormatter(service_name=service_name))
-    root.addHandler(handler)
-
-    for logger_name in _NOISY_DEPENDENCY_LOGGERS:
-        logging.getLogger(logger_name).setLevel(logging.WARNING)
+    """Configure this service's logging from its environment."""
+    configure(logger_config(service_name=service_name, log_level=log_level, log_format=log_format))
 
 
-def get_logger(name: str) -> logging.Logger:
-    """Return a logger that uses the configured root handlers."""
+def telemetry_config() -> TelemetryConfig:
+    """Return this service's telemetry configuration from its environment.
 
-    return logging.getLogger(name)
-
-
-def _color(value: str, color: str | None) -> str:
-    """Apply ANSI color to text log values."""
-
-    if not color:
-        return value
-    return f"{color}{value}{_RESET}"
-
-
-def _optional_log_fields(record: logging.LogRecord) -> list[str]:
-    """Return compact operator fields present on a log record."""
-
-    fields: list[str] = []
-    for key in ("dependency", "operation", "elapsed_ms", "error_code", "remediation"):
-        value = getattr(record, key, None)
-        if value is not None:
-            fields.append(f"{key}={value}")
-
-    attempt = getattr(record, "attempt", None)
-    max_attempts = getattr(record, "max_attempts", None)
-    if attempt is not None and max_attempts is not None:
-        fields.append(f"attempt={attempt}/{max_attempts}")
-    elif attempt is not None:
-        fields.append(f"attempt={attempt}")
-    return fields
-
-
-def sanitize_exception(exc: BaseException | None) -> dict[str, str | bool | None]:
-    """Return safe exception fields for logs and readiness details."""
-
-    if exc is None:
-        return {
-            "exception_type": None,
-            "exception_message": None,
-            "retryable": False,
-            "hint": None,
-        }
-
-    message = str(exc)
-    for pattern in _REDACTION_PATTERNS:
-        if pattern.pattern.startswith("://"):
-            message = pattern.sub(r"://\1:[redacted]@", message)
-        else:
-            message = pattern.sub(lambda match: f"{match.group(1)}=[redacted]", message)
-
-    return {
-        "exception_type": exc.__class__.__name__,
-        "exception_message": message,
-        "retryable": _is_retryable_exception(exc),
-        "hint": _hint_for_exception(exc),
-    }
-
-
-def dependency_error_fields(exc: BaseException, *, dependency: str) -> dict[str, str | bool]:
-    """Return operator-facing dependency error fields without Python internals."""
-
-    retryable = _is_retryable_exception(exc)
-    return {
-        "error_code": _error_code_for_exception(exc),
-        "error_summary": f"{dependency} is unavailable.",
-        "remediation": _remediation_for_exception(exc),
-        "retryable": retryable,
-    }
-
-
-async def retry_async(
-    operation: Callable[[], Awaitable[T]],
-    *,
-    operation_name: str,
-    dependency: str,
-    policy: RetryPolicy | None = None,
-    logger: logging.Logger | None = None,
-) -> T:
-    """Run an async startup operation with bounded retry."""
-
-    retry_policy = policy or RetryPolicy()
-    log = logger or logging.getLogger(__name__)
-    last_exc: BaseException | None = None
-
-    for attempt in range(1, retry_policy.attempts + 1):
-        started = time.monotonic()
-        try:
-            result = await operation()
-        except Exception as exc:
-            last_exc = exc
-            elapsed_ms = int((time.monotonic() - started) * 1000)
-            if attempt >= retry_policy.attempts:
-                raise _dependency_startup_error(
-                    exc,
-                    dependency=dependency,
-                    operation_name=operation_name,
-                ) from exc
-            if not _is_retryable_exception(exc):
-                raise
-            log.warning(
-                f"{dependency} is unavailable; retrying startup {operation_name}.",
-                extra={
-                    "event": "startup.dependency.retry",
-                    "dependency": dependency,
-                    "operation": operation_name,
-                    "attempt": attempt,
-                    "max_attempts": retry_policy.attempts,
-                    "elapsed_ms": elapsed_ms,
-                    "status": "retrying",
-                    **dependency_error_fields(exc, dependency=dependency),
-                },
-            )
-            await asyncio.sleep(_retry_delay(attempt, retry_policy))
-        else:
-            return result
-
-    raise RuntimeError("Retry loop exited without result") from last_exc
-
-
-def retry_sync(
-    operation: Callable[[], T],
-    *,
-    operation_name: str,
-    dependency: str,
-    policy: RetryPolicy | None = None,
-    logger: logging.Logger | None = None,
-) -> T:
-    """Run a sync startup operation with bounded retry."""
-
-    retry_policy = policy or RetryPolicy()
-    log = logger or logging.getLogger(__name__)
-    last_exc: BaseException | None = None
-
-    for attempt in range(1, retry_policy.attempts + 1):
-        started = time.monotonic()
-        try:
-            return operation()
-        except Exception as exc:
-            last_exc = exc
-            elapsed_ms = int((time.monotonic() - started) * 1000)
-            if attempt >= retry_policy.attempts:
-                raise _dependency_startup_error(
-                    exc,
-                    dependency=dependency,
-                    operation_name=operation_name,
-                ) from exc
-            if not _is_retryable_exception(exc):
-                raise
-            log.warning(
-                f"{dependency} is unavailable; retrying startup {operation_name}.",
-                extra={
-                    "event": "startup.dependency.retry",
-                    "dependency": dependency,
-                    "operation": operation_name,
-                    "attempt": attempt,
-                    "max_attempts": retry_policy.attempts,
-                    "elapsed_ms": elapsed_ms,
-                    "status": "retrying",
-                    **dependency_error_fields(exc, dependency=dependency),
-                },
-            )
-            time.sleep(_retry_delay(attempt, retry_policy))
-
-    raise RuntimeError("Retry loop exited without result") from last_exc
-
-
-def _retry_delay(attempt: int, policy: RetryPolicy) -> float:
-    delay = min(
-        policy.initial_delay_seconds * (2 ** max(0, attempt - 1)),
-        policy.max_delay_seconds,
+    Off until switched on: with ``OTEL_ENABLED=false`` (the default) the setup is
+    a no-op and the process produces no spans or OTLP metrics.
+    """
+    return TelemetryConfig(
+        service_name=SERVICE_NAME,
+        enabled=env.OTEL_ENABLED,
+        endpoint=env.OTEL_EXPORTER_OTLP_ENDPOINT,
+        headers=tuple(env.OTEL_EXPORTER_OTLP_HEADERS),
+        sample_ratio=env.OTEL_TRACES_SAMPLE_RATIO,
+        metrics_enabled=env.OTEL_METRICS_ENABLED,
+        metrics_interval_ms=env.OTEL_METRICS_EXPORT_INTERVAL,
     )
-    if policy.jitter and delay > 0:
-        return random.uniform(0, delay)
-    return delay
 
 
-def _is_retryable_exception(exc: BaseException) -> bool:
-    return isinstance(exc, (ConnectionError, TimeoutError, OSError))
+def configure_telemetry() -> TelemetryConfig:
+    """Configure this service's traces and OTLP metrics from its environment."""
+    return setup_telemetry(telemetry_config())
 
 
-def _hint_for_exception(exc: BaseException) -> str | None:
-    if isinstance(exc, ConnectionError):
-        return "Check that the dependency host and port are reachable."
-    if isinstance(exc, TimeoutError):
-        return "Check dependency readiness and network latency."
-    return None
+def readiness_payload(*, service_name: str) -> dict[str, object]:
+    """Build the readiness response payload from this service's registry."""
+    return package_readiness_payload(dependency_registry, service_name=service_name)
 
 
-def _error_code_for_exception(exc: BaseException) -> str:
-    if isinstance(exc, ConnectionError):
-        return "dependency.connection_failed"
-    if isinstance(exc, TimeoutError):
-        return "dependency.timeout"
-    return "dependency.unavailable"
+def pseudonym(value: str | None) -> str:
+    """Return a short, stable digest standing in for a personal identifier.
 
-
-def _remediation_for_exception(exc: BaseException) -> str:
-    if isinstance(exc, TimeoutError):
-        return "Check that the dependency is healthy and responds within the startup timeout."
-    return "Check that the dependency is running and reachable from the service."
-
-
-def _dependency_startup_error(
-    exc: BaseException,
-    *,
-    dependency: str,
-    operation_name: str,
-) -> DependencyStartupError:
-    return DependencyStartupError(
-        dependency=dependency,
-        operation_name=operation_name,
-        remediation=_remediation_for_exception(exc),
-    )
+    Emails, usernames and directory identities name a person, so they do not
+    belong in a log stream that is shipped, retained and searched. The digest
+    keeps what operators actually use the value for -- recognising that these
+    twenty failed binds are all the same account -- without the log carrying the
+    account. It is not a security boundary: the input space of email addresses is
+    small enough to brute-force, so this is data minimisation, not anonymisation.
+    """
+    if not value:
+        return "anonymous"
+    digest = hashlib.sha256(value.strip().casefold().encode("utf-8")).hexdigest()
+    return f"user:{digest[:12]}"

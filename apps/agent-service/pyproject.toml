@@ -16,13 +16,24 @@ classifiers = [
 requires-python = ">=3.11,<3.14"
 
 dependencies = [
+    "config-manager",
+    "connector-py[scheduler,postgres,mysql,mongodb,s3,google,sftp,smb,kafka,mssql,spark-thrift]",
+    # Spark Connect client of the spark connector. The slim client stands in for
+    # connector-py's `spark` extra (pyspark[connect]), which bundles the Spark JARs.
+    "pyspark-client>=4.0",
+    # pyspark-client declares no protobuf dependency, yet refuses at import time a
+    # runtime older than the one its generated code was built with (6.33.5 for 4.2).
+    "protobuf>=6.33.5",
     "cryptography>=42.0.0",
     "docx2txt ~=0.8",
     "duckduckgo-search>=7.3.0",
     "error-contract",
+    "mermaidx==0.9.5",
+    "security",
     "fastapi ~=0.115.5",
     "grpcio >=1.68.0",
     "httpx ~=0.28.0",
+    "cachetools>=5.3.0",
     "jiter ~=0.8.2",
     "langchain ~=1.0.5",
     "langchain-core ~=1.0.0",
@@ -37,9 +48,7 @@ dependencies = [
     "langchain-openai ~=1.0.2",
     "langfuse >=2.65.0",
     "langgraph ~=1.0.0",
-    "langgraph-checkpoint-mongodb ~=0.1.3",
     "langgraph-checkpoint-postgres ~=2.0.13",
-    "langgraph-checkpoint-sqlite ~=2.0.1",
     "langgraph-supervisor ~=0.0.31",
     "langsmith ~=0.4.0",
     "jq ~=1.12.0",
@@ -68,7 +77,6 @@ dependencies = [
     "langchain-mcp-adapters>=0.1.10",
     "ddgs>=9.9.1",
     "langchain-postgres",
-    "langchain-milvus>=0.1.0",
     "neo4j>=5.0",
     "croniter ~=5.0",
     "sqlalchemy[asyncio] >=2.0",
@@ -81,25 +89,32 @@ dependencies = [
     "requests >=2.31.0",
     "minio>=7.0",
     "idempotency",
-    "i18n-py",
+    "localization",
+    "metrics",
+    "observability",
 ]
 
 [tool.uv.sources]
-idempotency = { path = "../../packages/idempotency-py" }
-i18n-py = { path = "../../packages/i18n-py" }
-error-contract = { path = "../../packages/error-contract-py" }
+config-manager = { path = "../../packages/config-manager" }
+connector-py = { path = "../../packages/connector-py" }
+idempotency = { path = "../../packages/idempotency" }
+localization = { path = "../../packages/localization" }
+security = { path = "../../packages/security" }
+error-contract = { path = "../../packages/error-contract" }
+metrics = { path = "../../packages/metrics" }
+observability = { path = "../../packages/observability" }
 
 
 [dependency-groups]
 dev = [
     "langgraph-cli[inmem]",
-    "pre-commit",
     "pytest",
     "pytest-cov",
     "pytest-env",
     "pytest-asyncio",
     "ruff",
     "mypy",
+    "fakeredis[lua]>=2.26",
 ]
 
 # Group for the minimal dependencies to run just the client and Streamlit app.
@@ -109,39 +124,31 @@ client = [
     "httpx~=0.28.0",
     "pydantic ~=2.10.1",
     "python-dotenv ~=1.0.1",
-    "streamlit~=1.52.0",
 ]
 
 browser = [
     "playwright >=1.40.0",
 ]
 
-[tool.ruff]
-line-length = 100
-target-version = "py311"
 
-[tool.ruff.lint]
-extend-select = ["I", "U"]
-
-[tool.pytest]
+[tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]
-pythonpath = ["src", "../../packages/i18n-py/src"]
+pythonpath = ["src", "../../packages/localization/src", "../../packages/idempotency/src", "../../packages/error-contract/src", "../../packages/metrics/src", "../../packages/observability/src", "../../packages/security/src"]
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-fake-openai-key"
 
-[tool.pytest.coverage.run]
+[tool.coverage.run]
 source = ["src"]
 branch = true
 omit = [
     "*/tests/*",
     "*/__pycache__/*",
     "*/migrations/*",
-    "streamlit_app.py",
 ]
 
-[tool.pytest.coverage.report]
+[tool.coverage.report]
 precision = 2
 show_missing = true
 skip_covered = false
@@ -158,11 +165,42 @@ exclude_lines = [
 
 [tool.mypy]
 plugins = "pydantic.mypy"
-exclude = "src/streamlit_app.py"
 mypy_path = "src"
 explicit_package_bases = true
 ignore_missing_imports = true
 allow_redefinition = true
+disable_error_code = [
+    "import-untyped",
+    "no-redef",
+    "attr-defined",
+    "assignment",
+    "arg-type",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "numexpr.*",
+    "langchain_mcp_adapters.*",
+    "atlas.*",
+    "croniter.*",
+    "celery.*",
+    "minio.*",
+    "pymilvus.*",
+    "neo4j.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "controller.*",
+    "service.*",
+    "api.*",
+    "core.*",
+    "agents.*",
+    "agent_composition.*",
+    "domain.*",
+    "memory.*",
+]
 disable_error_code = [
     "attr-defined",
     "arg-type",
@@ -171,7 +209,6 @@ disable_error_code = [
     "call-overload",
     "dict-item",
     "index",
-    "import-untyped",
     "misc",
     "no-redef",
     "operator",
@@ -183,6 +220,7 @@ disable_error_code = [
     "typeddict-unknown-key",
     "union-attr",
     "var-annotated",
+    "prop-decorator",
 ]
 
 [[tool.mypy.overrides]]

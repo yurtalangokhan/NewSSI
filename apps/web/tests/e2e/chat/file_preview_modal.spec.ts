@@ -78,7 +78,7 @@ async function sendMessageWithMockResponse(
   mockResponseContent: string
 ) {
   const existingMessageCount = await page
-    .locator('[data-testid="onyx-ai-message"]')
+    .locator('[data-testid="atlas-ai-message"]')
     .count();
 
   // Intercept the send-chat-message endpoint and return our mock stream
@@ -90,12 +90,12 @@ async function sendMessageWithMockResponse(
     });
   });
 
-  await page.locator("#onyx-chat-input-textarea").click();
-  await page.locator("#onyx-chat-input-textarea").fill(userMessage);
-  await page.locator("#onyx-chat-input-send-button").click();
+  await page.locator("#atlas-chat-input-textarea").click();
+  await page.locator("#atlas-chat-input-textarea").fill(userMessage);
+  await page.locator("#atlas-chat-input-send-button").click();
 
   // Wait for the AI message to appear
-  await expect(page.locator('[data-testid="onyx-ai-message"]')).toHaveCount(
+  await expect(page.locator('[data-testid="atlas-ai-message"]')).toHaveCount(
     existingMessageCount + 1,
     { timeout: 30000 }
   );
@@ -131,7 +131,7 @@ test.describe("File preview modal from chat file links", () => {
     await sendMessageWithMockResponse(page, "Give me the file", mockContent);
 
     // Find the link in the AI message and click it
-    const aiMessage = page.getByTestId("onyx-ai-message").last();
+    const aiMessage = page.getByTestId("atlas-ai-message").last();
     const fileLink = aiMessage.locator("a").filter({ hasText: "notes.txt" });
     await expect(fileLink).toBeVisible({ timeout: 5000 });
     await fileLink.click();
@@ -168,7 +168,7 @@ test.describe("File preview modal from chat file links", () => {
     await sendMessageWithMockResponse(page, "Give me the script", mockContent);
 
     // Find the link in the AI message and click it
-    const aiMessage = page.getByTestId("onyx-ai-message").last();
+    const aiMessage = page.getByTestId("atlas-ai-message").last();
     const fileLink = aiMessage.locator("a").filter({ hasText: "app.py" });
     await expect(fileLink).toBeVisible({ timeout: 5000 });
     await fileLink.click();
@@ -219,7 +219,7 @@ test.describe("File preview modal from chat file links", () => {
 
     await sendMessageWithMockResponse(page, "Give me the csv", mockContent);
 
-    const aiMessage = page.getByTestId("onyx-ai-message").last();
+    const aiMessage = page.getByTestId("atlas-ai-message").last();
     const fileLink = aiMessage.locator("a").filter({ hasText: "data.csv" });
     await expect(fileLink).toBeVisible({ timeout: 5000 });
     await fileLink.click();

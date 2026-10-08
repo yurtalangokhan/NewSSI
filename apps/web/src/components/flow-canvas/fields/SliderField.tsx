@@ -1,7 +1,9 @@
 "use client";
 
 import * as SliderPrimitive from "@radix-ui/react-slider";
+import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
+import { resolveFieldName } from "./fieldName";
 import type { FieldRendererProps } from "./types";
 
 /**
@@ -9,11 +11,14 @@ import type { FieldRendererProps } from "./types";
  * (e.g. LLM temperature 0.0 - 2.0 with step 0.01).
  */
 export function SliderField({
+  fieldKey,
   value,
   onChange,
   disabled,
   field,
+  componentType,
 }: FieldRendererProps) {
+  const { t } = useTranslation();
   const min = field.min ?? 0;
   const max = field.max ?? (min <= 1 ? 1 : 100);
   const range = max - min;
@@ -44,7 +49,7 @@ export function SliderField({
         </SliderPrimitive.Track>
         <SliderPrimitive.Thumb
           className="block h-3.5 w-3.5 rounded-full border border-canvas-border bg-canvas-panel focus:outline-none disabled:opacity-50"
-          aria-label={field.display_name}
+          aria-label={resolveFieldName(t, fieldKey, field, componentType)}
         />
       </SliderPrimitive.Root>
       <Text mainUiMuted className="w-10 shrink-0 text-right font-mono text-xs">

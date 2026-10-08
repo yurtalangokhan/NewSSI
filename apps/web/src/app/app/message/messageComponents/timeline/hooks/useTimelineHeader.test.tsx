@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 
-import { PacketType } from "@/app/app/services/streamingModels";
+import { PacketType } from "@/lib/api/domains/chat/streaming-types";
 
 import { useTimelineHeader } from "./useTimelineHeader";
 
@@ -69,7 +69,7 @@ describe("useTimelineHeader", () => {
                   placement: { turn_index: 0, tab_index: 0 },
                   obj: {
                     type: PacketType.SEARCH_TOOL_QUERIES_DELTA,
-                    queries: ["Onyx"],
+                    queries: ["Atlas"],
                   },
                 },
               ],
@@ -80,7 +80,7 @@ describe("useTimelineHeader", () => {
     );
 
     expect(result.current.headerText).toBe(
-      'timeline.searchedFor::{"query":"Onyx"}'
+      'timeline.searchedFor::{"query":"Atlas"}'
     );
   });
 

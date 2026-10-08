@@ -1,17 +1,21 @@
-import { CodeBlock } from "@/app/app/message/CodeBlock";
-import { extractCodeText } from "@/app/app/message/codeUtils";
 import {
   MemoizedLink,
   MemoizedParagraph,
 } from "@/app/app/message/MemoizedTextComponents";
 import React, { useMemo, CSSProperties } from "react";
-import ReactMarkdown, { type Components } from "react-markdown";
+import ReactMarkdown, {
+  type Components,
+  type UrlTransform,
+} from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
-import { transformLinkUri } from "@/lib/utils";
+import { MarkdownCode } from "@/components/chat/MarkdownCode";
+import type { MermaidDiagnostic } from "@/components/mermaid/mermaidDiagnostics";
+import { MarkdownSourceProvider } from "@/components/chat/MarkdownSourceContext";
+import { cn, transformLinkUri } from "@/lib/utils";
 
 type MinimalMarkdownComponentOverrides = Partial<Components>;
 
@@ -24,6 +28,21 @@ interface MinimalMarkdownProps {
    * Any renderer not provided will fall back to this component's defaults.
    */
   components?: MinimalMarkdownComponentOverrides;
+  /**
+   * True while `content` is still streaming in. Open Mermaid fences then stay
+   * pending instead of rendering half a diagram.
+   */
+  isStreaming?: boolean;
+  /** "Ask the agent to fix" on a broken diagram; the button is hidden when absent. */
+  onRequestMermaidFix?: (source: string, diagnostic: MermaidDiagnostic) => void;
+  /** Overrides how link and image URLs are vetted; defaults to the shared link rules. */
+  urlTransform?: UrlTransform;
+  /**
+   * Keep the light typography palette. Required on a forced-light surface (the
+   * document panel's white page): `dark:prose-invert` is class-based, so it
+   * would still paint light text on the white sheet.
+   */
+  lightProse?: boolean;
 }
 
 export default function MinimalMarkdown({
@@ -31,6 +50,10 @@ export default function MinimalMarkdown({
   className = "",
   style,
   components,
+  isStreaming = false,
+  onRequestMermaidFix,
+  urlTransform = transformLinkUri,
+  lightProse = false,
 }: MinimalMarkdownProps) {
   const markdownComponents = useMemo(() => {
     const defaults: Components = {
@@ -40,36 +63,47 @@ export default function MinimalMarkdown({
         // Don't render the pre wrapper - CodeBlock handles its own wrapper
         return <>{children}</>;
       },
-      code: ({ node, inline, className, children, ...props }: any) => {
-        const codeText = extractCodeText(node, content, children);
-        return (
-          <CodeBlock className={className} codeText={codeText}>
-            {children}
-          </CodeBlock>
-        );
-      },
+      // Stable across content changes: MarkdownCode reads the source from
+      // MarkdownSourceProvider, so code blocks are not remounted per chunk.
+      code: (props: any) => (
+        <MarkdownCode
+          {...props}
+          mermaidVariant="document"
+          onRequestFix={onRequestMermaidFix}
+        />
+      ),
     };
 
     return {
       ...defaults,
       ...(components ?? {}),
     } satisfies Components;
-  }, [content, components]);
+  }, [components, onRequestMermaidFix]);
+
+  const sourceValue = useMemo(
+    () => ({ markdown: content, isStreaming }),
+    [content, isStreaming]
+  );
 
   return (
-    <div style={style || {}} className={`${className}`}>
-      <ReactMarkdown
-        className="prose dark:prose-invert max-w-full text-sm break-words"
-        components={markdownComponents}
-        rehypePlugins={[rehypeHighlight, rehypeKatex]}
-        remarkPlugins={[
-          remarkGfm,
-          [remarkMath, { singleDollarTextMath: false }],
-        ]}
-        urlTransform={transformLinkUri}
-      >
-        {content}
-      </ReactMarkdown>
-    </div>
+    <MarkdownSourceProvider value={sourceValue}>
+      <div style={style || {}} className={`${className}`}>
+        <ReactMarkdown
+          className={cn(
+            "prose max-w-full text-sm break-words",
+            !lightProse && "dark:prose-invert"
+          )}
+          components={markdownComponents}
+          rehypePlugins={[rehypeHighlight, rehypeKatex]}
+          remarkPlugins={[
+            remarkGfm,
+            [remarkMath, { singleDollarTextMath: false }],
+          ]}
+          urlTransform={urlTransform}
+        >
+          {content}
+        </ReactMarkdown>
+      </div>
+    </MarkdownSourceProvider>
   );
 }

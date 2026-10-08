@@ -1,5 +1,31 @@
 import { NextRequest } from "next/server";
-import { getLanguageHeaders, proxyToBackend } from "@/lib/api/proxy";
+import {
+  deriveBackendAuthHeaders,
+  getLanguageHeaders,
+  proxyToBackend,
+} from "@/lib/api/proxy";
+import { appSettings } from "@/lib/settings";
+
+jest.mock("@/lib/settings", () => {
+  const actual = jest.requireActual("@/lib/settings");
+  return {
+    appSettings: {
+      ...actual.appSettings,
+      GATEWAY_URL: "http://apisix:8000",
+      USER_SERVICE_URL: "http://apisix:8000/user-service",
+      AGENT_SERVICE_URL: "http://apisix:8000/agent-service",
+      RAG_SERVICE_URL: "http://apisix:8000/rag-service",
+      TOOLS_SERVICE_URL: "http://apisix:8000/tools-service/mcp",
+    },
+  };
+});
+const mockAppSettings = appSettings as unknown as {
+  GATEWAY_URL: string;
+  USER_SERVICE_URL: string;
+  AGENT_SERVICE_URL: string;
+  RAG_SERVICE_URL: string;
+  TOOLS_SERVICE_URL: string;
+};
 
 function responseWithHeaders(headers: Record<string, string>) {
   const response = new Response(JSON.stringify({ ok: true }), {
@@ -16,11 +42,94 @@ describe("proxyToBackend", () => {
   let fetchSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    mockAppSettings.USER_SERVICE_URL = "http://apisix:8000/user-service";
+    mockAppSettings.AGENT_SERVICE_URL = "http://apisix:8000/agent-service";
+    mockAppSettings.RAG_SERVICE_URL = "http://apisix:8000/rag-service";
+    mockAppSettings.TOOLS_SERVICE_URL = "http://apisix:8000/tools-service/mcp";
     fetchSpy = jest.spyOn(global, "fetch");
   });
 
   afterEach(() => {
     fetchSpy.mockRestore();
+  });
+
+  it("routes canonical auth requests directly through the Gateway auth API", async () => {
+    fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
+    const request = new NextRequest("http://localhost/api/auth/refresh", {
+      method: "POST",
+      headers: {
+        cookie: "refresh_token=refresh; access_token=expired",
+        authorization: "Bearer expired",
+      },
+    });
+
+    await proxyToBackend(request, "/auth/api/v1/refresh", {
+      method: "POST",
+      backendUrl: "http://apisix:8000",
+    });
+
+    expect(fetchSpy.mock.calls[0]![0]).toBe(
+      "http://apisix:8000/user-service/api/v1/auth/refresh"
+    );
+    expect(
+      new Headers(fetchSpy.mock.calls[0]![1]?.headers).has("Authorization")
+    ).toBe(false);
+  });
+
+  it.each([undefined, "http://localhost:8090"])(
+    "does not read service URL settings for Gateway login (%s)",
+    async (userServiceUrl) => {
+      const settings = appSettings as {
+        GATEWAY_URL: string;
+        USER_SERVICE_URL: string;
+      };
+      settings.GATEWAY_URL = "http://apisix:8000";
+      settings.USER_SERVICE_URL = userServiceUrl || "http://must-not-be-used";
+      fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
+      const response = await proxyToBackend(
+        new NextRequest("http://localhost/api/auth/login", { method: "POST" }),
+        "/auth/api/v1/login"
+      );
+      expect(response.status).toBe(200);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "http://apisix:8000/user-service/api/v1/auth/login",
+        expect.objectContaining({ method: "POST" })
+      );
+    }
+  );
+  it("uses a domain target descriptor without changing the query or method", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      responseWithHeaders({ "content-type": "application/json" })
+    );
+    const request = new NextRequest("http://localhost/api/me?include=roles");
+    const response = await proxyToBackend(request, {
+      service: "user",
+      path: "/api/v1/auth/me",
+    });
+    expect(response.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://apisix:8000/user-service/api/v1/auth/me?include=roles",
+      expect.objectContaining({ method: "GET" })
+    );
+  });
+
+  it("preserves browser Origin for Gateway CSRF checks", async () => {
+    fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
+    const request = new NextRequest("http://localhost/api/auth/login", {
+      method: "POST",
+      headers: { origin: "https://untrusted.example" },
+    });
+
+    await proxyToBackend(request, "/auth/api/v1/login", {
+      backendUrl: "http://apisix:8000",
+    });
+
+    expect(fetchSpy.mock.calls[0]![0]).toBe(
+      "http://apisix:8000/user-service/api/v1/auth/login"
+    );
+    expect(new Headers(fetchSpy.mock.calls[0]![1]?.headers).get("Origin")).toBe(
+      "https://untrusted.example"
+    );
   });
 
   it("does not forward hop-by-hop or body framing headers from upstream", async () => {
@@ -46,10 +155,14 @@ describe("proxyToBackend", () => {
       }
     );
 
-    const response = await proxyToBackend(request, "/api/auth/external/login", {
-      method: "POST",
-      backendUrl: "http://user-service",
-    });
+    const response = await proxyToBackend(
+      request,
+      "/api/v1/auth/external/login",
+      {
+        method: "POST",
+        backendUrl: "http://user-service",
+      }
+    );
 
     expect(response.headers.get("connection")).toBeNull();
     expect(response.headers.get("keep-alive")).toBeNull();
@@ -82,10 +195,14 @@ describe("proxyToBackend", () => {
       }
     );
 
-    const response = await proxyToBackend(request, "/api/auth/external/login", {
-      method: "POST",
-      backendUrl: "http://user-service",
-    });
+    const response = await proxyToBackend(
+      request,
+      "/api/v1/auth/external/login",
+      {
+        method: "POST",
+        backendUrl: "http://user-service",
+      }
+    );
 
     expect(response.status).toBe(200);
     expect(response.headers.get("set-cookie")).toContain(
@@ -107,7 +224,7 @@ describe("proxyToBackend", () => {
       }
     );
 
-    await proxyToBackend(request, "/api/auth/external/login", {
+    await proxyToBackend(request, "/api/v1/auth/external/login", {
       method: "POST",
       backendUrl: "http://user-service",
       queryParams: {
@@ -121,19 +238,19 @@ describe("proxyToBackend", () => {
     );
   });
 
-  it("adds service scope when proxying through Kong", async () => {
+  it("uses the service scope explicitly configured in the base", async () => {
     fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
 
     const request = new NextRequest(
       "http://localhost/api/chat/get-user-chat-sessions"
     );
 
-    await proxyToBackend(request, "/api/chat/get-user-chat-sessions", {
-      backendUrl: "http://kong:8000",
+    await proxyToBackend(request, "/api/v1/chat/get-user-chat-sessions", {
+      backendUrl: "http://apisix:8000/agent-service",
     });
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      "http://kong:8000/agent-service/api/v1/chat/get-user-chat-sessions",
+      "http://apisix:8000/agent-service/api/v1/chat/get-user-chat-sessions",
       expect.any(Object)
     );
   });
@@ -153,19 +270,17 @@ describe("proxyToBackend", () => {
       }
     );
 
-    await proxyToBackend(request, "/api/chat/send-chat-message", {
+    await proxyToBackend(request, "/api/v1/chat/send-chat-message", {
       method: "POST",
-      backendUrl: "http://kong:8000",
+      backendUrl: "http://apisix:8000/agent-service",
     });
 
-    expect(fetchSpy).toHaveBeenCalledWith(
-      "http://kong:8000/agent-service/api/v1/chat/send-chat-message",
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          "Idempotency-Key": "idem-web-123",
-        }),
-      })
+    expect(fetchSpy.mock.calls[0][0]).toBe(
+      "http://apisix:8000/agent-service/api/v1/chat/send-chat-message"
     );
+    expect(
+      new Headers(fetchSpy.mock.calls[0][1]?.headers).get("Idempotency-Key")
+    ).toBe("idem-web-123");
   });
 
   it("does not forward idempotency keys for read-only requests", async () => {
@@ -180,15 +295,13 @@ describe("proxyToBackend", () => {
       }
     );
 
-    await proxyToBackend(request, "/api/chat/get-user-chat-sessions", {
-      backendUrl: "http://kong:8000",
+    await proxyToBackend(request, "/api/v1/chat/get-user-chat-sessions", {
+      backendUrl: "http://apisix:8000/agent-service",
     });
 
-    expect(fetchSpy.mock.calls[0][1].headers).toEqual(
-      expect.not.objectContaining({
-        "Idempotency-Key": expect.any(String),
-      })
-    );
+    expect(
+      new Headers(fetchSpy.mock.calls[0][1]?.headers).has("Idempotency-Key")
+    ).toBe(false);
   });
 
   it.each([
@@ -213,11 +326,9 @@ describe("proxyToBackend", () => {
       backendUrl: "http://user-service",
     });
 
-    expect(fetchSpy.mock.calls[0][1].headers).toEqual(
-      expect.not.objectContaining({
-        "Idempotency-Key": expect.any(String),
-      })
-    );
+    expect(
+      new Headers(fetchSpy.mock.calls[0][1]?.headers).has("Idempotency-Key")
+    ).toBe(false);
   });
 
   it("does not refresh before proxying when only a refresh token remains", async () => {
@@ -236,26 +347,19 @@ describe("proxyToBackend", () => {
       },
     });
 
-    const response = await proxyToBackend(request, "/collections", {
-      backendUrl: "http://kong:8000/rag-service",
+    const response = await proxyToBackend(request, "/api/v1/collections", {
+      backendUrl: "http://apisix:8000/rag-service",
       backendService: "rag",
     });
 
     expect(response.status).toBe(401);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(fetchSpy).toHaveBeenCalledWith(
-      "http://kong:8000/rag-service/api/v1/collections",
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Cookie: "refresh_token=valid-refresh",
-        }),
-      })
+    expect(fetchSpy.mock.calls[0][0]).toBe(
+      "http://apisix:8000/rag-service/api/v1/collections"
     );
-    expect(fetchSpy.mock.calls[0][1].headers).toEqual(
-      expect.not.objectContaining({
-        Authorization: expect.any(String),
-      })
-    );
+    const headers = new Headers(fetchSpy.mock.calls[0][1]?.headers);
+    expect(headers.get("Cookie")).toBe("refresh_token=valid-refresh");
+    expect(headers.has("Authorization")).toBe(false);
   });
 
   it("does not refresh after a backend 401 when unauthorized refresh is disabled", async () => {
@@ -274,15 +378,15 @@ describe("proxyToBackend", () => {
       },
     });
 
-    const response = await proxyToBackend(request, "/collections", {
-      backendUrl: "http://kong:8000/rag-service",
+    const response = await proxyToBackend(request, "/api/v1/collections", {
+      backendUrl: "http://apisix:8000/rag-service",
       backendService: "rag",
     });
 
     expect(response.status).toBe(401);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(fetchSpy).toHaveBeenCalledWith(
-      "http://kong:8000/rag-service/api/v1/collections",
+      "http://apisix:8000/rag-service/api/v1/collections",
       expect.any(Object)
     );
   });
@@ -303,15 +407,15 @@ describe("proxyToBackend", () => {
       },
     });
 
-    const response = await proxyToBackend(request, "/api/auth/me", {
-      backendUrl: "http://kong:8000",
+    const response = await proxyToBackend(request, "/api/v1/auth/me", {
+      backendUrl: "http://apisix:8000/user-service",
       backendService: "user",
     });
 
     expect(response.status).toBe(401);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(fetchSpy).toHaveBeenCalledWith(
-      "http://kong:8000/user-service/api/v1/auth/me",
+      "http://apisix:8000/user-service/api/v1/auth/me",
       expect.any(Object)
     );
   });
@@ -326,20 +430,18 @@ describe("proxyToBackend", () => {
       },
     });
 
-    await proxyToBackend(request, "/api/auth/refresh", {
+    await proxyToBackend(request, "/api/v1/auth/refresh", {
       method: "POST",
-      backendUrl: "http://kong:8000",
+      backendUrl: "http://apisix:8000/user-service",
       backendService: "user",
     });
 
-    expect(fetchSpy).toHaveBeenCalledWith(
-      "http://kong:8000/user-service/api/v1/auth/refresh",
-      expect.objectContaining({
-        headers: expect.not.objectContaining({
-          Authorization: expect.any(String),
-        }),
-      })
+    expect(fetchSpy.mock.calls[0][0]).toBe(
+      "http://apisix:8000/user-service/api/v1/auth/refresh"
     );
+    expect(
+      new Headers(fetchSpy.mock.calls[0][1]?.headers).has("Authorization")
+    ).toBe(false);
   });
 
   it("does not clear rotated cookies when a stale refresh request fails", async () => {
@@ -357,9 +459,9 @@ describe("proxyToBackend", () => {
       },
     });
 
-    const response = await proxyToBackend(request, "/api/auth/refresh", {
+    const response = await proxyToBackend(request, "/api/v1/auth/refresh", {
       method: "POST",
-      backendUrl: "http://kong:8000",
+      backendUrl: "http://apisix:8000/user-service",
       backendService: "user",
     });
 
@@ -382,17 +484,13 @@ describe("proxyToBackend", () => {
       }
     );
 
-    await proxyToBackend(request, "/api/auth/external/login", {
+    await proxyToBackend(request, "/api/v1/auth/external/login", {
       method: "POST",
       backendUrl: "http://user-service",
     });
 
-    expect(fetchSpy).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        headers: expect.objectContaining({ "X-Language": "tr" }),
-      })
-    );
+    const [, init] = fetchSpy.mock.calls[0]!;
+    expect(new Headers(init?.headers).get("X-Language")).toBe("tr");
   });
 
   it("falls back to the incoming Accept-Language header when X-Language is absent", async () => {
@@ -410,19 +508,50 @@ describe("proxyToBackend", () => {
       }
     );
 
-    await proxyToBackend(request, "/api/auth/external/login", {
+    await proxyToBackend(request, "/api/v1/auth/external/login", {
       method: "POST",
       backendUrl: "http://user-service",
     });
 
-    expect(fetchSpy).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          "Accept-Language": "tr-TR,tr;q=0.9",
-        }),
-      })
+    const [, init] = fetchSpy.mock.calls[0]!;
+    expect(new Headers(init?.headers).get("Accept-Language")).toBe(
+      "tr-TR,tr;q=0.9"
     );
+  });
+
+  it("forwards the request body as a stream instead of buffering it first", async () => {
+    fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
+
+    const request = new NextRequest("http://localhost/api/collections", {
+      method: "POST",
+      body: "a".repeat(1024),
+      headers: { "content-type": "application/octet-stream" },
+    });
+    const arrayBufferSpy = jest.spyOn(request, "arrayBuffer");
+
+    await proxyToBackend(request, "/api/collections", {
+      method: "POST",
+      backendUrl: "http://apisix:8000/agent-service",
+    });
+
+    expect(arrayBufferSpy).not.toHaveBeenCalled();
+    const [, init] = fetchSpy.mock.calls[0];
+    expect(init.body).toBe(request.body);
+    expect(init.duplex).toBe("half");
+  });
+
+  it("rejects a request whose declared Content-Length exceeds the proxy limit", async () => {
+    const request = new NextRequest("http://localhost/api/collections", {
+      method: "POST",
+      headers: { "content-length": String(300 * 1024 * 1024) },
+    });
+
+    const response = await proxyToBackend(request, "/api/collections", {
+      method: "POST",
+    });
+
+    expect(response.status).toBe(413);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -452,5 +581,59 @@ describe("getLanguageHeaders", () => {
     const request = new NextRequest("http://localhost/api/user/pats");
 
     expect(getLanguageHeaders(request)).toEqual({});
+  });
+});
+
+describe("deriveBackendAuthHeaders", () => {
+  it("derives Authorization from the access_token cookie", () => {
+    const request = new NextRequest(
+      "http://localhost/api/chat/send-chat-message",
+      {
+        headers: { cookie: "access_token=real-session-token; other=1" },
+      }
+    );
+
+    expect(deriveBackendAuthHeaders(request)).toEqual({
+      Cookie: "access_token=real-session-token; other=1",
+      Authorization: "Bearer real-session-token",
+    });
+  });
+
+  it("prefers an explicit incoming Authorization header over the cookie", () => {
+    const request = new NextRequest(
+      "http://localhost/api/chat/send-chat-message",
+      {
+        headers: {
+          cookie: "access_token=cookie-token",
+          authorization: "Bearer header-token",
+        },
+      }
+    );
+
+    expect(deriveBackendAuthHeaders(request)).toEqual({
+      Cookie: "access_token=cookie-token",
+      Authorization: "Bearer header-token",
+    });
+  });
+
+  it("returns no Authorization when there is no cookie and no header", () => {
+    const request = new NextRequest(
+      "http://localhost/api/chat/send-chat-message"
+    );
+
+    expect(deriveBackendAuthHeaders(request)).toEqual({});
+  });
+
+  it("returns no Authorization when the cookie jar has no access_token", () => {
+    const request = new NextRequest(
+      "http://localhost/api/chat/send-chat-message",
+      {
+        headers: { cookie: "refresh_token=only-this" },
+      }
+    );
+
+    expect(deriveBackendAuthHeaders(request)).toEqual({
+      Cookie: "refresh_token=only-this",
+    });
   });
 });

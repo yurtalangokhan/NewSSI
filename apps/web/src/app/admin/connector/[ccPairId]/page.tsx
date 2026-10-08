@@ -1,4 +1,5 @@
 "use client";
+import { datasourcesEndpoints } from "@/lib/api/domains/datasources/endpoints";
 
 import BackButton from "@/refresh-components/buttons/BackButton";
 import { ErrorCallout } from "@/components/ErrorCallout";
@@ -9,11 +10,13 @@ import { toast } from "@/hooks/useToast";
 import CredentialSection from "@/components/credentials/CredentialSection";
 import Text from "@/refresh-components/texts/Text";
 import {
+  fetchCCPairErrorsPage,
+  fetchCCPairFullInfo,
+  fetchCCPairIndexAttemptsPage,
   updateConnectorCredentialPairName,
   updateConnectorCredentialPairProperty,
-} from "@/lib/connector";
+} from "@/lib/api/domains/datasources/api";
 import { credentialTemplates } from "@/lib/connectors/credentials";
-import { errorHandlingFetcher } from "@/lib/fetcher";
 import Title from "@/components/ui/title";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, use } from "react";
@@ -26,18 +29,19 @@ import {
 import DeletionErrorStatus from "./DeletionErrorStatus";
 import { IndexAttemptsTable } from "./IndexAttemptsTable";
 import InlineFileManagement from "./InlineFileManagement";
-import { buildCCPairInfoUrl, triggerIndexing } from "./lib";
+import { triggerIndexing } from "./lib";
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ConnectorCredentialPairStatus } from "@/lib/api/domains/datasources/types";
 import {
   CCPairFullInfo,
-  ConnectorCredentialPairStatus,
   IndexAttemptError,
   statusIsNotCurrentlyActive,
 } from "./types";
 import { EditableStringFieldDisplay } from "@/components/EditableStringFieldDisplay";
 import EditPropertyModal from "@/components/modals/EditPropertyModal";
 import { AdvancedOptionsToggle } from "@/components/AdvancedOptionsToggle";
-import { deleteCCPair } from "@/lib/documentDeletion";
+import { deleteCCPair } from "@/lib/api/domains/datasources/hooks";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
 import * as Yup from "yup";
 import {
@@ -63,8 +67,8 @@ import { useStatusChange } from "./useStatusChange";
 import { useReIndexModal } from "./ReIndexModal";
 import Button from "@/refresh-components/buttons/Button";
 import { SvgSettings } from "@opal/icons";
-import i18n from "@/i18n/config";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n/config";
 
 const getRefreshFrequencySchema = () =>
   Yup.object().shape({
@@ -95,8 +99,8 @@ function Main({ ccPairId }: { ccPairId: number }) {
     isLoading: isLoadingCCPair,
     error: ccPairError,
   } = useSWR<CCPairFullInfo>(
-    buildCCPairInfoUrl(ccPairId),
-    errorHandlingFetcher,
+    datasourcesEndpoints.ccPairInfoWithQuery(ccPairId).browserPath,
+    () => fetchCCPairFullInfo<CCPairFullInfo>(ccPairId),
     { refreshInterval: 5000 } // 5 seconds
   );
 
@@ -109,14 +113,16 @@ function Main({ ccPairId }: { ccPairId: number }) {
   } = usePaginatedFetch<IndexAttemptSnapshot>({
     itemsPerPage: ITEMS_PER_PAGE,
     pagesPerBatch: PAGES_PER_BATCH,
-    endpoint: `${buildCCPairInfoUrl(ccPairId)}/index-attempts`,
+    requestKey: `datasources:cc-pair:${ccPairId}:index-attempts`,
+    loadPage: (params) => fetchCCPairIndexAttemptsPage(ccPairId, params),
   });
 
   const { currentPageData: indexAttemptErrorsPage } =
     usePaginatedFetch<IndexAttemptError>({
       itemsPerPage: 10,
       pagesPerBatch: 1,
-      endpoint: `/api/manage/admin/cc-pair/${ccPairId}/errors`,
+      requestKey: `datasources:cc-pair:${ccPairId}:errors`,
+      loadPage: (params) => fetchCCPairErrorsPage(ccPairId, params),
     });
 
   // Initialize hooks at top level to avoid conditional hook calls
@@ -152,7 +158,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
   const isSchedulingConnectorDeletionRef = useRef(false);
 
   const refresh = useCallback(() => {
-    mutate(buildCCPairInfoUrl(ccPairId));
+    mutate(datasourcesEndpoints.ccPairInfoWithQuery(ccPairId).browserPath);
   }, [ccPairId]);
 
   const shouldConfirmConnectorDeletion = true;
@@ -164,7 +170,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
 
     try {
       await deleteCCPair(ccPair.connector.id, ccPair.credential.id, () =>
-        mutate(buildCCPairInfoUrl(ccPair.id))
+        mutate(datasourcesEndpoints.ccPairInfoWithQuery(ccPair.id).browserPath)
       );
       refresh();
     } catch (error) {
@@ -263,7 +269,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
       if (!response.ok) {
         throw new Error(await response.text());
       }
-      mutate(buildCCPairInfoUrl(ccPairId));
+      mutate(datasourcesEndpoints.ccPairInfoWithQuery(ccPairId).browserPath);
       toast.success(t("admin.connector.connectorNameUpdated"));
     } catch (error) {
       toast.error(t("admin.connector.failedToUpdateName"));
@@ -301,7 +307,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
       if (!response.ok) {
         throw new Error(await response.text());
       }
-      mutate(buildCCPairInfoUrl(ccPairId));
+      mutate(datasourcesEndpoints.ccPairInfoWithQuery(ccPairId).browserPath);
       toast.success(t("admin.connector.refreshFrequencyUpdated"));
     } catch (error) {
       toast.error(t("admin.connector.failedToUpdateRefreshFrequency"));
@@ -331,7 +337,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
       if (!response.ok) {
         throw new Error(await response.text());
       }
-      mutate(buildCCPairInfoUrl(ccPairId));
+      mutate(datasourcesEndpoints.ccPairInfoWithQuery(ccPairId).browserPath);
       toast.success(t("admin.connector.pruningFrequencyUpdated"));
     } catch (error) {
       toast.error(t("admin.connector.failedToUpdatePruningFrequency"));

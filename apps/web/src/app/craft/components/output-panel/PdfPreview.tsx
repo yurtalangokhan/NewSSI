@@ -1,11 +1,12 @@
 "use client";
+import { fetchCraftPdfPreview } from "@/lib/api/domains/craft/api";
 
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import Text from "@/refresh-components/texts/Text";
 import { SvgFileText } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
-import { getArtifactUrl } from "@/lib/build/client";
+import { getArtifactUrl } from "@/lib/api/domains/craft/api";
 
 interface PdfPreviewProps {
   sessionId: string;
@@ -47,7 +48,7 @@ export default function PdfPreview({
       .join("/");
     const artifactUrl = getArtifactUrl(sessionId, encodedPath);
 
-    fetch(artifactUrl, { signal: controller.signal })
+    fetchCraftPdfPreview(sessionId, encodedPath, controller.signal)
       .then((res) => {
         if (!res.ok) throw new Error(`Failed to fetch PDF: ${res.status}`);
         return res.blob();

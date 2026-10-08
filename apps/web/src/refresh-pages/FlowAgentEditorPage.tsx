@@ -46,7 +46,7 @@ import {
 } from "@/components/flow-canvas/hooks/useCanvasWiring";
 import { createNodeTypes } from "@/components/flow-canvas/nodes/registry";
 import { createFlowStore } from "@/components/flow-canvas/stores/flowStore";
-import { useAgents } from "@/hooks/useAgents";
+import { useAgents } from "@/lib/api/domains/agents/hooks";
 import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
 import FlowSettingsModal from "@/sections/modals/FlowSettingsModal";
 
@@ -145,82 +145,95 @@ export default function FlowAgentEditorPage({
         />
       )}
 
-      <VersionBar
-        definitionId={agentDefinitionId}
-        store={store}
-        agent={agent}
-        onExit={onExited ? requestExit : undefined}
-        onOpenSettings={() => settingsModal.toggle(true)}
-        onTogglePlayground={() => setPlaygroundOpen((o) => !o)}
-        isPlaygroundOpen={playgroundOpen}
-        onToggleHistory={() => setHistoryOpen((o) => !o)}
-        isHistoryOpen={historyOpen}
-      />
-
       <FlowEditorShell
         store={store}
-        className="relative flex min-h-0 flex-1 overflow-hidden"
+        // `flex-col`: the bar stacks above the canvas row below it, in both
+        // the inline and fullscreen layouts (see FlowEditorShell's own
+        // fullscreen container, which is `flex-col` for the same reason).
+        className="relative flex flex-col min-h-0 flex-1 overflow-hidden"
       >
-        {/* The palette is an overlay, not a column — closing it gives the
-            canvas the full width instead of leaving a gap. */}
-        <div
-          className={cn(
-            "absolute inset-y-0 left-0 z-10 transition-transform duration-200",
-            paletteOpen ? "translate-x-0" : "-translate-x-full"
-          )}
-        >
-          <div className="relative h-full">
-            <ComponentSidebar onCollapse={() => setPaletteOpen(false)} />
-          </div>
-        </div>
+        {/* Rendered here, not as a sibling before FlowEditorShell, so it
+            comes along into the fullscreen portal — otherwise "Run" /
+            "Publish" and the rest of the top bar were left behind, hidden
+            under the fullscreen canvas that portalled without it. */}
+        <VersionBar
+          definitionId={agentDefinitionId}
+          store={store}
+          agent={agent}
+          onExit={onExited ? requestExit : undefined}
+          onOpenSettings={() => settingsModal.toggle(true)}
+          onTogglePlayground={() => setPlaygroundOpen((o) => !o)}
+          isPlaygroundOpen={playgroundOpen}
+          onToggleHistory={() => setHistoryOpen((o) => !o)}
+          isHistoryOpen={historyOpen}
+        />
 
-        {/* upstream MemoizedComponents.tsx:76-88 — the reopen pill */}
-        {!paletteOpen && (
-          <button
-            type="button"
-            aria-label={t(
-              "flowCanvas.sidebar.openPanel",
-              "Open component panel"
+        <div className="relative flex min-h-0 flex-1 overflow-hidden">
+          {/* The palette is an overlay, not a column — closing it gives the
+              canvas the full width instead of leaving a gap. */}
+          <div
+            className={cn(
+              "absolute inset-y-0 left-0 z-10 transition-transform duration-200",
+              paletteOpen ? "translate-x-0" : "-translate-x-full"
             )}
-            data-testid="open-component-panel"
-            onClick={() => setPaletteOpen(true)}
-            className="absolute left-2 top-2 z-10 flex items-center gap-1.5 rounded-md border border-secondary-hover bg-canvas-panel px-3 py-1.5 text-sm text-primary shadow hover:bg-accent"
           >
-            <SvgSidebar className="h-4 w-4" />
-            {t("flowCanvas.sidebar.title", "Components")}
-          </button>
-        )}
+            <div className="relative h-full">
+              <ComponentSidebar
+                store={store}
+                onCollapse={() => setPaletteOpen(false)}
+              />
+            </div>
+          </div>
 
-        <div
-          className={cn(
-            "h-full min-w-0 flex-1 transition-[padding] duration-200",
-            paletteOpen && "pl-64"
+          {/* upstream MemoizedComponents.tsx:76-88 — the reopen pill */}
+          {!paletteOpen && (
+            <button
+              type="button"
+              aria-label={t(
+                "flowCanvas.sidebar.openPanel",
+                "Open component panel"
+              )}
+              data-testid="open-component-panel"
+              onClick={() => setPaletteOpen(true)}
+              className="absolute left-2 top-2 z-10 flex items-center gap-1.5 rounded-md border border-secondary-hover bg-canvas-panel px-3 py-1.5 text-sm text-primary shadow hover:bg-accent"
+            >
+              <SvgSidebar className="h-4 w-4" />
+              {t("flowCanvas.sidebar.title", "Components")}
+            </button>
           )}
-        >
-          <FlowCanvas
+
+          <div
+            className={cn(
+              "h-full min-w-0 flex-1 transition-[padding] duration-200",
+              paletteOpen && "pl-64"
+            )}
+          >
+            <FlowCanvas
+              store={store}
+              lookupHandleTypes={lookupHandleTypes}
+              nodeTypes={nodeTypes}
+              onDropComponentType={onDropComponentType}
+              connectionLineComponent={connectionLineComponent}
+            />
+          </div>
+
+          <NodeInspector />
+          {/* Overlays the palette region (z-20 > z-10) exactly like
+              upstream's sidebar does — closing it gives the canvas back its
+              full width. */}
+          <VersionHistoryPanel
+            definitionId={agentDefinitionId}
             store={store}
-            lookupHandleTypes={lookupHandleTypes}
-            nodeTypes={nodeTypes}
-            onDropComponentType={onDropComponentType}
-            connectionLineComponent={connectionLineComponent}
+            open={historyOpen}
+            onClose={() => setHistoryOpen(false)}
+          />
+          <PlaygroundPanel
+            definitionId={agentDefinitionId}
+            open={playgroundOpen}
+            onClose={() => setPlaygroundOpen(false)}
+            store={store}
           />
         </div>
-
-        <NodeInspector />
-        {/* Overlays the palette region (z-20 > z-10) exactly like upstream's
-            sidebar does — closing it gives the canvas back its full width. */}
-        <VersionHistoryPanel
-          definitionId={agentDefinitionId}
-          store={store}
-          open={historyOpen}
-          onClose={() => setHistoryOpen(false)}
-        />
-        <PlaygroundPanel
-          definitionId={agentDefinitionId}
-          open={playgroundOpen}
-          onClose={() => setPlaygroundOpen(false)}
-          store={store}
-        />
       </FlowEditorShell>
     </div>
   );

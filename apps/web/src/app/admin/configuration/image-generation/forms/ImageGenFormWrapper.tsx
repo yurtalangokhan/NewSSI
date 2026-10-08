@@ -1,6 +1,7 @@
 "use client";
+import { errorMessageFromUnknown } from "@/lib/api/errors";
 
-import React, { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Form, Formik, FormikProps } from "formik";
 import ProviderModal from "@/components/modals/ProviderModal";
 import { ProviderIcon } from "@/app/admin/configuration/llm/ProviderIcon";
@@ -10,7 +11,7 @@ import {
   createImageGenerationConfig,
   updateImageGenerationConfig,
   fetchImageGenerationCredentials,
-} from "@/lib/configuration/imageConfigurationService";
+} from "@/lib/api/domains/model-providers/api";
 import { APIFormFieldState } from "@/refresh-components/form/types";
 import {
   ImageGenFormWrapperProps,
@@ -247,10 +248,10 @@ export function ImageGenFormWrapper<T extends FormValues>({
       setErrorMessage("");
       setIsSubmitting(false);
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : t("admin.imageGeneration.forms.unknownError");
+      const message = errorMessageFromUnknown(
+        error,
+        t("admin.imageGeneration.forms.unknownError")
+      );
       setApiStatus("error");
       setErrorMessage(message);
       toast.error(message);

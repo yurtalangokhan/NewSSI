@@ -4,7 +4,7 @@
  * Concept ported from Langflow (MIT) — src/frontend/src/pages/FlowPage/components/flowSidebarComponent/helpers/normalize-string.ts
  * Upstream: https://github.com/langflow-ai/langflow @ 3ec070e9
  *
- * Adapted for Onyx: Langflow's matcher is Fuse.js-backed and spread across
+ * Adapted for Atlas: Langflow's matcher is Fuse.js-backed and spread across
  * ~8 helper files (apply-beta-filter, apply-legacy-filter, apply-edge-filter,
  * combined-results, …) that encode concepts we don't have — component
  * "bundles", a separate legacy-component toggle, edge-vs-node filtering.
@@ -17,8 +17,8 @@
  * Brief: .tmp/flow-canvas-task-25-brief.md
  */
 
-import i18n from "i18next";
 import type { ComponentTemplate } from "../types/componentTemplate";
+import i18n from "@/i18n/config";
 
 function normalize(value: string): string {
   return value.toLowerCase().replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();

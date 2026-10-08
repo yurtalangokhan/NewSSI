@@ -29,15 +29,6 @@ class GraphSchemaConfig:
 
 
 @dataclass(frozen=True)
-class GraphBuildRequest:
-    brain: BrainConfig
-    perceptrons: tuple[PerceptronConfig, ...] = ()
-    tools: ToolSelection = field(default_factory=ToolSelection)
-    graph: GraphSchemaConfig | None = None
-    nested: tuple[AgentDefinition, ...] = ()
-
-
-@dataclass(frozen=True)
 class RuntimePolicyConfig:
     memory: dict[str, Any] = field(default_factory=dict)
     safety: dict[str, Any] = field(default_factory=dict)

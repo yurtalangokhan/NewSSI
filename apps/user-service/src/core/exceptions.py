@@ -1,32 +1,21 @@
-from typing import Any
+"""Compatibility re-exports for the shared identity error contract."""
 
+from error_contract.identity import (
+    BadRequestError,
+    ConflictError,
+    ForbiddenError,
+    InternalServerError,
+    NotFoundError,
+    UnauthorizedError,
+    UserServiceError,
+)
 
-class UserServiceError(Exception):
-    def __init__(self, message: str, details: dict[str, Any] | None = None):
-        self.message = message
-        self.details = details or {}
-        super().__init__(message)
-
-
-class NotFoundError(UserServiceError):
-    pass
-
-
-class BadRequestError(UserServiceError):
-    pass
-
-
-class UnauthorizedError(UserServiceError):
-    pass
-
-
-class ForbiddenError(UserServiceError):
-    pass
-
-
-class ConflictError(UserServiceError):
-    pass
-
-
-class InternalServerError(UserServiceError):
-    pass
+__all__ = [
+    "BadRequestError",
+    "ConflictError",
+    "ForbiddenError",
+    "InternalServerError",
+    "NotFoundError",
+    "UnauthorizedError",
+    "UserServiceError",
+]

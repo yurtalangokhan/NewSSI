@@ -30,29 +30,29 @@ describe("flow-components proxy — 28.2", () => {
     await GET(request("http://x/api/flow-components"), {
       params: Promise.resolve({ path: undefined }),
     });
-    expect(mockProxyToBackend).toHaveBeenCalledWith(
-      expect.anything(),
-      "/flow-components"
-    );
+    expect(mockProxyToBackend).toHaveBeenCalledWith(expect.anything(), {
+      service: "agent",
+      path: "/api/v1/flow-components",
+    });
   });
 
   it("forwards /options/{source}", async () => {
     await GET(request("http://x/api/flow-components/options/llm.models"), {
       params: Promise.resolve({ path: ["options", "llm.models"] }),
     });
-    expect(mockProxyToBackend).toHaveBeenCalledWith(
-      expect.anything(),
-      "/flow-components/options/llm.models"
-    );
+    expect(mockProxyToBackend).toHaveBeenCalledWith(expect.anything(), {
+      service: "agent",
+      path: "/api/v1/flow-components/options/llm.models",
+    });
   });
 
   it("forwards /{type}", async () => {
     await GET(request("http://x/api/flow-components/ZeroShotAgent"), {
       params: Promise.resolve({ path: ["ZeroShotAgent"] }),
     });
-    expect(mockProxyToBackend).toHaveBeenCalledWith(
-      expect.anything(),
-      "/flow-components/ZeroShotAgent"
-    );
+    expect(mockProxyToBackend).toHaveBeenCalledWith(expect.anything(), {
+      service: "agent",
+      path: "/api/v1/flow-components/ZeroShotAgent",
+    });
   });
 });

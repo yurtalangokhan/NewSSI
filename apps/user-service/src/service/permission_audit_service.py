@@ -1,7 +1,9 @@
 """Permission audit log service."""
 
-import uuid
 from typing import Any
+import uuid
+
+from error_contract import BadRequestError
 
 from src.repository import PermissionAuditRepository
 
@@ -31,7 +33,9 @@ class PermissionAuditService:
     ) -> tuple[list[dict[str, Any]], int]:
         """Get audit logs for a target (organization or user)."""
         if target_type not in ("organization", "user"):
-            raise ValueError("target_type must be 'organization' or 'user'")
+            raise BadRequestError(
+                message_key="errors.user_service.resource_permission.target_type_must_be_organization_or_user",
+            )
 
         return await self.repo.get_by_target(target_type, target_id, skip, limit)
 

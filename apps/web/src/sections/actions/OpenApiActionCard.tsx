@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import ActionCard from "@/sections/actions/ActionCard";
 import Actions from "@/sections/actions/Actions";
 import ToolsList from "@/sections/actions/ToolsList";
@@ -8,7 +8,7 @@ import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
 import { ToolSnapshot, ActionStatus, MethodSpec } from "@/lib/tools/interfaces";
 import ToolItem from "@/sections/actions/ToolItem";
 import { extractMethodSpecsFromDefinition } from "@/lib/tools/openApiService";
-import { updateToolStatus } from "@/lib/tools/mcpService";
+import { updateToolStatus } from "@/lib/api/domains/tools/api";
 import { SvgServer, SvgTrash } from "@opal/icons";
 import Modal from "@/refresh-components/layouts/ConfirmationModalLayout";
 import Button from "@/refresh-components/buttons/Button";

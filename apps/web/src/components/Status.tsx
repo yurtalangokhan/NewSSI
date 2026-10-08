@@ -9,10 +9,8 @@ import {
   FiMinus,
   FiPauseCircle,
 } from "react-icons/fi";
-import {
-  ConnectorCredentialPairStatus,
-  PermissionSyncStatusEnum,
-} from "@/app/admin/connector/[ccPairId]/types";
+import { ConnectorCredentialPairStatus } from "@/lib/api/domains/datasources/types";
+import { PermissionSyncStatusEnum } from "@/app/admin/connector/[ccPairId]/types";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import { useTranslation } from "react-i18next";
 

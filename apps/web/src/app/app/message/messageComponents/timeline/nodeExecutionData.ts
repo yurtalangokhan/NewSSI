@@ -1,4 +1,4 @@
-import { Packet, PacketType } from "@/app/app/services/streamingModels";
+import { Packet, PacketType } from "@/lib/api/domains/chat/streaming-types";
 import type {
   CanvasEdge,
   CanvasNode,
@@ -13,11 +13,15 @@ import {
   StageDefinition,
   getToolNameToNodeId,
   getToolNodeIdToAgentNodeId,
-  isConfigNode,
   prettifyNodeId,
   getStringValue,
   MIN_STAGE_DURATION_MS,
 } from "./graphStageParsing";
+import {
+  KNOWLEDGE_RESPONSE_TYPE,
+  KnowledgeEvidence,
+  parseKnowledgeEvidence,
+} from "@/lib/api/domains/chat/knowledge-evidence-types";
 
 export type {
   NodeExecutionData,
@@ -40,6 +44,7 @@ interface InternalStageIteration {
   thinkingEndedAt: number | null;
   output: string;
   toolsMap: Map<string, NodeToolExecution>;
+  evidence: KnowledgeEvidence[];
 }
 
 /**
@@ -139,6 +144,7 @@ export function buildNodeExecutionData(
         thinkingEndedAt: null,
         output: "",
         toolsMap: new Map<string, NodeToolExecution>(),
+        evidence: [],
       };
       list.push(iter);
     }
@@ -508,8 +514,16 @@ export function buildNodeExecutionData(
       }
       if (!toolName) toolName = "custom_tool";
 
-      const result =
-        obj.data !== undefined
+      // A knowledge search's result is its evidence: keep it as the node's
+      // sources, and show the text the model read as the tool output.
+      const evidence =
+        obj.response_type === KNOWLEDGE_RESPONSE_TYPE
+          ? parseKnowledgeEvidence(obj.data)
+          : null;
+      if (evidence && currentIter) currentIter.evidence.push(evidence);
+      const result = evidence
+        ? evidence.modelContext
+        : obj.data !== undefined
           ? obj.data
           : obj.output !== undefined
             ? obj.output
@@ -752,6 +766,7 @@ export function buildNodeExecutionData(
         thinkingDurationMs: thinkDuration,
         tools: tools.length > 0 ? tools : undefined,
         output: it.output.trim() || undefined,
+        evidence: it.evidence.length > 0 ? it.evidence : undefined,
         status: it.status,
         durationMs: it.durationMs,
       };
@@ -782,6 +797,8 @@ export function buildNodeExecutionData(
       .map((it) => it.thinking.trim())
       .filter(Boolean)
       .join("\n\n--- [Sonraki Tur] ---\n\n");
+
+    const allEvidence = iterList.flatMap((it) => it.evidence);
 
     const aggregatedOutput = iterList
       .map((it) => it.output.trim())
@@ -822,6 +839,7 @@ export function buildNodeExecutionData(
           : null,
       tools: Array.from(combinedToolsMap.values()),
       output: aggregatedOutput || undefined,
+      evidence: allEvidence.length > 0 ? allEvidence : undefined,
       iterations: iterList.length > 1 ? iterationsData : undefined,
     };
   });

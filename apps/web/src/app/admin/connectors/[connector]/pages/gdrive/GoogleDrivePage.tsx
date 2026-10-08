@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import { ValidSources } from "@/lib/types";
-import { usePublicCredentials } from "@/lib/hooks";
+import { usePublicCredentials } from "@/lib/api/domains/datasources/hooks";
 import Title from "@/components/ui/title";
 import { DriveJsonUploadSection, DriveAuthSection } from "./Credential";
 import {
@@ -23,7 +23,7 @@ import {
   filterUploadedCredentials,
   checkConnectorsExist,
   refreshAllGoogleData,
-} from "@/lib/googleConnector";
+} from "@/lib/api/domains/datasources/google-hooks";
 
 const GDriveMain = () => {
   const { isAdmin, user } = useUser();

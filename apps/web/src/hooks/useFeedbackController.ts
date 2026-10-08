@@ -2,8 +2,11 @@
 
 import { useCallback } from "react";
 import { useChatSessionStore } from "@/app/app/stores/useChatSessionStore";
-import { FeedbackType } from "@/app/app/interfaces";
-import { handleChatFeedback, removeChatFeedback } from "@/app/app/services/lib";
+import { FeedbackType } from "@/lib/api/domains/chat/types";
+import {
+  handleChatFeedback,
+  removeChatFeedback,
+} from "@/lib/api/domains/chat/api";
 import { getMessageByMessageId } from "@/app/app/services/messageTree";
 import { toast } from "@/hooks/useToast";
 import i18n from "@/i18n/config";

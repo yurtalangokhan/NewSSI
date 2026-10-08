@@ -8,7 +8,7 @@ don't survive manual edits in Word: they're static text, not a live field.
 
 from __future__ import annotations
 
-from service.documents.blocks import Block, HeadingBlock, ImageBlock, InlineSpan, TableBlock
+from service.documents.blocks import Block, DiagramBlock, HeadingBlock, ImageBlock, InlineSpan, TableBlock
 from service.documents.markdown_parser import parse_markdown_blocks
 from service.documents.options import DocumentOptions
 
@@ -23,23 +23,19 @@ def apply_heading_numbers(blocks: list[Block], max_level: int, separator: str) -
             for deeper in range(index + 1, max_level):
                 counters[deeper] = 0
             number = separator.join(str(c) for c in counters[: block.level])
-            block = HeadingBlock(
-                level=block.level, spans=[InlineSpan(text=f"{number} "), *block.spans]
-            )
+            block = HeadingBlock(level=block.level, spans=[InlineSpan(text=f"{number} "), *block.spans])
         result.append(block)
     return result
 
 
-def apply_caption_numbers(
-    blocks: list[Block], table_prefix: str, figure_prefix: str
-) -> list[Block]:
+def apply_caption_numbers(blocks: list[Block], table_prefix: str, figure_prefix: str) -> list[Block]:
     table_counter = 0
     figure_counter = 0
     for block in blocks:
         if isinstance(block, TableBlock) and block.caption:
             table_counter += 1
             block.caption = f"{table_prefix} {table_counter}: {block.caption}"
-        elif isinstance(block, ImageBlock) and block.caption:
+        elif isinstance(block, ImageBlock | DiagramBlock) and block.caption:
             figure_counter += 1
             block.caption = f"{figure_prefix} {figure_counter}: {block.caption}"
     return blocks
@@ -50,9 +46,5 @@ def prepare_blocks(markdown: str, options: DocumentOptions) -> list[Block]:
     so heading and caption numbers never drift between the two formats."""
     blocks = parse_markdown_blocks(markdown)
     if options.numbering.headings:
-        blocks = apply_heading_numbers(
-            blocks, options.numbering.max_level, options.numbering.separator
-        )
-    return apply_caption_numbers(
-        blocks, options.tables.caption_prefix, options.tables.figure_caption_prefix
-    )
+        blocks = apply_heading_numbers(blocks, options.numbering.max_level, options.numbering.separator)
+    return apply_caption_numbers(blocks, options.tables.caption_prefix, options.tables.figure_caption_prefix)

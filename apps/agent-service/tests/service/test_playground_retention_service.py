@@ -12,8 +12,8 @@ from uuid import uuid4
 
 import pytest
 
-from core.db.repositories.thread_repo import ThreadRepository
-from service.PlaygroundRetentionService import PlaygroundRetentionWorker
+from infrastructure.db.repositories.thread_repo import ThreadRepository
+from service.runtime.playground_retention_service import PlaygroundRetentionWorker
 
 
 @pytest.mark.asyncio
@@ -48,16 +48,18 @@ async def test_delete_threads_older_than_removes_expired_playground_rows():
 @pytest.mark.asyncio
 async def test_sweep_purges_checkpointer_state_for_deleted_threads():
     """43.4 — sweep_once calls checkpointer.adelete_thread for each deleted thread_id."""
-    mock_repo = AsyncMock()
+    mock_delete = AsyncMock()
     t1, t2 = str(uuid4()), str(uuid4())
-    mock_repo.delete_threads_older_than.return_value = [t1, t2]
+    mock_delete.return_value = [t1, t2]
 
     mock_saver = AsyncMock()
     mock_saver.adelete_thread = AsyncMock()
 
-    worker = PlaygroundRetentionWorker(repo=mock_repo)
+    worker = PlaygroundRetentionWorker(delete_expired=mock_delete)
 
-    with patch("service.PlaygroundRetentionService.get_checkpointer", return_value=mock_saver):
+    with patch(
+        "service.runtime.playground_retention_service.get_checkpointer", return_value=mock_saver
+    ):
         deleted = await worker.sweep_once()
         assert deleted == [t1, t2]
         assert mock_saver.adelete_thread.await_count == 2
@@ -68,16 +70,18 @@ async def test_sweep_purges_checkpointer_state_for_deleted_threads():
 @pytest.mark.asyncio
 async def test_sweep_survives_a_single_thread_purge_failure():
     """43.5 — One checkpointer adelete_thread failure does not abort the remaining sweep."""
-    mock_repo = AsyncMock()
+    mock_delete = AsyncMock()
     t1, t2 = str(uuid4()), str(uuid4())
-    mock_repo.delete_threads_older_than.return_value = [t1, t2]
+    mock_delete.return_value = [t1, t2]
 
     mock_saver = AsyncMock()
     mock_saver.adelete_thread = AsyncMock(side_effect=[Exception("DB error"), None])
 
-    worker = PlaygroundRetentionWorker(repo=mock_repo)
+    worker = PlaygroundRetentionWorker(delete_expired=mock_delete)
 
-    with patch("service.PlaygroundRetentionService.get_checkpointer", return_value=mock_saver):
+    with patch(
+        "service.runtime.playground_retention_service.get_checkpointer", return_value=mock_saver
+    ):
         deleted = await worker.sweep_once()
         assert deleted == [t1, t2]
         assert mock_saver.adelete_thread.await_count == 2
@@ -89,24 +93,46 @@ async def test_retention_days_is_configurable_via_env(monkeypatch: pytest.Monkey
 
     monkeypatch.setenv("PLAYGROUND_RETENTION_DAYS", "7")
 
-    mock_repo = AsyncMock()
-    mock_repo.delete_threads_older_than.return_value = []
-    worker = PlaygroundRetentionWorker(repo=mock_repo)
+    mock_delete = AsyncMock(return_value=[])
+    worker = PlaygroundRetentionWorker(delete_expired=mock_delete)
 
     await worker.sweep_once()
-    mock_repo.delete_threads_older_than.assert_awaited_once()
-    call_kwargs = mock_repo.delete_threads_older_than.call_args[1]
-    assert call_kwargs["run_kind"] == "playground"
-    cutoff = call_kwargs["older_than"]
+    mock_delete.assert_awaited_once()
+    run_kind, cutoff = mock_delete.call_args[0]
+    assert run_kind == "playground"
     # Cutoff should be approximately 7 days ago
     diff = datetime.now(UTC) - cutoff
     assert 6 <= diff.days <= 8
 
 
 @pytest.mark.asyncio
+async def test_sweep_defaults_to_the_store_service_thread_door(monkeypatch: pytest.MonkeyPatch):
+    """Retention must not open a second path to the thread table.
+
+    The worker used to construct ``ThreadRepository`` itself, which made it the
+    one place in the service layer that bypassed ``StoreService``. The default
+    is now StoreService's function, so a change to thread pruning has one home.
+    """
+    from service.runtime import store_service as StoreService
+
+    calls: list[tuple[str, datetime]] = []
+
+    async def fake_delete(run_kind: str, older_than: datetime) -> list[str]:
+        calls.append((run_kind, older_than))
+        return []
+
+    monkeypatch.setattr(StoreService, "delete_threads_older_than", fake_delete)
+
+    worker = PlaygroundRetentionWorker()
+    await worker.sweep_once()
+
+    assert [c[0] for c in calls] == ["playground"]
+
+
+@pytest.mark.asyncio
 async def test_worker_start_stop_lifecycle():
     """43.7 — start creates task, stop cancels and awaits."""
-    worker = PlaygroundRetentionWorker(repo=AsyncMock())
+    worker = PlaygroundRetentionWorker(delete_expired=AsyncMock())
     worker.start()
     assert worker._running is True
     assert worker._task is not None
@@ -120,7 +146,7 @@ async def test_worker_start_stop_lifecycle():
 @pytest.mark.asyncio
 async def test_sweep_loop_survives_one_bad_iteration():
     """43.8 — Loop catches exceptions in sweep_once without exiting."""
-    worker = PlaygroundRetentionWorker(repo=AsyncMock())
+    worker = PlaygroundRetentionWorker(delete_expired=AsyncMock())
     call_count = 0
 
     async def fake_sweep():

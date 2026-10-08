@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { SvgImage } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 import {
@@ -7,7 +7,7 @@ import {
   ImageGenerationToolStart,
   ImageGenerationToolDelta,
   SectionEnd,
-} from "../../../services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 import { MessageRenderer, RenderType } from "../interfaces";
 import { InMessageImage } from "../../../components/files/images/InMessageImage";
 import GeneratingImageDisplay from "../../../components/tools/GeneratingImageDisplay";

@@ -45,7 +45,7 @@ import Button from "@/refresh-components/buttons/Button";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import Text from "@/refresh-components/texts/Text";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
-import type { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import type { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import { useUser } from "@/providers/UserProvider";
 import {
   SvgArrowLeft,
@@ -208,7 +208,7 @@ export function VersionBar({
 
   return (
     <div
-      className="flex h-12 w-full items-center justify-between border-b border-canvas-border bg-canvas-panel px-4"
+      className="flex h-12 w-full shrink-0 items-center justify-between border-b border-canvas-border bg-canvas-panel px-4"
       data-testid="version-bar"
     >
       <div className="flex items-center gap-3">

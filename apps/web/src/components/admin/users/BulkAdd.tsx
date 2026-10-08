@@ -1,6 +1,7 @@
 "use client";
+import { accessEndpoints } from "@/lib/api/domains/access/endpoints";
 
-import { authenticatedFetch } from "@/lib/fetcher";
+import { inviteDirectoryUsersBulk } from "@/lib/api/domains/access/api";
 
 import { withFormik, FormikProps, FormikErrors, Form } from "formik";
 import Button from "@/refresh-components/buttons/Button";
@@ -13,13 +14,7 @@ const WHITESPACE_SPLIT = /\s+/;
 const EMAIL_REGEX = /[^@]+@[^.]+\.[^.]/;
 
 const addUsers = async (url: string, { arg }: { arg: Array<string> }) => {
-  return await authenticatedFetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ emails: arg }),
-  });
+  return await inviteDirectoryUsersBulk({ emails: arg });
 };
 
 export type EmailInviteStatus =
@@ -91,7 +86,9 @@ const AddUserForm = withFormik<FormProps, FormValues>({
     }
     for (let email of emails) {
       if (!email.match(EMAIL_REGEX)) {
-        return { emails: i18n.t("admin.users.invalidEmailError", { email }) };
+        return {
+          emails: i18n.t("admin.users.invalidEmailError", { email }),
+        };
       }
     }
     return {};
@@ -99,7 +96,9 @@ const AddUserForm = withFormik<FormProps, FormValues>({
   handleSubmit: async (values: FormValues, formikBag) => {
     const emails = normalizeEmails(values.emails);
     formikBag.setSubmitting(true);
-    await addUsers("/api/user-service/users/invite", { arg: emails })
+    await addUsers(accessEndpoints.inviteDirectoryUsersBulk.browserPath, {
+      arg: emails,
+    })
       .then(async (res) => {
         if (res.ok) {
           const data = await res.json();

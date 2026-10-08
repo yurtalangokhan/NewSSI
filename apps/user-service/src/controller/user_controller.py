@@ -1,12 +1,40 @@
-import uuid
+from collections.abc import AsyncIterator
+import csv
+import io
 from typing import Any
+import uuid
 
-from i18n import t
+from error_contract.identity import ForbiddenError, NotFoundError
+from localization import t
 
-from src.core.exceptions import ForbiddenError, NotFoundError
 from src.service import get_user_service
 
 from .base import BaseController
+
+# Fixed, independent of whatever the first row happens to contain: a CSV
+# export with 0 users must still have a header row, and a client parsing
+# the file by column position needs a column set that doesn't shift with
+# the data. Matches UserService._user_to_dict's fields.
+CSV_COLUMNS = (
+    "id",
+    "email",
+    "username",
+    "first_name",
+    "last_name",
+    "full_name",
+    "is_active",
+    "is_verified",
+    "role",
+    "invited",
+    "password_configured",
+    "is_external_keycloak_user",
+    "groups",
+    "team_name",
+    "keycloak_id",
+    "created_at",
+    "updated_at",
+)
+_CSV_EXPORT_BATCH_SIZE = 500
 
 
 class UserController(BaseController):
@@ -34,9 +62,7 @@ class UserController(BaseController):
             self._raise_not_found("user.not_found")
         return permissions
 
-    async def authorize_user_permission(
-        self, user_id: uuid.UUID, permission: str
-    ) -> dict[str, Any]:
+    async def authorize_user_permission(self, user_id: uuid.UUID, permission: str) -> dict[str, Any]:
         return await self.user_service.user_has_permission(user_id, permission)
 
     async def authorize_target_user_id(
@@ -49,10 +75,10 @@ class UserController(BaseController):
                 target_id,
                 authenticated_user_id,
             )
-        except NotFoundError as e:
-            self._raise_not_found(str(e))
-        except ForbiddenError as e:
-            self._raise_forbidden(str(e))
+        except NotFoundError:
+            raise
+        except ForbiddenError:
+            raise
 
     async def update_me(self, user_id: uuid.UUID, **updates: Any) -> dict[str, Any]:
         user_record = await self.user_service.user_repo.get_by_id(user_id)
@@ -79,8 +105,8 @@ class UserController(BaseController):
             if not user:
                 self._raise_not_found("user.not_found")
             return user
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ValueError:
+            self._raise_bad_request()
 
     async def list_users(
         self,
@@ -92,7 +118,7 @@ class UserController(BaseController):
         is_active: bool | None = None,
         invited: bool | None = None,
     ) -> dict[str, Any]:
-        users, total = await self.user_service.list_users(
+        users, total, exact = await self.user_service.list_users(
             skip,
             limit,
             query,
@@ -101,20 +127,25 @@ class UserController(BaseController):
             is_active,
             invited,
         )
-        return {"users": users, "total": total, "skip": skip, "limit": limit}
+        return {
+            "users": users,
+            "total": total,
+            "total_exact": exact,
+            "skip": skip,
+            "limit": limit,
+        }
 
     async def get_invited_users(self) -> list[dict[str, Any]]:
         return await self.user_service.get_invited_users()
 
     async def get_role_distribution(self) -> dict[str, Any]:
-        distribution = await self.user_service.get_role_distribution()
-        return {"distribution": distribution}
+        return await self.user_service.get_role_distribution()
 
     async def create_user(self, **payload: Any) -> dict[str, Any]:
         try:
             return await self.user_service.create_user(**payload)
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ValueError:
+            self._raise_bad_request()
 
     async def update_user(self, user_id: uuid.UUID, **updates: Any) -> dict[str, Any]:
         try:
@@ -122,12 +153,12 @@ class UserController(BaseController):
             if not user:
                 self._raise_not_found("user.not_found")
             return user
-        except ForbiddenError as e:
-            self._raise_forbidden(str(e))
-        except NotFoundError as e:
-            self._raise_not_found(str(e))
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ForbiddenError:
+            raise
+        except NotFoundError:
+            raise
+        except ValueError:
+            self._raise_bad_request()
 
     async def delete_user(self, user_id: uuid.UUID) -> dict[str, str]:
         success = await self.user_service.delete_user(user_id)
@@ -139,14 +170,14 @@ class UserController(BaseController):
         users = await self.user_service.invite_users(emails)
         return {"users": users, "count": len(users)}
 
-    async def set_user_role(self, user_id: uuid.UUID, role: str) -> dict[str, Any]:
+    async def replace_role(self, user_id: uuid.UUID, role_id: str) -> dict[str, Any]:
         try:
-            user = await self.user_service.set_user_role(user_id, role)
+            user = await self.user_service.replace_role(user_id, role_id)
             if not user:
                 self._raise_not_found("user.not_found")
             return user
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ValueError:
+            self._raise_bad_request()
 
     async def list_user_roles(self, user_id: uuid.UUID) -> dict[str, Any]:
         roles = await self.user_service.list_user_roles(user_id)
@@ -174,52 +205,52 @@ class UserController(BaseController):
                 details={"role_ids": role_ids, "primary_role_id": primary_role_id},
             )
             return roles
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ValueError:
+            self._raise_bad_request()
 
     async def remove_role(
         self,
         user_id: uuid.UUID,
-        role_name: str,
+        role_id: str,
         actor_user_id: str | None = None,
     ) -> dict[str, Any]:
         from src.service import get_audit_service
 
         try:
-            roles = await self.user_service.remove_role(user_id, role_name)
+            roles = await self.user_service.remove_role(user_id, role_id)
             if not roles:
                 self._raise_not_found("user.not_found")
             await get_audit_service().log(
                 action="user:remove_role",
                 resource=f"user:{user_id}",
                 user_id=_safe_uuid(actor_user_id),
-                details={"role": role_name},
+                details={"role_id": role_id},
             )
             return roles
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ValueError:
+            self._raise_bad_request()
 
     async def set_primary_role(
         self,
         user_id: uuid.UUID,
-        role_name: str,
+        role_id: str,
         actor_user_id: str | None = None,
     ) -> dict[str, Any]:
         from src.service import get_audit_service
 
         try:
-            roles = await self.user_service.set_primary_role(user_id, role_name)
+            roles = await self.user_service.set_primary_role(user_id, role_id)
             if not roles:
                 self._raise_not_found("user.not_found")
             await get_audit_service().log(
                 action="user:set_primary_role",
                 resource=f"user:{user_id}",
                 user_id=_safe_uuid(actor_user_id),
-                details={"role": role_name},
+                details={"role_id": role_id},
             )
             return roles
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ValueError:
+            self._raise_bad_request()
 
     async def set_user_active(self, user_id: uuid.UUID, active: bool) -> dict[str, Any]:
         user = await self.user_service.set_user_active(user_id, active)
@@ -231,8 +262,8 @@ class UserController(BaseController):
         try:
             password, user = await self.user_service.reset_password(user_id)
             return {"password": password, "user": user}
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ValueError:
+            self._raise_bad_request()
 
     async def set_password(self, user_id: uuid.UUID, password: str) -> dict[str, Any]:
         try:
@@ -240,20 +271,35 @@ class UserController(BaseController):
             if not user:
                 self._raise_not_found("user.not_found")
             return user
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ValueError:
+            self._raise_bad_request()
 
-    async def download_users_csv(self, query: str | None = None) -> str:
-        users, _ = await self.user_service.list_users(0, 10000, query=query)
-        import csv
-        import io
+    async def stream_users_csv(self, query: str | None = None) -> AsyncIterator[str]:
+        """Yield the CSV export a batch at a time.
 
-        output = io.StringIO()
-        if users:
-            writer = csv.DictWriter(output, fieldnames=users[0].keys())
-            writer.writeheader()
+        The previous version fetched up to 10,000 users in one query and
+        built the entire CSV as a single in-memory string before the
+        response ever started (spec T4). This fetches CSV_EXPORT_BATCH
+        rows at a time and yields each batch's text as soon as it is
+        ready.
+        """
+        buffer = io.StringIO()
+        writer = csv.DictWriter(buffer, fieldnames=CSV_COLUMNS, extrasaction="ignore")
+        writer.writeheader()
+        yield buffer.getvalue()
+
+        skip = 0
+        while True:
+            buffer.seek(0)
+            buffer.truncate(0)
+            users, total, _ = await self.user_service.list_users(skip, _CSV_EXPORT_BATCH_SIZE, query=query)
+            if not users:
+                break
             writer.writerows(users)
-        return output.getvalue()
+            yield buffer.getvalue()
+            skip += len(users)
+            if skip >= total:
+                break
 
     async def upsert_user_from_keycloak(
         self,
@@ -272,8 +318,8 @@ class UserController(BaseController):
                 last_name=last_name,
                 username=username,
             )
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ValueError:
+            self._raise_bad_request()
 
     async def get_user_by_keycloak_id(self, keycloak_id: str) -> dict[str, Any]:
         """Fetch user from user-service by Keycloak ID (subject)."""

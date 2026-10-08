@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@opal/components";
 import { SvgUserManage } from "@opal/icons";
@@ -11,7 +11,7 @@ import {
   UserClarificationAnswered,
   UserClarificationPacket,
   UserClarificationRequest,
-} from "../../../services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 import { MessageRenderer } from "../interfaces";
 
 /** The packet version this renderer understands. A newer card is not drawn

@@ -18,8 +18,8 @@ import json
 import re
 from typing import TYPE_CHECKING, Any
 
-from service.documents import header_footer
 from service.documents.blocks import HeadingBlock
+import service.documents.header_footer as header_footer
 from service.documents.numbering import prepare_blocks
 
 if TYPE_CHECKING:
@@ -56,16 +56,18 @@ def _render_front_matter_section(title: str | None, options: DocumentOptions) ->
         meta_lines = []
         if cover.subtitle:
             meta_lines.append(f"*{cover.subtitle}*")
-        for value in (
-            cover.project,
-            f"v{cover.version}" if cover.version else "",
-            cover.date,
-            cover.author,
-            cover.organization,
-            cover.classification,
-        ):
-            if value:
-                meta_lines.append(value)
+        meta_lines.extend(
+            value
+            for value in (
+                cover.project,
+                f"v{cover.version}" if cover.version else "",
+                cover.date,
+                cover.author,
+                cover.organization,
+                cover.classification,
+            )
+            if value
+        )
         if meta_lines:
             sections.append("\n".join(meta_lines))
 
@@ -125,9 +127,7 @@ def _render_header_footer_note(title: str | None, options: DocumentOptions) -> s
     return "---\n" + "\n".join(lines)
 
 
-def render_markdown_text(
-    title: str | None, markdown: str, options: DocumentOptions | None = None
-) -> bytes:
+def render_markdown_text(title: str | None, markdown: str, options: DocumentOptions | None = None) -> bytes:
     if not (markdown or "").strip():
         raise ValueError("render_markdown_text: content must not be empty")
 
@@ -192,6 +192,7 @@ def _blocks_to_markdown(blocks: list[Any]) -> str:
     from service.documents.blocks import (
         BulletListBlock,
         CodeBlock,
+        DiagramBlock,
         FootnoteDefBlock,
         HorizontalRuleBlock,
         ImageBlock,
@@ -225,10 +226,11 @@ def _blocks_to_markdown(blocks: list[Any]) -> str:
             headers = [cell.text for cell in block.header]
             lines.append(f"| {' | '.join(headers)} |")
             lines.append(f"|{'|'.join(['---'] * len(headers))}|")
-            for row in block.rows:
-                lines.append(f"| {' | '.join(cell.text for cell in row)} |")
+            lines.extend(f"| {' | '.join(cell.text for cell in row)} |" for row in block.rows)
             if block.caption:
                 lines.append(f"*Tablo: {block.caption}*")
+        elif isinstance(block, DiagramBlock):
+            lines.append(f"```mermaid\n{block.source}\n```")
         elif isinstance(block, CodeBlock):
             lines.append(f"```{block.language or ''}\n{block.text}\n```")
         elif isinstance(block, QuoteBlock):

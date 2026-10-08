@@ -1,10 +1,7 @@
+import { agentsEndpoints } from "@/lib/api/domains/agents/endpoints";
 import { proxyToBackend } from "@/lib/api/proxy";
-import { NextRequest } from "next/server";
 
-function agentDefinitionsPath(path: string[]) {
-  const suffix = path.join("/");
-  return `/agent-definitions${suffix ? `/${suffix}` : ""}`;
-}
+import { NextRequest } from "next/server";
 
 export async function GET(
   request: NextRequest,
@@ -12,7 +9,7 @@ export async function GET(
 ) {
   return proxyToBackend(
     request,
-    agentDefinitionsPath((await props.params).path)
+    agentsEndpoints.definitions((await props.params).path).backend
   );
 }
 
@@ -22,7 +19,7 @@ export async function POST(
 ) {
   return proxyToBackend(
     request,
-    agentDefinitionsPath((await props.params).path),
+    agentsEndpoints.definitions((await props.params).path).backend,
     { method: "POST" }
   );
 }
@@ -33,7 +30,7 @@ export async function PUT(
 ) {
   return proxyToBackend(
     request,
-    agentDefinitionsPath((await props.params).path),
+    agentsEndpoints.definitions((await props.params).path).backend,
     { method: "PUT" }
   );
 }
@@ -44,7 +41,7 @@ export async function PATCH(
 ) {
   return proxyToBackend(
     request,
-    agentDefinitionsPath((await props.params).path),
+    agentsEndpoints.definitions((await props.params).path).backend,
     { method: "PATCH" }
   );
 }
@@ -55,7 +52,7 @@ export async function DELETE(
 ) {
   return proxyToBackend(
     request,
-    agentDefinitionsPath((await props.params).path),
+    agentsEndpoints.definitions((await props.params).path).backend,
     { method: "DELETE" }
   );
 }

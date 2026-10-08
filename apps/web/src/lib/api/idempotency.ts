@@ -1,12 +1,25 @@
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const IDEMPOTENCY_EXCLUDED_PREFIXES = [
+export const IDEMPOTENCY_EXCLUDED_PREFIXES = [
   "/api/auth/login",
-  "/api/auth/ldap/login",
   "/api/auth/external/login",
   "/api/auth/refresh",
   "/api/auth/logout",
   "/api/auth/oidc",
+  "/auth/api/v1",
 ];
+
+export function isIdempotencyExcludedPath(pathname: string): boolean {
+  const apiV1Marker = "/api/v1/";
+  const markerIndex = pathname.indexOf(apiV1Marker);
+  const applicationPath =
+    markerIndex >= 0
+      ? `/api/${pathname.slice(markerIndex + apiV1Marker.length)}`
+      : pathname;
+
+  return IDEMPOTENCY_EXCLUDED_PREFIXES.some((prefix) =>
+    applicationPath.startsWith(prefix)
+  );
+}
 
 function inputUrl(input: RequestInfo | URL): string {
   if (typeof input === "string") {
@@ -61,9 +74,7 @@ export function attachIdempotencyKey(
     return init;
   }
   const pathname = inputPath(input);
-  if (
-    IDEMPOTENCY_EXCLUDED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
-  ) {
+  if (isIdempotencyExcludedPath(pathname)) {
     return init;
   }
   const headers = new Headers(init.headers);
@@ -72,13 +83,6 @@ export function attachIdempotencyKey(
   }
   headers.set("Idempotency-Key", createIdempotencyKey());
   return { ...init, headers };
-}
-
-export function idempotentFetch(
-  input: RequestInfo | URL,
-  init: RequestInit = {}
-): Promise<Response> {
-  return fetch(input, attachIdempotencyKey(input, init));
 }
 
 export async function deriveIdempotencyKey(

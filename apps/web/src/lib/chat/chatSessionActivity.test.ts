@@ -91,4 +91,41 @@ describe("chat session activity helpers", () => {
       "/api/chat/get-user-chat-sessions?page_size=50&before_activity=2026-08-07T10%3A00%3A00Z&before_id=older"
     );
   });
+
+  it("adds the search text and agent filter to every page key", () => {
+    const filters = { query: "quarterly report", agentsOnly: true };
+
+    expect(getChatSessionsPageKey(0, null, 20, filters)).toBe(
+      "/api/chat/get-user-chat-sessions?page_size=20&q=quarterly+report&agents_only=true"
+    );
+
+    expect(
+      getChatSessionsPageKey(
+        1,
+        {
+          sessions: [session({ id: "older" })],
+          has_more: true,
+          next_cursor: {
+            before_activity: "2026-08-07T10:00:00Z",
+            before_id: "older",
+          },
+        },
+        20,
+        filters
+      )
+    ).toBe(
+      "/api/chat/get-user-chat-sessions?page_size=20&q=quarterly+report&agents_only=true&before_activity=2026-08-07T10%3A00%3A00Z&before_id=older"
+    );
+  });
+
+  it("ignores blank search text and stops when the last page has no more", () => {
+    expect(getChatSessionsPageKey(0, null, 20, { query: "   " })).toBe(
+      "/api/chat/get-user-chat-sessions?page_size=20"
+    );
+    expect(
+      getChatSessionsPageKey(1, { sessions: [], has_more: false }, 20, {
+        agentsOnly: true,
+      })
+    ).toBeNull();
+  });
 });

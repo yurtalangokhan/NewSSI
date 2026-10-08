@@ -5,14 +5,18 @@ import { render, setupUser } from "@tests/setup/test-utils";
 import {
   deleteUserMailSettings,
   saveUserMailSettings,
+} from "@/lib/api/domains/system/api";
+import {
   useAvailableMailConfigs,
   useUserMailSettings,
-} from "@/lib/mailConfigs";
+} from "@/lib/api/domains/system/hooks";
 
-jest.mock("@/lib/mailConfigs", () => ({
+jest.mock("@/lib/api/domains/system/api", () => ({
   deleteUserMailSettings: jest.fn(),
   saveUserMailSettings: jest.fn(),
   testUserMailSettings: jest.fn(),
+}));
+jest.mock("@/lib/api/domains/system/hooks", () => ({
   useAvailableMailConfigs: jest.fn(),
   useUserMailSettings: jest.fn(),
 }));
@@ -23,6 +27,15 @@ jest.mock("react-i18next", () => ({
       options?.entityName ? `${key} ${options.entityName}` : key,
   }),
 }));
+
+// Each case drives ~40 keystrokes through userEvent, and every one of them
+// re-renders the form inside act(). That lands close enough to Jest's 5s
+// default that the suite tips over whenever the machine is busy -- with
+// `maxWorkers: "50%"` the first case times out, and a timed-out case skips
+// testing-library's cleanup, so the three after it query an empty
+// `<body><div /></body>` and fail for reasons that have nothing to do with
+// them. The budget is per test, so raising it costs nothing when they pass.
+jest.setTimeout(30_000);
 
 const mockedUseUserMailSettings = jest.mocked(useUserMailSettings);
 const mockedUseAvailableMailConfigs = jest.mocked(useAvailableMailConfigs);

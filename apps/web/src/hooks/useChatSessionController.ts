@@ -1,12 +1,17 @@
 "use client";
+import {
+  fetchActiveRun,
+  fetchInitialChatSession,
+} from "@/lib/api/domains/chat/api";
+import type { ActiveRunInfo } from "@/lib/api/domains/chat/resumableChatStream";
 
 import { useEffect, useCallback, useRef, useState } from "react";
 import { ReadonlyURLSearchParams } from "next/navigation";
+import { processRawChatHistory } from "@/app/app/services/lib";
 import {
-  nameChatSession,
-  processRawChatHistory,
+  renameChatSession,
   patchMessageToBeLatest,
-} from "@/app/app/services/lib";
+} from "@/lib/api/domains/chat/api";
 import {
   getLatestMessageChain,
   setMessageAsLatest,
@@ -14,23 +19,25 @@ import {
 import {
   BackendChatSession,
   ChatSessionSharedStatus,
-} from "@/app/app/interfaces";
+} from "@/lib/api/domains/chat/types";
 import {
   SEARCH_PARAM_NAMES,
   shouldSubmitOnLoad,
 } from "@/app/app/services/searchParams";
-import { FilterManager } from "@/lib/hooks";
-import { OnyxDocument } from "@/lib/search/interfaces";
+import { FilterManager } from "@/lib/api/domains/knowledge/hooks";
+import { AtlasDocument } from "@/lib/search/interfaces";
 import {
   useChatSessionStore,
   useCurrentMessageHistory,
 } from "@/app/app/stores/useChatSessionStore";
 import { useForcedTools } from "@/lib/hooks/useForcedTools";
-import { ProjectFile } from "@/app/app/projects/projectsService";
-import { getSessionProjectTokenCount } from "@/app/app/projects/projectsService";
-import { getProjectFilesForSession } from "@/app/app/projects/projectsService";
+import { ProjectFile } from "@/lib/api/domains/projects/types";
+import {
+  getSessionProjectTokenCount,
+  getProjectFilesForSession,
+} from "@/lib/api/domains/projects/api";
 import { AppInputBarHandle } from "@/sections/input/AppInputBar";
-import { AgentId } from "@/app/admin/agents/interfaces";
+import { AgentId } from "@/lib/api/domains/agents/types";
 
 // A local/fast backend can resolve get-chat-session in well under a frame,
 // which makes the loading skeleton flash imperceptibly. Match the floor
@@ -46,7 +53,7 @@ interface UseChatSessionControllerProps {
 
   // UI state setters
   setSelectedAgentFromId: (agentId: AgentId | null) => void;
-  setSelectedDocuments: (documents: OnyxDocument[]) => void;
+  setSelectedDocuments: (documents: AtlasDocument[]) => void;
   setCurrentMessageFiles: (
     files: ProjectFile[] | ((prev: ProjectFile[]) => ProjectFile[])
   ) => void;
@@ -66,6 +73,8 @@ interface UseChatSessionControllerProps {
     deepResearch: boolean;
     isSeededChat?: boolean;
   }) => Promise<void>;
+  // Renders a run still executing on the server when the session loads.
+  attachToActiveRun?: (sessionId: string, run: ActiveRunInfo) => Promise<void>;
 }
 
 export default function useChatSessionController({
@@ -84,6 +93,7 @@ export default function useChatSessionController({
   submitOnLoadPerformed,
   refreshChatSessions,
   onSubmit,
+  attachToActiveRun,
 }: UseChatSessionControllerProps) {
   const latestFetchRequestRef = useRef(0);
   const [currentSessionFileTokenCount, setCurrentSessionFileTokenCount] =
@@ -200,9 +210,9 @@ export default function useChatSessionController({
       setIsFetchingChatMessages(existingChatSessionId, true);
       const fetchStart = Date.now();
 
-      const response = await fetch(
-        `/api/chat/get-chat-session/${existingChatSessionId}`,
-        { signal: abortController.signal }
+      const response = await fetchInitialChatSession(
+        existingChatSessionId,
+        abortController.signal
       );
 
       if (!response.ok || isStaleRequest()) {
@@ -262,6 +272,21 @@ export default function useChatSessionController({
 
       setIsFetchingChatMessages(chatSession.chat_session_id, false);
 
+      // A run that outlived the previous page (reload, closed tab, another
+      // device) is still answering: show its live stream. The server titles
+      // the session and the run already carries its message, so the seeded
+      // send and the naming call below are skipped.
+      const activeRun = attachToActiveRun
+        ? await fetchActiveRun(
+            chatSession.chat_session_id,
+            abortController.signal
+          ).catch(() => null)
+        : null;
+      if (isStaleRequest()) return;
+      if (activeRun && attachToActiveRun) {
+        void attachToActiveRun(chatSession.chat_session_id, activeRun);
+      }
+
       // Fetch token count for this chat session's project (if any)
       try {
         if (chatSession.chat_session_id) {
@@ -295,6 +320,9 @@ export default function useChatSessionController({
       }
 
       // If this is a seeded chat, then kick off the AI message generation
+      if (activeRun) {
+        return;
+      }
       if (
         newMessageHistory.length === 1 &&
         !submitOnLoadPerformed.current &&
@@ -315,12 +343,12 @@ export default function useChatSessionController({
         });
         // Force re-name if the chat session doesn't have one
         if (!chatSession.description) {
-          await nameChatSession(existingChatSessionId);
+          await renameChatSession(existingChatSessionId, null);
           if (isStaleRequest()) return;
           refreshChatSessions();
         }
       } else if (newMessageHistory.length >= 2 && !chatSession.description) {
-        await nameChatSession(existingChatSessionId);
+        await renameChatSession(existingChatSessionId, null);
         if (isStaleRequest()) return;
         refreshChatSessions();
       }

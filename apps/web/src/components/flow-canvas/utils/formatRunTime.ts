@@ -1,3 +1,5 @@
+import i18n from "@/i18n/config";
+
 /**
  * Formats duration milliseconds into human-readable run time string.
  *
@@ -10,8 +12,6 @@
  * English. Uses the module-level i18n instance because this is a plain util
  * called outside the React tree.
  */
-
-import i18n from "@/i18n/config";
 
 export function formatRunTime(durationMs: number | null | undefined): string {
   if (durationMs === null || durationMs === undefined || durationMs < 0) {

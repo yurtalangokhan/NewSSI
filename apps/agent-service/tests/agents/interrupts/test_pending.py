@@ -1,7 +1,7 @@
 """`_as_pending`: bir ``__interrupt__`` yazımının yorumu.
 
-Interrupt'ı BULAN tarama `ThreadController.get_pending_interrupt`'te ve
-kendi testleri var (`tests/controller/test_thread_controller_pending_human_input.py`).
+Interrupt'ı BULAN tarama `ThreadAccessService.get_pending_interrupt`'te ve
+kendi testleri var (`tests/service/test_thread_pending_human_input.py`).
 Burası yalnızca tek bir değeri tanınmış bir `PendingInterrupt`'e çeviren
 saf fonksiyonu doğruluyor.
 """
@@ -13,7 +13,8 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.types import interrupt
 
-from agents.interrupts.pending import PendingInterrupt, _as_pending
+from agents.interrupts.pending import _as_pending
+from schemas.agent_runtime import PendingInterrupt
 
 APPROVAL = {
     "action_requests": [

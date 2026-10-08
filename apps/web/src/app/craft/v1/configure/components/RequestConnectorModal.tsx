@@ -1,11 +1,10 @@
 "use client";
-
-import { authenticatedFetch } from "@/lib/fetcher";
+import { submitConnectorRequest } from "@/lib/api/domains/datasources/api";
 
 import { useState } from "react";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
-import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
+import { appSettings } from "@/lib/settings";
 
 interface RequestConnectorModalProps {
   open: boolean;
@@ -37,18 +36,9 @@ export default function RequestConnectorModal({
     setSuccessMessage(null);
 
     try {
-      const response = await authenticatedFetch(
-        "/api/manage/connector-request",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            connector_name: connectorName.trim(),
-          }),
-        }
-      );
+      const response = await submitConnectorRequest({
+        connector_name: connectorName.trim(),
+      });
 
       const data = await response.json();
 
@@ -78,7 +68,7 @@ export default function RequestConnectorModal({
 
   if (!open) return null;
 
-  const isCloud = NEXT_PUBLIC_CLOUD_ENABLED;
+  const isCloud = appSettings.NEXT_PUBLIC_CLOUD_ENABLED;
   const DISCORD_URL = "https://discord.gg/4NA5SbzrWb";
 
   return (
@@ -186,10 +176,10 @@ export default function RequestConnectorModal({
                   <Text mainUiBody text04 className="text-center">
                     Email your request to{" "}
                     <a
-                      href="mailto:hello@onyx.app?subject=Onyx Craft Connector Request"
+                      href="mailto:hello@atlas.app?subject=Atlas Craft Connector Request"
                       className="text-blue-600 dark:text-blue-400 hover:underline"
                     >
-                      hello@onyx.app
+                      hello@atlas.app
                     </a>
                   </Text>
                 </div>
@@ -214,7 +204,7 @@ export default function RequestConnectorModal({
                       mainUiAction
                       className="text-text-light-05 dark:text-text-dark-05"
                     >
-                      Join Onyx Discord
+                      Join Atlas Discord
                     </Text>
                   </a>
                 </div>

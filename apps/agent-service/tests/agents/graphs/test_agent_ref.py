@@ -29,10 +29,9 @@ from uuid import uuid4
 import pytest
 from langchain_core.messages import HumanMessage
 
-from agents.graphs.flow_builder import FlowGraphBuilder
+from agents.graphs.flow import FlowGraphBuilder
 from core.exceptions import FlowBuildError
-from domain.flows.registry import ComponentRegistry, get_registry
-from models.flows import (
+from schemas.flows import (
     ComponentHandles,
     ComponentKind,
     ComponentTemplate,
@@ -40,6 +39,7 @@ from models.flows import (
     Handle,
     PortType,
 )
+from service.flow_model.registry import ComponentRegistry, get_registry
 
 
 @pytest.fixture(autouse=True)

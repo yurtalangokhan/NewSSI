@@ -138,6 +138,18 @@ def test_transport_headers_carry_token_and_identity_without_secrets() -> None:
     assert "token" not in headers or headers.get("token") is None
 
 
+def test_dotted_binding_key_travels_under_one_header_safe_name() -> None:
+    context = build_trusted_context(
+        binding_references={"database_search.collection_ids": '["c1"]', "mail": "ref-1"}
+    )
+    headers = build_transport_headers(context, internal_token="internal-tok")
+    binding_headers = {k: v for k, v in headers.items() if k.startswith(BINDING_REF_HEADER)}
+    assert binding_headers == {
+        f"{BINDING_REF_HEADER}-database_search__collection_ids": '["c1"]',
+        f"{BINDING_REF_HEADER}-mail": "ref-1",
+    }
+
+
 def test_redact_payload_masks_internal_token_and_bindings() -> None:
     payload = {
         INTERNAL_AUTH_HEADER: "super-secret",

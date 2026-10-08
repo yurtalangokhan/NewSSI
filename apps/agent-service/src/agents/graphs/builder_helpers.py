@@ -34,3 +34,38 @@ def agent_def_to_config(agent_def: Any) -> dict[str, Any]:
         "max_iterations": agent_def.max_iterations or 3,
         "sub_agent_ids": agent_def.sub_agent_ids or [],
     }
+
+
+MAX_NESTED_SUB_AGENT_DEPTH = 5
+
+
+async def _inject_memory_context_async(messages: list, config: Any) -> list:
+    """Async memory context injection - safe to call from within async node functions."""
+    from langchain_core.messages import SystemMessage
+
+    from core.observability.logger import get_logger
+
+    logger = get_logger(__name__)
+    try:
+        configurable = config.get("configurable", {}) if config else {}
+        user_id = configurable.get("user_id")
+        long_term_memory = configurable.get("long_term_memory", False)
+
+        if long_term_memory and user_id:
+            store = configurable.get("store")
+            if store:
+                from memory.long_term import (
+                    build_event_emitters,
+                    build_memory_context,
+                    recall_memories,
+                )
+
+                on_recall, _ = build_event_emitters(configurable)
+                memories = await recall_memories(store, user_id, on_recall=on_recall)
+                context = build_memory_context(memories)
+                if context:
+                    return [SystemMessage(content=context), *list(messages)]
+    except Exception as e:
+        logger.warning(f"Memory injection failed: {e}")
+
+    return messages

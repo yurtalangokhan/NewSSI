@@ -7,8 +7,8 @@ import { usePreProvisionPolling } from "@/app/craft/hooks/usePreProvisionPolling
 import { CRAFT_SEARCH_PARAM_NAMES } from "@/app/craft/services/searchParams";
 import { CRAFT_PATH } from "@/app/craft/v1/constants";
 import { getBuildUserPersona } from "@/app/craft/onboarding/constants";
-import { useLLMProviders } from "@/hooks/useLLMProviders";
-import { checkPreProvisionedSession } from "@/app/craft/services/apiServices";
+import { useLLMProviders } from "@/lib/api/domains/model-providers/hooks";
+import { checkPreProvisionedSession } from "@/lib/api/domains/craft/api";
 
 interface UseBuildSessionControllerProps {
   /** Session ID from search params, or null for new session */

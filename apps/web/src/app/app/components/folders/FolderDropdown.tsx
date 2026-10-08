@@ -1,6 +1,6 @@
-import React, { useState, ReactNode, forwardRef } from "react";
+import { useState, ReactNode, forwardRef } from "react";
 import { Folder } from "./interfaces";
-import { ChatSession } from "@/app/app/interfaces";
+import { ChatSession } from "@/lib/api/domains/chat/types";
 import { Caret } from "@/components/icons/icons";
 import { cn } from "@/lib/utils";
 

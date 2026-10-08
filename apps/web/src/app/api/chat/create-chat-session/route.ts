@@ -1,38 +1,45 @@
+import { chatEndpoints } from "@/lib/api/domains/chat/endpoints";
 import { proxyToBackend } from "@/lib/api/proxy";
+import { parseResponseModel } from "@/lib/api/responseModel";
+import { FetchError } from "@/lib/api/http/errors";
+import { errorResponseFromException } from "@/lib/api/errorResponse";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
     const response = await proxyToBackend(
       request,
-      "/api/chat/create-chat-session",
+      chatEndpoints.createSession.backend,
+      { method: "POST" }
+    );
+    if (!response.ok) return response;
+    const envelope = await response.clone().json();
+    const data = await parseResponseModel<Record<string, unknown>>(response);
+    const id = data?.chat_session_id ?? data?.id ?? data?.chatSessionId;
+    if (typeof id !== "string" || !id) {
+      throw new FetchError("Invalid create chat session response", 502, null);
+    }
+    const headers = new Headers(response.headers);
+    headers.delete("content-length");
+    return NextResponse.json(
+      { ...envelope, data: { ...data, chat_session_id: id, id } },
       {
-        method: "POST",
+        status: response.status,
+        headers,
       }
     );
-    const data = await response.json();
-    if (!response.ok) {
-      return NextResponse.json(data, { status: response.status });
-    }
-    const normalizedChatSessionId =
-      data?.chat_session_id ?? data?.id ?? data?.chatSessionId ?? null;
-
-    if (!normalizedChatSessionId) {
+  } catch (error) {
+    if (error instanceof FetchError) {
       return NextResponse.json(
-        { error: "Invalid create chat session response" },
-        { status: 502 }
+        {
+          statusCode: error.status,
+          message: error.userMessage,
+          data: null,
+          error: { code: error.code, message: error.userMessage },
+        },
+        { status: error.status }
       );
     }
-
-    return NextResponse.json({
-      ...data,
-      chat_session_id: normalizedChatSessionId,
-      id: normalizedChatSessionId,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to create chat session" },
-      { status: 500 }
-    );
+    return errorResponseFromException(error, request);
   }
 }

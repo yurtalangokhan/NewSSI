@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
 
 interface EnabledCountProps {
@@ -11,14 +12,17 @@ interface EnabledCountProps {
 
 const EnabledCount = memo(
   ({ name, enabledCount, totalCount }: EnabledCountProps) => {
+    const { t } = useTranslation();
+    const suffix = name
+      ? t("tools.enabledOfTotal", { count: totalCount })
+      : t("common.enabledOfTotal", { totalCount });
+
     return (
       <Text text03 mainUiBody>
         <Text mainUiBody className="text-action-link-05">
           {enabledCount}
         </Text>
-        {` of ${totalCount} ${name ?? ""}${
-          name && totalCount !== 1 ? "s" : ""
-        }`}
+        {suffix}
       </Text>
     );
   }

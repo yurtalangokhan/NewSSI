@@ -22,18 +22,19 @@ import LineItem from "@/refresh-components/buttons/LineItem";
 import { SvgUser } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
 import Text from "@/refresh-components/texts/Text";
-import useShareableUsers from "@/hooks/useShareableUsers";
-import useShareableGroups, {
+import { useShareableUsers } from "@/lib/api/domains/access/hooks";
+import {
+  useShareableGroups,
   MinimalUserGroupSnapshot,
-} from "@/hooks/useShareableGroups";
+} from "@/lib/api/domains/access/hooks";
 import { useModal } from "@/refresh-components/contexts/ModalContext";
 import { useUser } from "@/providers/UserProvider";
 import { Formik, useFormikContext } from "formik";
-import { useAgent } from "@/hooks/useAgents";
+import { useAgent } from "@/lib/api/domains/agents/hooks";
 import { buildAppPath } from "@/hooks/appNavigation";
 import { Button as OpalButton } from "@opal/components";
-import { useLabels } from "@/lib/hooks";
-import { PersonaLabel } from "@/app/admin/agents/interfaces";
+import { useLabels } from "@/lib/api/domains/agents/hooks";
+import { PersonaLabel } from "@/lib/api/domains/agents/types";
 import { MinimalUserSnapshot } from "@/lib/types";
 
 import { useTranslation } from "react-i18next";

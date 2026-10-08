@@ -2,7 +2,7 @@ import {
   PacketType,
   MemoryToolPacket,
   MemoryToolDelta,
-} from "@/app/app/services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 
 export interface MemoryState {
   hasStarted: boolean;

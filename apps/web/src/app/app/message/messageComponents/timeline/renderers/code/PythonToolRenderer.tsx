@@ -6,7 +6,7 @@ import {
   PythonToolStart,
   PythonToolDelta,
   SectionEnd,
-} from "@/app/app/services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 import {
   MessageRenderer,
   RenderType,

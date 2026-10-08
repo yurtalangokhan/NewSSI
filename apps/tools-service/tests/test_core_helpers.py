@@ -1,56 +1,85 @@
 import json
 
 import httpx
-from i18n.core import set_locale
+import pytest
+from config_manager import env
+from localization.core import set_locale
 
-from src.core.auth import _get_valid_api_keys
 from src.core.authorization import authorize_binding_reference, get_user_service_permissions
 from src.core.base import BaseToolCategory
-from src.core.settings import Settings
-
-
-def test_get_valid_api_keys_trims_and_drops_empty_values(monkeypatch):
-    monkeypatch.setenv("VALID_API_KEYS", " alpha, , beta ,")
-
-    assert _get_valid_api_keys() == {"alpha", "beta"}
 
 
 def test_settings_reads_runtime_values_from_environment(monkeypatch):
     monkeypatch.setenv("MCP_HOST", "127.0.0.1")
-    monkeypatch.setenv("MCP_PORT", "9000")
-    monkeypatch.setenv("USER_SERVICE_URL", "http://user-service")
+    monkeypatch.setenv("TOOLS_SERVICE_PORT", "9000")
+    monkeypatch.setenv("USER_SERVICE_URL", "http://public/user-service")
+    monkeypatch.setenv("INTERNAL_USER_SERVICE_URL", "http://gateway/internal/user-service/")
+    monkeypatch.setenv("AGENT_SERVICE_URL", "http://public/agent-service")
+    monkeypatch.setenv(
+        "INTERNAL_AGENT_SERVICE_URL", "http://gateway/internal/agent-service/api/v1/"
+    )
+    monkeypatch.setenv("RAG_SERVICE_API_URL", "http://public/rag-service")
+    monkeypatch.setenv("INTERNAL_RAG_SERVICE_API_URL", "http://gateway/internal/rag-service")
+    monkeypatch.setenv("MCP_PUBLIC_BASE_URL", "http://public/tools-service/mcp")
     monkeypatch.setenv("POSTGRES_HOST", "postgres")
     monkeypatch.setenv("POSTGRES_PORT", "5432")
-    monkeypatch.setenv("POSTGRES_USER", "tools")
-    monkeypatch.setenv("POSTGRES_PASSWORD", "secret")
-    monkeypatch.setenv("POSTGRES_DB", "tools")
+    monkeypatch.setenv("POSTGRES_TOOL_SERVICE_USER", "tools")
+    monkeypatch.setenv("POSTGRES_TOOL_SERVICE_PASSWORD", "secret")
+    monkeypatch.setenv("POSTGRES_TOOL_SERVICE_DB", "tools")
     monkeypatch.setenv("LOG_LEVEL", "DEBUG")
 
-    settings = Settings.from_env()
+    settings = env
+    settings.validate_tools_service()
 
-    assert settings.mcp_host == "127.0.0.1"
-    assert settings.mcp_port == 9000
-    assert settings.user_service_url == "http://user-service"
-    assert settings.postgres_config == {
+    assert settings.MCP_HOST == "127.0.0.1"
+    assert settings.TOOLS_SERVICE_PORT == 9000
+    assert settings.INTERNAL_USER_SERVICE_URL == "http://gateway/internal/user-service"
+    assert settings.INTERNAL_AGENT_SERVICE_URL == "http://gateway/internal/agent-service/api/v1"
+    assert settings.INTERNAL_RAG_SERVICE_API_URL == "http://gateway/internal/rag-service"
+    assert settings.MCP_PUBLIC_BASE_URL == "http://public/tools-service/mcp"
+    assert settings.tool_postgres_config == {
         "user": "tools",
         "password": "secret",
         "host": "postgres",
         "port": 5432,
         "database": "tools",
     }
-    assert settings.log_level == "DEBUG"
+    assert settings.LOG_LEVEL == "DEBUG"
+
+
+def test_settings_rejects_public_user_url_without_internal_url(monkeypatch):
+    monkeypatch.setenv("POSTGRES_TOOL_SERVICE_PASSWORD", "synthetic-password")
+    monkeypatch.setenv("USER_SERVICE_URL", "http://public/user-service")
+    monkeypatch.delenv("INTERNAL_USER_SERVICE_URL", raising=False)
+
+    with pytest.raises(ValueError, match="INTERNAL_USER_SERVICE_URL"):
+        env.validate_tools_service()
+
+
+def test_optional_internal_clients_do_not_fall_back_to_web_urls(monkeypatch):
+    monkeypatch.setenv("POSTGRES_TOOL_SERVICE_PASSWORD", "synthetic-password")
+    monkeypatch.setenv("AGENT_SERVICE_URL", "http://public/agent-service")
+    monkeypatch.setenv("RAG_SERVICE_API_URL", "http://public/rag-service")
+    monkeypatch.delenv("INTERNAL_AGENT_SERVICE_URL", raising=False)
+    monkeypatch.delenv("INTERNAL_RAG_SERVICE_API_URL", raising=False)
+    monkeypatch.delenv("INTERNAL_RAG_API_URL", raising=False)
+
+    settings = env
+
+    assert settings.INTERNAL_AGENT_SERVICE_URL is None
+    assert settings.INTERNAL_RAG_SERVICE_API_URL is None
 
 
 def test_settings_raises_clear_error_for_missing_required_env(monkeypatch):
-    for key in Settings.required_env_names():
+    for key in env.TOOLS_REQUIRED_KEYS:
         monkeypatch.delenv(key, raising=False)
 
     try:
-        Settings.from_env()
+        env.validate_tools_service()
     except ValueError as exc:
         assert "Required environment variable MCP_HOST is not set" in str(exc)
     else:
-        raise AssertionError("Settings.from_env() should reject missing required env")
+        raise AssertionError("env should reject missing required environment values")
 
 
 def test_parse_json_param_returns_empty_dict_for_missing_or_invalid_input():
@@ -79,11 +108,19 @@ def test_error_response_honors_current_locale():
 
 
 class _PermissionResponse:
+    status_code = 200
+
     def raise_for_status(self) -> None:
         return None
 
-    def json(self) -> dict[str, list[str]]:
-        return {"permissions": ["tool:execute"]}
+    def json(self) -> dict[str, object]:
+        # user-service answers in the shared response envelope.
+        return {
+            "statusCode": 200,
+            "message": None,
+            "data": {"permissions": ["tool:execute"]},
+            "error": None,
+        }
 
 
 class _AsyncClient:
@@ -110,17 +147,17 @@ async def test_get_user_service_permissions_uses_api_v1_internal_path(
 ):
     monkeypatch.setattr(
         "src.core.authorization._user_service_base_url",
-        lambda: "http://kong:8000/internal/user-service",
+        lambda: "http://apisix:8000/internal/user-service",
     )
     monkeypatch.setattr(
-        "src.core.authorization.get_settings",
-        lambda: type(
+        "src.core.authorization.env",
+        type(
             "Settings",
             (),
             {
-                "user_service_url": "http://kong:8000/internal/user-service",
-                "user_permission_cache_ttl_seconds": 30.0,
-                "internal_service_token": "internal-token",
+                "INTERNAL_USER_SERVICE_URL": "http://apisix:8000/internal/user-service",
+                "USER_PERMISSION_CACHE_TTL_SECONDS": 30.0,
+                "INTERNAL_SERVICE_TOKEN": "internal-token",
             },
         )(),
     )
@@ -130,7 +167,7 @@ async def test_get_user_service_permissions_uses_api_v1_internal_path(
     assert await get_user_service_permissions("token", "user-1") == ["tool:execute"]
     assert (
         _AsyncClient.captured_url
-        == "http://kong:8000/internal/user-service/api/v1/internal/users/user-1/permissions"
+        == "http://apisix:8000/internal/user-service/api/v1/internal/users/user-1/permissions"
     )
     assert _AsyncClient.captured_headers["X-Internal-Service-Token"] == "internal-token"
 
@@ -166,8 +203,8 @@ async def test_authorize_binding_reference_fails_closed_on_unexpected_status(
         lambda: "http://user-service",
     )
     monkeypatch.setattr(
-        "src.core.authorization.get_settings",
-        lambda: type("Settings", (), {"internal_service_token": "internal-token"})(),
+        "src.core.authorization.env",
+        type("Settings", (), {"INTERNAL_SERVICE_TOKEN": "internal-token"})(),
     )
     monkeypatch.setattr("src.core.authorization.httpx.AsyncClient", _BindingErrorClient)
 
@@ -191,8 +228,8 @@ async def test_authorize_binding_reference_fails_closed_when_user_service_unavai
         lambda: "http://user-service",
     )
     monkeypatch.setattr(
-        "src.core.authorization.get_settings",
-        lambda: type("Settings", (), {"internal_service_token": "internal-token"})(),
+        "src.core.authorization.env",
+        type("Settings", (), {"INTERNAL_SERVICE_TOKEN": "internal-token"})(),
     )
     monkeypatch.setattr("src.core.authorization.httpx.AsyncClient", _BindingNetworkErrorClient)
 

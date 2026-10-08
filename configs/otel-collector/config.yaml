@@ -1,0 +1,65 @@
+# OpenTelemetry Collector configuration.
+#
+# The collector is the platform's telemetry hub: services export over OTLP/http
+# and this file decides where the data goes next. Changing the backend is a
+# change to THIS file only - the services keep exporting to the collector
+# regardless.
+#
+# Pipelines (validated against otel/opentelemetry-collector-contrib:0.112.0
+# with `validate`):
+#   traces  -> Elasticsearch (APM-style otel-traces index)
+#   metrics -> Prometheus remote-write
+# Logs do NOT flow through the collector: services ship them straight to
+# Elasticsearch through the observability package's elasticsearch sink, driven
+# by LOG_OUTPUT / LOG_EXTERNAL_URL.
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 200
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+exporters:
+  # Traces land in Elasticsearch next to the logs, so one Kibana workspace
+  # covers both pillars. The index names are fixed on purpose: a dashboard or
+  # an index mapping written against them survives collector restarts.
+  elasticsearch:
+    endpoint: http://elasticsearch:9200
+    traces_index: otel-traces
+    metrics_index: otel-metrics
+
+  # Metrics are pushed into Prometheus through its remote-write receiver,
+  # which the prometheus service enables with
+  # --web.enable-remote-write-receiver. Resource attributes become labels so
+  # service.name is queryable.
+  prometheusremotewrite:
+    endpoint: http://prometheus:9090/api/v1/write
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  # Fallback for development without a backend: switch both pipelines'
+  # exporters to [debug] and every received span and metric is printed to the
+  # collector's own stdout (docker compose logs otel-collector).
+  # debug:
+  #   verbosity: basic
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [elasticsearch]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheusremotewrite]

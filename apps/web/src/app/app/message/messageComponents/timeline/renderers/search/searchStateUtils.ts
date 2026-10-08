@@ -5,8 +5,8 @@ import {
   SearchToolQueriesDelta,
   SearchToolDocumentsDelta,
   SectionEnd,
-} from "@/app/app/services/streamingModels";
-import { OnyxDocument } from "@/lib/search/interfaces";
+} from "@/lib/api/domains/chat/streaming-types";
+import { AtlasDocument } from "@/lib/search/interfaces";
 
 export const MAX_TITLE_LENGTH = 25;
 
@@ -28,7 +28,7 @@ export const RESULTS_PER_EXPANSION = 10;
 
 export interface SearchState {
   queries: string[];
-  results: OnyxDocument[];
+  results: AtlasDocument[];
   isSearching: boolean;
   hasResults: boolean;
   isComplete: boolean;

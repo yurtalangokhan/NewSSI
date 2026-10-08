@@ -1,132 +1,184 @@
+"""Authoritative direct and inherited Keycloak realm-role mappings."""
+
+import asyncio
+from contextlib import AsyncExitStack
 import uuid
 
-from sqlalchemy import delete, select, update
+from error_contract import BadRequestError, NotFoundError
 
-from src.core.database.models import UserRoleModel
+from .keycloak_role_client import (
+    PRIMARY_ROLE,
+    KeycloakRoleClient,
+    manageable,
+    primary_role_name,
+    segment,
+)
+from .keycloak_user_update import attribute_update
 
-from .base_repository import BaseRepository
 
+class UserRoleRepository:
+    def __init__(self):
+        self.client = KeycloakRoleClient()
 
-class UserRoleRepository(BaseRepository):
-    async def list_user_roles(self, user_id: uuid.UUID) -> list[dict[str, object]]:
-        async with self._session() as session:
-            result = await session.execute(
-                select(UserRoleModel)
-                .where(UserRoleModel.user_id == user_id)
-                .order_by(UserRoleModel.is_primary.desc(), UserRoleModel.role_name)
+    def _path(self, user_id):
+        return f"/users/{segment(user_id)}"
+
+    async def get_primary_roles(self, user_ids):
+        from src.service.keycloak_service import get_keycloak_service
+
+        identities = list(dict.fromkeys(user_ids))
+        if not identities:
+            return {}
+
+        async def primary(user_id):
+            path = self._path(user_id)
+            user = await self.client.request("GET", path, missing=True)
+            if user is None:
+                return ""
+            effective = await self.client.request("GET", f"{path}/role-mappings/realm/composite")
+            return primary_role_name(
+                [role["name"] for role in effective if manageable(role["name"])],
+                user.get("attributes", {}).get(PRIMARY_ROLE, []),
             )
-            return [
-                {"name": role.role_name, "is_primary": role.is_primary}
-                for role in result.scalars().all()
-            ]
 
-    async def list_user_ids_by_role(self, role_name: str) -> list[uuid.UUID]:
-        async with self._session() as session:
-            result = await session.execute(
-                select(UserRoleModel.user_id).where(UserRoleModel.role_name == role_name)
+        result = {}
+        keycloak = get_keycloak_service()
+        async with AsyncExitStack() as stack:
+            scope = getattr(type(keycloak), "admin_request_scope", None)
+            if scope is not None:
+                await stack.enter_async_context(scope(keycloak))
+            for first in range(0, len(identities), 8):
+                wave = identities[first : first + 8]
+                outcomes = await asyncio.gather(*(primary(user_id) for user_id in wave), return_exceptions=True)
+                for user_id, role in zip(wave, outcomes, strict=True):
+                    if isinstance(role, BaseException):
+                        raise role
+                    if role:
+                        result[user_id] = role
+        return result
+
+    async def list_user_roles(self, user_id):
+        path = self._path(user_id)
+        user = await self.client.request("GET", path, missing=True)
+        if user is None:
+            return []
+        effective = await self.client.request("GET", f"{path}/role-mappings/realm/composite")
+        direct = await self.client.request("GET", f"{path}/role-mappings/realm")
+        primary = primary_role_name(
+            [r["name"] for r in effective if manageable(r["name"])],
+            user.get("attributes", {}).get(PRIMARY_ROLE, []),
+        )
+        ids = {r["id"] for r in direct}
+        return sorted(
+            [
+                {
+                    "id": r["id"],
+                    "name": r["name"],
+                    "is_primary": r["name"] == primary,
+                    "inherited": r["id"] not in ids,
+                }
+                for r in effective
+                if manageable(r["name"])
+            ],
+            key=lambda r: (not r["is_primary"], r["name"]),
+        )
+
+    async def effective_client_permissions(self, user_id):
+        permissions = set()
+        for client in await self.client.clients():
+            roles = await self.client.request(
+                "GET",
+                f"{self._path(user_id)}/role-mappings/clients/{segment(client['id'])}/composite",
             )
-            return list(result.scalars().all())
+            for role in roles:
+                permissions.update(await self.client.expanded_permissions(role))
+        return sorted(permissions)
 
-    async def assign_roles(
-        self,
-        user_id: uuid.UUID,
-        role_names: list[str],
-        primary_role: str | None = None,
-    ) -> None:
-        async with self._session() as session:
-            if primary_role is not None:
-                await session.execute(
-                    update(UserRoleModel)
-                    .where(UserRoleModel.user_id == user_id)
-                    .values(is_primary=False)
-                )
-            for role_name in role_names:
-                is_primary = role_name == primary_role
-                existing = await session.get(
-                    UserRoleModel,
-                    {"user_id": user_id, "role_name": role_name},
-                )
-                if existing:
-                    if is_primary:
-                        existing.is_primary = True
-                    continue
-                session.add(
-                    UserRoleModel(
-                        user_id=user_id,
-                        role_name=role_name,
-                        is_primary=is_primary,
-                    )
-                )
+    async def list_user_ids_by_role(self, role_name):
+        from .user_repository import UserRepository
 
-    async def replace_roles(
-        self,
-        user_id: uuid.UUID,
-        role_names: list[str],
-        primary_role: str | None = None,
-    ) -> int:
-        """Make `role_names` the user's COMPLETE set of role assignments.
+        directory = UserRepository()
+        async with AsyncExitStack() as stack:
+            scope = getattr(type(directory.keycloak), "admin_request_scope", None)
+            if scope is not None:
+                await stack.enter_async_context(scope(directory.keycloak))
+            # Revocation needs fresh membership for this role, not a full realm
+            # scan (or a wait behind a concurrent role-distribution rebuild).
+            index = await directory._build_role_index(role_name=role_name)
+        return [uuid.UUID(identity) for identity, names in index.items() if role_name in names]
 
-        Unlike `assign_roles` (additive - it pairs with `remove_role` for the
-        multi-role API), this revokes every assignment not in `role_names` and
-        returns how many were revoked.
+    async def _roles(self, names):
+        roles = []
+        for name in dict.fromkeys(names):
+            if not manageable(name):
+                raise BadRequestError()
+            role = await self.client.request("GET", f"/roles/{segment(name)}", missing=True)
+            if not role:
+                raise NotFoundError()
+            roles.append(role)
+        return roles
 
-        Used by the single-role setter, where `users.role` and the Keycloak
-        realm role are authoritative. Leaving a stale extra assignment behind
-        keeps granting that role's permissions even though nothing in the UI
-        shows it: a user demoted to "enduser" who silently kept a former
-        "system-admin" assignment still resolves to full admin access, because
-        permission resolution unions across every assigned role.
-        """
-        async with self._session() as session:
-            if role_names:
-                stale = delete(UserRoleModel).where(
-                    UserRoleModel.user_id == user_id,
-                    UserRoleModel.role_name.notin_(role_names),
-                )
-            else:
-                stale = delete(UserRoleModel).where(UserRoleModel.user_id == user_id)
-            revoked = (await session.execute(stale)).rowcount or 0
+    @staticmethod
+    def _invalidate_role_index():
+        from .user_repository import UserRepository
 
-            for role_name in role_names:
-                is_primary = role_name == primary_role
-                existing = await session.get(
-                    UserRoleModel,
-                    {"user_id": user_id, "role_name": role_name},
-                )
-                if existing:
-                    existing.is_primary = is_primary
-                    continue
-                session.add(
-                    UserRoleModel(
-                        user_id=user_id,
-                        role_name=role_name,
-                        is_primary=is_primary,
-                    )
-                )
-            return revoked
+        UserRepository.invalidate_role_index()
 
-    async def remove_role(self, user_id: uuid.UUID, role_name: str) -> bool:
-        async with self._session() as session:
-            result = await session.execute(
-                delete(UserRoleModel).where(
-                    UserRoleModel.user_id == user_id,
-                    UserRoleModel.role_name == role_name,
-                )
-            )
-            return result.rowcount > 0
+    async def _primary(self, user_id, role_name):
+        path = self._path(user_id)
+        user = await self.client.request("GET", path)
+        attributes = dict(user.get("attributes", {}))
+        if role_name:
+            attributes[PRIMARY_ROLE] = [role_name]
+        else:
+            attributes.pop(PRIMARY_ROLE, None)
+        await self.client.request("PUT", path, json=attribute_update(user, attributes))
 
-    async def set_primary_role(self, user_id: uuid.UUID, role_name: str) -> bool:
-        async with self._session() as session:
-            existing = await session.get(
-                UserRoleModel,
-                {"user_id": user_id, "role_name": role_name},
-            )
-            if not existing:
-                return False
-            await session.execute(
-                update(UserRoleModel)
-                .where(UserRoleModel.user_id == user_id)
-                .values(is_primary=False)
-            )
-            existing.is_primary = True
-            return True
+    async def assign_roles(self, user_id, role_names, primary_role=None):
+        roles = await self._roles(role_names)
+        if (
+            primary_role
+            and primary_role not in role_names
+            and not any(r["name"] == primary_role for r in await self.list_user_roles(user_id))
+        ):
+            raise BadRequestError()
+        if roles:
+            await self.client.request("POST", f"{self._path(user_id)}/role-mappings/realm", json=roles)
+        if primary_role is not None:
+            await self._primary(user_id, primary_role)
+        self._invalidate_role_index()
+
+    async def replace_roles(self, user_id, role_names, primary_role=None):
+        roles = await self._roles(role_names)
+        if primary_role is not None and primary_role not in role_names:
+            raise BadRequestError()
+        path = f"{self._path(user_id)}/role-mappings/realm"
+        current = await self.client.request("GET", path)
+        stale = [r for r in current if manageable(r["name"]) and r["name"] not in role_names]
+        if stale:
+            await self.client.request("DELETE", path, json=stale)
+        if roles:
+            await self.client.request("POST", path, json=roles)
+        await self._primary(user_id, primary_role)
+        self._invalidate_role_index()
+        return len(stale)
+
+    async def remove_role(self, user_id, role_name):
+        path = f"{self._path(user_id)}/role-mappings/realm"
+        direct = await self.client.request("GET", path)
+        matches = [r for r in direct if r["name"] == role_name and manageable(role_name)]
+        if not matches:
+            return False
+        await self.client.request("DELETE", path, json=matches)
+        user = await self.client.request("GET", self._path(user_id))
+        if role_name in user.get("attributes", {}).get(PRIMARY_ROLE, []):
+            await self._primary(user_id, None)
+        self._invalidate_role_index()
+        return True
+
+    async def set_primary_role(self, user_id, role_name):
+        if not any(r["name"] == role_name for r in await self.list_user_roles(user_id)):
+            return False
+        await self._primary(user_id, role_name)
+        self._invalidate_role_index()
+        return True

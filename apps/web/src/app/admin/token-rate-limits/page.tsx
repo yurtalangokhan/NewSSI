@@ -1,15 +1,22 @@
 "use client";
+import { systemEndpoints } from "@/lib/api/domains/system/endpoints";
 
 import SimpleTabs from "@/refresh-components/SimpleTabs";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import Text from "@/components/ui/text";
 import { useState } from "react";
 import {
+  fetchGlobalTokenRateLimits,
+  fetchGroupTokenRateLimits,
+  fetchUserTokenRateLimits,
   insertGlobalTokenRateLimit,
   insertGroupTokenRateLimit,
   insertUserTokenRateLimit,
-} from "./lib";
-import { Scope, TokenRateLimit } from "./types";
+} from "@/lib/api/domains/system/api";
+import {
+  Scope,
+  TokenRateLimit,
+} from "@/lib/api/domains/system/token-rate-limit-types";
 import { GenericTokenRateLimitTable } from "./TokenRateLimitTables";
 import useSWR, { mutate } from "swr";
 import { toast } from "@/hooks/useToast";
@@ -18,13 +25,12 @@ import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidE
 import CreateButton from "@/refresh-components/buttons/CreateButton";
 import { SvgGlobe, SvgUser, SvgUsers } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { useTranslation } from "react-i18next";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
-import { errorHandlingFetcher } from "@/lib/fetcher";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.TOKEN_RATE_LIMITS]!;
-const BASE_URL = "/api/admin/token-rate-limits";
+const BASE_URL = systemEndpoints.tokenRateLimits.browserPath;
 const GLOBAL_TOKEN_FETCH_URL = `${BASE_URL}/global`;
 const USER_TOKEN_FETCH_URL = `${BASE_URL}/users`;
 const USER_GROUP_FETCH_URL = `${BASE_URL}/user-groups`;
@@ -141,7 +147,8 @@ function Main() {
               icon: SvgGlobe,
               content: (
                 <GenericTokenRateLimitTable
-                  fetchUrl={GLOBAL_TOKEN_FETCH_URL}
+                  requestKey="global-token-rate-limits"
+                  loadData={() => fetchGlobalTokenRateLimits()}
                   title={t("admin.tokenRateLimits.globalTitle")}
                   description={t("admin.tokenRateLimits.globalDescription")}
                 />
@@ -152,7 +159,8 @@ function Main() {
               icon: SvgUser,
               content: (
                 <GenericTokenRateLimitTable
-                  fetchUrl={USER_TOKEN_FETCH_URL}
+                  requestKey="user-token-rate-limits"
+                  loadData={() => fetchUserTokenRateLimits()}
                   title={t("admin.tokenRateLimits.userTitle")}
                   description={t("admin.tokenRateLimits.userDescription")}
                 />
@@ -163,7 +171,8 @@ function Main() {
               icon: SvgUsers,
               content: (
                 <GenericTokenRateLimitTable
-                  fetchUrl={USER_GROUP_FETCH_URL}
+                  requestKey="group-token-rate-limits"
+                  loadData={() => fetchGroupTokenRateLimits()}
                   title={t("admin.tokenRateLimits.groupTitle")}
                   description={t("admin.tokenRateLimits.groupDescription")}
                   responseMapper={(data: Record<string, TokenRateLimit[]>) =>
@@ -183,7 +192,8 @@ function Main() {
         />
       ) : (
         <GenericTokenRateLimitTable
-          fetchUrl={GLOBAL_TOKEN_FETCH_URL}
+          requestKey="global-token-rate-limits"
+          loadData={() => fetchGlobalTokenRateLimits()}
           title={t("admin.tokenRateLimits.globalTitle")}
           description={t("admin.tokenRateLimits.globalDescription")}
         />
@@ -205,13 +215,19 @@ export default function Page() {
   const { t } = useTranslation();
   const { data: globalLimits, isLoading: isGlobalLimitsLoading } = useSWR<
     TokenRateLimit[]
-  >(GLOBAL_TOKEN_FETCH_URL, errorHandlingFetcher);
+  >("global-token-rate-limits", () =>
+    fetchGlobalTokenRateLimits<TokenRateLimit[]>()
+  );
   const { data: userLimits, isLoading: isUserLimitsLoading } = useSWR<
     TokenRateLimit[]
-  >(USER_TOKEN_FETCH_URL, errorHandlingFetcher);
+  >("user-token-rate-limits", () =>
+    fetchUserTokenRateLimits<TokenRateLimit[]>()
+  );
   const { data: groupLimits, isLoading: isGroupLimitsLoading } = useSWR<
     Record<string, TokenRateLimit[]>
-  >(USER_GROUP_FETCH_URL, errorHandlingFetcher);
+  >("group-token-rate-limits", () =>
+    fetchGroupTokenRateLimits<Record<string, TokenRateLimit[]>>()
+  );
   const isOverviewLoading =
     isGlobalLimitsLoading ||
     isUserLimitsLoading ||

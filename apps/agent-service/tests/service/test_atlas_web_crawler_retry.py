@@ -2,9 +2,9 @@ from unittest.mock import patch
 
 import requests
 
-from models.web_search import RenderedPage
-from service.web_search import AtlasWebCrawler, FailureReason, OnyxWebCrawler
-from service.web_search.onyx_web_crawler import _calculate_retry_delay, _parse_retry_after
+from schemas.web_search import RenderedPage
+from service.web_search import AtlasWebCrawler, FailureReason
+from service.web_search.atlas_web_crawler import _calculate_retry_delay, _parse_retry_after
 from service.web_search.url import DNSResolutionError, SSRFBlockedException
 
 
@@ -31,8 +31,7 @@ def _mock_response(
 
 
 class TestAtlasWebCrawlerRetry:
-    def test_atlas_web_crawler_alias_and_initialization(self):
-        assert AtlasWebCrawler is OnyxWebCrawler
+    def test_atlas_web_crawler_initialization(self):
         crawler = AtlasWebCrawler(
             max_retries=5,
             retry_backoff_factor=1.0,
@@ -42,8 +41,8 @@ class TestAtlasWebCrawlerRetry:
         assert crawler.retry_backoff_factor == 1.0
         assert crawler.retry_status_codes == {500, 502, 503}
 
-    @patch("service.web_search.onyx_web_crawler.OnyxWebCrawler._fetch_via_playwright")
-    @patch("service.web_search.onyx_web_crawler.ssrf_safe_get")
+    @patch("service.web_search.atlas_web_crawler.AtlasWebCrawler._fetch_via_playwright")
+    @patch("service.web_search.atlas_web_crawler.ssrf_safe_get")
     def test_playwright_fallback_is_disabled_by_default(self, mock_get, mock_fetch_via_playwright):
         mock_get.return_value = _mock_response(status_code=403)
 
@@ -54,8 +53,8 @@ class TestAtlasWebCrawlerRetry:
         assert result.failure_reason == FailureReason.HTTP_403_BLOCKED
         mock_fetch_via_playwright.assert_not_called()
 
-    @patch("service.web_search.onyx_web_crawler.time.sleep")
-    @patch("service.web_search.onyx_web_crawler.ssrf_safe_get")
+    @patch("service.web_search.atlas_web_crawler.time.sleep")
+    @patch("service.web_search.atlas_web_crawler.ssrf_safe_get")
     def test_retry_on_connection_error_and_recover(self, mock_get, mock_sleep):
         mock_get.side_effect = [
             requests.exceptions.ConnectionError("Connection refused"),
@@ -72,8 +71,8 @@ class TestAtlasWebCrawlerRetry:
         assert mock_get.call_count == 3
         assert mock_sleep.call_count == 2
 
-    @patch("service.web_search.onyx_web_crawler.time.sleep")
-    @patch("service.web_search.onyx_web_crawler.ssrf_safe_get")
+    @patch("service.web_search.atlas_web_crawler.time.sleep")
+    @patch("service.web_search.atlas_web_crawler.ssrf_safe_get")
     def test_retry_on_timeout_and_recover(self, mock_get, mock_sleep):
         mock_get.side_effect = [
             requests.exceptions.ConnectTimeout("Connection timed out"),
@@ -89,8 +88,8 @@ class TestAtlasWebCrawlerRetry:
         assert mock_get.call_count == 2
         assert mock_sleep.call_count == 1
 
-    @patch("service.web_search.onyx_web_crawler.time.sleep")
-    @patch("service.web_search.onyx_web_crawler.ssrf_safe_get")
+    @patch("service.web_search.atlas_web_crawler.time.sleep")
+    @patch("service.web_search.atlas_web_crawler.ssrf_safe_get")
     def test_retry_on_chunked_encoding_error_and_recover(self, mock_get, mock_sleep):
         mock_get.side_effect = [
             requests.exceptions.ChunkedEncodingError("Connection broken: IncompleteRead"),
@@ -105,8 +104,8 @@ class TestAtlasWebCrawlerRetry:
         assert mock_get.call_count == 2
         assert mock_sleep.call_count == 1
 
-    @patch("service.web_search.onyx_web_crawler.time.sleep")
-    @patch("service.web_search.onyx_web_crawler.ssrf_safe_get")
+    @patch("service.web_search.atlas_web_crawler.time.sleep")
+    @patch("service.web_search.atlas_web_crawler.ssrf_safe_get")
     def test_retry_on_5xx_status_codes_and_recover(self, mock_get, mock_sleep):
         mock_get.side_effect = [
             _mock_response(status_code=503),
@@ -122,8 +121,8 @@ class TestAtlasWebCrawlerRetry:
         assert mock_get.call_count == 3
         assert mock_sleep.call_count == 2
 
-    @patch("service.web_search.onyx_web_crawler.time.sleep")
-    @patch("service.web_search.onyx_web_crawler.ssrf_safe_get")
+    @patch("service.web_search.atlas_web_crawler.time.sleep")
+    @patch("service.web_search.atlas_web_crawler.ssrf_safe_get")
     def test_retry_on_429_too_many_requests_with_retry_after(self, mock_get, mock_sleep):
         resp_429 = _mock_response(status_code=429, headers={"Retry-After": "2"})
         resp_200 = _mock_response(status_code=200)
@@ -136,8 +135,8 @@ class TestAtlasWebCrawlerRetry:
         assert mock_get.call_count == 2
         mock_sleep.assert_called_once_with(2.0)
 
-    @patch("service.web_search.onyx_web_crawler.time.sleep")
-    @patch("service.web_search.onyx_web_crawler.ssrf_safe_get")
+    @patch("service.web_search.atlas_web_crawler.time.sleep")
+    @patch("service.web_search.atlas_web_crawler.ssrf_safe_get")
     def test_retry_on_transient_dns_error(self, mock_get, mock_sleep):
         mock_get.side_effect = [
             DNSResolutionError(
@@ -153,8 +152,8 @@ class TestAtlasWebCrawlerRetry:
         assert mock_get.call_count == 2
         assert mock_sleep.call_count == 1
 
-    @patch("service.web_search.onyx_web_crawler.time.sleep")
-    @patch("service.web_search.onyx_web_crawler.ssrf_safe_get")
+    @patch("service.web_search.atlas_web_crawler.time.sleep")
+    @patch("service.web_search.atlas_web_crawler.ssrf_safe_get")
     def test_exhaust_all_retries_on_connection_error(self, mock_get, mock_sleep):
         mock_get.side_effect = requests.exceptions.ConnectionError("Connection refused")
 
@@ -166,8 +165,8 @@ class TestAtlasWebCrawlerRetry:
         assert mock_get.call_count == 4  # 1 initial + 3 retries
         assert mock_sleep.call_count == 3
 
-    @patch("service.web_search.onyx_web_crawler.time.sleep")
-    @patch("service.web_search.onyx_web_crawler.ssrf_safe_get")
+    @patch("service.web_search.atlas_web_crawler.time.sleep")
+    @patch("service.web_search.atlas_web_crawler.ssrf_safe_get")
     def test_exhaust_all_retries_on_503(self, mock_get, mock_sleep):
         mock_get.return_value = _mock_response(status_code=503)
 
@@ -184,8 +183,8 @@ class TestAtlasWebCrawlerRetry:
         assert mock_get.call_count == 3  # 1 initial + 2 retries
         assert mock_sleep.call_count == 2
 
-    @patch("service.web_search.onyx_web_crawler.time.sleep")
-    @patch("service.web_search.onyx_web_crawler.ssrf_safe_get")
+    @patch("service.web_search.atlas_web_crawler.time.sleep")
+    @patch("service.web_search.atlas_web_crawler.ssrf_safe_get")
     def test_non_retriable_404_not_found_fails_immediately(self, mock_get, mock_sleep):
         mock_get.return_value = _mock_response(status_code=404)
 
@@ -197,8 +196,8 @@ class TestAtlasWebCrawlerRetry:
         assert mock_get.call_count == 1
         assert mock_sleep.call_count == 0
 
-    @patch("service.web_search.onyx_web_crawler.time.sleep")
-    @patch("service.web_search.onyx_web_crawler.ssrf_safe_get")
+    @patch("service.web_search.atlas_web_crawler.time.sleep")
+    @patch("service.web_search.atlas_web_crawler.ssrf_safe_get")
     def test_non_retriable_ssrf_blocked_fails_immediately(self, mock_get, mock_sleep):
         mock_get.side_effect = SSRFBlockedException("Access to internal IP address is not allowed")
 
@@ -210,10 +209,10 @@ class TestAtlasWebCrawlerRetry:
         assert mock_get.call_count == 1
         assert mock_sleep.call_count == 0
 
-    @patch("service.web_search.onyx_web_crawler.time.sleep")
-    @patch("service.web_search.onyx_web_crawler.looks_like_cloudflare_challenge")
-    @patch("service.web_search.onyx_web_crawler.fetch_rendered_html")
-    @patch("service.web_search.onyx_web_crawler.ssrf_safe_get")
+    @patch("service.web_search.atlas_web_crawler.time.sleep")
+    @patch("service.web_search.atlas_web_crawler.looks_like_cloudflare_challenge")
+    @patch("service.web_search.atlas_web_crawler.fetch_rendered_html")
+    @patch("service.web_search.atlas_web_crawler.ssrf_safe_get")
     def test_playwright_fallback_retry(self, mock_get, mock_pw, mock_cf, mock_sleep):
         # 403 triggers Playwright fallback
         mock_get.return_value = _mock_response(status_code=403)

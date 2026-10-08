@@ -15,7 +15,7 @@ import {
 import { IconProps } from "@opal/types";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import ShareButton from "@/app/craft/components/ShareButton";
-import type { SharingScope } from "@/app/craft/types/streamingTypes";
+import type { SharingScope } from "@/lib/api/domains/craft/streaming-types";
 import { useTranslation } from "react-i18next";
 
 /** SvgLoader wrapped with animate-spin so it can be passed as a Button leftIcon */

@@ -43,7 +43,6 @@ agent_tables=(
   mcp_tool
   agent_definitions
   agent_tools
-  datasource_airbyte_mapping
   sync_schedules
 )
 

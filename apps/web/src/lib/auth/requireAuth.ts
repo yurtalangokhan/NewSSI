@@ -1,12 +1,16 @@
 import { User } from "@/lib/types";
 import {
-  AuthTypeMetadata,
   getAuthTypeMetadataSS,
   getCurrentUserSS,
   getCurrentUserAccessSS,
-} from "@/lib/userSS";
+} from "@/lib/api/domains/session/server";
+import type { AuthTypeMetadata } from "@/lib/api/domains/session/types";
 import { getLoginPath } from "@/lib/auth/loginRoute";
-import { canAccessAdminPanel } from "@/lib/admin-routes";
+import {
+  canAccessAdminPanel,
+  getAdminRouteConfigForPathname,
+} from "@/lib/navigation/admin-routes";
+import { hasAllPermissions } from "@/lib/auth/permissions";
 
 /**
  * Result of an authentication check.
@@ -73,7 +77,8 @@ export async function requireAuth(): Promise<AuthCheckResult> {
 }
 
 /**
- * Requires that the user is authenticated and has admin-area permissions.
+ * Requires authentication and admin-area permissions. When pathname is given,
+ * requires the matching page's view permission before server rendering.
  * If not authenticated, redirects to login.
  * If authenticated but unauthorized, redirects to /error/403.
  * Also checks email verification if required.
@@ -90,7 +95,9 @@ export async function requireAuth(): Promise<AuthCheckResult> {
  * const { user } = authResult;
  * ```
  */
-export async function requireAdminAuth(): Promise<AuthCheckResult> {
+export async function requireAdminAuth(
+  pathname?: string
+): Promise<AuthCheckResult> {
   const authResult = await requireAuth();
 
   // If already has a redirect (not authenticated or not verified), return it
@@ -100,11 +107,19 @@ export async function requireAdminAuth(): Promise<AuthCheckResult> {
 
   const { user, authTypeMetadata } = authResult;
 
-  // The route registry is the source of truth for admin-area access. A user
-  // may enter when their effective permissions satisfy at least one enabled
-  // admin page; the client layout still protects each individual route.
+  // The route registry is the source of truth for admin-area access. Without
+  // a pathname, at least one enabled page is enough to enter the admin panel.
   const { permissions } = await getCurrentUserAccessSS();
-  if (!canAccessAdminPanel(permissions)) {
+  const route = pathname ? getAdminRouteConfigForPathname(pathname) : null;
+  const authorized = pathname
+    ? Boolean(
+        route &&
+          route.enabled !== false &&
+          route.requiredPermissions.length > 0 &&
+          hasAllPermissions(permissions, route.requiredPermissions)
+      )
+    : canAccessAdminPanel(permissions);
+  if (!authorized) {
     return {
       user,
       authTypeMetadata,

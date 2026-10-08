@@ -1,3 +1,5 @@
+import { requestAgentFlowExpansion } from "@/lib/api/domains/agents/api";
+
 import type { StoreApi } from "zustand";
 import { fromFlowSpec } from "./compile";
 import type { WireFlowSpec } from "../types/flow";
@@ -15,9 +17,7 @@ export async function expandAgentIntoFlow(
   store: StoreApi<FlowStore>,
   position: { x: number; y: number }
 ): Promise<void> {
-  const response = await fetch(`/api/agent-definitions/${agentId}/expand`, {
-    method: "POST",
-  });
+  const response = await requestAgentFlowExpansion(agentId);
   if (!response.ok) {
     throw new Error(`Failed to expand agent: ${response.statusText}`);
   }

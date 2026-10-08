@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import CustomAgentAvatar from "@/refresh-components/avatars/CustomAgentAvatar";
 
 describe("CustomAgentAvatar", () => {
@@ -34,5 +34,50 @@ describe("CustomAgentAvatar", () => {
       "flow"
     );
     expect(container.querySelector("polygon")).not.toBeInTheDocument();
+  });
+
+  it("covers a pending uploaded image with a skeleton until it loads", () => {
+    render(<CustomAgentAvatar name="Ada" src="/x.png" />);
+
+    expect(
+      screen.getByTestId("agent-avatar-image-skeleton")
+    ).toBeInTheDocument();
+
+    fireEvent.load(screen.getByRole("img"));
+    expect(
+      screen.queryByTestId("agent-avatar-image-skeleton")
+    ).not.toBeInTheDocument();
+  });
+
+  it("re-arms the skeleton when the image source changes", () => {
+    const { rerender } = render(<CustomAgentAvatar name="Ada" src="/x.png" />);
+    fireEvent.load(screen.getByRole("img"));
+    expect(
+      screen.queryByTestId("agent-avatar-image-skeleton")
+    ).not.toBeInTheDocument();
+
+    rerender(<CustomAgentAvatar name="Ada" src="/y.png" />);
+    expect(
+      screen.getByTestId("agent-avatar-image-skeleton")
+    ).toBeInTheDocument();
+
+    // The listener follows the new src: a stale one would leave the skeleton
+    // pulsing after the replacement image has painted.
+    fireEvent.load(screen.getByRole("img"));
+    expect(
+      screen.queryByTestId("agent-avatar-image-skeleton")
+    ).not.toBeInTheDocument();
+  });
+
+  it("never skeletons a letter, icon or default avatar", () => {
+    const { rerender } = render(<CustomAgentAvatar name="Ada" />);
+    expect(
+      screen.queryByTestId("agent-avatar-image-skeleton")
+    ).not.toBeInTheDocument();
+
+    rerender(<CustomAgentAvatar name="Ada" iconName="Search" />);
+    expect(
+      screen.queryByTestId("agent-avatar-image-skeleton")
+    ).not.toBeInTheDocument();
   });
 });

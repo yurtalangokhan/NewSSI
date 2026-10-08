@@ -3,7 +3,7 @@
  */
 
 import { renderHook } from "@testing-library/react";
-import { Packet } from "@/app/app/services/streamingModels";
+import { Packet } from "@/lib/api/domains/chat/streaming-types";
 import { useTimelineUIState, TimelineUIState } from "./useTimelineUIState";
 
 describe("useTimelineUIState", () => {

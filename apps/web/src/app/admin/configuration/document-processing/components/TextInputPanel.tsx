@@ -9,7 +9,7 @@ import InputTextArea from "@/refresh-components/inputs/InputTextArea";
 import Text from "@/refresh-components/texts/Text";
 import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import { toast } from "@/hooks/useToast";
-import { uploadDocuments } from "@/lib/langconnect";
+import { uploadDocuments } from "@/lib/api/domains/knowledge/api";
 
 interface TextInputPanelProps {
   collectionId: string;

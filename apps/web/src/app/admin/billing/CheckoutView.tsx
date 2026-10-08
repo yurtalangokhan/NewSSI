@@ -1,4 +1,5 @@
 "use client";
+import { errorMessageFromUnknown } from "@/lib/api/errors";
 
 import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,12 +10,12 @@ import Text from "@/refresh-components/texts/Text";
 import Card from "@/refresh-components/cards/Card";
 import Separator from "@/refresh-components/Separator";
 import { SvgUsers, SvgCheck } from "@opal/icons";
-import { createCheckoutSession } from "@/lib/billing/svc";
+import { createCheckoutSession } from "@/lib/api/domains/billing/api";
 import { useUser } from "@/providers/UserProvider";
 import { formatDateShort } from "@/lib/dateUtils";
-import type { PlanType } from "@/lib/billing/interfaces";
+import type { PlanType } from "@/lib/api/domains/billing/types";
 import InputNumber from "@/refresh-components/inputs/InputNumber";
-import useUsers from "@/hooks/useUsers";
+import { useUsers } from "@/lib/api/domains/access/hooks";
 
 // ----------------------------------------------------------------------------
 // BillingOption
@@ -153,7 +154,7 @@ export default function CheckoutView({ onAdjustPlan }: CheckoutViewProps) {
       }
     } catch (err) {
       console.error("Error creating checkout session:", err);
-      setError(err instanceof Error ? err.message : t("checkoutSessionFailed"));
+      setError(errorMessageFromUnknown(err, t("checkoutSessionFailed")));
     } finally {
       setIsSubmitting(false);
     }

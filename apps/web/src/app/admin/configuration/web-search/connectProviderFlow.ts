@@ -1,29 +1,20 @@
-import { authenticatedFetch } from "@/lib/fetcher";
-export type ProviderTestPayload = {
-  provider_type: string;
-  api_key: string | null;
-  use_stored_key: boolean;
-  config: Record<string, string>;
-};
+import { knowledgeEndpoints } from "@/lib/api/domains/knowledge/endpoints";
 
-export type ProviderUpsertPayload = {
-  id: number | null;
-  name: string;
-  provider_type: string;
-  api_key: string | null;
-  api_key_changed: boolean;
-  config: Record<string, string>;
-  activate: boolean;
-};
+import {
+  ProviderTestPayload,
+  ProviderUpsertPayload,
+} from "@/lib/api/domains/knowledge/provider-types";
+import { testWebProvider } from "@/lib/api/domains/knowledge/api";
+import { upsertWebProvider } from "@/lib/api/domains/knowledge/api";
 
 const WEB_SEARCH_PROVIDER_ENDPOINTS = {
   search: {
-    upsertUrl: "/api/admin/web-search/search-providers",
-    testUrl: "/api/admin/web-search/search-providers/test",
+    upsertUrl: knowledgeEndpoints.searchProviders.browserPath,
+    testUrl: knowledgeEndpoints.searchProviderTest.browserPath,
   },
   content: {
-    upsertUrl: "/api/admin/web-search/content-providers",
-    testUrl: "/api/admin/web-search/content-providers/test",
+    upsertUrl: knowledgeEndpoints.createContentProvider.browserPath,
+    testUrl: knowledgeEndpoints.contentProviderTest.browserPath,
   },
 } as const;
 
@@ -112,11 +103,7 @@ export async function connectProviderFlow({
         config,
       };
 
-      const testResponse = await authenticatedFetch(testUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(testPayload),
-      });
+      const testResponse = await testWebProvider(category, testPayload);
 
       if (!testResponse.ok) {
         const errorBody = await testResponse.json().catch(() => ({}));
@@ -142,11 +129,7 @@ export async function connectProviderFlow({
       activate: true,
     };
 
-    const upsertResponse = await authenticatedFetch(upsertUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(upsertPayload),
-    });
+    const upsertResponse = await upsertWebProvider(category, upsertPayload);
 
     if (!upsertResponse.ok) {
       const errorBody = await upsertResponse.json().catch(() => ({}));

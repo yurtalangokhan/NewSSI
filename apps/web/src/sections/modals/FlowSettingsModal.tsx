@@ -1,4 +1,5 @@
 "use client";
+import { SvgUsers } from "@opal/icons";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -24,9 +25,9 @@ import ShareAgentModal from "@/sections/modals/ShareAgentModal";
 import RefreshButton from "@/refresh-components/buttons/Button";
 import { MAX_STARTER_MESSAGES } from "@/lib/constants";
 import { createFlow, type FlowMetadataInput } from "@/lib/flows/createFlow";
-import { updatePersona } from "@/app/admin/agents/lib";
-import type { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
-import { SvgLock, SvgUsers, SvgWorkflow } from "@opal/icons";
+import { updatePersona } from "@/lib/api/domains/agents/api";
+import type { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
+import { SvgLock, SvgWorkflow } from "@opal/icons";
 
 export interface FlowSettingsModalProps {
   mode: "create" | "edit";

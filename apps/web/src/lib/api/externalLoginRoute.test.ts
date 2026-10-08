@@ -19,7 +19,7 @@ describe("external login API route", () => {
     jest.clearAllMocks();
   });
 
-  it("passes the concrete browser callback URI to user-service", async () => {
+  it("passes the concrete browser callback URI to Gateway", async () => {
     const request = new NextRequest(
       "http://localhost:3000/api/auth/external/login",
       {
@@ -38,7 +38,7 @@ describe("external login API route", () => {
 
     expect(proxyToBackend).toHaveBeenCalledWith(
       request,
-      "/api/auth/external/login",
+      { service: "user", path: "/api/v1/auth/external/login" },
       expect.objectContaining({
         method: "POST",
         queryParams: {

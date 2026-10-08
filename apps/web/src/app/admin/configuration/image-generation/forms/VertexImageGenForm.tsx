@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import * as Yup from "yup";
 import { useTranslation, Trans } from "react-i18next";
 import { FormikField } from "@/refresh-components/form/FormikField";
@@ -15,7 +15,7 @@ import {
   ImageGenSubmitPayload,
 } from "./types";
 import { ImageProvider } from "../constants";
-import { ImageGenerationCredentials } from "@/lib/configuration/imageConfigurationService";
+import { ImageGenerationCredentials } from "@/lib/api/domains/model-providers/image-types";
 
 const VERTEXAI_PROVIDER_NAME = "vertex_ai";
 const VERTEXAI_DEFAULT_LOCATION = "global";

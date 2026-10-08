@@ -1,17 +1,11 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
   PacketType,
   ReasoningDelta,
   ReasoningPacket,
-} from "@/app/app/services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 import {
   MessageRenderer,
   FullChatState,
@@ -164,9 +158,10 @@ export const ReasoningRenderer: MessageRenderer<
         components={
           isExpanded ? mutedTextMarkdownComponents : collapsedMarkdownComponents
         }
+        isStreaming={!hasEnd}
       />
     ),
-    []
+    [hasEnd]
   );
 
   if (!hasStart && !hasEnd && content.length === 0) {

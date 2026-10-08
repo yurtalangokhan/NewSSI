@@ -3,7 +3,7 @@
 import { notFound } from "next/navigation";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import ImageGenerationContent from "./ImageGenerationContent";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { useTranslation } from "react-i18next";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 

@@ -1,4 +1,5 @@
 "use client";
+import { craftEndpoints } from "@/lib/api/domains/craft/endpoints";
 
 import { useState, useEffect, useCallback } from "react";
 import useSWR from "swr";
@@ -6,8 +7,8 @@ import { cn } from "@/lib/utils";
 import Text from "@/refresh-components/texts/Text";
 import { SvgChevronLeft, SvgChevronRight, SvgFileText } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
-import { fetchPptxPreview } from "@/app/craft/services/apiServices";
-import { getArtifactUrl } from "@/lib/build/client";
+import { fetchPptxPreview } from "@/lib/api/domains/craft/api";
+import { getArtifactUrl } from "@/lib/api/domains/craft/api";
 
 interface PptxPreviewProps {
   sessionId: string;
@@ -29,7 +30,7 @@ export default function PptxPreview({
   const [imageLoading, setImageLoading] = useState(true);
 
   const { data, error, isLoading, mutate } = useSWR(
-    `/api/build/sessions/${sessionId}/pptx-preview/${filePath}`,
+    craftEndpoints.craftPptxPreviewCacheKey(sessionId, filePath).browserPath,
     () => fetchPptxPreview(sessionId, filePath),
     {
       revalidateOnFocus: false,

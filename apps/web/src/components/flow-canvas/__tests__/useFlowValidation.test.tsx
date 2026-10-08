@@ -6,11 +6,12 @@
  */
 
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { envelopeResponse } from "@tests/setup/responseModel";
 import { createFlowStore } from "../stores/flowStore";
 import { useFlowValidation } from "../hooks/useFlowValidation";
 
-function jsonResponse(status: number, body: unknown) {
-  return { ok: status >= 200 && status < 300, status, json: async () => body };
+function jsonResponse(status: number, data: unknown) {
+  return envelopeResponse(data, { status });
 }
 
 beforeEach(() => {
@@ -19,7 +20,7 @@ beforeEach(() => {
 
 describe("useFlowValidation — 28.9, errors block publish, warnings do not", () => {
   it("hasErrors is true when the response carries errors", async () => {
-    (global.fetch as jest.Mock).mockResolvedValue(
+    (global.fetch as jest.Mock).mockImplementation(async () =>
       jsonResponse(200, {
         valid: false,
         errors: [
@@ -43,7 +44,7 @@ describe("useFlowValidation — 28.9, errors block publish, warnings do not", ()
   });
 
   it("hasErrors is false when only warnings are present", async () => {
-    (global.fetch as jest.Mock).mockResolvedValue(
+    (global.fetch as jest.Mock).mockImplementation(async () =>
       jsonResponse(200, {
         valid: true,
         errors: [],
@@ -70,7 +71,7 @@ describe("useFlowValidation — 28.9, errors block publish, warnings do not", ()
 describe("useFlowValidation — debounces re-validation on structural changes", () => {
   it("does not issue a second request for every rapid edit", async () => {
     jest.useFakeTimers();
-    (global.fetch as jest.Mock).mockResolvedValue(
+    (global.fetch as jest.Mock).mockImplementation(async () =>
       jsonResponse(200, { valid: true, errors: [], warnings: [] })
     );
     const store = createFlowStore();
@@ -113,7 +114,7 @@ describe("useFlowValidation — debounces re-validation on structural changes", 
 
   it("does not re-arm itself off its own setNodeErrors write (no infinite validation loop)", async () => {
     jest.useFakeTimers();
-    (global.fetch as jest.Mock).mockResolvedValue(
+    (global.fetch as jest.Mock).mockImplementation(async () =>
       jsonResponse(200, {
         valid: false,
         errors: [{ code: "X", message: "m", node_id: "n1", edge_id: null }],
@@ -146,7 +147,7 @@ describe("useFlowValidation — debounces re-validation on structural changes", 
 
   it("still re-validates on a real edit even after a setNodeErrors write", async () => {
     jest.useFakeTimers();
-    (global.fetch as jest.Mock).mockResolvedValue(
+    (global.fetch as jest.Mock).mockImplementation(async () =>
       jsonResponse(200, { valid: true, errors: [], warnings: [] })
     );
     const store = createFlowStore();

@@ -1,8 +1,6 @@
-from tests.unit_tests.fixtures import get_async_test_client
+from tests.unit_tests.fixtures import gateway_headers, get_async_test_client
 
-USER_1_HEADERS = {
-    "Authorization": "Bearer user1",
-}
+USER_1_HEADERS = gateway_headers("user1")
 
 
 def idempotency_headers(base_headers: dict[str, str], key: str) -> dict[str, str]:

@@ -7,7 +7,7 @@ import { formatRelativeTime } from "@/app/app/components/projects/project_utils"
 import Text from "@/refresh-components/texts/Text";
 import type { IconProps } from "@opal/types";
 import { getFileExtension, isImageExtension } from "@/lib/utils";
-import { UserFileStatus } from "@/app/app/projects/projectsService";
+import { UserFileStatus } from "@/lib/api/domains/projects/types";
 import CreateButton from "@/refresh-components/buttons/CreateButton";
 import Button from "@/refresh-components/buttons/Button";
 import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";

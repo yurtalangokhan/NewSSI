@@ -5,10 +5,7 @@ import Popover, { PopoverMenu } from "@/refresh-components/Popover";
 import { cn, noProp } from "@/lib/utils";
 import UserFilesModal from "@/components/modals/UserFilesModal";
 import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
-import {
-  ProjectFile,
-  UserFileStatus,
-} from "@/app/app/projects/projectsService";
+import { ProjectFile, UserFileStatus } from "@/lib/api/domains/projects/types";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import { toast } from "@/hooks/useToast";

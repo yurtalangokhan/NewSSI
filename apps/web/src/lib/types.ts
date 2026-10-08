@@ -1,7 +1,7 @@
-import { Persona } from "@/app/admin/agents/interfaces";
+import { Persona } from "@/lib/api/domains/agents/types";
 import { Credential } from "./connectors/credentials";
 import { Connector } from "./connectors/connectors";
-import { ConnectorCredentialPairStatus } from "@/app/admin/connector/[ccPairId]/types";
+import { ConnectorCredentialPairStatus } from "@/lib/api/domains/datasources/types";
 
 export interface UserSpecificAgentPreference {
   disabled_tool_ids?: number[];
@@ -19,7 +19,7 @@ export enum ThemePreference {
 }
 
 interface UserPreferences {
-  // TODO: rename to agent — https://linear.app/onyx-app/issue/ENG-3766
+  // TODO: rename to agent — https://linear.app/atlas-app/issue/ENG-3766
   chosen_assistants: number[] | null;
   visible_assistants: number[];
   hidden_assistants: number[];
@@ -54,6 +54,7 @@ export interface UserPersonalization {
 export interface User {
   id: string;
   email: string;
+  username?: string | null;
   first_name?: string | null;
   last_name?: string | null;
   full_name?: string | null;

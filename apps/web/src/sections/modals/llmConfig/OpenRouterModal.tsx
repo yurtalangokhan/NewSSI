@@ -1,4 +1,7 @@
-import { authenticatedFetch } from "@/lib/fetcher";
+import { modelProvidersEndpoints } from "@/lib/api/domains/model-providers/endpoints";
+
+import { fetchOpenRouterFormModels } from "@/lib/api/domains/model-providers/api";
+
 import Separator from "@/refresh-components/Separator";
 import { Form, Formik } from "formik";
 import { TextFormField } from "@/components/Field";
@@ -32,7 +35,8 @@ import { useTranslation } from "react-i18next";
 export const OPENROUTER_PROVIDER_NAME = "openrouter";
 const OPENROUTER_DISPLAY_NAME = "OpenRouter";
 const DEFAULT_API_BASE = "https://openrouter.ai/api/v1";
-const OPENROUTER_MODELS_API_URL = "/api/admin/llm/openrouter/available-models";
+const OPENROUTER_MODELS_API_URL =
+  modelProvidersEndpoints.fetchOpenRouterModels.browserPath;
 
 interface OpenRouterModalValues extends BaseLLMFormValues {
   api_key: string;
@@ -52,16 +56,10 @@ async function fetchOpenRouterModels(params: {
   }
 
   try {
-    const response = await authenticatedFetch(OPENROUTER_MODELS_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        api_base: params.apiBase,
-        api_key: params.apiKey,
-        provider_name: params.providerName,
-      }),
+    const response = await fetchOpenRouterFormModels({
+      api_base: params.apiBase,
+      api_key: params.apiKey,
+      provider_name: params.providerName,
     });
 
     if (!response.ok) {

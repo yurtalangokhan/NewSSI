@@ -1,13 +1,13 @@
 import { requireAdminAuth, requireAuth } from "./requireAuth";
 import {
-  type AuthTypeMetadata,
   getAuthTypeMetadataSS,
   getCurrentUserAccessSS,
   getCurrentUserSS,
-} from "@/lib/userSS";
+} from "@/lib/api/domains/session/server";
+import type { AuthTypeMetadata } from "@/lib/api/domains/session/types";
 import { AuthType } from "@/lib/constants";
 
-jest.mock("@/lib/userSS", () => ({
+jest.mock("@/lib/api/domains/session/server", () => ({
   getAuthTypeMetadataSS: jest.fn(),
   getCurrentUserAccessSS: jest.fn(),
   getCurrentUserSS: jest.fn(),
@@ -53,7 +53,7 @@ describe("requireAuth", () => {
     };
     jest.mocked(getCurrentUserSS).mockResolvedValue(user as never);
     jest.mocked(getCurrentUserAccessSS).mockResolvedValue({
-      permissions: ["agent:list"],
+      permissions: ["agent:view"],
       isAdmin: false,
     });
 
@@ -91,13 +91,61 @@ describe("requireAuth", () => {
     };
     jest.mocked(getCurrentUserSS).mockResolvedValue(user as never);
     jest.mocked(getCurrentUserAccessSS).mockResolvedValue({
-      permissions: ["chat:send"],
+      permissions: [
+        "chat:send",
+        "agent:list",
+        "datasource:read",
+        "provider:read",
+        "mcp_tool:read",
+      ],
       isAdmin: false,
     });
 
     await expect(requireAdminAuth()).resolves.toMatchObject({
       user,
       redirect: "/error/403",
+    });
+  });
+
+  it("denies a server-rendered admin page without its view grant", async () => {
+    const user = {
+      id: "user-1",
+      role: "enterprise-admin",
+      is_superuser: false,
+      is_verified: true,
+    };
+    jest.mocked(getCurrentUserSS).mockResolvedValue(user as never);
+    jest.mocked(getCurrentUserAccessSS).mockResolvedValue({
+      permissions: ["agent:view"],
+      isAdmin: true,
+    });
+
+    await expect(
+      requireAdminAuth("/admin/bots/1/channels/new")
+    ).resolves.toMatchObject({
+      user,
+      redirect: "/error/403",
+    });
+  });
+
+  it("admits a server-rendered admin page with its view grant", async () => {
+    const user = {
+      id: "user-1",
+      role: "enterprise-admin",
+      is_superuser: false,
+      is_verified: true,
+    };
+    jest.mocked(getCurrentUserSS).mockResolvedValue(user as never);
+    jest.mocked(getCurrentUserAccessSS).mockResolvedValue({
+      permissions: ["slack_bot:view"],
+      isAdmin: true,
+    });
+
+    await expect(
+      requireAdminAuth("/admin/bots/1/channels/new")
+    ).resolves.toEqual({
+      user,
+      authTypeMetadata,
     });
   });
 });

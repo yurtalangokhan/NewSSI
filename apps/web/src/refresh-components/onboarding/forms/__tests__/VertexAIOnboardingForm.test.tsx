@@ -19,7 +19,8 @@ const descriptionText =
 const credentialsFileText =
   /^(Credentials File|llmOnboarding\.credentialsFile)$/i;
 const defaultModelText = /^(Default Model|llmOnboarding\.defaultModel)$/i;
-const modelPlaceholder = /^(Select a model|llmOnboarding\.selectOrTypeModel)$/i;
+const modelPlaceholder =
+  /^(Select a model|Select or type a model name|llmOnboarding\.selectOrTypeModel)$/i;
 
 // Mock fetch
 const mockFetch = jest.fn();
@@ -167,7 +168,7 @@ describe("VertexAIOnboardingForm", () => {
      * This test verifies that the exact curated list of Vertex AI visible models
      * matches what's returned from /api/admin/llm/built-in/options.
      * The expected models are defined in VERTEXAI_VISIBLE_MODEL_NAMES in
-     * backend/onyx/llm/llm_provider_options.py
+     * backend/atlas/llm/llm_provider_options.py
      */
     test("llmDescriptor contains the correct default visible models from built-in options", () => {
       const expectedModelNames = [
@@ -196,7 +197,7 @@ describe("VertexAIOnboardingForm", () => {
     });
 
     test("VERTEXAI_DEFAULT_VISIBLE_MODELS matches backend VERTEXAI_VISIBLE_MODEL_NAMES", () => {
-      // These are the exact model names from backend/onyx/llm/llm_provider_options.py
+      // These are the exact model names from backend/atlas/llm/llm_provider_options.py
       // VERTEXAI_VISIBLE_MODEL_NAMES = {"gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"}
       const backendVisibleModelNames = new Set([
         "gemini-2.5-flash",

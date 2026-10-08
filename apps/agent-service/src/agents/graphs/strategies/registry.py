@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from agents.graphs.schemas import GraphSchemaType
-from core.logger import get_logger
+from core.observability.logger import get_logger
+from schemas.agent_graphs import GraphSchemaType
 
 if TYPE_CHECKING:
     from agents.graphs.strategies.base import GraphSchemaStrategy
@@ -95,33 +95,17 @@ _registry: GraphSchemaStrategyRegistry | None = None
 
 
 def get_registry() -> GraphSchemaStrategyRegistry:
-    """Get the global strategy registry, initializing if needed."""
+    """Get the global strategy registry, initializing if needed.
+
+    The registry deliberately knows no concrete strategy: importing them here
+    would close a loop, because a nested supervisor or pipeline has to come
+    back to ``get_strategy``. The package ``__init__`` registers the built-ins
+    instead, and Python guarantees it has run before this module is reachable.
+    """
     global _registry
     if _registry is None:
         _registry = GraphSchemaStrategyRegistry()
-        _register_default_strategies()
     return _registry
-
-
-def _register_default_strategies() -> None:
-    """Register the default built-in strategies."""
-    from agents.graphs.strategies.pipeline import PipelineGraphStrategy
-    from agents.graphs.strategies.plan_execute import PlanExecuteGraphStrategy
-    from agents.graphs.strategies.react import ReActGraphStrategy
-    from agents.graphs.strategies.self_reflect import SelfReflectGraphStrategy
-    from agents.graphs.strategies.supervisor import SupervisorGraphStrategy
-    from agents.graphs.strategies.zero_shot import ZeroShotGraphStrategy
-
-    registry = _registry
-    if registry is None:
-        return
-
-    registry.register(ZeroShotGraphStrategy)
-    registry.register(ReActGraphStrategy)
-    registry.register(SupervisorGraphStrategy)
-    registry.register(PipelineGraphStrategy)
-    registry.register(PlanExecuteGraphStrategy)
-    registry.register(SelfReflectGraphStrategy)
 
 
 def get_strategy(

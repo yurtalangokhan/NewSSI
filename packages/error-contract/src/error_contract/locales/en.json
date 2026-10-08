@@ -1,0 +1,414 @@
+{
+  "errors": {
+    "auth": {
+      "forbidden": "You do not have permission to perform this action.",
+      "unauthorized": "Authentication is required.",
+      "delegation_required": "A delegated user identity is required.",
+      "trusted_identity_required": "A trusted user identity is required."
+    },
+    "configuration": {
+      "invalid": "Server configuration is invalid."
+    },
+    "database": {
+      "connection_failed": "Database connection failed.",
+      "operation_failed": "Database operation failed.",
+      "timeout": "Database operation timed out."
+    },
+    "dependency": {
+      "connection_failed": "A required dependency could not be reached.",
+      "authentication_failed": "Authentication with a required dependency failed.",
+      "invalid_response": "A required dependency returned an invalid response.",
+      "rate_limited": "A required dependency rate limited the request.",
+      "timeout": "A required dependency timed out.",
+      "unavailable": "A required dependency is unavailable."
+    },
+    "agent": {
+      "not_found": "Agent not found.",
+      "error": "The agent operation failed.",
+      "invalid_questions": "The submitted questions are invalid.",
+      "graph_build_failed": "The agent graph could not be built.",
+      "client_failed": "The agent service request failed.",
+      "permission_denied": "You do not have permission to use this agent.",
+      "expansion_failed": "The agent could not be expanded.",
+      "mcp_auth_failed": "MCP authentication failed.",
+      "execution_limit_exceeded": "The agent reached the execution limit for this turn. Please try again.",
+      "streaming_unsupported": "This agent does not support streaming.",
+      "checkpointer_unavailable": "Conversation checkpoint storage is unavailable."
+    },
+    "flow": {
+      "failed": "The flow operation failed.",
+      "component_duplicate": "This flow component is already registered.",
+      "component_unknown": "This flow component is unknown.",
+      "options_source_unknown": "This flow options source is unknown.",
+      "node_not_resource": "This flow node is not a resource node.",
+      "build_failed": "The flow could not be built.",
+      "version_conflict": "The flow version conflicts with the current state.",
+      "validation_failed": "The flow failed validation.",
+      "not_published": "This flow has not been published.",
+      "migration_missing": "A required flow migration is unavailable."
+    },
+    "security": {
+      "url_rejected": "The requested URL is not allowed.",
+      "url_blocked": "The requested URL is blocked for security reasons.",
+      "dns_resolution_failed": "The requested host could not be resolved safely.",
+      "trusted_field_forbidden": "Trusted identity fields cannot be supplied as tool arguments."
+    },
+    "internal": {
+      "server_error": "An unexpected error occurred."
+    },
+    "operation": {
+      "failed": "The operation failed.",
+      "timeout": "The operation timed out."
+    },
+    "rate_limit": {
+      "exceeded": "Too many requests. Try again later."
+    },
+    "request": {
+      "conflict": "The request conflicts with the current state.",
+      "invalid": "Invalid request.",
+      "not_found": "Resource not found.",
+      "payload_too_large": "The request payload is too large.",
+      "unsupported_media_type": "The request media type is not supported.",
+      "method_not_allowed": "This HTTP method is not allowed."
+    },
+    "validation": {
+      "failed": "Request validation failed.",
+      "field_required": "Field required",
+      "invalid_boolean": "Must be a valid boolean.",
+      "invalid_integer": "Must be a valid integer.",
+      "invalid_list": "Must be a valid list.",
+      "invalid_object": "Must be a valid object.",
+      "invalid_string": "Must be a valid string.",
+      "invalid_value": "Invalid value.",
+      "string_too_long": "Must contain at most {max_length} characters.",
+      "string_too_short": "Must contain at least {min_length} characters.",
+      "field_required_named": "The {field} field must not be empty."
+    },
+    "connector": {
+      "authorization": "{message}",
+      "configuration": "{message}",
+      "validation": "{message}",
+      "connection": "{message}",
+      "timeout": "{message}",
+      "authentication": "{message}",
+      "unsupported": "{message}",
+      "response": "{message}"
+    },
+    "idempotency_key_required": "Idempotency-Key header is required for this endpoint.",
+    "idempotency_key_invalid": "Idempotency-Key must be 1-255 characters long and contain only letters, digits, '.', '_' or '-'.",
+    "idempotency_key_reused": "Idempotency-Key was already used for a different request or principal.",
+    "idempotency_request_in_progress": "A request with this Idempotency-Key is still in progress.",
+    "idempotency_store_unavailable": "The idempotency store is temporarily unavailable; retry the request with the same Idempotency-Key.",
+    "collection": {
+      "not_found": "Collection not found or inaccessible.",
+      "access_denied": "You do not have access to this collection."
+    },
+    "retrieval": {
+      "graph_permission_required": "Graph search permission is required."
+    },
+    "memory": {
+      "upsert_failed": "The memory fact could not be indexed.",
+      "delete_failed": "The memory index could not be cleared."
+    },
+    "settings": {
+      "shortcut_not_found": "Prompt shortcut not found."
+    },
+    "user": {
+      "not_found": "User not found."
+    },
+    "user_service": {
+      "api_key": {
+        "not_found": "API key not found"
+      },
+      "auth": {
+        "external_credentials_rejected": "External identity provider rejected the credentials",
+        "external_login_failed": "External sign-in failed",
+        "external_no_subject_in_token": "External authentication failed — no subject in token",
+        "external_sp_user_not_created": "External authentication failed — SP user was not created",
+        "forbidden": "Forbidden",
+        "invalid_credentials": "Invalid username or password",
+        "no_id_token": "Authentication failed — no id_token received",
+        "no_subject_in_token": "Authentication failed — no subject in token",
+        "oidc_callback_failed": "OIDC callback failed: {error}",
+        "refresh_no_id_token": "Token refresh failed — no id_token received",
+        "refresh_no_subject_in_token": "Token refresh failed — no subject in token",
+        "refresh_token_required": "Refresh token required",
+        "registration_managed_by_keycloak": "User registration is managed by Keycloak",
+        "required": "Authentication required",
+        "sync_failed": "Sync failed: {error}",
+        "unauthorized": "Unauthorized access",
+        "refresh_managed_by_keycloak": "Session renewal is managed by Keycloak.",
+        "basic_login_disabled": "Password login is disabled.",
+        "external_login_disabled": "External password login is disabled."
+      },
+      "common": {
+        "bad_request": "Bad request",
+        "conflict": "Resource conflict",
+        "forbidden": "Forbidden",
+        "not_found": "Resource not found",
+        "service_unavailable": "A required service is unavailable. Please try again shortly."
+      },
+      "keycloak": {
+        "base_url_not_configured": "KEYCLOAK_BASE_URL or KEYCLOAK_ISSUER_URL must be configured",
+        "client_not_found": "Keycloak client '{client_id}' was not found",
+        "client_response_invalid": "Keycloak client '{client_id}' response is invalid",
+        "external_client_id_not_configured": "EXTERNAL_KEYCLOAK_CLIENT_ID must be configured",
+        "external_client_secret_not_configured": "EXTERNAL_KEYCLOAK_CLIENT_SECRET must be configured",
+        "external_issuer_not_configured": "EXTERNAL_KEYCLOAK_ISSUER_URL or EXTERNAL_KEYCLOAK_BASE_URL + EXTERNAL_KEYCLOAK_REALM must be configured",
+        "external_not_configured": "External Keycloak is not configured",
+        "external_realm_not_configured": "EXTERNAL_KEYCLOAK_REALM must be configured",
+        "login_form_not_found": "External IdP login form was not found",
+        "redirect_uri_not_absolute": "KEYCLOAK_REDIRECT_URI or KEYCLOAK_REDIRECT_URIS must contain an absolute callback URL",
+        "redirect_uri_required": "redirect_uri is required for external Keycloak login",
+        "service_account_not_configured": "Keycloak service account is not configured",
+        "sp_user_create_failed": "Failed to create SP user for external identity",
+        "token_refresh_failed_status": "Token refresh failed (status {status})",
+        "identity_already_exists": "The Keycloak identity already exists."
+      },
+      "memory": {
+        "content_required": "Content is required",
+        "not_found": "User memory not found",
+        "already_exists": "This memory fact already exists."
+      },
+      "organization": {
+        "not_found": "Organization not found",
+        "primary_not_found": "Primary organization not found",
+        "organization_with_code_already_exists": "Organization with code '{param1}' already exists",
+        "organization_not_found": "Organization {org_id} not found",
+        "cannot_delete_organization_with_children_use_cascade_true_to": "Cannot delete organization with {param1} children. Use cascade=True to delete all descendants.",
+        "failed_to_move_organization": "Failed to move organization",
+        "search_query_must_be_at_least_characters": "Search query must be at least 2 characters",
+        "a_root_organization_already_exists": "A root organization already exists",
+        "parent_organization_not_found": "Parent organization {new_parent_id} not found",
+        "cannot_move_organization_to_its_own_descendant": "Cannot move organization to its own descendant",
+        "catalog_gateway_unconfigured": "The organization catalog gateway is not configured.",
+        "catalog_unavailable": "The organization resource catalog is unavailable."
+      },
+      "permission": {
+        "invalid_permissions": "Invalid permissions: {permissions}",
+        "not_found": "Permission '{name}' not found"
+      },
+      "role": {
+        "already_exists": "Role '{name}' already exists",
+        "cannot_delete_builtin": "Cannot delete built-in role '{name}'",
+        "cannot_delete_in_use": "Cannot delete role '{name}' while users are assigned to it",
+        "id_not_found": "Role with ID '{role_id}' not found",
+        "invalid_permissions": "Invalid permissions: {permissions}",
+        "invalid_role_ids": "Invalid roles: {roles}",
+        "session_invalidation_failed_for_user": "Failed to invalidate active Keycloak sessions for user {email}"
+      },
+      "user": {
+        "already_exists": "User with email {email} already exists",
+        "cannot_remove_last_role": "Cannot remove the user's last role",
+        "keycloak_id_required": "Keycloak user id is required",
+        "keycloak_password_set_failed": "Keycloak password could not be set",
+        "keycloak_user_create_failed": "Keycloak user could not be created",
+        "keycloak_user_missing_id": "Existing Keycloak user has no id",
+        "not_found": "User not found",
+        "not_found_by_keycloak_id": "User with keycloak_id {keycloak_id} not found",
+        "password_managed_by_keycloak": "Password management is handled by Keycloak",
+        "primary_role_must_be_assigned": "Primary role must be included in the assigned roles",
+        "role_not_assigned": "Role is not assigned to this user: {role}",
+        "session_invalidation_failed": "Failed to invalidate active Keycloak sessions"
+      },
+      "user_organization": {
+        "not_found": "User organization not found",
+        "unknown_organization_role": "Unknown organization role '{role_name}'",
+        "user_not_found": "User {user_id} not found",
+        "organization_not_found": "Organization {organization_id} not found",
+        "user_is_already_assigned_to_organization": "User {user_id} is already assigned to organization {organization_id}",
+        "failed_to_update_user_role": "Failed to update user role",
+        "user_is_not_assigned_to_organization": "User {user_id} is not assigned to organization {organization_id}",
+        "failed_to_set_primary_organization": "Failed to set primary organization",
+        "actor_cannot_manage_the_selected_organization": "Actor cannot manage the selected organization",
+        "actor_cannot_manage_organization_members": "Actor cannot manage organization members"
+      },
+      "resource_permission": {
+        "either_organization_id_or_user_id_must_be_provided": "Either organization_id or user_id must be provided",
+        "only_one_of_organization_id_or_user_id_can": "Only one of organization_id or user_id can be provided",
+        "invalid_permission_level_must_be_one_of": "Invalid permission level '{permission_level}'. Must be one of: {param2}",
+        "permission_already_exists_for_this_resource_use_update_permission": "Permission already exists for this resource. Use update_permission to modify it.",
+        "permission_not_found": "Permission {permission_id} not found",
+        "failed_to_update_permission": "Failed to update permission",
+        "actor_cannot_change_permissions_outside_their_organization_scope": "Actor cannot change permissions outside their organization scope",
+        "cannot_delegate_a_resource_permission_the_actor_does_not": "Cannot delegate a resource permission the actor does not hold",
+        "actor_cannot_read_organization_resources": "Actor cannot read organization resources",
+        "resource_ids_must_be_unique": "Resource IDs must be unique",
+        "target_type_must_be_organization_or_user": "target_type must be 'organization' or 'user'",
+        "resource_type_must_be_agent_or_rag_collection": "resource_type must be 'agent' or 'rag_collection'",
+        "organization_not_found": "Organization not found",
+        "organization_target_must_match_the_organization_scope": "Organization target must match the organization scope",
+        "actor_cannot_manage_the_selected_organization": "Actor cannot manage the selected organization",
+        "user_target_must_be_an_active_member_of_the": "User target must be an active member of the selected organization",
+        "global_permission_listings_require_a_global_administrator": "Global permission listings require a global administrator",
+        "actor_cannot_manage_organization_resources": "Actor cannot manage organization resources"
+      },
+      "scoped_organization": {
+        "only_a_global_administrator_can_create_a_root": "Only a global administrator can create a root"
+      },
+      "organization_scope": {
+        "actor_cannot_access_the_selected_organization": "Actor cannot access the selected organization",
+        "an_assigned_scope_root_cannot_be_moved_or_deleted": "An assigned scope root cannot be moved or deleted"
+      },
+      "connector_config": {
+        "not_found": "Connector configuration not found",
+        "unreadable": "Connector configuration cannot be decrypted with the configured key"
+      }
+    },
+    "rag": {
+      "collection": {
+        "create_failed": "Failed to create collection",
+        "update_requires_attribute": "Must update at least 1 attribute",
+        "locked_graph_build_in_progress": "Collection is locked while Graph RAG build is in progress. Try again after the build completes.",
+        "connector_managed_readonly": "This collection is managed by a connector and is read-only. Rename, delete, upload, and document deletion are not allowed."
+      },
+      "document": {
+        "not_found": "Document not found",
+        "metadata_count_mismatch": "Number of metadata objects ({metadata_count}) does not match number of files ({file_count}).",
+        "no_documents_processed": "Failed to process any documents from the provided files.",
+        "vectorstore_add_failed": "Failed to add document(s) to vector store after processing.",
+        "search_query_empty": "Search query cannot be empty",
+        "invalid_metadata": "Document metadata must be a JSON array of objects."
+      },
+      "graph": {
+        "build_no_documents": "Cannot build a knowledge graph: the collection contains no documents.",
+        "no_running_build_pause": "No running graph build found to pause.",
+        "no_running_build_resume": "No running graph build found to resume.",
+        "no_running_build_stop": "No running graph build found to stop.",
+        "neo4j_unreachable": "Neo4j is not reachable",
+        "cypher_admin_required": "Administrator access is required for raw Cypher."
+      },
+      "auth": {
+        "invalid_scheme": "Invalid authentication scheme",
+        "bearer_token_required": "Bearer token required",
+        "permission_required": "Missing required permission: {permission}"
+      }
+    },
+    "web_search": {
+      "unsupported_provider_type": "Unsupported content provider type: {provider_type}",
+      "test_fetch_failed": "Failed to fetch test URL.",
+      "url_required": "A non-empty 'url' field is required.",
+      "url_invalid_scheme": "URL must start with http:// or https://.",
+      "no_crawler_result": "No result returned from crawler."
+    },
+    "ollama": {
+      "model_not_found": "Model not found."
+    },
+    "provider": {
+      "not_found": "Provider not found.",
+      "ollama_unconfigured": "Ollama is not configured.",
+      "builtin_url_collision": "This URL is already used by the built-in Ollama provider.",
+      "connection_failed": "Could not connect to the model provider."
+    },
+    "proxy": {
+      "mcp_unavailable": "The MCP service is unavailable.",
+      "tool_not_found": "Tool not found.",
+      "ollama_unavailable": "Ollama models could not be retrieved."
+    },
+    "schedule": {
+      "cron_required": "A cron expression is required."
+    },
+    "mail": {
+      "config_not_found": "Mail configuration not found.",
+      "config_unavailable": "The selected mail configuration is unavailable.",
+      "config_in_use": "This mail configuration is used by an active agent.",
+      "password_required": "A mail password is required.",
+      "credentials_required": "Configure your email credentials before sending mail.",
+      "delivery_failed": "Email could not be delivered.",
+      "invalid_payload": "Check the email recipients, subject, body and attachments.",
+      "smtp_not_configured": "The mail server is not configured.",
+      "authentication_failed": "The mail server rejected the configured credentials.",
+      "timeout": "The mail server did not respond in time.",
+      "connection_failed": "The mail server could not be reached.",
+      "recipients_rejected": "The mail server rejected the email recipients.",
+      "message_rejected": "The mail server rejected the message.",
+      "attachment_too_large": "An attachment exceeds the size limit.",
+      "attachments_too_large": "The attachments together exceed the size limit.",
+      "config_required": "A mail configuration is required when the send_email tool is selected."
+    },
+    "upload": {
+      "unsupported_type": "Uploaded file type is not supported.",
+      "content_mismatch": "File content does not match its declared type."
+    }
+  },
+  "assistant": {
+    "id_required": "Assistant ID is required.",
+    "cannot_update_system_template": "Cannot update system templates",
+    "graph_not_found": "Graph {graph_id} not found",
+    "not_found": "Assistant {assistant_id} not found"
+  },
+  "mcp_provider": {
+    "not_found": "Provider {provider_id} not found",
+    "invalid_status": "Invalid status: {status_value}"
+  },
+  "tool": {
+    "not_found": "Tool {tool_id} not found",
+    "binding_not_found": "Tool binding not found",
+    "ids_required": "tool_ids required"
+  },
+  "mcp": {
+    "oauth_failed": "oauth authentication failed",
+    "oauth_callback_invalid": "Invalid OAuth callback: missing code or state"
+  },
+  "connectors": {
+    "timeout": "Connector resolution timed out.",
+    "access_denied": "Agent access denied."
+  },
+  "common": {
+    "bad_request": "Bad request",
+    "not_found": "Resource not found",
+    "internal_error": "Internal server error",
+    "forbidden": "Forbidden"
+  },
+  "auth": {
+    "not_authenticated": "Not authenticated"
+  },
+  "chat": {
+    "chat_session_not_found": "Chat session not found",
+    "missing_session_id": "Missing session_id",
+    "session_not_found": "Session not found"
+  },
+  "project": {
+    "invalid_temp_id_map": "Invalid temp_id_map",
+    "name_required": "Project name is required",
+    "not_found": "Project not found",
+    "or_chat_session_not_found": "Project or chat session not found"
+  },
+  "file": {
+    "not_found": "File not found."
+  },
+  "agent": {
+    "definition_not_found": "Agent definition {definition_id} not found",
+    "graph_schema_required": "graph_schema is required",
+    "invalid_uuid": "Invalid UUID: {id}",
+    "no_fields_to_update": "No fields to update",
+    "sub_agent_ids_must_be_array": "sub_agent_ids must be an array"
+  },
+  "datasource": {
+    "create_collection_failed": "Failed to create collection",
+    "duplicate_name": "A data source named '{name}' already exists. Please choose a different name.",
+    "invalid_sync_mode_combination": "Invalid sync mode combination: {sync_mode} | {dest_mode}. Valid combos: full_refresh|overwrite, full_refresh|append, incremental|append",
+    "not_found": "DataSource {datasource_id} not found",
+    "unknown_connector": "Unknown connector: {connector_type}"
+  },
+  "flow": {
+    "draft_not_found": "No draft exists for definition '{definition_id}'",
+    "published_not_found": "No published flow for definition '{definition_id}'",
+    "target_version_required": "target_version_no is required",
+    "unknown_component": "Unknown component type: '{component_type}'",
+    "unknown_options_source": "Unknown options source: '{source}'",
+    "validation_failed": "Flow failed validation.",
+    "version_conflict": "The flow version conflicts with the current state",
+    "version_not_found": "No version {version_no} for definition '{definition_id}'"
+  },
+  "persona": {
+    "not_found": "Persona not found",
+    "cannot_delete_builtin": "Cannot delete built-in agents",
+    "cannot_update_builtin": "Cannot update built-in agents",
+    "image_is_empty": "The uploaded image is empty",
+    "image_must_be_an_image": "The avatar must be an image file"
+  },
+  "thread": {
+    "not_found": "Thread not found"
+  }
+}

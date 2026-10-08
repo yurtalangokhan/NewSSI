@@ -1,4 +1,5 @@
 "use client";
+import { chatEndpoints } from "@/lib/api/domains/chat/endpoints";
 
 // ExpandableContentWrapper
 import React, { useState, useEffect } from "react";
@@ -6,12 +7,11 @@ import { SvgDownloadCloud, SvgFold, SvgMaximize2, SvgX } from "@opal/icons";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
-import { FileDescriptor } from "@/app/app/interfaces";
+import { FileDescriptor } from "@/lib/api/domains/chat/types";
 import { cn } from "@/lib/utils";
 import TextViewModal from "@/sections/modals/TextViewModal";
-import { MinimalOnyxDocument } from "@/lib/search/interfaces";
+import { MinimalAtlasDocument } from "@/lib/search/interfaces";
 import { useTranslation } from "react-i18next";
-import { chatFileDownloadUrl } from "@/lib/chat/svc";
 
 export interface ExpandableContentWrapperProps {
   fileDescriptor: FileDescriptor;
@@ -56,7 +56,7 @@ export default function ExpandableContentWrapper({
     // Same endpoint the CSV table view reads, which serves an XLSX transcoded
     // to CSV — the download needs the original bytes, and an absolute path so
     // it does not resolve against the current route.
-    a.href = chatFileDownloadUrl(fileDescriptor.id);
+    a.href = chatEndpoints.chatFileDownload(fileDescriptor.id).browserPath;
     a.download = fileDescriptor.name || t("filePreview.defaultDownloadName");
     a.setAttribute(
       "download",
@@ -124,7 +124,7 @@ export default function ExpandableContentWrapper({
     </div>
   );
 
-  const presentingDocument: MinimalOnyxDocument = {
+  const presentingDocument: MinimalAtlasDocument = {
     document_id: fileDescriptor.id,
     semantic_identifier: fileDescriptor.name ?? null,
   };

@@ -1,11 +1,11 @@
 """Tests for graph schema strategies."""
 
-from agents.graphs.schemas import GraphSchemaType
 from agents.graphs.strategies import (
     ReActGraphStrategy,
     get_registry,
     get_strategy,
 )
+from schemas.agent_graphs import GraphSchemaType
 
 
 class TestStrategyRegistry:

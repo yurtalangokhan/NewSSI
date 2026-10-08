@@ -17,17 +17,13 @@ import {
   useOAuthDetails,
   getConnectorOauthRedirectUrl,
 } from "@/lib/connectors/oauth";
-import { deleteCredential } from "@/lib/credential";
+import { deleteCredential } from "@/lib/api/domains/datasources/api";
 import ModifyCredential from "@/components/credentials/actions/ModifyCredential";
 import CreateCredential from "@/components/credentials/actions/CreateCredential";
 import { CreateStdOAuthCredential } from "@/components/credentials/actions/CreateStdOAuthCredential";
 import { GmailMain } from "@/app/admin/connectors/[connector]/pages/gmail/GmailPage";
 import CardSection from "@/components/admin/CardSection";
 import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
-import {
-  NEXT_PUBLIC_CLOUD_ENABLED,
-  NEXT_PUBLIC_TEST_ENV,
-} from "@/lib/constants";
 import {
   CRAFT_CONFIGURE_PATH,
   CRAFT_OAUTH_COOKIE_NAME,
@@ -36,6 +32,7 @@ import Cookies from "js-cookie";
 import { toast } from "@/hooks/useToast";
 import { createBuildConnector } from "@/app/craft/v1/configure/utils/createBuildConnector";
 import { useUser } from "@/providers/UserProvider";
+import { appSettings } from "@/lib/settings";
 
 interface CredentialStepProps {
   connectorType: ValidSources;
@@ -229,7 +226,8 @@ export default function CredentialStep({
                   {oauthSupportedSources.includes(
                     connectorType as ConfigurableSources
                   ) &&
-                    (NEXT_PUBLIC_CLOUD_ENABLED || NEXT_PUBLIC_TEST_ENV) && (
+                    (appSettings.NEXT_PUBLIC_CLOUD_ENABLED ||
+                      appSettings.NEXT_PUBLIC_TEST_ENV) && (
                       <Button
                         action
                         onClick={handleAuthorize}

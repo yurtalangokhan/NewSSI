@@ -3,7 +3,10 @@
 import { TextFormField } from "@/components/Field";
 import { Form, Formik } from "formik";
 import * as Yup from "yup";
-import { createSlackBot, updateSlackBot } from "./new/lib";
+import {
+  createSlackBot,
+  updateSlackBot,
+} from "@/lib/api/domains/integrations/api";
 import Button from "@/refresh-components/buttons/Button";
 import Separator from "@/refresh-components/Separator";
 import { useEffect } from "react";

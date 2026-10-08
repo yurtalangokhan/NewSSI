@@ -1,11 +1,12 @@
 import ipaddress
-import socket
 from typing import Any
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from urllib.parse import urlparse, urlunparse
 
+from error_contract.domain import DNSResolutionError, SSRFBlockedException, SSRFException
 import requests
+from security import UrlPolicyError, is_blocked_ip, resolve_and_check
 
-from core.logger import get_logger
+from core.observability.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -13,7 +14,8 @@ logger = get_logger(__name__)
 BLOCKED_HOSTNAMES = {
     # Localhost variations
     "localhost",
-    # Cloud metadata endpoints (defense-in-depth, IPs also blocked via _is_ip_private_or_reserved)
+    # Cloud metadata endpoints (defense-in-depth; the IPs are also rejected by the
+    # shared address policy)
     "169.254.169.254",  # AWS/Azure/GCP metadata IP
     "fd00:ec2::254",  # AWS IPv6 metadata
     "metadata.azure.com",
@@ -26,45 +28,13 @@ BLOCKED_HOSTNAMES = {
 }
 
 
-class SSRFException(Exception):
-    """Exception raised when an SSRF attempt is detected."""
-
-
-class SSRFBlockedException(SSRFException):
-    """Exception raised when a URL is permanently blocked due to SSRF policy (private IP, blocked host)."""
-
-
-class DNSResolutionError(SSRFException):
-    """Exception raised when DNS resolution fails (e.g. temporary DNS glitch or non-existent host)."""
-
-
-def _is_ip_private_or_reserved(ip_str: str) -> bool:
-    """
-    Check if an IP address is private, reserved, or otherwise not suitable
-    for external requests.
-
-    Uses Python's ipaddress module which handles:
-    - Private addresses (10.x.x.x, 172.16-31.x.x, 192.168.x.x)
-    - Loopback addresses (127.x.x.x, ::1)
-    - Link-local addresses (169.254.x.x including cloud metadata IPs, fe80::/10)
-    - Reserved addresses
-    - Multicast addresses
-    - Unspecified addresses (0.0.0.0, ::)
-    """
-    try:
-        ip = ipaddress.ip_address(ip_str)
-        # is_global returns True only for globally routable unicast addresses
-        # This excludes private, loopback, link-local, reserved, and unspecified
-        # We also need to explicitly check multicast as it's not covered by is_global
-        return not ip.is_global or ip.is_multicast
-    except ValueError:
-        # If we can't parse the IP, consider it unsafe
-        return True
-
-
 def _validate_and_resolve_url(url: str) -> tuple[str, str, int]:
     """
     Validate a URL for SSRF and resolve it to a safe IP address.
+
+    The address rules live in ``security.url_policy`` — this module owns only
+    what is specific to web search: the blocked hostname list, the public
+    exception names its callers catch, and the IP-pinned request that follows.
 
     Returns:
         Tuple of (validated_ip, original_hostname, port)
@@ -80,13 +50,11 @@ def _validate_and_resolve_url(url: str) -> tuple[str, str, int]:
     try:
         parsed = urlparse(url)
     except Exception as e:
-        raise ValueError(f"Invalid URL format: {e}")
+        raise ValueError(f"Invalid URL format: {e}") from e
 
     # Validate scheme
     if parsed.scheme not in ("http", "https"):
-        raise SSRFBlockedException(
-            f"Invalid URL scheme '{parsed.scheme}'. Only http and https are allowed."
-        )
+        raise SSRFBlockedException(f"Invalid URL scheme '{parsed.scheme}'. Only http and https are allowed.")
 
     # Get hostname
     hostname = parsed.hostname
@@ -108,41 +76,21 @@ def _validate_and_resolve_url(url: str) -> tuple[str, str, int]:
     # Check if the hostname is already an IP address
     try:
         ip = ipaddress.ip_address(hostname)
-        if _is_ip_private_or_reserved(str(ip)):
-            raise SSRFBlockedException(
-                f"Access to internal/private IP address '{hostname}' is not allowed."
-            )
-        return str(ip), hostname, port
     except ValueError:
         # Not an IP address, proceed with DNS resolution
         pass
+    else:
+        if is_blocked_ip(str(ip)):
+            raise SSRFBlockedException(f"Access to internal/private IP address '{hostname}' is not allowed.")
+        return str(ip), hostname, port
 
-    # Resolve hostname to IP addresses
+    # Resolve and reject if *any* address is internal, so a later connection
+    # attempt or a different resolver cannot land on the private one.
     try:
-        addr_info = socket.getaddrinfo(hostname, port)
-    except socket.gaierror as e:
+        return resolve_and_check(hostname, port), hostname, port
+    except UrlPolicyError as e:
         logger.warning("DNS resolution failed for hostname '%s': %s", hostname, e)
-        raise DNSResolutionError(f"Could not resolve hostname '{hostname}': {e}")
-
-    if not addr_info:
-        raise DNSResolutionError(f"Could not resolve hostname '{hostname}'")
-
-    # Find the first valid (non-private) IP address
-    validated_ip = None
-    for info in addr_info:
-        ip_str = info[4][0]
-        if _is_ip_private_or_reserved(str(ip_str)):
-            raise SSRFBlockedException(
-                f"Hostname '{hostname}' resolves to internal/private IP address "
-                f"'{ip_str}'. Access to internal networks is not allowed."
-            )
-        if validated_ip is None:
-            validated_ip = ip_str
-
-    if validated_ip is None:
-        raise SSRFBlockedException(f"Could not resolve hostname '{hostname}'")
-
-    return validated_ip, hostname, port  # ty: ignore[invalid-return-type]
+        raise DNSResolutionError(f"Could not resolve hostname '{hostname}': {e}") from e
 
 
 def validate_outbound_http_url(
@@ -174,13 +122,9 @@ def validate_outbound_http_url(
 
     if https_only:
         if parsed.scheme != "https":
-            raise SSRFBlockedException(
-                f"Invalid URL scheme '{parsed.scheme}'. Only https is allowed."
-            )
+            raise SSRFBlockedException(f"Invalid URL scheme '{parsed.scheme}'. Only https is allowed.")
     elif parsed.scheme not in ("http", "https"):
-        raise SSRFBlockedException(
-            f"Invalid URL scheme '{parsed.scheme}'. Only http and https are allowed."
-        )
+        raise SSRFBlockedException(f"Invalid URL scheme '{parsed.scheme}'. Only http and https are allowed.")
 
     if not parsed.hostname:
         raise ValueError("URL must contain a hostname")
@@ -311,9 +255,7 @@ def ssrf_safe_get(
             else:
                 # Relative path
                 base_path = parsed_current.path.rsplit("/", 1)[0]
-                redirect_url = (
-                    f"{parsed_current.scheme}://{parsed_current.netloc}{base_path}/{redirect_url}"
-                )
+                redirect_url = f"{parsed_current.scheme}://{parsed_current.netloc}{base_path}/{redirect_url}"
 
         # Validate and follow the redirect (this will raise SSRFException if invalid)
         current_url = redirect_url
@@ -323,70 +265,3 @@ def ssrf_safe_get(
         raise SSRFException(f"Too many redirects (max {MAX_REDIRECTS})")
 
     return response
-
-
-def normalize_url(url: str) -> str:
-    """
-    Normalize a URL by removing query parameters and fragments.
-    This is used to create consistent cache keys for deduplication.
-
-    Args:
-        url: The original URL
-
-    Returns:
-        Normalized URL (scheme + netloc + path + params only)
-    """
-    parsed_url = urlparse(url)
-
-    # Reconstruct the URL without query string and fragment
-    normalized = urlunparse(
-        (
-            parsed_url.scheme,
-            parsed_url.netloc,
-            parsed_url.path,
-            parsed_url.params,
-            "",
-            "",
-        )
-    )
-
-    return normalized
-
-
-def add_url_params(url: str, params: dict) -> str:
-    """
-    Add parameters to a URL, handling existing parameters properly.
-
-    Args:
-        url: The original URL
-        params: Dictionary of parameters to add
-
-    Returns:
-        URL with added parameters
-    """
-    # Parse the URL
-    parsed_url = urlparse(url)
-
-    # Get existing query parameters
-    query_params = parse_qs(parsed_url.query)
-
-    # Update with new parameters
-    for key, value in params.items():
-        query_params[key] = [value]
-
-    # Build the new query string
-    new_query = urlencode(query_params, doseq=True)
-
-    # Reconstruct the URL with the new query string
-    new_url = urlunparse(
-        (
-            parsed_url.scheme,
-            parsed_url.netloc,
-            parsed_url.path,
-            parsed_url.params,
-            new_query,
-            parsed_url.fragment,
-        )
-    )
-
-    return new_url

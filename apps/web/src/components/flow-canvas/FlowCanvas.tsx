@@ -2,7 +2,7 @@
  * Ported from Langflow (MIT) — src/frontend/src/pages/FlowPage/components/PageComponent/index.tsx
  * Upstream: https://github.com/langflow-ai/langflow @ 3ec070e9
  *
- * Adapted for Onyx: this is the canvas shell — the single highest-value
+ * Adapted for Atlas: this is the canvas shell — the single highest-value
  * port in P4. See .tmp/flow-canvas-task-20-report.md and
  * .tmp/flow-canvas-port-triage.md for what was and wasn't carried over;
  * the short version is that everything Langflow-vertex-build/run-specific

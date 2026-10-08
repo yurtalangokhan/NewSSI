@@ -1,4 +1,6 @@
 "use client";
+import { systemEndpoints } from "@/lib/api/domains/system/endpoints";
+
 import { use } from "react";
 
 import { useTranslation } from "react-i18next";
@@ -10,7 +12,7 @@ import { FiBook } from "react-icons/fi";
 import { timestampToReadableDate } from "@/lib/dateUtils";
 import BackButton from "@/refresh-components/buttons/BackButton";
 import { FeedbackBadge } from "../FeedbackBadge";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { fetchChatSessionSnapshot } from "@/lib/api/domains/system/api";
 import useSWR from "swr";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
@@ -86,8 +88,8 @@ export default function QueryPage(props: { params: Promise<{ id: string }> }) {
     isLoading,
     error,
   } = useSWR<ChatSessionSnapshot>(
-    `/api/admin/chat-session-history/${params.id}`,
-    errorHandlingFetcher
+    systemEndpoints.chatSessionHistoryCacheKey(params.id).browserPath,
+    () => fetchChatSessionSnapshot<ChatSessionSnapshot>(params.id)
   );
 
   if (isLoading) {

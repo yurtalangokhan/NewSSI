@@ -4,7 +4,8 @@
 
 import { act, render } from "@tests/setup/test-utils";
 import AppHealthBanner from "@/sections/AppHealthBanner";
-import { authenticatedFetch, refreshSessionProactively } from "@/lib/fetcher";
+import { verifyCurrentSession } from "@/lib/api/domains/session/api";
+import { refreshSessionProactively } from "@/lib/api/http/browser";
 
 const refreshUser = jest.fn<Promise<void>, []>();
 
@@ -35,18 +36,24 @@ jest.mock("@/providers/UserProvider", () => ({
   }),
 }));
 
-jest.mock("@/lib/fetcher", () => {
-  const actual = jest.requireActual("@/lib/fetcher");
+jest.mock("@/lib/api/domains/session/api", () => {
+  const actual = jest.requireActual("@/lib/api/domains/session/api");
   return {
     ...actual,
-    authenticatedFetch: jest.fn(),
-    errorHandlingFetcher: jest.fn(),
+    verifyCurrentSession: jest.fn(),
+  };
+});
+
+jest.mock("@/lib/api/http/browser", () => {
+  const actual = jest.requireActual("@/lib/api/http/browser");
+  return {
+    ...actual,
     refreshSessionProactively: jest.fn(),
   };
 });
 
-const mockedAuthenticatedFetch = authenticatedFetch as jest.MockedFunction<
-  typeof authenticatedFetch
+const mockedAuthenticatedFetch = verifyCurrentSession as jest.MockedFunction<
+  typeof verifyCurrentSession
 >;
 const mockedRefreshSession = refreshSessionProactively as jest.MockedFunction<
   typeof refreshSessionProactively
@@ -91,9 +98,7 @@ describe("AppHealthBanner", () => {
       await jest.advanceTimersByTimeAsync(5_000);
     });
 
-    expect(mockedAuthenticatedFetch).toHaveBeenCalledWith("/api/me", {
-      redirectOnAuthError: false,
-    });
+    expect(mockedAuthenticatedFetch).toHaveBeenCalledWith();
   });
 
   it("shows the logged-out modal when the session is really gone", async () => {
@@ -121,5 +126,44 @@ describe("AppHealthBanner", () => {
     });
 
     expect(refreshUser).toHaveBeenCalledTimes(1);
+  });
+
+  it("checks the session as soon as a backgrounded tab regains focus", async () => {
+    // The proactive refresh is scheduled with setTimeout, which Chrome
+    // throttles heavily for backgrounded tabs -- a tab minimized past the
+    // token's lifetime can miss its scheduled renewal entirely and only
+    // find out the session died on the user's next real request. Coming
+    // back into view must trigger an immediate check instead of waiting
+    // for whatever's left of a throttled timer.
+    render(<AppHealthBanner />);
+    mockedRefreshSession.mockClear();
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "visible",
+    });
+
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    expect(mockedRefreshSession).toHaveBeenCalledTimes(1);
+    expect(refreshUser).toHaveBeenCalled();
+  });
+
+  it("does nothing when visibilitychange fires because the tab was hidden", async () => {
+    render(<AppHealthBanner />);
+    mockedRefreshSession.mockClear();
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "hidden",
+    });
+
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    expect(mockedRefreshSession).not.toHaveBeenCalled();
   });
 });

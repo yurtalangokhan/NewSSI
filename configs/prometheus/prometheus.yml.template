@@ -1,0 +1,30 @@
+# Prometheus scrape configuration template.
+#
+# Rendered by the prometheus-config bootstrap service, which substitutes the
+# service ports from configs/.env - the ports are never hardcoded here, they
+# follow the same environment the services themselves read. Placeholders use
+# the $NAME form (no braces) so the bootstrap's sed pass is unambiguous.
+
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: agent-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["agent-service:$AGENT_SERVICE_PORT"]
+
+  - job_name: user-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["user-service:$USER_SERVICE_PORT"]
+
+  - job_name: rag-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["rag-service:$RAG_SERVICE_PORT"]
+
+  - job_name: tools-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["tools-service:$TOOLS_SERVICE_PORT"]

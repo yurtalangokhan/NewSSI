@@ -19,7 +19,7 @@ import {
   MCPServerStatus,
   MCPServer,
 } from "@/lib/tools/interfaces";
-import useServerTools from "@/hooks/useServerTools";
+import { useServerTools } from "@/lib/api/domains/tools/hooks";
 import { KeyedMutator } from "swr";
 import type { IconProps } from "@opal/types";
 import { SvgRefreshCw, SvgServer, SvgTrash } from "@opal/icons";
@@ -274,6 +274,9 @@ export default function MCPActionCard({
     isToolsRefreshing,
   ]);
 
+  const isFetchingTools =
+    server.status === MCPServerStatus.FETCHING_TOOLS || isLoading;
+
   return (
     <>
       <ActionCard
@@ -289,14 +292,13 @@ export default function MCPActionCard({
         enableSearch={true}
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
+        isSearchDisabled={isFetchingTools}
         onFold={handleFold}
         className={className}
         ariaLabel={`${title} MCP server card`}
       >
         <ToolsList
-          isFetching={
-            server.status === MCPServerStatus.FETCHING_TOOLS || isLoading
-          }
+          isFetching={isFetchingTools}
           totalCount={tools.length}
           enabledCount={tools.filter((tool) => tool.isEnabled).length}
           showOnlyEnabled={showOnlyEnabled}

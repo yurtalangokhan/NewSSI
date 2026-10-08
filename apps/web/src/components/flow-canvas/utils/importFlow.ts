@@ -1,6 +1,6 @@
 /**
  * Utility to parse and import flow graphs from JSON files or strings.
- * Supports Onyx WireFlowSpec, exported Agent payloads, and generic flow objects.
+ * Supports Atlas WireFlowSpec, exported Agent payloads, and generic flow objects.
  */
 
 import type {

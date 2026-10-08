@@ -1,0 +1,26 @@
+# Grafana datasource provisioning.
+#
+# Loaded automatically at startup from /etc/grafana/provisioning. Two
+# datasources cover the pillars: Prometheus for the metrics Grafana renders
+# natively, Elasticsearch for the logs and traces stored there - so one
+# workspace answers questions across all three.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+
+  - name: Elasticsearch
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch:9200
+    jsonData:
+      esVersion: 100
+      timeField: timestamp
+      logMessageField: message
+      logLevelField: level
+      index: logs-*

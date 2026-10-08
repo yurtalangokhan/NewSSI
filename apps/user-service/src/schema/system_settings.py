@@ -2,13 +2,12 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class KeycloakConfigUpdate(BaseModel):
-    keycloak_enabled: bool | None = None
     keycloak_base_url: str | None = None
     keycloak_issuer_url: str | None = None
     keycloak_realm: str | None = None
     keycloak_admin: str | None = None
     keycloak_admin_password: str | None = None
-    keycloak_client_id: str | None = None
+    keycloak_user_service_client_id: str | None = None
     keycloak_login_client_id: str | None = None
     keycloak_client_secret: str | None = None
     external_keycloak: bool | None = None

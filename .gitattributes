@@ -1,0 +1,21 @@
+# Force LF line endings for anything that gets executed inside Linux
+# containers or by a POSIX shell, regardless of the checkout platform's
+# core.autocrlf setting. Without this, a Windows checkout silently
+# reintroduces CRLF into these files, which breaks `bash script.sh` inside
+# Docker containers (e.g. "set: pipefail: invalid option name").
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.py text eol=lf
+*.bash text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Binary-ish or generated content: leave untouched either way.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary

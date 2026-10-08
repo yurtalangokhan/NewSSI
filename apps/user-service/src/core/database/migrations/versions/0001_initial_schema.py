@@ -8,12 +8,12 @@ Create Date: 2026-05-15
 
 from collections.abc import Sequence
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision: str = "0001"
-down_revision: str | None = None
+down_revision: str | None = "0000_bootstrap"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

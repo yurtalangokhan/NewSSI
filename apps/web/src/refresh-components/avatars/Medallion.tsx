@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   deriveMedallion,
   hashName,
-} from "@/refresh-components/avatars/medallion";
+} from "@/refresh-components/avatars/medallionGeometry";
 
 /** One Türksat parallelogram arm, in the 48×48 box (16-box coords × 3). */
 const ARM = "M19.48 4.42 L28.52 4.42 L27.62 13.51 L22.65 12.98 Z";

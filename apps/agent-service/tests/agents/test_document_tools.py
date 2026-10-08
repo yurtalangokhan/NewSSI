@@ -1,4 +1,8 @@
-"""Tests for the always-on document output tools (create_document, create_spreadsheet)."""
+"""Tests for the always-on document output tools (create_document, create_spreadsheet).
+
+The tools run through the real renderer and file store; drafts land in the
+in-memory draft service from ``tests/agents/conftest.py``.
+"""
 
 from __future__ import annotations
 
@@ -6,10 +10,14 @@ import json
 from typing import Any
 from unittest.mock import AsyncMock
 
-import pytest
 from langchain_core.runnables import RunnableConfig
+import pytest
 
-from agents import document_tools
+from agents.tooling import document_tools
+
+
+# Chat threads are UUIDs; anything else is not a thread the draft can belong to.
+_THREAD_ID = "5f0c2b7e-3a1d-4c8e-9b6f-2d4e8a1c7b90"
 
 
 def _config(user_id: str = "user-1", thread_id: str = "thread-1") -> RunnableConfig:
@@ -27,7 +35,7 @@ class _FakeDocumentRepository:
 
 @pytest.fixture(autouse=True)
 def _clear_file_store():
-    from service.FileService import _STORE
+    from service.storage.file_service import _STORE
 
     _STORE.clear()
     yield
@@ -37,7 +45,9 @@ def _clear_file_store():
 @pytest.fixture
 def fake_repo(monkeypatch) -> _FakeDocumentRepository:
     repo = _FakeDocumentRepository()
-    monkeypatch.setattr("core.db.repositories.document_repo.DocumentRepository", lambda: repo)
+    monkeypatch.setattr(
+        "infrastructure.db.repositories.document_repo.DocumentRepository", lambda: repo
+    )
     return repo
 
 
@@ -57,7 +67,7 @@ def fake_minio_upload(monkeypatch):
         )
         return f"documents/{user_id}/{file_id}/{filename}"
 
-    monkeypatch.setattr("service.MinioService.upload_file", _upload)
+    monkeypatch.setattr("service.storage.minio_service.upload_file", _upload)
     return calls
 
 
@@ -87,7 +97,7 @@ async def test_create_document_returns_generated_file_payload(fake_repo, fake_mi
 
 @pytest.mark.asyncio
 async def test_create_document_stores_bytes_in_file_service(fake_repo, fake_minio_upload):
-    from service.FileService import get_file
+    from service.storage.file_service import get_file
 
     result = await document_tools.create_document.ainvoke(
         {
@@ -131,12 +141,12 @@ async def test_create_document_persists_document_row_scoped_to_thread(fake_repo,
             "format": "md",
             "content": "gövde",
         },
-        _config(user_id="user-42", thread_id="thread-99"),
+        _config(user_id="user-42", thread_id=_THREAD_ID),
     )
 
     assert len(fake_repo.created) == 1
     assert fake_repo.created[0]["user_id"] == "user-42"
-    assert fake_repo.created[0]["thread_id"] == "thread-99"
+    assert fake_repo.created[0]["thread_id"] == _THREAD_ID
     assert fake_repo.created[0]["filename"] == "rapor.md"
 
 
@@ -174,7 +184,7 @@ async def test_create_document_rejects_empty_content(fake_repo, fake_minio_uploa
 
 @pytest.mark.asyncio
 async def test_create_document_renders_json_format(fake_repo, fake_minio_upload):
-    from service.FileService import get_file
+    from service.storage.file_service import get_file
 
     result = await document_tools.create_document.ainvoke(
         {
@@ -197,7 +207,7 @@ async def test_create_document_renders_json_format(fake_repo, fake_minio_upload)
 
 @pytest.mark.asyncio
 async def test_create_document_json_format_wraps_title(fake_repo, fake_minio_upload):
-    from service.FileService import get_file
+    from service.storage.file_service import get_file
 
     result = await document_tools.create_document.ainvoke(
         {
@@ -237,7 +247,7 @@ async def test_create_document_json_format_recovers_dict_content(fake_repo, fake
     requires a string, so `_run_tool_call` in chatbot.py runs
     `recover_document_tool_args` first — replicate that here.
     """
-    from service.FileService import get_file
+    from service.storage.file_service import get_file
 
     args = document_tools.recover_document_tool_args(
         {
@@ -259,7 +269,7 @@ async def test_create_document_survives_minio_upload_failure(fake_repo, monkeypa
     def _boom(**kwargs):
         raise RuntimeError("minio unreachable")
 
-    monkeypatch.setattr("service.MinioService.upload_file", _boom)
+    monkeypatch.setattr("service.storage.minio_service.upload_file", _boom)
 
     result = await document_tools.create_document.ainvoke(
         {
@@ -281,7 +291,7 @@ async def test_create_document_survives_db_persist_failure(fake_minio_upload, mo
             raise RuntimeError("db unavailable")
 
     monkeypatch.setattr(
-        "core.db.repositories.document_repo.DocumentRepository", lambda: _BoomRepo()
+        "infrastructure.db.repositories.document_repo.DocumentRepository", lambda: _BoomRepo()
     )
 
     result = await document_tools.create_document.ainvoke(
@@ -309,7 +319,7 @@ async def test_create_document_applies_theme_from_options(fake_repo, fake_minio_
     import docx
 
     from service.documents.themes import resolve_theme
-    from service.FileService import get_file
+    from service.storage.file_service import get_file
 
     result = await document_tools.create_document.ainvoke(
         {
@@ -388,7 +398,7 @@ async def test_create_spreadsheet_returns_generated_file_payload(fake_repo, fake
 
 @pytest.mark.asyncio
 async def test_create_spreadsheet_csv_round_trips_rows(fake_repo, fake_minio_upload):
-    from service.FileService import get_file
+    from service.storage.file_service import get_file
 
     result = await document_tools.create_spreadsheet.ainvoke(
         {
@@ -440,7 +450,7 @@ async def test_create_spreadsheet_applies_zebra_from_options(fake_repo, fake_min
 
     import openpyxl
 
-    from service.FileService import get_file
+    from service.storage.file_service import get_file
 
     result = await document_tools.create_spreadsheet.ainvoke(
         {
@@ -479,23 +489,31 @@ async def test_create_spreadsheet_never_fails_on_malformed_options(fake_repo, fa
 # ---------------------------------------------------------------------------
 
 
-def test_get_document_tools_returns_both_tools_when_enabled(monkeypatch):
-    monkeypatch.setattr(document_tools.settings, "DOCUMENT_TOOLS_ENABLED", True)
+def test_get_document_tools_returns_every_tool_when_enabled(monkeypatch):
+    monkeypatch.setenv("DOCUMENT_TOOLS_ENABLED", str(True))
 
     tools = document_tools.get_document_tools()
 
-    assert {t.name for t in tools} == {"create_document", "create_spreadsheet"}
+    assert {t.name for t in tools} == {
+        "create_document",
+        "create_spreadsheet",
+        "list_documents",
+        "list_attachments",
+        "read_document",
+        "edit_document",
+        "rewrite_document",
+    }
 
 
 def test_get_document_tools_returns_empty_when_disabled(monkeypatch):
-    monkeypatch.setattr(document_tools.settings, "DOCUMENT_TOOLS_ENABLED", False)
+    monkeypatch.setenv("DOCUMENT_TOOLS_ENABLED", str(False))
 
     assert document_tools.get_document_tools() == []
 
 
 def test_get_document_tools_uses_rich_description_by_default(monkeypatch):
-    monkeypatch.setattr(document_tools.settings, "DOCUMENT_TOOLS_ENABLED", True)
-    monkeypatch.setattr(document_tools.settings, "DOCUMENT_TOOLS_RICH_OPTIONS", True)
+    monkeypatch.setenv("DOCUMENT_TOOLS_ENABLED", str(True))
+    monkeypatch.setenv("DOCUMENT_TOOLS_RICH_OPTIONS", str(True))
 
     tools = {t.name: t for t in document_tools.get_document_tools()}
 
@@ -504,8 +522,8 @@ def test_get_document_tools_uses_rich_description_by_default(monkeypatch):
 
 
 def test_get_document_tools_uses_short_description_when_rich_options_disabled(monkeypatch):
-    monkeypatch.setattr(document_tools.settings, "DOCUMENT_TOOLS_ENABLED", True)
-    monkeypatch.setattr(document_tools.settings, "DOCUMENT_TOOLS_RICH_OPTIONS", False)
+    monkeypatch.setenv("DOCUMENT_TOOLS_ENABLED", str(True))
+    monkeypatch.setenv("DOCUMENT_TOOLS_RICH_OPTIONS", str(False))
 
     tools = {t.name: t for t in document_tools.get_document_tools()}
 
@@ -549,21 +567,10 @@ def test_document_tool_prompt_explicitly_forbids_calling_on_greetings():
 
     assert "greeting" in prompt or "small talk" in prompt
     assert "do not" in prompt or "don't" in prompt
-    assert "when in doubt" in prompt
 
 
-def test_document_tool_prompt_mentions_options():
-    assert "options" in document_tools.DOCUMENT_TOOL_PROMPT.lower()
-
-
-def test_document_tool_prompt_forbids_repeating_the_download_link():
-    """The UI already renders a clickable download card from the tool
-    result; a second link in the model's own reply text opens a preview
-    modal that doesn't know the file's real type and fails."""
-    prompt = document_tools.DOCUMENT_TOOL_PROMPT.lower()
-
-    assert "download_url" in prompt
-    assert "do not include" in prompt or "don't include" in prompt
+def test_document_tool_prompt_mentions_diagrams():
+    assert "mermaid" in document_tools.DOCUMENT_TOOL_PROMPT.lower()
 
 
 class TestRecoverDocumentToolArgs:

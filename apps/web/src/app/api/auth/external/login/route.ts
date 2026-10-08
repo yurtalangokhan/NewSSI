@@ -1,13 +1,13 @@
+import { sessionEndpoints } from "@/lib/api/domains/session/endpoints";
 import { NextRequest } from "next/server";
+
 import { proxyToBackend } from "@/lib/api/proxy";
-import { USER_SERVICE_URL } from "@/lib/constants";
-import { getDomain } from "@/lib/redirectSS";
+import { getDomain } from "@/lib/navigation/redirect.server";
 
 export async function POST(request: NextRequest) {
   const callbackBase = getDomain(request).replace(/\/$/, "");
-  return proxyToBackend(request, "/api/auth/external/login", {
+  return proxyToBackend(request, sessionEndpoints.externalLogin.backend, {
     method: "POST",
-    backendUrl: USER_SERVICE_URL,
     queryParams: {
       redirect_uri: `${callbackBase}/auth/oidc/callback`,
     },

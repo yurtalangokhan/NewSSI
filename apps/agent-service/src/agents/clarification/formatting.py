@@ -30,11 +30,7 @@ def normalise_resume(resume: Any) -> dict[str, Any]:
         return {"answered": False, "text": str(resume.get("text") or "")}
 
     raw = resume.get("answers")
-    answers = (
-        {str(header): _as_labels(value) for header, value in raw.items()}
-        if isinstance(raw, dict)
-        else {}
-    )
+    answers = {str(header): _as_labels(value) for header, value in raw.items()} if isinstance(raw, dict) else {}
     return {"answered": True, "answers": answers}
 
 
@@ -56,8 +52,5 @@ def format_resume(questions: list[dict[str, Any]], resume: Any) -> str:
 
     answers = normalised["answers"]
     # Soru sırası korunuyor: model soruları bir sebeple o sırada sordu.
-    lines = [
-        f"{q['header']}: {', '.join(_as_labels(answers.get(q['header']))) or _DEFERRED}"
-        for q in questions
-    ]
+    lines = [f"{q['header']}: {', '.join(_as_labels(answers.get(q['header']))) or _DEFERRED}" for q in questions]
     return "The user answered:\n" + "\n".join(lines)

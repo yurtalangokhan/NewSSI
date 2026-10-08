@@ -36,6 +36,15 @@ describe("idempotency helpers", () => {
     );
   });
 
+  it.each([
+    "http://apisix:8000/user-service/api/v1/auth/login",
+    "http://apisix:8000/internal/user-service/api/v1/auth/refresh",
+  ])("excludes auth mutations after gateway canonicalization: %s", (url) => {
+    const result = attachIdempotencyKey(url, { method: "POST" });
+
+    expect(new Headers(result.headers).has("Idempotency-Key")).toBe(false);
+  });
+
   it("adds the Idempotency-Key header without mutating the input headers", () => {
     const original = {
       Accept: "application/json",

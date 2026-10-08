@@ -1,4 +1,4 @@
-<!-- ONYX_METADATA={"link": "https://github.com/onyx-dot-app/onyx/blob/main/web/README.md"} -->
+<!-- ATLAS_METADATA={"link": "https://github.com/atlas-dot-app/atlas/blob/main/web/README.md"} -->
 
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
@@ -19,7 +19,7 @@ _Note:_ if you are having problems accessing the ^, try setting the `WEB_DOMAIN`
 `http://127.0.0.1:3000` and accessing it there.
 
 > [!TIP]
-> Packages are installed automatically when switching branches after `package.json` changes with [pre-commit](https://github.com/onyx-dot-app/onyx/blob/main/CONTRIBUTING.md#formatting-and-linting) configured.
+> Packages are installed automatically when switching branches after `package.json` changes with [pre-commit](https://github.com/atlas-dot-app/atlas/blob/main/CONTRIBUTING.md#formatting-and-linting) configured.
 
 ### Connecting to a Cloud Backend
 
@@ -28,12 +28,16 @@ create a `.env.local` file in the `web/` directory with the following configurat
 
 ```text
 # Point local dev server to cloud backend
-INTERNAL_URL=https://st-dev.onyx.app/api
+AGENT_SERVICE_URL=https://edge.example/agent-service
+RAG_SERVICE_URL=https://edge.example/rag-service
+USER_SERVICE_URL=https://edge.example/user-service
+TOOLS_SERVICE_URL=https://edge.example/tools-service
+WEB_DOMAIN=http://localhost:3000
 
 # Debug auth cookie for authenticating against remote backend
 # This cookie is automatically injected into API requests when in development mode
 # To get this value:
-#   1. Go to https://st-dev.onyx.app (or your target backend URL) and log in
+#   1. Go to https://st-dev.atlas.app (or your target backend URL) and log in
 #   2. Open DevTools (F12) → Application → Cookies → [your backend domain]
 #   3. Find the "fastapiusersauth" cookie and copy its value
 #   4. Paste the value below (without quotes)
@@ -49,7 +53,9 @@ may need to delete the cookies for the `localhost` domain.
 - The `.env.local` file should be created in the `web/` directory (same level as `package.json`)
 - After creating or modifying `.env.local`, restart your development server for changes to take effect
 - The `DEBUG_AUTH_COOKIE` is only used in development mode (`NODE_ENV=development`)
-- If `INTERNAL_URL` is not set, the frontend will connect to the local backend at `http://127.0.0.1:8080`
+- Missing service URLs fail explicitly; there is no localhost fallback.
+- Service roots exclude `/api/v1` and `/mcp`; domain endpoints own these paths.
+- See the [web environment migration](docs/runbook.md#backend-service-configuration).
 - Keep your `.env.local` file secure and never commit it to version control (it should already be in `.gitignore`)
 
 ## Testing
@@ -102,4 +108,4 @@ To compare screenshots across CI runs, use:
 ods screenshot-diff compare --project admin
 ```
 
-For more information, see [tools/ods/README.md](https://github.com/onyx-dot-app/onyx/blob/main/tools/ods/README.md#screenshot-diff---visual-regression-testing).
+For more information, see [tools/ods/README.md](https://github.com/atlas-dot-app/atlas/blob/main/tools/ods/README.md#screenshot-diff---visual-regression-testing).

@@ -2,8 +2,11 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
-import { LlmDescriptor, LlmManager } from "@/lib/hooks";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import {
+  LlmDescriptor,
+  LlmManager,
+} from "@/lib/api/domains/model-providers/hooks";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import { structureValue, isEmbeddingModel } from "@/lib/llmConfig/utils";
 import {
   getProviderIcon,
@@ -31,29 +34,23 @@ import { Section } from "@/layouts/general-layouts";
 import { OpenButton } from "@opal/components";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
 import AgentAvailabilityBadge from "@/refresh-components/agents/AgentAvailabilityBadge";
-import { isAgentAvailableForSelection } from "@/lib/agentAvailability";
+import { isAgentAvailableForSelection } from "@/lib/api/domains/agents/availability";
 import { isFlowAgent } from "@/lib/flows/flowAgent";
 import { LLMOption, LLMOptionGroup } from "./interfaces";
 import { useTranslation } from "react-i18next";
 
 /**
- * Whether the model picker's selection marker means anything for the agent
- * currently in the composer.
+ * Whether the model picker's selection marker should be shown.
  *
- * It does not for a flow agent: a flow resolves its model from its own
- * LLMModel node(s) in the published spec (agent-service's
- * `flow_builder._resolve_model`), and a flow graph reads only `access_token`
- * out of the request's `configurable` — never `configurable["model"]`. With
- * no `llm_model_version_override` to fall back on either, `useLlmManager`
- * lands on the user's personal default, so the picker used to tick a model
- * the agent cannot possibly run — and, since the flow names its own, the
- * wrong one. Nothing is ticked instead; the list stays clickable, which is
- * how the user switches away to a plain-model chat.
+ * When an agent is selected (agent.id !== 0), the composer is actively using
+ * that agent, so no model in the models list should appear selected or ticked.
+ * Model selection only applies when chatting directly with a model (i.e. when
+ * no agent is selected, or when the default assistant agent.id === 0 is active).
  */
 export function modelSelectionAppliesToAgent(
   agent?: MinimalPersonaSnapshot
 ): boolean {
-  return !agent || !isFlowAgent(agent);
+  return !agent || agent.id === 0;
 }
 
 function AvailabilityFlag({
@@ -416,6 +413,12 @@ export default function LLMPopover({
       providerId: option.providerId,
     } as LlmDescriptor);
     onSelect?.(structureValue(option.name, option.provider, option.modelName));
+    if (hasAgentSelection && selectedAgent && selectedAgent.id !== 0) {
+      const defaultAgent = agents?.find((a) => a.id === 0);
+      if (defaultAgent) {
+        onSwitchAgent?.(defaultAgent);
+      }
+    }
     setOpen(false);
   };
 
@@ -553,10 +556,17 @@ export default function LLMPopover({
                 {filteredAgents.map((agent) =>
                   (() => {
                     const isAvailable = isAgentAvailableForSelection(agent);
+                    const isSelected =
+                      selectedAgent !== undefined &&
+                      selectedAgent.id !== 0 &&
+                      agent.id === selectedAgent.id &&
+                      agent.builtin_persona === selectedAgent.builtin_persona;
                     return (
                       <LineItem
-                        key={`agent-${agent.id}`}
-                        selected={agent.id === selectedAgent.id}
+                        key={`${
+                          agent.builtin_persona ? "builtin" : "custom"
+                        }-agent-${agent.id}`}
+                        selected={isSelected}
                         muted={!isAvailable}
                         aria-disabled={!isAvailable}
                         icon={(props: React.SVGProps<SVGSVGElement>) => (

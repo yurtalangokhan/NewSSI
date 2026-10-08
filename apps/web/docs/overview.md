@@ -1,8 +1,8 @@
 # Web overview
 
-The web app is a Next.js 16 frontend using the Onyx component system and the
-`@onyx/opal` workspace. It calls backend services through configured API
-rewrites and Kong-facing service paths.
+The web app is a Next.js 16 frontend using the Atlas component system and the
+`@atlas/opal` workspace. It calls backend services through configured API
+rewrites and gateway-facing service paths.
 
 ## Source map
 
@@ -10,7 +10,7 @@ rewrites and Kong-facing service paths.
 |---|---|
 | App Router pages | `src/app/` |
 | Shared components | `src/components/` |
-| Onyx refresh components | `src/refresh-components/` |
+| Atlas refresh components | `src/refresh-components/` |
 | Icons | `src/icons/` |
 | Hooks | `src/hooks/` |
 | Utilities | `src/lib/` |

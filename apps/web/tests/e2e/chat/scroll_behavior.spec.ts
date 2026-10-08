@@ -1,14 +1,14 @@
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { loginAsRandomUser } from "@tests/e2e/utils/auth";
-import { sendMessage, startNewChat } from "@tests/e2e/utils/chatActions";
+import { sendMessage } from "@tests/e2e/utils/chatActions";
 
 /**
  * Helper to toggle auto-scroll setting via the settings panel
  */
 async function setAutoScroll(page: Page, enabled: boolean) {
   // Open user dropdown menu (same pattern as other tests)
-  await page.locator("#onyx-user-dropdown").click();
+  await page.locator("#atlas-user-dropdown").click();
   await page.getByText("User Settings").first().click();
   // Wait for dialog to appear
   await page.waitForSelector('[role="dialog"]', { state: "visible" });
@@ -70,7 +70,7 @@ test.describe("Chat Scroll Behavior", () => {
     ]);
   });
 
-  // TODO(Nik): https://linear.app/onyx-app/issue/ENG-3422/playwright-tests-for-scroll-behavior
+  // TODO(Nik): https://linear.app/atlas-app/issue/ENG-3422/playwright-tests-for-scroll-behavior
   test.skip("Opening existing conversation positions correctly", async ({
     page,
   }) => {
@@ -98,7 +98,7 @@ test.describe("Chat Scroll Behavior", () => {
       .waitFor({ timeout: 30000 });
 
     // Wait for the user messages to be visible
-    const lastUserMessage = page.locator("#onyx-human-message").last();
+    const lastUserMessage = page.locator("#atlas-human-message").last();
     await lastUserMessage.waitFor({ state: "visible", timeout: 30000 });
 
     // Verify the last user message is positioned near the top of the viewport
@@ -201,7 +201,7 @@ test.describe("Dynamic Bottom Spacer - Fresh Chat Effect", () => {
     );
 
     // Get the last user message (the follow-up)
-    const lastUserMessage = page.locator("#onyx-human-message").last();
+    const lastUserMessage = page.locator("#atlas-human-message").last();
     await lastUserMessage.waitFor({ state: "visible" });
 
     // Check that the follow-up message is positioned near the top of the container
@@ -259,7 +259,7 @@ test.describe("Dynamic Bottom Spacer - Fresh Chat Effect", () => {
       .toBeLessThanOrEqual(1);
 
     // Verify the first message is now visible
-    const firstUserMessage = page.locator("#onyx-human-message").first();
+    const firstUserMessage = page.locator("#atlas-human-message").first();
     await expect(firstUserMessage).toBeVisible();
 
     // Verify the first message content

@@ -1,6 +1,7 @@
+import { errorMessageFromUnknown } from "@/lib/api/errors";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
-import { updateBoost } from "./lib";
+import { updateBoost } from "@/lib/api/domains/knowledge/api";
 import { EditableValue } from "@/components/EditableValue";
 
 export const ScoreSection = ({
@@ -22,16 +23,19 @@ export const ScoreSection = ({
       return false;
     }
 
-    const errorMsg = await updateBoost(documentId, numericScore);
-    if (errorMsg) {
-      toast.error(errorMsg);
-      return false;
-    } else {
+    try {
+      const errorMsg = await updateBoost(documentId, numericScore);
+      if (errorMsg) {
+        toast.error(errorMsg);
+        return false;
+      }
       toast.success(t("updatedScore"));
       refresh();
+      return true;
+    } catch (error) {
+      toast.error(errorMessageFromUnknown(error));
+      return false;
     }
-
-    return true;
   };
 
   return (

@@ -1,4 +1,9 @@
-import { authenticatedFetch } from "@/lib/fetcher";
+import {
+  errorMessageFromUnknown,
+  parseApiErrorResponse,
+} from "@/lib/api/errors";
+import { submitDocumentSearchFeedback } from "@/lib/api/domains/chat/api";
+
 import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
 import { ChevronsDownIcon, ChevronsUpIcon } from "../icons/icons";
@@ -12,25 +17,16 @@ const giveDocumentFeedback = async (
   documentRank: number,
   searchFeedback: DocumentFeedbackType
 ): Promise<string | null> => {
-  const response = await authenticatedFetch(
-    "/api/chat/document-search-feedback",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        message_id: messageId,
-        document_id: documentId,
-        document_rank: documentRank,
-        click: false,
-        search_feedback: searchFeedback,
-      }),
-    }
-  );
+  const response = await submitDocumentSearchFeedback({
+    message_id: messageId,
+    document_id: documentId,
+    document_rank: documentRank,
+    click: false,
+    search_feedback: searchFeedback,
+  });
   return response.ok
     ? null
-    : response.statusText || (await response.json()).message;
+    : (await parseApiErrorResponse(response)).userMessage;
 };
 
 interface DocumentFeedbackIconProps {
@@ -75,16 +71,22 @@ const DocumentFeedback = ({
   return (
     <div
       onClick={async () => {
-        const errorMsg = await giveDocumentFeedback(
-          documentId,
-          messageId,
-          documentRank,
-          feedbackType
-        );
-        if (!errorMsg) {
+        try {
+          const errorMsg = await giveDocumentFeedback(
+            documentId,
+            messageId,
+            documentRank,
+            feedbackType
+          );
+          if (errorMsg) {
+            toast.error(t("errorGivingFeedback", { error: errorMsg }));
+            return;
+          }
           toast.success(t("thanksForFeedback"));
-        } else {
-          toast.error(t("errorGivingFeedback", { error: errorMsg }));
+        } catch (error) {
+          toast.error(
+            t("errorGivingFeedback", { error: errorMessageFromUnknown(error) })
+          );
         }
       }}
       className="cursor-pointer"

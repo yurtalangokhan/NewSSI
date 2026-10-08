@@ -27,6 +27,7 @@ import Text from "@/refresh-components/texts/Text";
 import { SvgInfo } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 import { FIELD_RENDERERS } from "../fields";
+import { resolveFieldName } from "../fields/fieldName";
 import type {
   ComponentTemplate,
   InputField,
@@ -73,20 +74,16 @@ function FieldRow({
           required, then a small info glyph carrying the tooltip. */}
       <div className="flex w-full items-center text-sm">
         <span className="truncate font-medium text-canvas-fg">
-          {t(
-            componentType
-              ? [
-                  `flowCanvas.fields.names.${componentType}.${fieldKey}`,
-                  `flowCanvas.fields.names.${fieldKey}`,
-                ]
-              : `flowCanvas.fields.names.${fieldKey}`,
-            field.display_name
-          )}
+          {resolveFieldName(t, fieldKey, field, componentType)}
           {field.required && <span className="text-destructive">*</span>}
         </span>
         {field.info && (
           <SimpleTooltip tooltip={infoTooltip}>
-            <span className="ml-1 cursor-help text-muted-foreground">
+            {/* `pointer-events-auto` overrides the read-only canvas's
+                blanket `pointer-events-none` on TemplateNode's field-list
+                wrapper — that wrapper exists to stop field *editing*, not
+                to silence this tooltip. */}
+            <span className="ml-1 cursor-help pointer-events-auto text-muted-foreground">
               <SvgInfo className="h-3 w-3" />
             </span>
           </SimpleTooltip>
@@ -99,6 +96,7 @@ function FieldRow({
         onChange={onChange}
         columns={columns}
         allValues={allValues}
+        componentType={componentType}
       />
     </div>
   );

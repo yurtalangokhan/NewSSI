@@ -9,15 +9,15 @@ import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
 import { SvgArrowUpCircle, SvgWallet } from "@opal/icons";
 import type { IconProps } from "@opal/types";
+import { claimLicense } from "@/lib/api/domains/billing/api";
+import { useBillingInformation } from "@/lib/api/domains/billing/hooks";
+import { useLicense } from "@/lib/api/domains/billing/hooks";
 import {
-  useBillingInformation,
-  useLicense,
-  BillingInformation,
+  type BillingInformation,
   hasActiveSubscription,
-  claimLicense,
-} from "@/lib/billing";
-import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
+} from "@/lib/api/domains/billing/types";
 import { useUser } from "@/providers/UserProvider";
+import { appSettings } from "@/lib/settings";
 
 import PlansView from "./PlansView";
 import CheckoutView from "./CheckoutView";
@@ -25,9 +25,8 @@ import BillingDetailsView from "./BillingDetailsView";
 import LicenseActivationCard from "./LicenseActivationCard";
 import "./billing.css";
 import { useTranslation } from "react-i18next";
-import { APP_SUPPORT_EMAIL } from "@/lib/appInfo";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
-import { ADMIN_PATHS, ADMIN_ROUTE_CONFIG } from "@/lib/admin-routes";
+import { ADMIN_PATHS, ADMIN_ROUTE_CONFIG } from "@/lib/navigation/admin-routes";
 
 // ----------------------------------------------------------------------------
 // Types
@@ -59,7 +58,9 @@ function FooterLinks({
   const licenseText = hasSubscription
     ? t("admin.billing.updateLicenseKey")
     : t("admin.billing.activateLicenseKey");
-  const billingHelpHref = `mailto:${APP_SUPPORT_EMAIL}?subject=${encodeURIComponent(
+  const billingHelpHref = `mailto:${
+    appSettings.APP_SUPPORT_EMAIL
+  }?subject=${encodeURIComponent(
     `[Billing] support for ${user?.email ?? "unknown"}`
   )}`;
 
@@ -124,7 +125,7 @@ export default function BillingPage() {
   const isLoading = billingLoading || licenseLoading;
   const hasSubscription = billingData && hasActiveSubscription(billingData);
   const billing = hasSubscription ? (billingData as BillingInformation) : null;
-  const isSelfHosted = !NEXT_PUBLIC_CLOUD_ENABLED;
+  const isSelfHosted = !appSettings.NEXT_PUBLIC_CLOUD_ENABLED;
 
   const hasManualLicense = licenseData?.source === "manual_upload";
 
@@ -176,7 +177,7 @@ export default function BillingPage() {
     router.replace("/admin/billing", { scroll: false });
 
     const handleBillingReturn = async () => {
-      if (!NEXT_PUBLIC_CLOUD_ENABLED) {
+      if (!appSettings.NEXT_PUBLIC_CLOUD_ENABLED) {
         try {
           // After checkout, exchange session_id for license; after portal, re-sync license
           await claimLicense(sessionId ?? undefined);

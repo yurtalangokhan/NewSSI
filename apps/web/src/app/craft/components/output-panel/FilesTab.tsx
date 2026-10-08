@@ -1,4 +1,5 @@
 "use client";
+import { craftEndpoints } from "@/lib/api/domains/craft/endpoints";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import useSWR from "swr";
@@ -7,8 +8,8 @@ import {
   useFilesTabState,
   useFilesNeedsRefresh,
 } from "@/app/craft/hooks/useBuildSessionStore";
-import { fetchDirectoryListing } from "@/app/craft/services/apiServices";
-import { FileSystemEntry } from "@/app/craft/types/streamingTypes";
+import { fetchDirectoryListing } from "@/lib/api/domains/craft/api";
+import { FileSystemEntry } from "@/lib/api/domains/craft/streaming-types";
 import { cn, getFileIcon } from "@/lib/utils";
 import Text from "@/refresh-components/texts/Text";
 import {
@@ -86,7 +87,9 @@ export default function FilesTab({
     error,
     mutate,
   } = useSWR(
-    sessionId ? `/api/build/sessions/${sessionId}/files?path=` : null,
+    sessionId
+      ? craftEndpoints.craftFilesQueryPrefix(sessionId).browserPath
+      : null,
     () => (sessionId ? fetchDirectoryListing(sessionId, "") : null),
     {
       revalidateOnFocus: false,

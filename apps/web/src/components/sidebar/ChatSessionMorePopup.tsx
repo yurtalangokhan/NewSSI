@@ -1,16 +1,16 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { ChatSession } from "@/app/app/interfaces";
-import { deleteChatSession } from "@/app/app/services/lib";
+import { ChatSession } from "@/lib/api/domains/chat/types";
+import { deleteChatSession } from "@/lib/api/domains/chat/api";
 import { useProjectsContext } from "@/providers/ProjectsContext";
 import {
   moveChatSession as moveChatSessionService,
   removeChatSessionFromProject as removeChatSessionFromProjectService,
-} from "@/app/app/projects/projectsService";
+} from "@/lib/api/domains/projects/api";
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
 import { FiMoreHorizontal } from "react-icons/fi";
-import useChatSessions from "@/hooks/useChatSessions";
+import { useChatSessions } from "@/lib/api/domains/chat/hooks";
 import { useCallback, useState, useMemo } from "react";
 import MoveCustomAgentChatModal from "@/components/modals/MoveCustomAgentChatModal";
 // PopoverMenu already imported above
@@ -23,7 +23,7 @@ import { SvgFolder, SvgFolderIn, SvgShare, SvgTrash } from "@opal/icons";
 import { useAppBackground } from "@/providers/AppBackgroundProvider";
 // Constants
 const DEFAULT_PERSONA_ID = 0;
-const LS_HIDE_MOVE_CUSTOM_AGENT_MODAL_KEY = "onyx:hideMoveCustomAgentModal";
+const LS_HIDE_MOVE_CUSTOM_AGENT_MODAL_KEY = "atlas:hideMoveCustomAgentModal";
 
 interface ChatSessionMorePopupProps {
   chatSession: ChatSession;

@@ -16,7 +16,7 @@ apps/rag-service/                 FastAPI, pgvector, and Neo4j RAG
 apps/user-service/                FastAPI, SQLAlchemy, auth, and users
 apps/tools-service/               FastMCP tools
 configs/                          Compose and shared infrastructure
-airbyte-destination-embedding/    Custom Airbyte destination
+packages/connector-py/            In-process source/destination connectors
 ```
 
 After selecting a service, use its nearest `AGENTS.md` as the authoritative
@@ -24,7 +24,7 @@ code, test, and documentation index. If it is already in context, do not open it
 again. Do not read another service index unless the task crosses that boundary.
 For cross-service work, load only the affected indexes and shared contract.
 
-All external traffic passes through Kong on port `8000`. Read service ports
+All external traffic passes through APISIX on port `8000`. Read service ports
 from environment configuration; never hardcode them.
 
 ## Context discipline
@@ -141,6 +141,21 @@ Update durable docs only for public APIs, service boundaries, data models, auth,
 integration contracts, deployment, or other observable behavior. Put local
 docs in `apps/<service>/docs/` and shared contracts in `docs/`.
 
+### Environment and configuration
+
+`configs/.env` is the single environment data file; only config_manager's
+`load_environment()` touches it. Python services consume typed values from the
+central accessor and never read `os.environ` directly:
+
+| Service | Config module | Consumption |
+|---|---|---|
+| all Python services | `packages/config-manager/src/config-manager/accessor.py` | `from config_manager import env` |
+
+To add a key, declare a typed getter in the central accessor. Required values
+ship without defaults; optional integrations return `None`; supported fallbacks
+live in the getter. Consume keys as `env.KEY`. Migrations, bootstrap code, and
+scripts may read raw `os.environ`.
+
 ## Git and safety
 
 Validation does not authorize Git actions.
@@ -150,8 +165,8 @@ Validation does not authorize Git actions.
 - Never commit secrets or real `.env` files, or overwrite user work.
 - Never delete or recreate the external `ollama` volume. Use repository
   Makefiles for the stack and Ollama; Redis remains required.
-- Do not re-add `supabase/` or `legacy/`, remove `docker-bin/docker`, touch the
-  empty `providers/`, or modify `airbyte-destination-embedding/` unless required.
+- Do not re-add `supabase/`, `legacy/` or `docker-bin/`, or touch the empty
+  `providers/` unless required.
 
 ## Completion
 

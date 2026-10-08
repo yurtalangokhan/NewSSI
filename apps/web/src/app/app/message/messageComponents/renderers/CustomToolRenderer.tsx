@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { FiExternalLink, FiDownload, FiTool } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import {
@@ -9,7 +9,7 @@ import {
   CustomToolStart,
   CustomToolDelta,
   SectionEnd,
-} from "../../../services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 import { MessageRenderer, RenderType } from "../interfaces";
 import { buildImgUrl } from "../../../components/files/images/utils";
 

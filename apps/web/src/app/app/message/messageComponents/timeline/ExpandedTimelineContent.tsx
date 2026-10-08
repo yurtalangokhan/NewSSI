@@ -2,7 +2,7 @@
 
 import React, { FunctionComponent, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { StopReason } from "@/app/app/services/streamingModels";
+import { StopReason } from "@/lib/api/domains/chat/streaming-types";
 import { FullChatState } from "../interfaces";
 import { TurnGroup, TransformedStep } from "./transformers";
 import { SvgCheckCircle, SvgStopCircle } from "@opal/icons";

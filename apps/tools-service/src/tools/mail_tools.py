@@ -6,16 +6,77 @@ Provides SMTP-backed email sending for configured agents.
 from __future__ import annotations
 
 import base64
-import smtplib
-import ssl
 from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
+import ipaddress
+import smtplib
+import socket
+import ssl
 from typing import Any
 
-from i18n import t
+from localization import t
 
 from ..core.base import BaseToolCategory
+from ..core.schema import LongText, ShortText
 from .response import error_response, success_response
+
+# Per-attachment and whole-message ceilings. base64 payloads were decoded
+# straight into memory with no bound, so one call could pin an arbitrary
+# amount of the process's heap.
+MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
+MAX_TOTAL_ATTACHMENT_BYTES = 25 * 1024 * 1024
+
+# Link-local carries the cloud metadata services. They are never a mail relay,
+# so they stay blocked even when no allow-list is configured.
+_METADATA_NETWORKS = (
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("fe80::/10"),
+)
+_METADATA_HOSTNAMES = frozenset({"metadata.google.internal", "metadata.goog"})
+
+
+def _allowed_smtp_hosts() -> frozenset[str]:
+    """Hosts this deployment will connect to, pinned in code.
+
+    Deliberately not environment-configurable: the SMTP egress allowlist is
+    a security boundary, and a security boundary that a deployment can widen
+    through configuration is one an attacker with env write access can
+    disable. Empty means "not pinned".
+    """
+    return frozenset()
+
+
+def _is_metadata_host(host: str) -> bool:
+    if host.lower() in _METADATA_HOSTNAMES:
+        return True
+    candidates: list[str] = [host]
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        try:
+            candidates = [str(info[4][0]) for info in socket.getaddrinfo(host, None)]
+        except OSError:
+            # Unresolvable: the connection attempt will fail on its own, and
+            # refusing here would block legitimate transient DNS failures.
+            return False
+    for candidate in candidates:
+        try:
+            address = ipaddress.ip_address(candidate)
+        except ValueError:
+            continue
+        if any(address.version == network.version and address in network for network in _METADATA_NETWORKS):
+            return True
+    return False
+
+
+def _reject_smtp_host(host: str) -> str | None:
+    """Return an error payload when ``host`` must not be contacted."""
+    allowed = _allowed_smtp_hosts()
+    if allowed and host.lower() not in allowed:
+        return error_response("mail.host_not_allowed", error_category="configuration")
+    if _is_metadata_host(host):
+        return error_response("mail.host_not_allowed", error_category="configuration")
+    return None
 
 
 def _as_list(value: list[str] | str | None) -> list[str]:
@@ -27,6 +88,7 @@ def _as_list(value: list[str] | str | None) -> list[str]:
 
 
 def _attach_files(message: EmailMessage, attachments: list[dict[str, Any]] | None) -> None:
+    total = 0
     for attachment in attachments or []:
         filename = str(attachment.get("filename") or "").strip()
         content_base64 = str(attachment.get("content_base64") or "").strip()
@@ -36,7 +98,15 @@ def _attach_files(message: EmailMessage, attachments: list[dict[str, Any]] | Non
             raise ValueError("Attachment filename and content are required.")
         if not maintype or not subtype:
             maintype, subtype = "application", "octet-stream"
+        # Check the encoded length before decoding: base64 is ~4/3 of the
+        # payload, so this refuses an oversized attachment without ever
+        # materialising it.
+        if len(content_base64) * 3 // 4 > MAX_ATTACHMENT_BYTES:
+            raise ValueError("Attachment exceeds the per-file size limit.")
         content = base64.b64decode(content_base64, validate=True)
+        total += len(content)
+        if len(content) > MAX_ATTACHMENT_BYTES or total > MAX_TOTAL_ATTACHMENT_BYTES:
+            raise ValueError("Attachments exceed the message size limit.")
         message.add_attachment(
             content,
             maintype=maintype,
@@ -54,7 +124,7 @@ def send_email_message(
     subject: str,
     body: str,
     is_html: bool = False,
-    reply_to: str | None = None,
+    reply_to: ShortText | None = None,
     attachments: list[dict[str, Any]] | None = None,
 ) -> str:
     """Send an email using a supplied SMTP configuration."""
@@ -94,6 +164,9 @@ def send_email_message(
         return error_response("mail.payload_invalid", error_category="validation")
 
     host = str(smtp_config["host"])
+    rejection = _reject_smtp_host(host)
+    if rejection is not None:
+        return rejection
     port = int(smtp_config["port"])
     username = str(smtp_config["username"])
     password = str(smtp_config["password"])
@@ -148,16 +221,18 @@ class MailTools(BaseToolCategory):
         """Register all mail tools with MCP."""
 
         @mcp.tool()
+        # The signature is the MCP tool schema: renaming or dropping args would
+        # change the model-visible contract. The send itself is owned by
+        # agent-service, so the args are intentionally unused here.
         def send_email(
-            smtp_config: dict[str, Any],
-            to: list[str],
-            subject: str,
-            body: str,
-            cc: list[str] | None = None,
-            bcc: list[str] | None = None,
-            is_html: bool = False,
-            reply_to: str | None = None,
-            attachments: list[dict[str, Any]] | None = None,
+            to: list[str],  # noqa: ARG001
+            subject: ShortText,  # noqa: ARG001
+            body: LongText,  # noqa: ARG001
+            cc: list[str] | None = None,  # noqa: ARG001
+            bcc: list[str] | None = None,  # noqa: ARG001
+            is_html: bool = False,  # noqa: ARG001
+            reply_to: ShortText | None = None,  # noqa: ARG001
+            attachments: list[dict[str, Any]] | None = None,  # noqa: ARG001
         ) -> str:
             """
             Send an email through the platform-selected SMTP configuration.
@@ -168,14 +243,14 @@ class MailTools(BaseToolCategory):
             credentials; the platform supplies the selected SMTP configuration
             automatically. Summarize the send result after the tool returns.
             """
-            return send_email_message(
-                smtp_config=smtp_config,
-                to=to,
-                cc=cc,
-                bcc=bcc,
-                subject=subject,
-                body=body,
-                is_html=is_html,
-                reply_to=reply_to,
-                attachments=attachments,
+            # The tool stays registered so agents can still select it and the
+            # platform wrapper can still match it by name, but it no longer
+            # takes an smtp_config -- and therefore cannot dispatch anything.
+            # agent-service owns the stored mail configuration and performs
+            # the send itself (agents/mail_tooling.wrap_send_email_tool), so a
+            # call arriving here came from something that bypassed the
+            # platform path and must not be relayed.
+            return error_response(
+                "mail.config_incomplete",
+                error_category="configuration",
             )

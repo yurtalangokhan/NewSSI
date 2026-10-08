@@ -1,6 +1,12 @@
 "use client";
+import { modelProvidersEndpoints } from "@/lib/api/domains/model-providers/endpoints";
 
-import { authenticatedFetch } from "@/lib/fetcher";
+import { SvgChevronUp } from "@opal/icons";
+
+import { testUrlProviderConnection } from "@/lib/api/domains/model-providers/api";
+import { fetchUrlProviderModels } from "@/lib/api/domains/model-providers/api";
+import { syncUrlProviderModels } from "@/lib/api/domains/model-providers/api";
+import { deleteUrlProvider } from "@/lib/api/domains/model-providers/api";
 
 import { useState } from "react";
 import { useSWRConfig } from "swr";
@@ -15,7 +21,6 @@ import {
   SvgTrash,
   SvgDownload,
   SvgChevronDown,
-  SvgChevronUp,
   SvgRefreshCw,
   SvgCheckCircle,
   SvgAlertCircle,
@@ -163,18 +168,11 @@ export function UrlProviderCard({
   const handleTest = async () => {
     setTestStatus("testing");
     try {
-      const res = await authenticatedFetch(
-        "/api/admin/providers/test-connection",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            provider_type: provider.provider_type,
-            base_url: provider.base_url,
-            provider_id: provider.id,
-          }),
-        }
-      );
+      const res = await testUrlProviderConnection({
+        provider_type: provider.provider_type,
+        base_url: provider.base_url,
+        provider_id: provider.id,
+      });
       const data = await res.json();
       setTestLatency(data.latency_ms ?? null);
       if (data.success) {
@@ -209,7 +207,7 @@ export function UrlProviderCard({
       return;
     }
     try {
-      const res = await fetch(`/api/admin/providers/${provider.id}/models`);
+      const res = await fetchUrlProviderModels(provider.id);
       if (res.ok) {
         const data = await res.json();
         setLiveModels(Array.isArray(data) ? data : []);
@@ -226,15 +224,10 @@ export function UrlProviderCard({
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const res = await authenticatedFetch(
-        `/api/admin/providers/${provider.id}/sync-models`,
-        {
-          method: "POST",
-        }
-      );
+      const res = await syncUrlProviderModels(provider.id);
       if (!res.ok) throw new Error(t("admin.llm.syncFailed"));
       const updated = await res.json();
-      // Preserve size from previous live fetch (not stored in DB)
+      // Preserve size from previous live apiRequest(not stored in DB)
       const sizeMap = new Map((liveModels ?? []).map((m) => [m.name, m.size]));
       const synced: LiveModel[] = (
         updated?.config?.model_configurations ?? []
@@ -251,7 +244,7 @@ export function UrlProviderCard({
         size: sizeMap.get(m.name),
       }));
       setLiveModels(synced);
-      await mutate("/api/admin/providers");
+      await mutate(modelProvidersEndpoints.listProviders.browserPath);
       toast({ message: t("admin.llm.syncedModels", { count: synced.length }) });
     } catch {
       toast({ message: t("admin.llm.failedToSyncModels"), level: "error" });
@@ -265,16 +258,11 @@ export function UrlProviderCard({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const res = await authenticatedFetch(
-        `/api/admin/providers/${provider.id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const res = await deleteUrlProvider(provider.id);
       if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
       toast({ message: t("admin.llm.providerDeletedSuccess") });
       deleteModal.toggle(false);
-      await mutate("/api/admin/providers");
+      await mutate(modelProvidersEndpoints.listProviders.browserPath);
     } catch {
       toast({ message: t("admin.llm.failedToDeleteProvider"), level: "error" });
     } finally {

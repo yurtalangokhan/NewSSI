@@ -1,12 +1,21 @@
-import { authenticatedFetch } from "@/lib/fetcher";
+import { errorMessageFromUnknown } from "@/lib/api/errors";
+import { datasourcesEndpoints } from "@/lib/api/domains/datasources/endpoints";
+
+import { uploadDriveAppCredential } from "@/lib/api/domains/datasources/api";
+import { uploadDriveServiceAccountKey } from "@/lib/api/domains/datasources/api";
+import { saveDriveServiceAccountCredential } from "@/lib/api/domains/datasources/api";
+import {
+  deleteDriveAppCredential,
+  deleteDriveServiceAccountKey,
+} from "@/lib/api/domains/datasources/api";
 import { toast } from "@/hooks/useToast";
 import React, { useState, useEffect } from "react";
 import { useSWRConfig } from "swr";
 import * as Yup from "yup";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
-import { adminDeleteCredential } from "@/lib/credential";
-import { setupGoogleDriveOAuth } from "@/lib/googleDrive";
+import { adminDeleteCredential } from "@/lib/api/domains/datasources/api";
+import { setupGoogleDriveOAuth } from "@/lib/api/domains/integrations/api";
 import {
   DOCS_ADMINS_PATH,
   GOOGLE_DRIVE_AUTH_IS_ADMIN_COOKIE_NAME,
@@ -21,9 +30,9 @@ import {
   GoogleDriveCredentialJson,
   GoogleDriveServiceAccountCredentialJson,
 } from "@/lib/connectors/credentials";
-import { refreshAllGoogleData } from "@/lib/googleConnector";
+import { refreshAllGoogleData } from "@/lib/api/domains/datasources/google-hooks";
 import { ValidSources } from "@/lib/types";
-import { buildSimilarCredentialInfoURL } from "@/app/admin/connector/[ccPairId]/lib";
+
 import { FiFile, FiCheck, FiLink, FiAlertTriangle } from "react-icons/fi";
 import { cn, truncateString } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -71,19 +80,10 @@ export const DriveJsonUpload = ({ onSuccess }: { onSuccess?: () => void }) => {
       }
 
       if (credentialFileType === "authorized_user") {
-        const response = await authenticatedFetch(
-          "/api/manage/admin/connector/google-drive/app-credential",
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: credentialJsonStr,
-          }
-        );
+        const response = await uploadDriveAppCredential(credentialJsonStr);
         if (response.ok) {
           toast.success(t("googleCredentials.uploadAppCredentials"));
-          mutate("/api/manage/admin/connector/google-drive/app-credential");
+          mutate(datasourcesEndpoints.uploadDriveAppCredential.browserPath);
           if (onSuccess) {
             onSuccess();
           }
@@ -96,21 +96,10 @@ export const DriveJsonUpload = ({ onSuccess }: { onSuccess?: () => void }) => {
       }
 
       if (credentialFileType === "service_account") {
-        const response = await authenticatedFetch(
-          "/api/manage/admin/connector/google-drive/service-account-key",
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: credentialJsonStr,
-          }
-        );
+        const response = await uploadDriveServiceAccountKey(credentialJsonStr);
         if (response.ok) {
           toast.success("Successfully uploaded service account key");
-          mutate(
-            "/api/manage/admin/connector/google-drive/service-account-key"
-          );
+          mutate(datasourcesEndpoints.uploadDriveServiceAccountKey.browserPath);
           if (onSuccess) {
             onSuccess();
           }
@@ -329,29 +318,36 @@ export const DriveJsonUploadSection = ({
                 onClick={async () => {
                   const endpoint =
                     localServiceAccountData?.service_account_email
-                      ? "/api/manage/admin/connector/google-drive/service-account-key"
-                      : "/api/manage/admin/connector/google-drive/app-credential";
+                      ? datasourcesEndpoints.uploadDriveServiceAccountKey
+                          .browserPath
+                      : datasourcesEndpoints.uploadDriveAppCredential
+                          .browserPath;
 
-                  const response = await authenticatedFetch(endpoint, {
-                    method: "DELETE",
-                  });
+                  const response =
+                    localServiceAccountData?.service_account_email
+                      ? await deleteDriveServiceAccountKey()
+                      : await deleteDriveAppCredential();
 
                   if (response.ok) {
                     mutate(endpoint);
                     // Also mutate the credential endpoints to ensure Step 2 is reset
                     mutate(
-                      buildSimilarCredentialInfoURL(ValidSources.GoogleDrive)
+                      datasourcesEndpoints.similarCredentialInfo(
+                        ValidSources.GoogleDrive
+                      ).browserPath
                     );
 
                     // Add additional mutations to refresh all credential-related endpoints
                     mutate(
-                      "/api/manage/admin/connector/google-drive/credentials"
+                      datasourcesEndpoints.driveCredentialsCacheKey.browserPath
                     );
                     mutate(
-                      "/api/manage/admin/connector/google-drive/public-credential"
+                      datasourcesEndpoints.drivePublicCredentialCacheKey
+                        .browserPath
                     );
                     mutate(
-                      "/api/manage/admin/connector/google-drive/service-account-credential"
+                      datasourcesEndpoints.saveDriveServiceAccountCredential
+                        .browserPath
                     );
 
                     toast.success(
@@ -540,18 +536,9 @@ export const DriveAuthSection = ({
             onSubmit={async (values, formikHelpers) => {
               formikHelpers.setSubmitting(true);
               try {
-                const response = await authenticatedFetch(
-                  "/api/manage/admin/connector/google-drive/service-account-credential",
-                  {
-                    method: "PUT",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      google_primary_admin: values.google_primary_admin,
-                    }),
-                  }
-                );
+                const response = await saveDriveServiceAccountCredential({
+                  google_primary_admin: values.google_primary_admin,
+                });
 
                 if (response.ok) {
                   toast.success(t("googleCredentials.createdServiceAccount"));
@@ -627,7 +614,11 @@ export const DriveAuthSection = ({
                 setIsAuthenticating(false);
               }
             } catch (error) {
-              toast.error(t("googleCredentials.failedAuthDrive", { error }));
+              toast.error(
+                t("googleCredentials.failedAuthDrive", {
+                  error: errorMessageFromUnknown(error),
+                })
+              );
               setIsAuthenticating(false);
             }
           }}

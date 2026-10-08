@@ -1,11 +1,42 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { USER_SERVICE_URL } from "@/lib/constants";
-import { buildServiceUrl } from "@/lib/api/gatewayRouting";
+import { refreshSessionForMiddlewareSS } from "@/lib/api/domains/session/server";
+import { appSettings } from "@/lib/settings";
 
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };
+
+/**
+ * Generates a per-request CSP with a nonce so script-src no longer needs
+ * 'unsafe-inline' (the temporary exception next.config.js carried until
+ * this nonce pipeline existed — see Task 38). Every other directive here
+ * matches what next.config.js used to set statically.
+ */
+function buildCsp(): { nonce: string; cspHeader: string } {
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const isDev = appSettings.NODE_ENV === "development";
+
+  const cspHeader = `
+    default-src 'self';
+    script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${
+      isDev ? " 'unsafe-eval'" : ""
+    };
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    img-src 'self' data: blob:;
+    font-src 'self' https://fonts.gstatic.com data:;
+    connect-src 'self';
+    frame-ancestors 'none';
+    object-src 'none';
+    base-uri 'self';
+    form-action 'self';
+    ${appSettings.NEXT_PUBLIC_CLOUD_ENABLED ? "upgrade-insecure-requests;" : ""}
+  `
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  return { nonce, cspHeader };
+}
 
 /**
  * Paths that must never trigger a refresh: they are the way *out* of a
@@ -154,35 +185,43 @@ function isRefreshCandidate(request: NextRequest): boolean {
  * a timeout" looks like to a user.
  */
 export async function proxy(request: NextRequest) {
+  const { nonce, cspHeader } = buildCsp();
+  // Every branch below needs both the request-side x-nonce (so Server
+  // Components can read it via headers() and apply it to app-authored
+  // inline scripts) and the response-side CSP that actually enforces it.
+  const nextWithCsp = (init?: Parameters<typeof NextResponse.next>[0]) => {
+    const requestHeaders = new Headers(
+      init?.request?.headers ?? request.headers
+    );
+    requestHeaders.set("x-nonce", nonce);
+    const response = NextResponse.next({
+      ...init,
+      request: { ...init?.request, headers: requestHeaders },
+    });
+    response.headers.set("Content-Security-Policy", cspHeader);
+    return response;
+  };
+
   if (!isRefreshCandidate(request)) {
-    return NextResponse.next();
+    return nextWithCsp();
   }
 
   const cookieHeader = request.headers.get("cookie") || "";
   let refreshResponse: Response;
 
   try {
-    refreshResponse = await fetch(
-      buildServiceUrl(USER_SERVICE_URL, "user", "/api/auth/refresh").toString(),
-      {
-        method: "POST",
-        headers: {
-          Cookie: cookieHeader,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    refreshResponse = await refreshSessionForMiddlewareSS(cookieHeader);
   } catch (error) {
     // The auth backend being unreachable is not a reason to log anyone out;
     // render with what we have and let the client retry.
     console.error("[proxy] auth refresh failed:", error);
-    return NextResponse.next();
+    return nextWithCsp();
   }
 
   if (!refreshResponse.ok) {
     // A concurrent request may already have rotated the shared cookie jar.
     // Only a confirmed logout should emit destructive auth-cookie updates.
-    return NextResponse.next();
+    return nextWithCsp();
   }
 
   const setCookies = getSetCookieHeaders(refreshResponse.headers);
@@ -191,7 +230,7 @@ export async function proxy(request: NextRequest) {
     "access_token"
   );
 
-  const response = NextResponse.next({
+  const response = nextWithCsp({
     request: {
       headers: new Headers({
         ...Object.fromEntries(request.headers),

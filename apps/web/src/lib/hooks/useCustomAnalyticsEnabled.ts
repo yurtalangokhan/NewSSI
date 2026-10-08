@@ -1,4 +1,8 @@
-import { CUSTOM_ANALYTICS_ENABLED } from "@/lib/constants";
+"use client";
+
+import { useContext } from "react";
+
+import { SettingsContext } from "@/providers/SettingsProvider";
 
 export type CustomAnalyticsStatus = {
   customAnalyticsEnabled: boolean;
@@ -6,13 +10,18 @@ export type CustomAnalyticsStatus = {
 };
 
 /**
- * Hook to check if custom analytics is enabled.
- * Returns the status and loading state for consistency with other hooks.
- * Since this is based on an environment variable, there's no actual loading state.
+ * Whether custom analytics is configured for this deployment.
+ *
+ * The underlying CUSTOM_ANALYTICS_SECRET_KEY is server-only, so this reads the
+ * flag the server put on `CombinedSettings`. Reading the variable here directly
+ * always returned `false` in the browser, which is why the admin sidebar entry
+ * never appeared.
  */
 export function useCustomAnalyticsEnabled(): CustomAnalyticsStatus {
+  const settings = useContext(SettingsContext);
+
   return {
-    customAnalyticsEnabled: CUSTOM_ANALYTICS_ENABLED,
-    isLoading: false,
+    customAnalyticsEnabled: settings?.customAnalyticsEnabled ?? false,
+    isLoading: settings === null,
   };
 }

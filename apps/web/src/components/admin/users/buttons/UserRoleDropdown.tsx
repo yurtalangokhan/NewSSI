@@ -1,19 +1,13 @@
+import { errorMessageFromUnknown } from "@/lib/api/errors";
 import { type User } from "@/lib/types";
-import userMutationFetcher from "@/lib/admin/users/userMutationFetcher";
-import { useEffect, useState } from "react";
-import useSWR from "swr";
+import { setDirectoryUserRole } from "@/lib/api/domains/access/api";
+import { useDirectoryRoles } from "@/lib/api/domains/access/hooks";
+import { useEffect, useMemo, useState } from "react";
 import useSWRMutation from "swr/mutation";
-import { errorHandlingFetcher } from "@/lib/fetcher";
 import { formatRoleName } from "@/lib/auth/roles";
 
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import { useTranslation } from "react-i18next";
-
-interface Role {
-  name: string;
-  description: string | null;
-  is_builtin: boolean;
-}
 
 export interface UserRoleDropdownProps {
   user: User;
@@ -27,37 +21,35 @@ export default function UserRoleDropdown({
   onError,
 }: UserRoleDropdownProps) {
   const { t } = useTranslation();
-  const [selectedRole, setSelectedRole] = useState(user.role);
-
-  const { data: roles, isLoading: isRolesLoading } = useSWR<{ roles: Role[] }>(
-    "/api/user-service/roles",
-    errorHandlingFetcher
+  const { data: roles, isLoading: isRolesLoading } = useDirectoryRoles();
+  // The user record carries the primary role's name; the API takes its Keycloak ID.
+  const currentRoleId = useMemo(
+    () => roles?.roles.find((role) => role.name === user.role)?.id ?? "",
+    [roles, user.role]
   );
+  const [selectedRole, setSelectedRole] = useState(currentRoleId);
 
   const { trigger: setUserRole, isMutating: isSettingRole } = useSWRMutation(
-    `/api/user-service/users/${user.id}/role`,
-    userMutationFetcher
+    ["set-directory-user-role", user.id],
+    (_key, { arg }: { arg: string }) => setDirectoryUserRole(user.id, arg)
   );
 
   useEffect(() => {
-    setSelectedRole(user.role);
-  }, [user]);
+    setSelectedRole(currentRoleId);
+  }, [currentRoleId]);
 
-  const handleChange = async (value: string) => {
-    if (value === selectedRole) return;
+  const handleChange = async (roleId: string) => {
+    if (roleId === selectedRole) return;
 
     const previousRole = selectedRole;
-    setSelectedRole(value);
+    setSelectedRole(roleId);
 
     try {
-      const updatedUser = (await setUserRole({
-        role: value,
-        method: "POST",
-      })) as User;
+      const updatedUser = await setUserRole(roleId);
       onSuccess(updatedUser);
     } catch (error) {
       setSelectedRole(previousRole);
-      onError(error instanceof Error ? error.message : String(error));
+      onError(errorMessageFromUnknown(error));
     }
   };
 
@@ -74,8 +66,8 @@ export default function UserRoleDropdown({
           {!isRolesLoading && roles?.roles
             ? roles.roles.map((role) => (
                 <InputSelect.Item
-                  key={role.name}
-                  value={role.name}
+                  key={role.id}
+                  value={role.id}
                   data-testid={`user-role-dropdown-${role.name}`}
                   title={role.description ?? ""}
                   data-tooltip-delay="0"

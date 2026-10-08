@@ -1,7 +1,7 @@
-import { SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED } from "@/lib/constants";
 import { fetchStandardSettingsSS } from "@/components/settings/lib";
 import { tServer } from "@/i18n/server";
-import { resolveLocaleSS } from "@/lib/localeSS";
+import { resolveLocaleSS } from "@/lib/i18n/locale.server";
+import { appSettings } from "@/lib/settings";
 
 export default async function AdminLayout({
   children,
@@ -14,7 +14,7 @@ export default async function AdminLayout({
   const locale = await resolveLocaleSS();
 
   // First check build-time constant (fast path)
-  if (!SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED) {
+  if (!appSettings.SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED) {
     return (
       <div className="flex h-screen">
         <div className="mx-auto my-auto text-lg font-bold text-red-500">

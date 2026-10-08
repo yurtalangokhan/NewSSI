@@ -65,6 +65,11 @@ import {
 
 const NO_ERRORS: ValidationIssue[] = [];
 
+/** dragOrigin's nodeId for a palette hover preview — never equal to any real
+ * xyflow node id (those come from `getNodeId()`), so `isDragOriginNode` is
+ * false for every actual node on the canvas. */
+const PALETTE_HOVER_NODE_ID = "__palette-hover-origin__";
+
 import {
   NodeCard,
   NodeHeader,
@@ -137,6 +142,9 @@ export function createTemplateNode(
     // logic (still entirely xyflow's, still works off its own state).
     const activeClickHandle = useStore(store, (s) => s.activeClickHandle);
     const setActiveClickHandle = useStore(store, (s) => s.setActiveClickHandle);
+    // Palette hover preview (flow-canvas-connect-ux) — lowest priority: an
+    // actual connection in progress always wins over a mere hover.
+    const paletteHoverOrigin = useStore(store, (s) => s.paletteHoverOrigin);
     const handleClickToggle = useCallback(
       (handleId: string, handleType: "source" | "target") => {
         setActiveClickHandle(
@@ -185,6 +193,18 @@ export function createTemplateNode(
         const originNode = store.getState().nodes.find((n) => n.id === nodeId);
         componentType = originNode?.data.type;
         componentValues = originNode?.data.values;
+      } else if (paletteHoverOrigin) {
+        // A hover preview from the palette sidebar — not a connection on any
+        // existing canvas node, so none of nodeId/handleId/componentType
+        // apply and there is no template lookup to do: its types are
+        // already resolved. `nodeId` is a sentinel distinct from every real
+        // node id, so `isDragOriginNode` below is false for all of them —
+        // every compatible node glows, none is excluded as "the origin".
+        return {
+          nodeId: PALETTE_HOVER_NODE_ID,
+          handleType: paletteHoverOrigin.handleType,
+          types: paletteHoverOrigin.types,
+        };
       }
 
       if (!nodeId || !handleId || !handleType || !componentType || !grouped)
@@ -212,6 +232,7 @@ export function createTemplateNode(
       dragConnection.fromComponentValues,
       activeClickHandle,
       clickStartHandle,
+      paletteHoverOrigin,
       grouped,
       store,
     ]);
@@ -480,6 +501,7 @@ export function createTemplateNode(
                 !!dragOrigin.types &&
                 handlesCompatible(dragOrigin.types, h.types as PortType[])
               }
+              isConnectable={!readOnly}
               onHandleClick={() => handleClickToggle(h.name, "target")}
             />
           ))}
@@ -512,6 +534,7 @@ export function createTemplateNode(
                 !!dragOrigin.types &&
                 handlesCompatible(h.types as PortType[], dragOrigin.types)
               }
+              isConnectable={!readOnly}
               onHandleClick={() => handleClickToggle(h.name, "source")}
             />
           ))}

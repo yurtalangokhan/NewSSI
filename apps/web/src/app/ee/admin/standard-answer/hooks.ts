@@ -1,12 +1,18 @@
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { agentsEndpoints } from "@/lib/api/domains/agents/endpoints";
+import { knowledgeEndpoints } from "@/lib/api/domains/knowledge/endpoints";
+
+import {
+  fetchStandardAnswerCategories,
+  fetchStandardAnswers,
+} from "@/lib/api/domains/knowledge/api";
 import { StandardAnswerCategory, StandardAnswer } from "@/lib/types";
 import useSWR, { mutate } from "swr";
 
 export const useStandardAnswerCategories = () => {
-  const url = "/api/manage/admin/standard-answer/category";
+  const url = agentsEndpoints.standardAnswerCategory.browserPath;
   const swrResponse = useSWR<StandardAnswerCategory[]>(
     url,
-    errorHandlingFetcher
+    fetchStandardAnswerCategories
   );
 
   return {
@@ -16,8 +22,8 @@ export const useStandardAnswerCategories = () => {
 };
 
 export const useStandardAnswers = () => {
-  const url = "/api/manage/admin/standard-answer";
-  const swrResponse = useSWR<StandardAnswer[]>(url, errorHandlingFetcher);
+  const url = knowledgeEndpoints.listStandardAnswers.browserPath;
+  const swrResponse = useSWR<StandardAnswer[]>(url, fetchStandardAnswers);
 
   return {
     ...swrResponse,

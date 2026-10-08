@@ -1,4 +1,4 @@
-from langconnect.server import APP
+from src.server import APP
 from tests.unit_tests.fixtures import get_async_test_client
 
 
@@ -17,6 +17,9 @@ def test_rag_service_exposes_only_api_v1_routes_without_legacy_aliases() -> None
         "/api/v1/datasources/knowledge-selector",
         "/api/v1/graph/build",
         "/api/v1/graph/health",
+        "/api/v1/search",
+        "/api/v1/search/sources",
+        "/api/v1/search/graph/neighborhood",
     }
     legacy_paths = {
         "/health",
@@ -26,6 +29,8 @@ def test_rag_service_exposes_only_api_v1_routes_without_legacy_aliases() -> None
         "/datasources/knowledge-selector",
         "/graph/build",
         "/graph/health",
+        "/search",
+        "/search/sources",
     }
 
     assert canonical_paths <= paths
@@ -47,6 +52,16 @@ async def test_api_v1_health_is_public() -> None:
 
 
 async def test_api_v1_readiness_is_public() -> None:
+    from src.shared.observability import dependency_registry
+
+    # The readiness endpoint is public (no auth gate). The registry must hold a
+    # healthy required dependency for the 200/ready body: an empty registry
+    # correctly reports not_ready (503), because "nothing checked yet" is not
+    # the same as "ready" - the pre-consolidation copies reported green over an
+    # empty map, which is the defect the shared core fixes. Recording here is
+    # safe to leave behind: the 503 test below sets its own registry state.
+    dependency_registry.record_ok("postgres")
+
     async with get_async_test_client() as client:
         response = await client.get("/api/v1/health/ready")
 
@@ -56,7 +71,7 @@ async def test_api_v1_readiness_is_public() -> None:
 
 
 async def test_api_v1_readiness_returns_503_when_required_dependency_fails() -> None:
-    from langconnect.observability import (
+    from src.shared.observability import (
         DependencyPolicy,
         DependencyStatus,
         dependency_registry,

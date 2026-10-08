@@ -1,25 +1,25 @@
-import { OnyxDocument } from "@/lib/search/interfaces";
+import { AtlasDocument } from "@/lib/search/interfaces";
 import { ValidSources } from "@/lib/types";
 import {
   FetchToolDocuments,
   Packet,
   PacketType,
   SearchToolDocumentsDelta,
-} from "@/app/app/services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 
 export interface DomainGroup {
   domain: string;
-  documents: OnyxDocument[];
+  documents: AtlasDocument[];
 }
 
 export interface SplitWebSources {
-  readDocuments: OnyxDocument[];
-  searchDocuments: OnyxDocument[];
-  internalDocuments: OnyxDocument[];
+  readDocuments: AtlasDocument[];
+  searchDocuments: AtlasDocument[];
+  internalDocuments: AtlasDocument[];
 }
 
 /** True once every document in a non-empty set is a web result. */
-export function isAllWebSources(documents: OnyxDocument[]): boolean {
+export function isAllWebSources(documents: AtlasDocument[]): boolean {
   if (documents.length === 0) return false;
   return documents.every(
     (doc) => doc.is_internet || doc.source_type === ValidSources.Web
@@ -39,7 +39,9 @@ function hostnameOf(link: string): string {
  * so the caller decides how a group of size 1 renders versus one of size
  * 2+, rather than baking that presentation choice into the grouping
  * logic itself. */
-export function groupSourcesByDomain(documents: OnyxDocument[]): DomainGroup[] {
+export function groupSourcesByDomain(
+  documents: AtlasDocument[]
+): DomainGroup[] {
   const groups: DomainGroup[] = [];
   const indexByDomain = new Map<string, number>();
 
@@ -65,10 +67,10 @@ export function groupSourcesByDomain(documents: OnyxDocument[]): DomainGroup[] {
  */
 export function splitMessageSources(
   packets: Packet[] = [],
-  persistedDocuments: OnyxDocument[] = []
+  persistedDocuments: AtlasDocument[] = []
 ): SplitWebSources {
-  const readMap = new Map<string, OnyxDocument>();
-  const searchMap = new Map<string, OnyxDocument>();
+  const readMap = new Map<string, AtlasDocument>();
+  const searchMap = new Map<string, AtlasDocument>();
   const readDocIds = new Set<string>();
   const readLinks = new Set<string>();
 

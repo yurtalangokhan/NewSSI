@@ -1,24 +1,16 @@
 """Bekleyen bir interrupt payload'ını tanınmış bir :class:`PendingInterrupt`'e çevirir.
 
-Interrupt'ı bulan tarama :meth:`ThreadController.get_pending_interrupt`'te:
+Interrupt'ı bulan tarama :meth:`ThreadAccessService.get_pending_interrupt`'te:
 checkpointer'ın ``alist``'i thread'in HER namespace'ini geziyor (kök +
 supervisor alt agent'ları + pipeline aşamaları + flow'un ReActAgent node'u),
 dolayısıyla derlenmiş bir graf ya da özyinelemeli bir state gezintisi
 gerekmiyor. Burası yalnızca tek bir ``__interrupt__`` yazımını yorumluyor.
 """
 
-from dataclasses import dataclass
 from typing import Any
 
 from agents.interrupts.classify import TOOL_APPROVAL, classify_interrupt
-
-
-@dataclass(frozen=True)
-class PendingInterrupt:
-    kind: str
-    value: Any
-    interrupt_id: str
-    action_count: int
+from schemas.agent_runtime import PendingInterrupt
 
 
 def _as_pending(interrupt: Any) -> PendingInterrupt | None:

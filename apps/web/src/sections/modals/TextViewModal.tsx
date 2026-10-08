@@ -1,4 +1,6 @@
 "use client";
+import { fetchChatFileBlob } from "@/lib/api/domains/chat/api";
+import { fetchChatFileTextResponse } from "@/lib/api/domains/chat/api";
 
 import { useState, useEffect, useMemo } from "react";
 import Button from "@/refresh-components/buttons/Button";
@@ -10,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { MinimalOnyxDocument } from "@/lib/search/interfaces";
+import { MinimalAtlasDocument } from "@/lib/search/interfaces";
 import MinimalMarkdown from "@/components/chat/MinimalMarkdown";
 import { Button as OpalButton } from "@opal/components";
 import Modal, { BasicModalFooter } from "@/refresh-components/Modal";
@@ -27,10 +29,10 @@ import { cn } from "@/lib/utils";
 import { Section } from "@/layouts/general-layouts";
 import DocxPreview from "@/app/app/components/files/DocxPreview";
 import { useTranslation } from "react-i18next";
-import { resolveDownloadHref } from "@/lib/chat/svc";
+import { resolveDownloadHref } from "@/lib/api/domains/chat/endpoints";
 
 interface TextViewProps {
-  presentingDocument: MinimalOnyxDocument;
+  presentingDocument: MinimalAtlasDocument;
   onClose: () => void;
 }
 
@@ -130,9 +132,9 @@ export default function TextViewModal({
       const fileIdLocal = docId.split("__")[1] || docId;
 
       try {
-        const response = await fetch(
-          `/api/chat/file/${encodeURIComponent(fileIdLocal)}`,
-          { method: "GET", signal: controller.signal }
+        const response = await fetchChatFileBlob(
+          encodeURIComponent(fileIdLocal),
+          controller.signal
         );
 
         if (!response.ok) {
@@ -192,9 +194,9 @@ export default function TextViewModal({
             setFileBlob(blob);
           } else if (isPptxFormat(contentType)) {
             // Extract text slide-by-slide from backend
-            const textResponse = await fetch(
-              `/api/chat/file/${encodeURIComponent(fileIdLocal)}/text`,
-              { method: "GET", signal: controller.signal }
+            const textResponse = await fetchChatFileTextResponse(
+              encodeURIComponent(fileIdLocal),
+              controller.signal
             );
             if (textResponse.ok && !isCancelled) {
               setFileContent(await textResponse.text());

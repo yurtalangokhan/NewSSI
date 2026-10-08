@@ -1,3 +1,7 @@
+"use client";
+
+import { accessEndpoints } from "@/lib/api/domains/access/endpoints";
+
 /**
  * ResourcePermissionManager Component
  *
@@ -12,9 +16,13 @@
  * - Audit trail
  */
 
-"use client";
+import { fetchResourcePermissionsResponse } from "@/lib/api/domains/access/api";
+import { fetchPermissionOrganizationsResponse } from "@/lib/api/domains/access/api";
+import { fetchPermissionUsersResponse } from "@/lib/api/domains/access/api";
 
-import { authenticatedFetch } from "@/lib/fetcher";
+import { grantUserResourcePermission } from "@/lib/api/domains/access/api";
+import { grantOrganizationResourcePermission } from "@/lib/api/domains/access/api";
+import { revokeResourcePermission } from "@/lib/api/domains/access/api";
 
 import { useState, useCallback, useMemo } from "react";
 import useSWR, { mutate } from "swr";
@@ -126,9 +134,13 @@ export function ResourcePermissionManager({
 
   // Fetch current permissions
   const { data: permissions, isLoading } = useSWR<Permission[]>(
-    `/api/permissions/resources/${resourceType}/${resourceId}`,
+    accessEndpoints.fetchResourcePermissions(resourceType, resourceId)
+      .browserPath,
     async (url: string) => {
-      const res = await fetch(url);
+      const res = await fetchResourcePermissionsResponse(
+        resourceType,
+        resourceId
+      );
       if (!res.ok) throw new Error("Failed to fetch permissions");
       return res.json();
     }
@@ -136,9 +148,9 @@ export function ResourcePermissionManager({
 
   // Fetch organizations
   const { data: rawOrganizations } = useSWR<any>(
-    "/api/organizations",
+    accessEndpoints.fetchPermissionOrganizations.browserPath,
     async (url: string) => {
-      const res = await fetch(url);
+      const res = await fetchPermissionOrganizationsResponse();
       if (!res.ok) throw new Error("Failed to fetch organizations");
       return res.json();
     }
@@ -154,11 +166,14 @@ export function ResourcePermissionManager({
   }, [rawOrganizations]);
 
   // Fetch users for search
-  const { data: rawUsers } = useSWR<any>("/api/users", async (url: string) => {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Failed to fetch users");
-    return res.json();
-  });
+  const { data: rawUsers } = useSWR<any>(
+    accessEndpoints.shareableUsers.browserPath,
+    async (url: string) => {
+      const res = await fetchPermissionUsersResponse();
+      if (!res.ok) throw new Error("Failed to fetch users");
+      return res.json();
+    }
+  );
 
   const users = useMemo<UserInfo[] | undefined>(() => {
     if (!rawUsers) return undefined;
@@ -172,15 +187,11 @@ export function ResourcePermissionManager({
   const handleAddUserPermission = useCallback(
     async (userId: string, level: PermissionLevel) => {
       try {
-        const res = await authenticatedFetch("/api/permissions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            resource_type: resourceType,
-            resource_id: resourceId,
-            user_id: userId,
-            permission_level: level,
-          }),
+        const res = await grantUserResourcePermission({
+          resource_type: resourceType,
+          resource_id: resourceId,
+          user_id: userId,
+          permission_level: level,
         });
 
         if (!res.ok) {
@@ -188,7 +199,10 @@ export function ResourcePermissionManager({
         }
 
         // Refresh permissions
-        mutate(`/api/permissions/resources/${resourceType}/${resourceId}`);
+        mutate(
+          accessEndpoints.fetchResourcePermissions(resourceType, resourceId)
+            .browserPath
+        );
         setShowAddUser(false);
       } catch (error) {
         console.error("Error granting permission:", error);
@@ -201,22 +215,21 @@ export function ResourcePermissionManager({
   const handleAddOrgPermission = useCallback(
     async (orgId: string, level: PermissionLevel) => {
       try {
-        const res = await authenticatedFetch("/api/permissions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            resource_type: resourceType,
-            resource_id: resourceId,
-            organization_id: orgId,
-            permission_level: level,
-          }),
+        const res = await grantOrganizationResourcePermission({
+          resource_type: resourceType,
+          resource_id: resourceId,
+          organization_id: orgId,
+          permission_level: level,
         });
 
         if (!res.ok) {
           throw new Error("Failed to grant permission");
         }
 
-        mutate(`/api/permissions/resources/${resourceType}/${resourceId}`);
+        mutate(
+          accessEndpoints.fetchResourcePermissions(resourceType, resourceId)
+            .browserPath
+        );
         setShowAddOrg(false);
       } catch (error) {
         console.error("Error granting permission:", error);
@@ -231,18 +244,16 @@ export function ResourcePermissionManager({
       if (!confirm("Remove this permission?")) return;
 
       try {
-        const res = await authenticatedFetch(
-          `/api/permissions/${permissionId}`,
-          {
-            method: "DELETE",
-          }
-        );
+        const res = await revokeResourcePermission(permissionId);
 
         if (!res.ok) {
           throw new Error("Failed to remove permission");
         }
 
-        mutate(`/api/permissions/resources/${resourceType}/${resourceId}`);
+        mutate(
+          accessEndpoints.fetchResourcePermissions(resourceType, resourceId)
+            .browserPath
+        );
       } catch (error) {
         console.error("Error removing permission:", error);
         alert("Failed to remove permission");

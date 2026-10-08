@@ -1,140 +1,227 @@
+"""Platform roles (Keycloak realm roles), addressed by their Keycloak role ID."""
+
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends
+from error_contract import ApplicationError, render_error_message
+from fastapi import APIRouter, Body, Depends, Path, Request, Response
 
 from src.api.dependencies import require_permission
 from src.controller.role_controller import get_composite_role_controller
+from src.core.response_errors import request_locale, set_error_response
+from src.core.response_models import ErrorModel, ResponseModel
+from src.schema.roles import (
+    CompositeRoleBundlesResponse,
+    CompositeRoleBundlesUpdateResponse,
+    CompositeRoleCreateRequest,
+    CompositeRoleListResponse,
+    CompositeRolePermissionsResponse,
+    CompositeRoleResponse,
+    CompositeRoleUpdateRequest,
+    MessageResponse,
+    RoleBundlesRequest,
+    RolePermissionsRequest,
+)
 
 router = APIRouter(prefix="/roles", tags=["roles"])
 
+RoleId = Annotated[str, Path(description="Keycloak realm-role ID.")]
+
 
 @router.get("/")
-async def list_roles(_user_id: Annotated[str, Depends(require_permission("role:list"))]):
-    ctrl = get_composite_role_controller()
-    return await ctrl.list_roles()
+async def list_roles(
+    request: Request, response: Response, _user_id: Annotated[str, Depends(require_permission("role:list"))]
+) -> ResponseModel[CompositeRoleListResponse]:
+    try:
+        return ResponseModel(statusCode=200, data=await get_composite_role_controller().list_roles())
+    except ApplicationError as error:
+        set_error_response(response, error, request)
+        message = render_error_message(error, locale=request_locale(request))
+        return ResponseModel(
+            statusCode=error.status_code,
+            message=message,
+            error=ErrorModel.from_error(error, message),
+        )
 
 
-@router.post("/")
+@router.post("/", status_code=201)
 async def create_role(
-    name: str,
+    request: Request,
+    response: Response,
+    payload: Annotated[CompositeRoleCreateRequest, Body()],
     user_id: Annotated[str, Depends(require_permission("role:manage"))],
-    description: str | None = None,
-    permissions: list[str] | None = None,
-):
-    ctrl = get_composite_role_controller()
-    return await ctrl.create_role(
-        name=name,
-        description=description,
-        permissions=permissions,
-        user_id=user_id,
-    )
+) -> ResponseModel[CompositeRoleResponse]:
+    try:
+        return ResponseModel(
+            statusCode=201,
+            data=await get_composite_role_controller().create_role(
+                name=payload.name,
+                description=payload.description,
+                permissions=payload.permissions,
+                role_ids=payload.role_ids,
+                user_id=user_id,
+            ),
+        )
+    except ApplicationError as error:
+        set_error_response(response, error, request)
+        message = render_error_message(error, locale=request_locale(request))
+        return ResponseModel(
+            statusCode=error.status_code,
+            message=message,
+            error=ErrorModel.from_error(error, message),
+        )
 
 
-@router.get("/{role_name}")
+@router.get("/{role_id}")
 async def get_role(
-    role_name: str,
+    request: Request,
+    response: Response,
+    role_id: RoleId,
     _user_id: Annotated[str, Depends(require_permission("role:read"))],
-):
-    ctrl = get_composite_role_controller()
-    return await ctrl.get_role(role_name)
+) -> ResponseModel[CompositeRoleResponse]:
+    try:
+        return ResponseModel(statusCode=200, data=await get_composite_role_controller().get_role(role_id))
+    except ApplicationError as error:
+        set_error_response(response, error, request)
+        message = render_error_message(error, locale=request_locale(request))
+        return ResponseModel(
+            statusCode=error.status_code,
+            message=message,
+            error=ErrorModel.from_error(error, message),
+        )
 
 
-@router.patch("/{role_name}")
+@router.patch("/{role_id}")
 async def update_role(
-    role_name: str,
+    request: Request,
+    response: Response,
+    role_id: RoleId,
+    payload: Annotated[CompositeRoleUpdateRequest, Body()],
     user_id: Annotated[str, Depends(require_permission("role:manage"))],
-    description: str | None = None,
-    permissions: list[str] | None = None,
-    role_ids: list[str] | None = None,
-):
-    ctrl = get_composite_role_controller()
-    return await ctrl.update_role(
-        name=role_name,
-        description=description,
-        permissions=permissions,
-        role_ids=role_ids,
-        user_id=user_id,
-    )
+) -> ResponseModel[CompositeRoleResponse]:
+    try:
+        return ResponseModel(
+            statusCode=200,
+            data=await get_composite_role_controller().update_role(
+                role_id,
+                description=payload.description,
+                permissions=payload.permissions,
+                role_ids=payload.role_ids,
+                user_id=user_id,
+            ),
+        )
+    except ApplicationError as error:
+        set_error_response(response, error, request)
+        message = render_error_message(error, locale=request_locale(request))
+        return ResponseModel(
+            statusCode=error.status_code,
+            message=message,
+            error=ErrorModel.from_error(error, message),
+        )
 
 
-@router.delete("/{role_name}")
+@router.delete("/{role_id}")
 async def delete_role(
-    role_name: str,
+    request: Request,
+    response: Response,
+    role_id: RoleId,
     user_id: Annotated[str, Depends(require_permission("role:manage"))],
-):
-    ctrl = get_composite_role_controller()
-    return await ctrl.delete_role(role_name, user_id=user_id)
+) -> ResponseModel[MessageResponse]:
+    try:
+        return ResponseModel(
+            statusCode=200,
+            data=await get_composite_role_controller().delete_role(role_id, user_id=user_id),
+        )
+    except ApplicationError as error:
+        set_error_response(response, error, request)
+        message = render_error_message(error, locale=request_locale(request))
+        return ResponseModel(
+            statusCode=error.status_code,
+            message=message,
+            error=ErrorModel.from_error(error, message),
+        )
 
 
-@router.get("/{role_name}/permissions")
+@router.get("/{role_id}/permissions")
 async def get_role_permissions(
-    role_name: str,
+    request: Request,
+    response: Response,
+    role_id: RoleId,
     _user_id: Annotated[str, Depends(require_permission("role:read"))],
-):
-    ctrl = get_composite_role_controller()
-    return await ctrl.get_role_permissions(role_name)
+) -> ResponseModel[CompositeRolePermissionsResponse]:
+    try:
+        return ResponseModel(statusCode=200, data=await get_composite_role_controller().get_role_permissions(role_id))
+    except ApplicationError as error:
+        set_error_response(response, error, request)
+        message = render_error_message(error, locale=request_locale(request))
+        return ResponseModel(
+            statusCode=error.status_code,
+            message=message,
+            error=ErrorModel.from_error(error, message),
+        )
 
 
-@router.get("/{role_name}/effective-permissions")
-async def get_role_effective_permissions(
-    role_name: str,
-    _user_id: Annotated[str, Depends(require_permission("role:read"))],
-):
-    ctrl = get_composite_role_controller()
-    return await ctrl.get_effective_permissions(role_name)
-
-
-@router.put("/{role_name}/permissions")
+@router.put("/{role_id}/permissions")
 async def set_role_permissions(
-    role_name: str,
-    permissions: Annotated[list[str], Body(embed=True)],
+    request: Request,
+    response: Response,
+    role_id: RoleId,
+    payload: Annotated[RolePermissionsRequest, Body()],
     user_id: Annotated[str, Depends(require_permission("role:manage"))],
-):
-    ctrl = get_composite_role_controller()
-    return await ctrl.set_role_permissions(role_name, permissions, user_id=user_id)
+) -> ResponseModel[CompositeRolePermissionsResponse]:
+    try:
+        return ResponseModel(
+            statusCode=200,
+            data=await get_composite_role_controller().set_role_permissions(
+                role_id, payload.permissions, user_id=user_id
+            ),
+        )
+    except ApplicationError as error:
+        set_error_response(response, error, request)
+        message = render_error_message(error, locale=request_locale(request))
+        return ResponseModel(
+            statusCode=error.status_code,
+            message=message,
+            error=ErrorModel.from_error(error, message),
+        )
 
 
-@router.get("/{role_name}/role-ids")
-async def get_role_role_ids(
-    role_name: str,
+@router.get("/{role_id}/role-ids")
+async def get_role_bundles(
+    request: Request,
+    response: Response,
+    role_id: RoleId,
     _user_id: Annotated[str, Depends(require_permission("role:read"))],
-):
-    ctrl = get_composite_role_controller()
-    return await ctrl.get_role_role_ids(role_name)
+) -> ResponseModel[CompositeRoleBundlesResponse]:
+    try:
+        return ResponseModel(statusCode=200, data=await get_composite_role_controller().get_role_bundles(role_id))
+    except ApplicationError as error:
+        set_error_response(response, error, request)
+        message = render_error_message(error, locale=request_locale(request))
+        return ResponseModel(
+            statusCode=error.status_code,
+            message=message,
+            error=ErrorModel.from_error(error, message),
+        )
 
 
-@router.get("/{role_name}/inherited-roles")
-async def get_role_inherited_roles(
-    role_name: str,
-    _user_id: Annotated[str, Depends(require_permission("role:read"))],
-):
-    ctrl = get_composite_role_controller()
-    return await ctrl.get_inherited_roles(role_name)
-
-
-@router.put("/{role_name}/role-ids")
-async def set_role_role_ids(
-    role_name: str,
-    role_ids: Annotated[list[str], Body(embed=True)],
+@router.put("/{role_id}/role-ids")
+async def set_role_bundles(
+    request: Request,
+    response: Response,
+    role_id: RoleId,
+    payload: Annotated[RoleBundlesRequest, Body()],
     user_id: Annotated[str, Depends(require_permission("role:manage"))],
-):
-    ctrl = get_composite_role_controller()
-    return await ctrl.set_role_role_ids(role_name, role_ids, user_id=user_id)
-
-
-@router.put("/{role_name}/inherited-roles")
-async def set_role_inherited_roles(
-    role_name: str,
-    role_ids: Annotated[list[str], Body(embed=True)],
-    user_id: Annotated[str, Depends(require_permission("role:manage"))],
-):
-    ctrl = get_composite_role_controller()
-    return await ctrl.set_inherited_roles(role_name, role_ids, user_id=user_id)
-
-
-@router.post("/sync-keycloak")
-async def sync_roles_to_keycloak(
-    user_id: Annotated[str, Depends(require_permission("role:manage"))],
-):
-    ctrl = get_composite_role_controller()
-    return await ctrl.sync_to_keycloak(user_id=user_id)
+) -> ResponseModel[CompositeRoleBundlesUpdateResponse]:
+    try:
+        return ResponseModel(
+            statusCode=200,
+            data=await get_composite_role_controller().set_role_bundles(role_id, payload.role_ids, user_id=user_id),
+        )
+    except ApplicationError as error:
+        set_error_response(response, error, request)
+        message = render_error_message(error, locale=request_locale(request))
+        return ResponseModel(
+            statusCode=error.status_code,
+            message=message,
+            error=ErrorModel.from_error(error, message),
+        )

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { DateRangePickerValue } from "@/components/dateRangeSelectors/AdminDateRangeSelector";
+import { DateRangePickerValue } from "@/lib/api/domains/knowledge/types";
 import { getDatesList, useQueryAnalytics, useUserAnalytics } from "../lib";
 import ChartSkeleton from "@/refresh-components/skeletons/ChartSkeleton";
 import { AreaChartDisplay } from "@/components/ui/areaChart";

@@ -49,7 +49,7 @@ header naming its origin, per MIT's "substantial portions" clause:
 ```ts
 // Ported from Langflow (MIT) — src/frontend/src/utils/reactflowUtils.ts
 // Upstream: https://github.com/langflow-ai/langflow @ 3ec070e9
-// Adapted for Onyx: refresh-components primitives, @opal icons, FlowSpec types.
+// Adapted for Atlas: refresh-components primitives, @opal icons, FlowSpec types.
 ```
 
 ## Refreshing this copy

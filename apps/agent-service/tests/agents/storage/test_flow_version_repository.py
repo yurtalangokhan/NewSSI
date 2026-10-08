@@ -1,6 +1,6 @@
 """Tests for FlowVersionRepository — draft read/write against a real DB.
 
-Uses the SQLite harness from tests/agents/storage/conftest.py (Task 14) so
+Uses the in-memory test harness from tests/agents/storage/conftest.py (Task 14) so
 "only one draft exists after two saves" and "version_no increments past
 gaps" are proven against real constraint enforcement, not assumed.
 
@@ -14,8 +14,8 @@ from uuid import uuid4
 
 import pytest
 
-from core.db.models.agent_definition import AgentDefinitionModel, FlowVersionStatus
-from repository.flow_version_repository import FlowVersionRepository
+from infrastructure.db.models.agent_definition import AgentDefinitionModel, FlowVersionStatus
+from infrastructure.db.repositories.flow_version_repo import FlowVersionRepository
 
 
 async def _make_definition(session) -> AgentDefinitionModel:
@@ -96,7 +96,7 @@ async def test_next_version_no_starts_at_one(repo, flow_version_session_factory)
 
 @pytest.mark.asyncio
 async def test_next_version_no_increments_past_highest(repo, flow_version_session_factory):
-    from core.db.models.agent_definition import AgentFlowVersionModel
+    from infrastructure.db.models.agent_definition import AgentFlowVersionModel
 
     async with flow_version_session_factory() as session:
         definition = await _make_definition(session)
@@ -142,7 +142,7 @@ async def test_next_version_no_ignores_an_existing_drafts_tentative_number(
 
 @pytest.mark.asyncio
 async def test_list_versions_orders_newest_first(repo, flow_version_session_factory):
-    from core.db.models.agent_definition import AgentFlowVersionModel
+    from infrastructure.db.models.agent_definition import AgentFlowVersionModel
 
     async with flow_version_session_factory() as session:
         definition = await _make_definition(session)
@@ -176,7 +176,7 @@ async def test_list_versions_orders_newest_first(repo, flow_version_session_fact
 
 @pytest.mark.asyncio
 async def test_get_published_returns_the_published_row(repo, flow_version_session_factory):
-    from core.db.models.agent_definition import AgentFlowVersionModel
+    from infrastructure.db.models.agent_definition import AgentFlowVersionModel
 
     async with flow_version_session_factory() as session:
         definition = await _make_definition(session)

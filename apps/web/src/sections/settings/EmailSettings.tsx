@@ -12,9 +12,11 @@ import {
   deleteUserMailSettings,
   saveUserMailSettings,
   testUserMailSettings,
+} from "@/lib/api/domains/system/api";
+import {
   useAvailableMailConfigs,
   useUserMailSettings,
-} from "@/lib/mailConfigs";
+} from "@/lib/api/domains/system/hooks";
 import Button from "@/refresh-components/buttons/Button";
 import Card from "@/refresh-components/cards/Card";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";

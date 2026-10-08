@@ -1,21 +1,28 @@
 "use client";
+import { integrationsEndpoints } from "@/lib/api/domains/integrations/endpoints";
+
+import {
+  fetchDiscordChannels,
+  fetchDiscordGuild,
+  fetchDiscordGuilds,
+  fetchDiscordManagedConfig,
+} from "@/lib/api/domains/integrations/api";
 
 import useSWR from "swr";
-import { errorHandlingFetcher } from "@/lib/fetcher";
 import {
   DiscordBotConfig,
   DiscordGuildConfig,
   DiscordChannelConfig,
-} from "@/app/admin/discord-bot/types";
+} from "@/lib/api/domains/integrations/discord-types";
 
-const BASE_URL = "/api/manage/admin/discord-bot";
+const BASE_URL = integrationsEndpoints.base.browserPath;
 
 /**
  * Custom fetcher for bot config that handles 403 specially.
  * 403 means bot config is managed externally (Cloud or env var).
  */
 async function botConfigFetcher(url: string): Promise<DiscordBotConfig | null> {
-  const res = await fetch(url);
+  const res = await fetchDiscordManagedConfig();
 
   if (res.status === 403) {
     // Bot config is managed externally - return null to indicate not accessible
@@ -45,7 +52,9 @@ export function useDiscordBotConfig() {
 
 export function useDiscordGuilds() {
   const url = `${BASE_URL}/guilds`;
-  const swrResponse = useSWR<DiscordGuildConfig[]>(url, errorHandlingFetcher);
+  const swrResponse = useSWR<DiscordGuildConfig[]>(url, () =>
+    fetchDiscordGuilds<DiscordGuildConfig[]>()
+  );
   return {
     ...swrResponse,
     refreshGuilds: () => swrResponse.mutate(),
@@ -54,7 +63,9 @@ export function useDiscordGuilds() {
 
 export function useDiscordGuild(configId: number) {
   const url = `${BASE_URL}/guilds/${configId}`;
-  const swrResponse = useSWR<DiscordGuildConfig>(url, errorHandlingFetcher);
+  const swrResponse = useSWR<DiscordGuildConfig>(url, () =>
+    fetchDiscordGuild<DiscordGuildConfig>(configId)
+  );
   return {
     ...swrResponse,
     refreshGuild: () => swrResponse.mutate(),
@@ -65,7 +76,9 @@ export function useDiscordChannels(guildConfigId: number) {
   const url = guildConfigId
     ? `${BASE_URL}/guilds/${guildConfigId}/channels`
     : null;
-  const swrResponse = useSWR<DiscordChannelConfig[]>(url, errorHandlingFetcher);
+  const swrResponse = useSWR<DiscordChannelConfig[]>(url, () =>
+    fetchDiscordChannels<DiscordChannelConfig[]>(guildConfigId)
+  );
   return {
     ...swrResponse,
     refreshChannels: () => swrResponse.mutate(),

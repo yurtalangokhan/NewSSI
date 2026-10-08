@@ -39,7 +39,53 @@ describe("LoginPage external Keycloak mode", () => {
     ).toHaveAttribute("href", "/api/auth/oidc/authorize?prompt=login");
   });
 
-  it("translates a raw Kong upstream-server oidcError instead of showing it as-is", () => {
+  it("shows the SP SSO link on the standard Keycloak login page", () => {
+    render(
+      <LoginPage
+        authUrl="/api/auth/oidc/authorize?redirect=true"
+        spAuthUrl="/api/auth/oidc/authorize?prompt=login&redirect=true"
+        authTypeMetadata={{
+          ...authTypeMetadata,
+          externalKeycloak: false,
+          keycloakEnabled: true,
+        }}
+        nextUrl={null}
+      />
+    );
+    expect(
+      screen.getByRole("link", { name: /SP Keycloak SSO/i })
+    ).toHaveAttribute(
+      "href",
+      "/api/auth/oidc/authorize?prompt=login&redirect=true"
+    );
+    expect(
+      screen.queryByRole("button", { name: /Continue with OIDC/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps generic OIDC login when no SP URL is supplied", () => {
+    render(
+      <LoginPage
+        authUrl="/api/auth/oidc/authorize?redirect=true"
+        authTypeMetadata={{
+          ...authTypeMetadata,
+          externalKeycloak: false,
+          keycloakEnabled: false,
+        }}
+        nextUrl={null}
+      />
+    );
+    expect(
+      screen.getByRole("button", { name: /Continue with OIDC/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /SP Keycloak SSO/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the oidcError the callback route already parsed", () => {
+    // The OIDC callback route turns the gateway's error envelope into a user
+    // message before redirecting here; the page shows it as given.
     render(
       <LoginPage
         authUrl="/api/auth/oidc/authorize?kc_idp_hint=external-keycloak"
@@ -47,19 +93,12 @@ describe("LoginPage external Keycloak mode", () => {
         authTypeMetadata={authTypeMetadata}
         nextUrl={null}
         externalKeycloakLogin
-        oidcError="An invalid response was received from the upstream server"
+        oidcError="Identity provider unavailable"
       />
     );
 
     expect(
-      screen.queryByText(
-        "An invalid response was received from the upstream server"
-      )
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "An invalid response was received from the upstream server."
-      )
+      screen.getByText("Identity provider unavailable")
     ).toBeInTheDocument();
   });
 });

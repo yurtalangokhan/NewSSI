@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import * as Yup from "yup";
 import { FormikField } from "@/refresh-components/form/FormikField";
@@ -13,7 +13,7 @@ import {
   ImageGenFormChildProps,
   ImageGenSubmitPayload,
 } from "./types";
-import { ImageGenerationCredentials } from "@/lib/configuration/imageConfigurationService";
+import { ImageGenerationCredentials } from "@/lib/api/domains/model-providers/image-types";
 import { ImageProvider } from "../constants";
 
 // OpenAI form values - just API key

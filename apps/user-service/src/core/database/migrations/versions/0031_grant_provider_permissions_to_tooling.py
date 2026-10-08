@@ -8,8 +8,8 @@ Create Date: 2026-08-13
 
 import json
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
 
 revision = "0031"
 down_revision = "0030"

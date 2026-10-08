@@ -3,10 +3,6 @@ from .auth_controller import AuthController, get_auth_controller
 from .base import BaseController
 from .coarse_role_controller import RoleController, get_role_controller
 from .organization_controller import OrganizationController, get_organization_controller
-from .organization_layout_controller import (
-    OrganizationLayoutController,
-    get_organization_layout_controller,
-)
 from .organization_members_controller import (
     OrganizationMembersController,
     get_organization_members_controller,
@@ -19,6 +15,10 @@ from .resource_permission_controller import (
 from .role_controller import CompositeRoleController, get_composite_role_controller
 from .settings_controller import SettingsController, get_settings_controller
 from .system_settings_controller import SystemSettingsController, get_system_settings_controller
+from .user_connector_config_controller import (
+    UserConnectorConfigController,
+    get_user_connector_config_controller,
+)
 from .user_controller import UserController, get_user_controller
 from .user_memory_controller import UserMemoryController, get_user_memory_controller
 from .user_organization_controller import (
@@ -28,32 +28,32 @@ from .user_organization_controller import (
 
 __all__ = [
     "ApiKeyController",
-    "get_api_key_controller",
     "AuthController",
-    "get_auth_controller",
     "BaseController",
-    "OrganizationController",
-    "get_organization_controller",
-    "RoleController",
-    "get_role_controller",
-    "PermissionController",
-    "get_permission_controller",
-    "ResourcePermissionController",
-    "get_resource_permission_controller",
     "CompositeRoleController",
-    "get_composite_role_controller",
-    "SettingsController",
-    "get_settings_controller",
-    "SystemSettingsController",
-    "get_system_settings_controller",
-    "UserController",
-    "get_user_controller",
-    "UserMemoryController",
-    "get_user_memory_controller",
-    "OrganizationLayoutController",
-    "get_organization_layout_controller",
+    "OrganizationController",
     "OrganizationMembersController",
-    "get_organization_members_controller",
+    "PermissionController",
+    "ResourcePermissionController",
+    "RoleController",
+    "SettingsController",
+    "SystemSettingsController",
+    "UserConnectorConfigController",
+    "UserController",
+    "UserMemoryController",
     "UserOrganizationController",
+    "get_api_key_controller",
+    "get_auth_controller",
+    "get_composite_role_controller",
+    "get_organization_controller",
+    "get_organization_members_controller",
+    "get_permission_controller",
+    "get_resource_permission_controller",
+    "get_role_controller",
+    "get_settings_controller",
+    "get_system_settings_controller",
+    "get_user_connector_config_controller",
+    "get_user_controller",
+    "get_user_memory_controller",
     "get_user_organization_controller",
 ]

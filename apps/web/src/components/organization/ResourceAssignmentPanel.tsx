@@ -3,25 +3,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ThreeDotsLoader } from "@/components/Loading";
 import Button from "@/refresh-components/buttons/Button";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
 import { toast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
+import type { DirectResourcePermission } from "@/lib/api/domains/access/types";
 
-export type PermissionLevel = "read" | "execute" | "write" | "admin" | "owner";
+export type {
+  DirectResourcePermission,
+  PermissionLevel,
+} from "@/lib/api/domains/access/types";
 
 export interface AssignableResource {
   id: string;
   name: string;
   description?: string;
-}
-
-export interface DirectResourcePermission {
-  resource_id: string;
-  resource_name: string;
-  permission_level: PermissionLevel;
 }
 
 interface ResourceAssignmentPanelProps {
@@ -211,11 +210,12 @@ export function ResourceAssignmentPanel({
       </div>
 
       {isLoading ? (
-        <Text text03 as="p">
-          {t("admin.organizations.access.loadingResources", {
+        <ThreeDotsLoader
+          variant="primary"
+          label={t("admin.organizations.access.loadingResources", {
             resource: resourceLabel,
           })}
-        </Text>
+        />
       ) : error ? (
         <div
           className={cn(

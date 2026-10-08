@@ -1,3 +1,4 @@
+import { modelProvidersEndpoints } from "@/lib/api/domains/model-providers/endpoints";
 import React, { forwardRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Formik, Form, FormikProps } from "formik";
@@ -5,15 +6,15 @@ import * as Yup from "yup";
 import {
   AdvancedSearchConfiguration,
   EmbeddingPrecision,
-  LLMContextualCost,
-} from "../interfaces";
+} from "@/lib/api/domains/knowledge/search-settings-types";
+import { LLMContextualCost } from "../interfaces";
 import { BooleanFormField, SelectorFormField } from "@/components/Field";
 import NumberInput from "../../connectors/[connector]/pages/ConnectorInput/NumberInput";
 import { StringOrNumberOption } from "@/components/Dropdown";
 import useSWR from "swr";
-import { LLM_CONTEXTUAL_COST_ADMIN_URL } from "@/lib/llmConfig/constants";
-import { errorHandlingFetcher } from "@/lib/fetcher";
-import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
+
+import { fetchLLMContextualCosts } from "@/lib/api/domains/model-providers/api";
+import { appSettings } from "@/lib/settings";
 // Number of tokens to show cost calculation for
 const COST_CALCULATION_TOKENS = 1_000_000;
 
@@ -55,7 +56,9 @@ const AdvancedEmbeddingFormPage = forwardRef<
     // Fetch contextual costs
     const { data: contextualCosts, error: costError } = useSWR<
       LLMContextualCost[]
-    >(LLM_CONTEXTUAL_COST_ADMIN_URL, errorHandlingFetcher);
+    >(modelProvidersEndpoints.llmContextualCost.browserPath, () =>
+      fetchLLMContextualCosts<LLMContextualCost[]>()
+    );
 
     const llmOptions: StringOrNumberOption[] = React.useMemo(
       () =>
@@ -223,14 +226,14 @@ const AdvancedEmbeddingFormPage = forwardRef<
               />
               <BooleanFormField
                 subtext={
-                  NEXT_PUBLIC_CLOUD_ENABLED
+                  appSettings.NEXT_PUBLIC_CLOUD_ENABLED
                     ? t("contextualRagCloudDisabled")
                     : t("contextualRagSubtext")
                 }
                 optional
                 label={t("contextualRagLabel")}
                 name="enable_contextual_rag"
-                disabled={NEXT_PUBLIC_CLOUD_ENABLED}
+                disabled={appSettings.NEXT_PUBLIC_CLOUD_ENABLED}
               />
               <div>
                 <SelectorFormField

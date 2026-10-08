@@ -1,4 +1,5 @@
 "use client";
+import { craftEndpoints } from "@/lib/api/domains/craft/endpoints";
 
 import { useState, useCallback, useRef, useMemo } from "react";
 import useSWR from "swr";
@@ -9,8 +10,8 @@ import {
   createLibraryDirectory,
   toggleLibraryFileSync,
   deleteLibraryFile,
-} from "@/app/craft/services/apiServices";
-import { LibraryEntry } from "@/app/craft/types/user-library";
+} from "@/lib/api/domains/craft/api";
+import { LibraryEntry } from "@/lib/api/domains/craft/library-types";
 import Text from "@/refresh-components/texts/Text";
 import Button from "@/refresh-components/buttons/Button";
 import Modal from "@/refresh-components/Modal";
@@ -95,9 +96,13 @@ export default function UserLibraryModal({
     error,
     isLoading,
     mutate,
-  } = useSWR(open ? "/api/build/user-library/tree" : null, fetchLibraryTree, {
-    revalidateOnFocus: false,
-  });
+  } = useSWR(
+    open ? craftEndpoints.userLibraryTreeKey.browserPath : null,
+    fetchLibraryTree,
+    {
+      revalidateOnFocus: false,
+    }
+  );
 
   // Build hierarchical tree from flat list
   const hierarchicalTree = useMemo(() => {

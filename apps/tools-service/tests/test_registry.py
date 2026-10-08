@@ -8,10 +8,13 @@ These tests ensure that:
 
 import importlib
 import logging
+import os
 from pathlib import Path
+import subprocess
+import sys
 
-import pytest
 from fastmcp import FastMCP
+import pytest
 
 from src.core.base import BaseToolCategory
 from src.core.registry import ToolRegistry
@@ -27,7 +30,11 @@ EXPECTED_CATEGORIES: list[tuple[str, str, str]] = [
     ("code_tools", "code_execution", "Code Execution"),
     ("command_tools", "command_execution", "Command Execution"),
     ("connector_tools", "connector", "Connector"),
-    ("docker_tools", "docker", "Docker"),
+    # docker_tools and service_tools were removed (spec TS-4): both shelled
+    # out to `docker`/`systemctl` with f-string interpolation under
+    # shell=True, and a model able to restart platform services or run
+    # arbitrary docker commands is a design error, not something argument
+    # escaping can fix.
     ("file_tools", "file_operations", "File Operations"),
     ("git_tools", "git", "Git"),
     ("java_tools", "java", "Java"),
@@ -35,7 +42,6 @@ EXPECTED_CATEGORIES: list[tuple[str, str, str]] = [
     ("knowledge_tools", "knowledge_retrieval", "Knowledge"),
     ("mail_tools", "mail", "Mail"),
     ("pdf_tools", "pdf", "PDF"),
-    ("service_tools", "service_management", "Service Management"),
     ("text_tools", "text_processing", "Text Processing"),
     ("time_tools", "time_date", "Time"),
     ("utility_tools", "utilities", "Utilities"),
@@ -43,6 +49,28 @@ EXPECTED_CATEGORIES: list[tuple[str, str, str]] = [
 ]
 
 TOOLS_DIR = str(Path(__file__).resolve().parents[1] / "src" / "tools")
+
+
+def test_knowledge_category_loads_without_pytest_source_path():
+    process_env = os.environ.copy()
+    process_env.pop("PYTHONPATH", None)
+    result = subprocess.run(
+        [
+            sys.executable, "-c",
+            "from pathlib import Path; "
+            "from fastmcp import FastMCP; "
+            "from src.core.registry import ToolRegistry; "
+            "category = ToolRegistry(FastMCP('startup-test'))._load_category_from_file("
+            "Path('src/tools/knowledge_tools.py')); "
+            "assert category.name == 'knowledge_retrieval'",
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        env=process_env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 # ---------------------------------------------------------------------------

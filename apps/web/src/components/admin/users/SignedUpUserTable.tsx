@@ -3,10 +3,10 @@
 import { type User } from "@/lib/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import useSWR from "swr";
 import CenteredPageSelector from "@/components/admin/users/CenteredPageSelector";
 import { toast } from "@/hooks/useToast";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { useDirectoryRoles } from "@/lib/api/domains/access/hooks";
+import { fetchDirectoryUsersPage } from "@/lib/api/domains/access/api";
 import {
   Table,
   TableHead,
@@ -34,7 +34,6 @@ import Text from "@/refresh-components/texts/Text";
 import Chip from "@/refresh-components/Chip";
 import { useUser } from "@/providers/UserProvider";
 import { LeaveOrganizationButton } from "@/components/admin/users/buttons/LeaveOrganizationButton";
-import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
 import ResetPasswordModal from "@/components/admin/users/ResetPasswordModal";
 import EditUserModal from "@/components/admin/users/EditUserModal";
 import Popover from "@/refresh-components/Popover";
@@ -49,7 +48,9 @@ import {
 import { Button as OpalButton } from "@opal/components";
 import { cn } from "@/lib/utils";
 import { formatRoleName } from "@/lib/auth/roles";
+import { appSettings } from "@/lib/settings";
 
+const EMPTY_VALUE = "\u2014";
 const ITEMS_PER_PAGE = 10;
 const PAGES_PER_BATCH = 2;
 
@@ -66,7 +67,7 @@ export interface SignedUpUserTableProps {
   q: string;
   query?: string;
   onQueryChange?: (val: string) => void;
-  onTotalItemsChange?: (count: number) => void;
+  onTotalItemsChange?: (count: number | null) => void;
   onLoadingChange?: (isLoading: boolean) => void;
 }
 
@@ -87,10 +88,7 @@ export default function SignedUpUserTable({
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
   const [editUser, setEditUser] = useState<User | null>(null);
 
-  const { data: rolesData } = useSWR<{ roles: { name: string }[] }>(
-    "/api/user-service/roles",
-    errorHandlingFetcher
-  );
+  const { data: rolesData } = useDirectoryRoles();
 
   const {
     currentPageData: pageOfUsers,
@@ -102,10 +100,12 @@ export default function SignedUpUserTable({
     refresh,
     updateItem,
     totalItems,
+    totalItemsExact,
   } = usePaginatedFetch<User>({
     itemsPerPage: ITEMS_PER_PAGE,
     pagesPerBatch: PAGES_PER_BATCH,
-    endpoint: "/api/user-service/users",
+    requestKey: "access:directory-users",
+    loadPage: fetchDirectoryUsersPage,
     query: q,
     filter: filters,
   });
@@ -118,9 +118,10 @@ export default function SignedUpUserTable({
 
   useEffect(() => {
     if (pageOfUsers !== null) {
-      onTotalItemsChange?.(totalItems);
+      // A filtered page knows it has more rows, not how many.
+      onTotalItemsChange?.(totalItemsExact ? totalItems : null);
     }
-  }, [pageOfUsers, totalItems, onTotalItemsChange]);
+  }, [pageOfUsers, totalItems, totalItemsExact, onTotalItemsChange]);
 
   const handlePopup = (message: string, type: "success" | "error") => {
     if (type === "success") {
@@ -342,7 +343,8 @@ export default function SignedUpUserTable({
         </Popover.Trigger>
         <Popover.Content>
           <div className="grid gap-1">
-            {NEXT_PUBLIC_CLOUD_ENABLED && user.id === currentUser?.id ? (
+            {appSettings.NEXT_PUBLIC_CLOUD_ENABLED &&
+            user.id === currentUser?.id ? (
               <LeaveOrganizationButton
                 user={user}
                 mutate={refresh}
@@ -419,7 +421,22 @@ export default function SignedUpUserTable({
           <TableRow className="bg-background-neutral-01">
             <TableHead className="h-10">
               <Text as="span" figureSmallLabel text03>
+                {t("admin.users.usernameHeader")}
+              </Text>
+            </TableHead>
+            <TableHead className="h-10">
+              <Text as="span" figureSmallLabel text03>
                 {t("admin.users.emailHeader")}
+              </Text>
+            </TableHead>
+            <TableHead className="h-10">
+              <Text as="span" figureSmallLabel text03>
+                {t("admin.users.lastNameHeader")}
+              </Text>
+            </TableHead>
+            <TableHead className="h-10">
+              <Text as="span" figureSmallLabel text03>
+                {t("admin.users.firstNameHeader")}
               </Text>
             </TableHead>
             <TableHead className="text-center">
@@ -450,6 +467,9 @@ export default function SignedUpUserTable({
               rowCount={5}
               columns={[
                 { type: "avatar", width: "w-44" },
+                { type: "text", width: "w-56" },
+                { type: "text", width: "w-28" },
+                { type: "text", width: "w-28" },
                 { type: "badge", width: "w-20" },
                 { type: "badge", width: "w-20" },
                 { type: "actions", width: "w-24" },
@@ -460,7 +480,7 @@ export default function SignedUpUserTable({
           <TableBody>
             {!pageOfUsers?.length ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center">
+                <TableCell colSpan={7} className="text-center">
                   <Text as="p" mainUiMuted text03 className="py-4">
                     {filters.roles?.length || filters.is_active !== undefined
                       ? t("admin.users.noUsersMatchingFilters")
@@ -472,7 +492,25 @@ export default function SignedUpUserTable({
               pageOfUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="py-3">
-                    <UserEmailCell email={user.email} />
+                    <UserIdentityCell
+                      username={user.username}
+                      email={user.email}
+                    />
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <Text mainUiBody text04 className="truncate">
+                      {user.email || EMPTY_VALUE}
+                    </Text>
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <Text mainUiBody text04 className="truncate">
+                      {user.last_name || EMPTY_VALUE}
+                    </Text>
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <Text mainUiBody text04 className="truncate">
+                      {user.first_name || EMPTY_VALUE}
+                    </Text>
                   </TableCell>
                   <TableCell className="w-[200px] py-3">
                     {renderUserRoleDropdown(user)}
@@ -517,7 +555,10 @@ export default function SignedUpUserTable({
           onClose={() => setEditUser(null)}
           onSuccess={handleEditUserSuccess}
           canDelete={
-            !(NEXT_PUBLIC_CLOUD_ENABLED && editUser.id === currentUser?.id)
+            !(
+              appSettings.NEXT_PUBLIC_CLOUD_ENABLED &&
+              editUser.id === currentUser?.id
+            )
           }
         />
       )}
@@ -525,8 +566,17 @@ export default function SignedUpUserTable({
   );
 }
 
-function UserEmailCell({ email }: { email: string }) {
-  const initial = email.trim().charAt(0).toUpperCase() || "?";
+function UserIdentityCell({
+  username,
+  email,
+}: {
+  username?: string | null;
+  email: string;
+}) {
+  // A Keycloak user always has a username but not always an email, so the
+  // username is what identifies the row; the avatar follows it.
+  const name = username?.trim() || "";
+  const initial = (name || email.trim()).charAt(0).toUpperCase() || EMPTY_VALUE;
 
   return (
     <div className="flex min-w-[220px] items-center gap-2">
@@ -536,7 +586,7 @@ function UserEmailCell({ email }: { email: string }) {
         </Text>
       </div>
       <Text mainUiBody text05 className="truncate">
-        {email}
+        {name || EMPTY_VALUE}
       </Text>
     </div>
   );

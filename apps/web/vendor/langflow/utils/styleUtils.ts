@@ -597,7 +597,6 @@ export const nodeIconToDisplayIconMap: Record<string, string> = {
   AgentQL: "AgentQL",
   LanguageModels: "BrainCircuit",
   EmbeddingModels: "Binary",
-  AirbyteJSONLoader: "Airbyte",
   AmazonBedrockEmbeddings: "AWS",
   Amazon: "AWS",
   arXiv: "ArXiv",

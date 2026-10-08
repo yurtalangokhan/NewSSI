@@ -1,7 +1,8 @@
+import { downloadMessageImage } from "@/lib/api/domains/chat/api";
 import { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SvgDownload } from "@opal/icons";
-import { ImageShape } from "@/app/app/services/streamingModels";
+import { ImageShape } from "@/lib/api/domains/chat/streaming-types";
 import { FullImageModal } from "@/app/app/components/files/images/FullImageModal";
 import { buildImgUrl } from "@/app/app/components/files/images/utils";
 import { Button } from "@opal/components";
@@ -51,7 +52,7 @@ export const InMessageImage = memo(function InMessageImage({
     e.stopPropagation(); // Prevent opening the full image modal
 
     try {
-      const response = await fetch(buildImgUrl(fileId));
+      const response = await downloadMessageImage(fileId);
       if (!response.ok) {
         console.error("Failed to download image:", response.status);
         return;

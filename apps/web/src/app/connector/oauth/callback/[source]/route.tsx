@@ -1,23 +1,19 @@
-import { INTERNAL_URL } from "@/lib/constants";
+import { backendRequest } from "@/lib/api/http/server";
 import { NextRequest, NextResponse } from "next/server";
+import { appSettings } from "@/lib/settings";
 
 // TODO: deprecate this and just go directly to the backend via /api/...
 // For some reason Egnyte doesn't work when using /api, so leaving this as is for now
 // If we do try and remove this, make sure we test the Egnyte connector oauth flow
 export async function GET(request: NextRequest) {
   try {
-    const backendUrl = new URL(INTERNAL_URL);
-    // Copy path and query parameters from incoming request
-    backendUrl.pathname = request.nextUrl.pathname;
-    backendUrl.search = request.nextUrl.search;
-
-    const response = await fetch(backendUrl, {
+    const response = await backendRequest({
+      service: "agent",
+      path: request.nextUrl.pathname,
+      query: request.nextUrl.searchParams,
+      request,
       method: "GET",
-      headers: request.headers,
-      body: request.body,
       signal: request.signal,
-      // @ts-ignore
-      duplex: "half",
     });
 
     const responseData = await response.json();

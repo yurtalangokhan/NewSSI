@@ -121,7 +121,7 @@ async def test_a_real_react_agent_with_the_hook_never_runs_the_other_tool():
         # GenericFakeChatModel.bind_tools raises NotImplementedError; the
         # scripted message already carries the tool_calls, so binding is a
         # no-op here.
-        def bind_tools(self, tools, **kwargs):  # noqa: ANN001, ANN202
+        def bind_tools(self, tools, **kwargs):
             return self
 
     ran: list[str] = []

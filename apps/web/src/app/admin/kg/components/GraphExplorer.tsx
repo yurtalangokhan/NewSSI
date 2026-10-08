@@ -27,16 +27,14 @@ import { useTranslation } from "react-i18next";
 import {
   isClusterNode,
   isClusterEdge,
-  searchGraphEntityClusters,
   type GraphNode,
-  type ClusteredGraphData,
-  type GraphData,
   type ScalableNode,
   type ScalableEdge,
   type ForceGraphNode,
   type ForceGraphLink,
   type ForceGraphData,
-} from "@/lib/langconnect";
+} from "@/lib/api/domains/knowledge/types";
+import { searchGraphEntityClusters } from "@/lib/api/domains/knowledge/api";
 import {
   CLUSTER_COLOR,
   CLUSTER_BORDER_COLOR,

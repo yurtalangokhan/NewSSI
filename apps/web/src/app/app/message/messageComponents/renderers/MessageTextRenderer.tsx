@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Text from "@/refresh-components/texts/Text";
 import { useTranslation } from "react-i18next";
 
-import { ChatPacket, StopReason } from "../../../services/streamingModels";
+import { ChatPacket, StopReason } from "@/lib/api/domains/chat/streaming-types";
 import { MessageRenderer, FullChatState } from "../interfaces";
 import {
+  countReplayedPrefix,
   isFinalAnswerComplete,
   getTextContent,
 } from "../../../services/packetUtils";
@@ -30,15 +31,26 @@ export const MessageTextRenderer: MessageRenderer<
   stopReason,
   children,
 }) => {
-  // If we're animating and the final answer is already complete, show more packets initially
+  // Packets that arrived while the stream replayed the run's history (a page
+  // reload or re-attach) are already "typed": only what follows them animates.
+  const replayedPrefix = countReplayedPrefix(packets);
+
+  // If we're animating, start with the first packet (or the whole replayed
+  // prefix); if not, show everything.
   const initialPacketCount = animate
     ? packets.length > 0
-      ? 1 // Otherwise start with 1 packet
+      ? Math.max(1, replayedPrefix)
       : 0
     : -1; // Show all if not animating
 
-  const [displayedPacketCount, setDisplayedPacketCount] =
+  const [storedPacketCount, setDisplayedPacketCount] =
     useState(initialPacketCount);
+  // Derived rather than stored, so a replay that lands on text already typing
+  // shows in the same render instead of catching up a packet per tick.
+  const displayedPacketCount =
+    storedPacketCount === -1
+      ? -1
+      : Math.min(Math.max(storedPacketCount, replayedPrefix), packets.length);
 
   const fullContent = useMemo(() => getTextContent(packets), [packets]);
   const { foregroundTextStyle, foregroundMutedTextStyle } = useAppBackground();
@@ -49,7 +61,9 @@ export const MessageTextRenderer: MessageRenderer<
 
     if (displayedPacketCount < packets.length) {
       const timer = setTimeout(() => {
-        setDisplayedPacketCount((prev) => Math.min(prev + 1, packets.length));
+        setDisplayedPacketCount(
+          Math.min(displayedPacketCount + 1, packets.length)
+        );
       }, PACKET_DELAY_MS);
 
       return () => clearTimeout(timer);
@@ -58,7 +72,7 @@ export const MessageTextRenderer: MessageRenderer<
 
   // Reset displayed count when packet array changes significantly (e.g., new message)
   useEffect(() => {
-    if (animate && packets.length < displayedPacketCount) {
+    if (animate && packets.length < storedPacketCount) {
       const resetCount = isFinalAnswerComplete(packets)
         ? Math.min(10, packets.length)
         : packets.length > 0
@@ -66,7 +80,7 @@ export const MessageTextRenderer: MessageRenderer<
           : 0;
       setDisplayedPacketCount(resetCount);
     }
-  }, [animate, packets.length, displayedPacketCount]);
+  }, [animate, packets.length, storedPacketCount]);
 
   // Only mark as complete when all packets are received AND displayed
   useEffect(() => {
@@ -87,12 +101,17 @@ export const MessageTextRenderer: MessageRenderer<
     return getTextContent(packets.slice(0, displayedPacketCount));
   }, [displayedPacketCount, fullContent, packets]);
 
+  // After `stop`, the reveal animation may still be catching up. The shown
+  // text is then still partial, so it counts as streaming for Mermaid.
+  const isRevealing =
+    displayedPacketCount >= 0 && displayedPacketCount < packets.length;
   const { renderedContent } = useMarkdownRenderer(
     // the [*]() is a hack to show a blinking dot when the packet is not complete
     stopPacketSeen ? content : content + " [*]() ",
     state,
     "font-main-content-body",
-    foregroundTextStyle
+    foregroundTextStyle,
+    { isStreaming: !stopPacketSeen || isRevealing }
   );
 
   const { t } = useTranslation();

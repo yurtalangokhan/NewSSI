@@ -6,7 +6,7 @@ import {
   Packet,
   PacketType,
   SearchToolPacket,
-} from "@/app/app/services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 import { constructCurrentSearchState } from "./timeline/renderers/search/searchStateUtils";
 import {
   SvgGlobe,

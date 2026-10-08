@@ -1,4 +1,14 @@
 "use client";
+import { fetchCurrentUserPermissionsResponse } from "@/lib/api/domains/access/api";
+
+import { updatePinnedAssistants } from "@/lib/api/domains/preferences/api";
+import { updateThemePreference } from "@/lib/api/domains/preferences/api";
+import { updateChatBackground } from "@/lib/api/domains/preferences/api";
+import { updateDefaultModel } from "@/lib/api/domains/preferences/api";
+import { updateDefaultAppMode } from "@/lib/api/domains/preferences/api";
+import { updateTemperatureOverrideEnabled } from "@/lib/api/domains/preferences/api";
+import { updateShortcutEnabled } from "@/lib/api/domains/preferences/api";
+import { updateAutoScroll } from "@/lib/api/domains/preferences/api";
 
 import React, {
   createContext,
@@ -9,22 +19,25 @@ import React, {
   useRef,
 } from "react";
 import { User, UserPersonalization, ThemePreference } from "@/lib/types";
-import { getCurrentUser } from "@/lib/user";
+import { fetchCurrentUserOrNull as getCurrentUser } from "@/lib/api/domains/session/api";
 import { usePostHog } from "posthog-js/react";
 import { CombinedSettings } from "@/interfaces/settings";
 import { SettingsContext } from "@/providers/SettingsProvider";
-import { AuthTypeMetadata } from "@/lib/userSS";
-import { updateUserPersonalization as persistPersonalization } from "@/lib/userSettings";
+import type { AuthTypeMetadata } from "@/lib/api/domains/session/types";
+import { updatePersonalization as persistPersonalization } from "@/lib/api/domains/preferences/api";
 import { useTheme } from "next-themes";
 import {
   hasAnyPermission as hasAnyPermissionValue,
   hasAllPermissions as hasAllPermissionsValue,
   hasPermission as hasPermissionValue,
 } from "@/lib/auth/permissions";
+import { AUTH_SESSION_REFRESHED_EVENT } from "@/lib/api/http/browser";
+import { CHAT_BACKGROUND_NONE } from "@/lib/constants/chatBackgrounds";
 import {
-  authenticatedFetch,
-  AUTH_SESSION_REFRESHED_EVENT,
-} from "@/lib/fetcher";
+  clearChatBackgroundCookie,
+  preloadChatBackgroundImage,
+  setChatBackgroundCookie,
+} from "@/lib/chatBackgroundClient";
 
 interface UserContextType {
   user: User | null;
@@ -156,10 +169,7 @@ export function UserProvider({
     setIsPermissionsLoading(true);
     setPermissionsError(null);
     try {
-      const response = await authenticatedFetch(
-        "/api/user-service/users/me/permissions",
-        { redirectOnAuthError: false }
-      );
+      const response = await fetchCurrentUserPermissionsResponse();
       if (!response.ok) {
         throw new Error("Failed to fetch permissions");
       }
@@ -277,6 +287,16 @@ export function UserProvider({
     setTheme,
   ]);
 
+  useEffect(() => {
+    if (!upToDateUser?.id) return;
+    const savedBg = upToDateUser?.preferences?.chat_background;
+    if (savedBg && savedBg !== CHAT_BACKGROUND_NONE) {
+      setChatBackgroundCookie(savedBg);
+    } else if (savedBg === null || savedBg === CHAT_BACKGROUND_NONE) {
+      clearChatBackgroundCookie();
+    }
+  }, [upToDateUser?.id, upToDateUser?.preferences?.chat_background]);
+
   const updateUserTemperatureOverrideEnabled = async (enabled: boolean) => {
     try {
       setUpToDateUser((prevUser) => {
@@ -292,15 +312,7 @@ export function UserProvider({
         return prevUser;
       });
 
-      const response = await authenticatedFetch(
-        `/api/temperature-override-enabled?temperature_override_enabled=${enabled}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await updateTemperatureOverrideEnabled(enabled);
 
       if (!response.ok) {
         await refreshUser();
@@ -327,21 +339,9 @@ export function UserProvider({
         return prevUser;
       });
 
-      const response = await authenticatedFetch(
-        `/api/shortcut-enabled?shortcut_enabled=${enabled}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        await refreshUser();
-        throw new Error("Failed to update user shortcut setting");
-      }
+      await updateShortcutEnabled(enabled);
     } catch (error) {
+      await refreshUser();
       console.error("Error updating user shortcut setting:", error);
       throw error;
     }
@@ -349,13 +349,7 @@ export function UserProvider({
 
   const updateUserAutoScroll = async (autoScroll: boolean) => {
     try {
-      const response = await authenticatedFetch("/api/auto-scroll", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ auto_scroll: autoScroll }),
-      });
+      await updateAutoScroll(autoScroll);
       setUpToDateUser((prevUser) => {
         if (prevUser) {
           return {
@@ -368,10 +362,6 @@ export function UserProvider({
         }
         return prevUser;
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to update auto-scroll setting");
-      }
     } catch (error) {
       console.error("Error updating auto-scroll setting:", error);
       throw error;
@@ -393,15 +383,11 @@ export function UserProvider({
         };
       });
 
-      const response = await persistPersonalization(personalization);
-
-      if (!response.ok) {
-        await refreshUser();
-        throw new Error("Failed to update personalization settings");
-      }
+      await persistPersonalization(personalization);
 
       await refreshUser();
     } catch (error) {
+      await refreshUser();
       console.error("Error updating personalization settings:", error);
       throw error;
     }
@@ -420,19 +406,7 @@ export function UserProvider({
     });
 
     try {
-      const response = await authenticatedFetch(`/api/user/pinned-assistants`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ordered_assistant_ids: pinnedIds,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update pinned assistants");
-      }
+      await updatePinnedAssistants(pinnedIds);
 
       await refreshUser();
       return true;
@@ -471,19 +445,9 @@ export function UserProvider({
         return prevUser;
       });
 
-      const response = await authenticatedFetch(`/api/user/theme-preference`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ theme_preference: themePreference }),
-      });
-
-      if (!response.ok) {
-        await refreshUser();
-        throw new Error("Failed to update theme preference");
-      }
+      await updateThemePreference(themePreference);
     } catch (error) {
+      await refreshUser();
       console.error("Error updating theme preference:", error);
       throw error;
     }
@@ -491,6 +455,13 @@ export function UserProvider({
 
   const updateUserChatBackground = async (chatBackground: string | null) => {
     try {
+      if (chatBackground && chatBackground !== CHAT_BACKGROUND_NONE) {
+        setChatBackgroundCookie(chatBackground);
+        preloadChatBackgroundImage(chatBackground);
+      } else {
+        clearChatBackgroundCookie();
+      }
+
       setUpToDateUser((prevUser) => {
         if (prevUser) {
           return {
@@ -504,19 +475,9 @@ export function UserProvider({
         return prevUser;
       });
 
-      const response = await authenticatedFetch(`/api/user/chat-background`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ chat_background: chatBackground }),
-      });
-
-      if (!response.ok) {
-        await refreshUser();
-        throw new Error("Failed to update chat background");
-      }
+      await updateChatBackground(chatBackground);
     } catch (error) {
+      await refreshUser();
       console.error("Error updating chat background:", error);
       throw error;
     }
@@ -543,24 +504,9 @@ export function UserProvider({
         return prevUser;
       });
 
-      const response = await authenticatedFetch(`/api/user/default-model`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          default_model: defaultModel,
-          ...(defaultProviderId !== undefined && {
-            default_provider_id: defaultProviderId,
-          }),
-        }),
-      });
-
-      if (!response.ok) {
-        await refreshUser();
-        throw new Error("Failed to update default model");
-      }
+      await updateDefaultModel(defaultModel, defaultProviderId);
     } catch (error) {
+      await refreshUser();
       console.error("Error updating default model:", error);
       throw error;
     }
@@ -581,19 +527,9 @@ export function UserProvider({
         return prevUser;
       });
 
-      const response = await authenticatedFetch("/api/user/default-app-mode", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ default_app_mode: mode }),
-      });
-
-      if (!response.ok) {
-        await refreshUser();
-        throw new Error("Failed to update default app mode");
-      }
+      await updateDefaultAppMode(mode);
     } catch (error) {
+      await refreshUser();
       console.error("Error updating default app mode:", error);
       throw error;
     }

@@ -1,6 +1,6 @@
 import { render, screen } from "@tests/setup/test-utils";
 import AgentAvailabilityBadge from "@/refresh-components/agents/AgentAvailabilityBadge";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({

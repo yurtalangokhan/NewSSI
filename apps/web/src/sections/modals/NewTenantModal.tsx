@@ -1,21 +1,22 @@
 "use client";
-
-import { authenticatedFetch } from "@/lib/fetcher";
+import { acceptTenantInviteResponse } from "@/lib/api/domains/access/api";
+import { denyTenantInviteResponse } from "@/lib/api/domains/access/api";
 
 import { useState } from "react";
 import Modal, { BasicModalFooter } from "@/refresh-components/Modal";
 import Button from "@/refresh-components/buttons/Button";
 import { toast } from "@/hooks/useToast";
 import { SvgArrowRight, SvgUsers, SvgX } from "@opal/icons";
-import { logout } from "@/lib/user";
+import { logout } from "@/lib/api/domains/session/api";
 import { useUser } from "@/providers/UserProvider";
 import { NewTenantInfo } from "@/lib/types";
 import Text from "@/refresh-components/texts/Text";
 import { ErrorTextLayout } from "@/layouts/input-layouts";
 import { useTranslation } from "react-i18next";
+import { appSettings } from "@/lib/settings";
 
 // App domain should not be hardcoded
-const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || "onyx.app";
+const APP_DOMAIN = appSettings.NEXT_PUBLIC_APP_DOMAIN;
 
 export interface NewTenantModalProps {
   tenantInfo: NewTenantInfo;
@@ -40,16 +41,9 @@ export default function NewTenantModal({
     try {
       if (isInvite) {
         // Accept the invitation through the API
-        const response = await authenticatedFetch(
-          "/api/tenants/users/invite/accept",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ tenant_id: tenantInfo.tenant_id }),
-          }
-        );
+        const response = await acceptTenantInviteResponse({
+          tenant_id: tenantInfo.tenant_id,
+        });
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -85,16 +79,9 @@ export default function NewTenantModal({
 
     try {
       // Deny the invitation through the API
-      const response = await authenticatedFetch(
-        "/api/tenants/users/invite/deny",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ tenant_id: tenantInfo.tenant_id }),
-        }
-      );
+      const response = await denyTenantInviteResponse({
+        tenant_id: tenantInfo.tenant_id,
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

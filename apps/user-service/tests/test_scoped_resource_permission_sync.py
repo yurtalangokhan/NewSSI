@@ -4,9 +4,12 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from error_contract import BadRequestError
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from tests.error_support import raises_localized
+from tests.route_support import iter_route_paths
 from src.api.dependencies import require_auth
 from src.api.routes import resource_permissions_route
 from src.api.routes.resource_permissions_route import router
@@ -24,6 +27,7 @@ def service() -> ResourcePermissionService:
     """Return a resource permission service with isolated collaborators."""
     instance = ResourcePermissionService()
     instance.perm_repo = MagicMock()
+    instance.perm_repo.get_direct_permissions = AsyncMock(return_value=[])
     instance.user_organization_service = MagicMock()
     instance.user_organization_service.can_manage_organization = AsyncMock(return_value=True)
     instance.user_organization_service.check_user_organization_permission = AsyncMock(
@@ -31,7 +35,64 @@ def service() -> ResourcePermissionService:
     )
     instance.org_repo = MagicMock()
     instance.org_repo.get_by_id = AsyncMock(return_value={"id": uuid.uuid4()})
+    instance.permission_resolver = MagicMock()
+    instance.permission_resolver.resolve_effective_access = AsyncMock(return_value=(["*"], True))
+
+    async def project_mutation(mutation, **_kwargs):
+        return await mutation()
+
+    instance.authorization_projection = MagicMock()
+    instance.authorization_projection.project_mutation = AsyncMock(side_effect=project_mutation)
+    instance.authorization_projection.project_scoped_mutation = AsyncMock(
+        side_effect=project_mutation
+    )
     return instance
+
+
+async def test_manager_cannot_grant_higher_access_than_their_own(service):
+    service.permission_resolver.resolve_effective_access.return_value = (
+        ["org:manage-resources"],
+        False,
+    )
+    service.check_resource_access = AsyncMock(return_value={"allowed": False})
+    service.perm_repo.sync_direct_permissions = AsyncMock(return_value=([], []))
+    org_id = uuid.uuid4()
+    with pytest.raises(ForbiddenError):
+        await service.sync_scoped_direct_permissions(
+            uuid.uuid4(),
+            org_id,
+            "organization",
+            org_id,
+            "agent",
+            [{"resource_id": "private", "resource_name": "Private", "permission_level": "admin"}],
+        )
+    service.perm_repo.sync_direct_permissions.assert_not_awaited()
+
+
+async def test_manager_cannot_sync_delete_stronger_existing_grant(service):
+    service.permission_resolver.resolve_effective_access.return_value = (
+        ["org:read", "org:manage-resources"],
+        False,
+    )
+    service.check_resource_access = AsyncMock(return_value={"allowed": False})
+    service.perm_repo.get_direct_permissions = AsyncMock(
+        return_value=[{"resource_id": "private", "permission_level": "admin"}]
+    )
+    service.perm_repo.sync_direct_permissions = AsyncMock(return_value=([], []))
+    org = uuid.uuid4()
+    with pytest.raises(ForbiddenError):
+        await service.sync_scoped_direct_permissions(
+            uuid.uuid4(), org, "organization", org, "agent", []
+        )
+    service.perm_repo.sync_direct_permissions.assert_not_awaited()
+
+
+async def test_direct_permission_read_requires_read_action(service):
+    service.permission_resolver.resolve_effective_access.return_value = (["org:update"], False)
+    service.perm_repo.get_direct_permissions = AsyncMock(return_value=[])
+    org = uuid.uuid4()
+    with pytest.raises(ForbiddenError):
+        await service.get_scoped_direct_permissions(uuid.uuid4(), org, "organization", org, "agent")
 
 
 @pytest.mark.asyncio
@@ -82,6 +143,15 @@ async def test_sync_updates_grants_and_revokes_only_direct_permissions(
         granted_by=actor_id,
     )
     assert [permission["resource_id"] for permission in result] == ["agent-1", "agent-3"]
+    service.authorization_projection.project_mutation.assert_not_awaited()
+    scoped = service.authorization_projection.project_scoped_mutation
+    scoped.assert_awaited_once()
+    assert scoped.await_args.kwargs == {
+        "target_type": "user",
+        "target_id": target_user_id,
+        "resource_type": "agent",
+        "desired_resource_ids": {"agent-1", "agent-3"},
+    }
 
 
 @pytest.mark.asyncio
@@ -208,7 +278,7 @@ async def test_sync_rejects_user_target_outside_selected_organization(
     """A user target must be an active member of the scoped organization."""
     service.user_organization_service.check_user_organization_permission.return_value = False
 
-    with pytest.raises(ValueError, match="active member"):
+    with raises_localized(BadRequestError, "active member"):
         await service.sync_scoped_direct_permissions(
             actor_id=uuid.uuid4(),
             organization_id=uuid.uuid4(),
@@ -228,7 +298,7 @@ async def test_scoped_operation_checks_organization_exists_before_superuser_bypa
     service.org_repo.get_by_id.return_value = None
 
     organization_id = uuid.uuid4()
-    with pytest.raises(NotFoundError, match="Organization not found"):
+    with raises_localized(NotFoundError, "Organization not found"):
         await service.get_scoped_direct_permissions(
             actor_id=uuid.uuid4(),
             organization_id=organization_id,
@@ -263,7 +333,7 @@ async def test_scoped_read_rejects_mismatched_organization_target(
     service: ResourcePermissionService,
 ) -> None:
     """An organization target must exactly match the organization in the URL scope."""
-    with pytest.raises(ValueError, match="must match"):
+    with raises_localized(BadRequestError, "must match"):
         await service.get_scoped_direct_permissions(
             actor_id=uuid.uuid4(),
             organization_id=uuid.uuid4(),
@@ -277,7 +347,7 @@ def test_scoped_resource_permission_routes_are_registered() -> None:
     """The router exposes canonical scoped read and synchronization paths."""
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")
-    route_paths = {route.path for route in app.routes}
+    route_paths = set(iter_route_paths(app))
     path = (
         "/api/v1/permissions/organizations/{org_id}/targets/{target_type}/{target_id}"
         "/resources/{resource_type}"
@@ -288,7 +358,10 @@ def test_scoped_resource_permission_routes_are_registered() -> None:
 
 @pytest.mark.parametrize(
     ("error", "expected_status"),
-    [(ForbiddenError("out of scope"), 403), (NotFoundError("Organization not found"), 404)],
+    [
+        (ForbiddenError(message="out of scope"), 403),
+        (NotFoundError(message="Organization not found"), 404),
+    ],
 )
 def test_scoped_route_translates_domain_errors(
     monkeypatch, error: Exception, expected_status: int

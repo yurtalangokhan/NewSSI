@@ -12,7 +12,7 @@ and effective permissions.
 | Controllers | `src/controller/` |
 | Business services | `src/service/` |
 | Repositories | `src/repository/` |
-| Database and migrations | `src/core/db/` |
+| Database and migrations | `src/core/database/` |
 | Schemas | `src/schema/` |
 | Tests | `tests/` |
 

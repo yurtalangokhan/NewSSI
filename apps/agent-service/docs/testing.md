@@ -16,15 +16,14 @@ make typecheck
 make validate
 ```
 
-The default `make test` target skips `tests/app`, `tests/voice`, and
-`tests/integration`. Use `make test-all` when a change touches those surfaces.
+The default `make test` target skips `tests/integration`. Use `make test-all` when a change touches those surfaces.
 
 ## Focus areas
 
 Choose tests by ownership:
 
 - Agent composition: `tests/agent_composition/` and `tests/agents/`.
-- Agent definitions API: `tests/controller/`, `tests/service/`, and route tests
+- Agent definitions API: `tests/service/` and route tests
   near `agent_definition`.
 - Streaming: `tests/service/` files that cover `agent_message_stream`.
 - Graph strategies: `tests/agents/graphs/`.

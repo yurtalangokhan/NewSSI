@@ -40,11 +40,9 @@ class NumberedCanvas(reportlab_canvas.Canvas):
         font_size: float,
         color_hex: str,
     ) -> None:
-        self._pending_deferred_draws.append(
-            (template, x, y, align, font_name, font_size, color_hex)
-        )
+        self._pending_deferred_draws.append((template, x, y, align, font_name, font_size, color_hex))
 
-    def showPage(self) -> None:  # noqa: N802 - overriding ReportLab's camelCase API
+    def showPage(self) -> None:  # noqa: N802 -- ReportLab Canvas override uses this name.
         self._saved_page_states.append(dict(self.__dict__))
         self._pending_deferred_draws = []
         self._startPage()
@@ -53,9 +51,7 @@ class NumberedCanvas(reportlab_canvas.Canvas):
         total_pages = len(self._saved_page_states)
         for state in self._saved_page_states:
             self.__dict__.update(state)
-            for template, x, y, align, font_name, font_size, color_hex in state[
-                "_pending_deferred_draws"
-            ]:
+            for template, x, y, align, font_name, font_size, color_hex in state["_pending_deferred_draws"]:
                 text = template.replace("{pages}", str(total_pages))
                 self.setFont(font_name, font_size)
                 self.setFillColor(HexColor(color_hex))

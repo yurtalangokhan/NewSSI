@@ -7,8 +7,8 @@
  * component file stays a rendering concern.
  */
 
-import { Packet, PacketType } from "@/app/app/services/streamingModels";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { Packet, PacketType } from "@/lib/api/domains/chat/streaming-types";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import type { NodeRunStatus } from "@/components/flow-canvas/stores/flowStore";
 import type {
   CanvasEdge,
@@ -92,7 +92,6 @@ export const NON_STAGE_NODE_TYPES: ReadonlySet<string> = new Set([
   "ChatInput",
   "ChatOutput",
   "ConditionalRouter",
-  "FileInput",
   "HumanInput",
   "Loop",
   "Merge",

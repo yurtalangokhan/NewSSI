@@ -3,9 +3,9 @@ import {
   Packet,
   StreamingCitation,
   StopReason,
-} from "@/app/app/services/streamingModels";
-import { CitationMap } from "@/app/app/interfaces";
-import { OnyxDocument } from "@/lib/search/interfaces";
+} from "@/lib/api/domains/chat/streaming-types";
+import { CitationMap } from "@/lib/api/domains/chat/types";
+import { AtlasDocument } from "@/lib/search/interfaces";
 import {
   ProcessorState,
   GroupedPacket,
@@ -26,7 +26,7 @@ export interface UsePacketProcessorResult {
   toolTurnGroups: TurnGroup[];
   citations: StreamingCitation[];
   citationMap: CitationMap;
-  documentMap: Map<string, OnyxDocument>;
+  documentMap: Map<string, AtlasDocument>;
 
   // Status (derived from packets)
   stopPacketSeen: boolean;

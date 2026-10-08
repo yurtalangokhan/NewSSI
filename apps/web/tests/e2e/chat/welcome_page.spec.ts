@@ -35,14 +35,14 @@ for (const theme of THEMES) {
 
       await expectScreenshot(page, {
         name: `welcome-${theme}-full-page`,
-        hide: ['[data-testid="onyx-logo"]'], // greeting text is random, hide to prevent size variation
+        hide: ['[data-testid="atlas-logo"]'], // greeting text is random, hide to prevent size variation
       });
     });
 
     // ── Input bar element screenshot ──────────────────────────────────
 
     test("input bar element snapshot", async ({ page }) => {
-      const inputBar = page.locator("#onyx-chat-input");
+      const inputBar = page.locator("#atlas-chat-input");
       await inputBar.waitFor({ state: "visible", timeout: 10000 });
 
       await expectElementScreenshot(inputBar, {
@@ -67,7 +67,7 @@ for (const theme of THEMES) {
     // ── Content assertions ────────────────────────────────────────────
 
     test("displays greeting from default agent", async ({ page }) => {
-      const greetingContainer = page.getByTestId("onyx-logo");
+      const greetingContainer = page.getByTestId("atlas-logo");
       await greetingContainer.waitFor({ state: "visible", timeout: 10000 });
 
       const text = await greetingContainer.textContent();
@@ -75,7 +75,7 @@ for (const theme of THEMES) {
     });
 
     test("chat input is visible and focusable", async ({ page }) => {
-      const textarea = page.locator("#onyx-chat-input-textarea");
+      const textarea = page.locator("#atlas-chat-input-textarea");
       await expect(textarea).toBeVisible({ timeout: 10000 });
 
       await textarea.click();
@@ -88,7 +88,7 @@ for (const theme of THEMES) {
     });
 
     test.skip("send button is visible in the input bar", async ({ page }) => {
-      const sendButton = page.locator("#onyx-chat-input-send-button");
+      const sendButton = page.locator("#atlas-chat-input-send-button");
       await expect(sendButton).toBeVisible({ timeout: 10000 });
 
       await expectElementScreenshot(sendButton, {

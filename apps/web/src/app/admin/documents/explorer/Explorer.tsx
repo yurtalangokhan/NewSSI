@@ -1,16 +1,19 @@
 "use client";
 
-import { adminSearch } from "./lib";
+import { adminSearch } from "@/lib/api/domains/knowledge/api";
 import { useState, useEffect, useCallback } from "react";
-import { OnyxDocument } from "@/lib/search/interfaces";
+import { AtlasDocument } from "@/lib/search/interfaces";
 import { buildDocumentSummaryDisplay } from "@/components/search/DocumentDisplay";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
-import { updateHiddenStatus } from "../lib";
+import { updateHiddenStatus } from "@/lib/api/domains/knowledge/api";
 import { toast } from "@/hooks/useToast";
-import { getErrorMsg } from "@/lib/fetchUtils";
+import {
+  errorMessageFromUnknown,
+  parseApiErrorResponse,
+} from "@/lib/api/errors";
 import { ScoreSection } from "../ScoreEditor";
 import { useRouter } from "next/navigation";
-import { useFilters } from "@/lib/hooks";
+import { useFilters } from "@/lib/api/domains/knowledge/hooks";
 import { buildFilters } from "@/lib/search/utils";
 import { DocumentUpdatedAtBadge } from "@/components/search/DocumentUpdatedAtBadge";
 import { DocumentSetSummary } from "@/lib/types";
@@ -26,7 +29,7 @@ const DocumentDisplay = ({
   document,
   refresh,
 }: {
-  document: OnyxDocument;
+  document: AtlasDocument;
   refresh: () => void;
 }) => {
   const { t } = useTranslation("common", {
@@ -67,16 +70,20 @@ const DocumentDisplay = ({
         </div>
         <div
           onClick={async () => {
-            const response = await updateHiddenStatus(
-              document.document_id,
-              !document.hidden
-            );
-            if (response.ok) {
-              refresh();
-            } else {
-              toast.error(
-                `Failed to update document - ${getErrorMsg(response)}`
+            try {
+              const response = await updateHiddenStatus(
+                document.document_id,
+                !document.hidden
               );
+              if (response.ok) {
+                refresh();
+              } else {
+                toast.error(
+                  (await parseApiErrorResponse(response)).userMessage
+                );
+              }
+            } catch (error) {
+              toast.error(errorMessageFromUnknown(error));
             }
           }}
           className="px-1 py-0.5 bg-accent-background-hovered hover:bg-accent-background rounded flex cursor-pointer select-none"
@@ -85,7 +92,7 @@ const DocumentDisplay = ({
             {document.hidden ? (
               <div className="text-error">{t("hiddenLabel")}</div>
             ) : (
-              "Visible"
+              t("visibleLabel")
             )}
           </div>
           <div className="ml-1 my-auto">
@@ -119,7 +126,7 @@ export function Explorer({
 
   const [query, setQuery] = useState(initialSearchValue || "");
   const [timeoutId, setTimeoutId] = useState<number | null>(null);
-  const [results, setResults] = useState<OnyxDocument[]>([]);
+  const [results, setResults] = useState<AtlasDocument[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const filterManager = useFilters();

@@ -3,7 +3,7 @@ import { getDatesList, useQueryAnalytics } from "../lib";
 import Text from "@/refresh-components/texts/Text";
 import Title from "@/components/ui/title";
 
-import { DateRangePickerValue } from "@/components/dateRangeSelectors/AdminDateRangeSelector";
+import { DateRangePickerValue } from "@/lib/api/domains/knowledge/types";
 import CardSection from "@/components/admin/CardSection";
 import { AreaChartDisplay } from "@/components/ui/areaChart";
 import { useTranslation } from "react-i18next";

@@ -11,12 +11,18 @@ import AddOpenAPIActionModal from "./modals/AddOpenAPIActionModal";
 import Actionbar from "./Actionbar";
 import { toast } from "@/hooks/useToast";
 import OpenApiActionCard from "./OpenApiActionCard";
-import { createOAuthConfig, updateOAuthConfig } from "@/lib/oauth/api";
-import { updateCustomTool, deleteCustomTool } from "@/lib/tools/openApiService";
-import { updateToolStatus } from "@/lib/tools/mcpService";
+import {
+  createOAuthConfig,
+  updateOAuthConfig,
+} from "@/lib/api/domains/integrations/api";
+import {
+  updateCustomTool,
+  deleteCustomTool,
+} from "@/lib/api/domains/tools/api";
+import { updateToolStatus } from "@/lib/api/domains/tools/api";
 import DisconnectEntityModal from "./modals/DisconnectEntityModal";
 import ActionCardSkeleton from "./skeleton/ActionCardSkeleton";
-import useOpenApiTools from "@/hooks/useOpenApiTools";
+import { useOpenApiTools } from "@/lib/api/domains/tools/hooks";
 import { useTranslation } from "react-i18next";
 
 export default function OpenApiPageContent() {

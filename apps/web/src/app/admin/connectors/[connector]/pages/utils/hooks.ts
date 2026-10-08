@@ -3,7 +3,7 @@ import { GmailConfig } from "@/lib/connectors/connectors";
 export const gmailConnectorNameBuilder = (values: GmailConfig) =>
   "GmailConnector";
 
-import { usePublicCredentials } from "@/lib/hooks";
+import { usePublicCredentials } from "@/lib/api/domains/datasources/hooks";
 import {
   Credential,
   GmailCredentialJson,

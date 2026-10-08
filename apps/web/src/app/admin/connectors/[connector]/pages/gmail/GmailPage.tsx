@@ -11,7 +11,10 @@ import {
   GmailServiceAccountCredentialJson,
 } from "@/lib/connectors/credentials";
 import { GmailAuthSection, GmailJsonUploadSection } from "./Credential";
-import { usePublicCredentials, useBasicConnectorStatus } from "@/lib/hooks";
+import {
+  useBasicConnectorStatus,
+  usePublicCredentials,
+} from "@/lib/api/domains/datasources/hooks";
 import Title from "@/components/ui/title";
 import { useUser } from "@/providers/UserProvider";
 import {
@@ -23,7 +26,7 @@ import {
   filterUploadedCredentials,
   checkConnectorsExist,
   refreshAllGoogleData,
-} from "@/lib/googleConnector";
+} from "@/lib/api/domains/datasources/google-hooks";
 
 interface GmailMainProps {
   buildMode?: boolean;

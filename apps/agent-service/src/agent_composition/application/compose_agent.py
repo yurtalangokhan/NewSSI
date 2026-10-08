@@ -21,6 +21,7 @@ from langgraph.pregel import Pregel
 
 from agent_composition.adapters.langgraph.executable_agent import LangGraphExecutableAgent
 from agent_composition.domain.definitions import RuntimePolicyConfig
+from agent_composition.domain.errors import CompositionError
 from agent_composition.runtime import ComposedAgent
 
 
@@ -48,6 +49,33 @@ class AgentComposer:
             runtime_policy_config=runtime_policy_config or RuntimePolicyConfig(),
             checkpointer=checkpointer,
         )
+
+
+_registered_agent_class: Any = None
+
+
+def register_agent_class(cls: Any) -> None:
+    """Register the agent facade class (e.g. DynamicAgent) to decouple agent_composition from concrete agents."""
+    global _registered_agent_class
+    _registered_agent_class = cls
+
+
+def _get_agent_class() -> Any:
+    """Return the registered agent facade, or say plainly that none is registered.
+
+    The previous fallback returned ``ComposedAgent``, which ``AgentFactory``
+    then constructed with ``agent_config=...`` — a signature it does not have.
+    The result was a ``TypeError`` about an unexpected keyword argument, which
+    says nothing about the actual problem: ``agents.implementations.dynamic_agent``
+    was never imported, so its ``register_agent_class`` call never ran.
+    """
+    if _registered_agent_class is None:
+        raise CompositionError(
+            "No agent class is registered. Import "
+            "'agents.implementations.dynamic_agent' (which registers DynamicAgent) "
+            "before composing an agent."
+        )
+    return _registered_agent_class
 
 
 class AgentFactory:
@@ -80,9 +108,8 @@ class AgentFactory:
         Returns:
             A loaded ``DynamicAgent`` runtime.
         """
-        from agents.dynamic_agent import DynamicAgent
-
-        agent = DynamicAgent(
+        agent_cls = _get_agent_class()
+        agent = agent_cls(
             agent_config=definition_config,
             gateway=gateway,
             definition_repository=repository,

@@ -2,16 +2,16 @@
 
 import { useCallback, useMemo, useState } from "react";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { useToastFromQuery } from "@/hooks/useToast";
 import Button from "@/refresh-components/buttons/Button";
-import { useAirbyteDatasources } from "@/lib/airbyte";
+import { useConnectorDatasources } from "@/lib/api/domains/datasources/hooks";
 import {
-  AirbyteDatasourceTable,
-  AirbyteDatasourceGroup,
-} from "./AirbyteDatasourceTable";
+  ConnectorDatasourceTable,
+  ConnectorDatasourceGroup,
+} from "./ConnectorDatasourceTable";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
-import { FiChevronDown, FiChevronRight } from "react-icons/fi";
+import { SvgChevronDown, SvgChevronRight } from "@opal/icons";
 import Text from "@/refresh-components/texts/Text";
 import { useTranslation } from "react-i18next";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
@@ -20,7 +20,7 @@ import EmptyMessage from "@/refresh-components/EmptyMessage";
 
 export default function Status() {
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.INDEXING_STATUS]!;
-  const { datasources, isLoading, mutate } = useAirbyteDatasources();
+  const { datasources, isLoading, mutate } = useConnectorDatasources();
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [toggledGroups, setToggledGroups] = useState<Record<string, boolean>>(
@@ -38,7 +38,7 @@ export default function Status() {
     },
   });
 
-  const groups = useMemo<AirbyteDatasourceGroup[]>(() => {
+  const groups = useMemo<ConnectorDatasourceGroup[]>(() => {
     const all = datasources ?? [];
     const filtered = search.trim()
       ? all.filter(
@@ -50,7 +50,7 @@ export default function Status() {
         )
       : all;
 
-    const byType: Record<string, AirbyteDatasourceGroup> = {};
+    const byType: Record<string, ConnectorDatasourceGroup> = {};
     for (const ds of filtered) {
       if (!byType[ds.connector_type]) {
         byType[ds.connector_type] = {
@@ -163,7 +163,7 @@ export default function Status() {
               onClick={expandAll}
               className="flex items-center gap-1 text-sm text-link hover:underline"
             >
-              <FiChevronDown size={16} />
+              <SvgChevronDown size={16} />
               <Text as="span" secondaryBody>
                 {t("admin.indexingStatus.expandAll")}
               </Text>
@@ -172,7 +172,7 @@ export default function Status() {
               onClick={collapseAll}
               className="flex items-center gap-1 text-sm text-link hover:underline"
             >
-              <FiChevronRight size={16} />
+              <SvgChevronRight size={16} />
               <Text as="span" secondaryBody>
                 {t("admin.indexingStatus.collapseAll")}
               </Text>
@@ -221,7 +221,7 @@ export default function Status() {
           )}
 
         {!isLoading && groups.length > 0 && (
-          <AirbyteDatasourceTable
+          <ConnectorDatasourceTable
             groups={groups}
             toggledGroups={toggledGroups}
             onToggle={handleToggle}

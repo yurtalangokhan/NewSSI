@@ -18,7 +18,7 @@ import {
 import { OnboardingActions, OnboardingState } from "../types";
 import { buildInitialValues } from "../components/llmConnectionHelpers";
 import ConnectionProviderIcon from "@/refresh-components/ConnectionProviderIcon";
-import { APP_NAME } from "@/lib/appInfo";
+import { appSettings } from "@/lib/settings";
 
 // Field name constants
 const FIELD_PROVIDER = "provider";
@@ -340,7 +340,7 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
             <FormField.Message
               messages={{
                 idle: t("llmOnboarding.custom.defaultModelHint", {
-                  appName: APP_NAME,
+                  appName: appSettings.APP_NAME,
                 }),
                 error: meta.error,
               }}

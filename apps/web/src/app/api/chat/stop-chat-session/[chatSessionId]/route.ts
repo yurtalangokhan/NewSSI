@@ -1,32 +1,28 @@
-import { getInternalUrl } from "@/lib/env.server";
-import { buildServiceUrl } from "@/lib/api/gatewayRouting";
-import { getIncomingIdempotencyHeaders } from "@/lib/api/idempotency";
-import { forwardBackendResponse } from "@/lib/api/backendResponse";
-import { NextResponse } from "next/server";
+import { chatEndpoints } from "@/lib/api/domains/chat/endpoints";
+import { backendRequest } from "@/lib/api/http/server";
 
-const INTERNAL_URL = getInternalUrl();
+import { forwardBackendResponse } from "@/lib/api/backendResponse";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ chatSessionId: string }> }
 ) {
   try {
     const { chatSessionId } = await params;
-    const cookie = request.headers.get("cookie") || "";
-    const response = await fetch(
-      buildServiceUrl(
-        INTERNAL_URL,
-        "agent",
-        `/api/chat/stop-chat-session/${chatSessionId}`
-      ).toString(),
-      {
-        method: "POST",
-        headers: {
-          ...(cookie ? { Cookie: cookie } : {}),
-          ...getIncomingIdempotencyHeaders(request),
-        },
-      }
-    );
+    // Names the send being stopped, so a Stop reaches it even before its run
+    // is registered on the server.
+    const clientRequestId =
+      request.nextUrl.searchParams.get("client_request_id");
+    const response = await backendRequest({
+      ...chatEndpoints.stopSession(chatSessionId).backend,
+      request,
+      method: "POST",
+      query: clientRequestId
+        ? { client_request_id: clientRequestId }
+        : undefined,
+      deriveAuthorizationFromCookie: true,
+    });
     return await forwardBackendResponse(response);
   } catch (error) {
     return NextResponse.json(

@@ -1,4 +1,5 @@
 "use client";
+import { datasourcesEndpoints } from "@/lib/api/domains/datasources/endpoints";
 
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -8,8 +9,8 @@ import { ValidSources, ConfigurableSources } from "@/lib/types";
 import { getSourceMetadata, getSourceDocLink } from "@/lib/sources";
 import { SvgPlug, SvgExternalLink } from "@opal/icons";
 import { Credential, credentialTemplates } from "@/lib/connectors/credentials";
-import { errorHandlingFetcher } from "@/lib/fetcher";
-import { buildSimilarCredentialInfoURL } from "@/app/admin/connector/[ccPairId]/lib";
+import { fetchSimilarCredentials } from "@/lib/api/domains/datasources/api";
+
 import CredentialStep from "@/app/craft/v1/configure/components/CredentialStep";
 import ConnectorConfigStep from "@/app/craft/v1/configure/components/ConnectorConfigStep";
 import { OAUTH_STATE_KEY } from "@/app/craft/v1/constants";
@@ -74,9 +75,9 @@ export default function ConfigureConnectorModal({
     Credential<any>[]
   >(
     connectorType && open && !isConfigured
-      ? buildSimilarCredentialInfoURL(connectorType)
+      ? datasourcesEndpoints.similarCredentialInfo(connectorType).browserPath
       : null,
-    errorHandlingFetcher
+    () => fetchSimilarCredentials<Credential<any>[]>(connectorType!)
   );
 
   useEffect(() => {

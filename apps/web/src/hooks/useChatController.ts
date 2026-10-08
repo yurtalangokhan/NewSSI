@@ -1,11 +1,31 @@
 "use client";
-
 import {
-  buildChatUrl,
+  fetchActiveRun,
+  fetchInitialChatSession,
+  markChatSessionSeen,
+  openRunEvents,
+  sendMessage,
+  stopActiveChatSession,
+} from "@/lib/api/domains/chat/api";
+import {
+  ActiveRunInfo,
+  attachToRunStream,
+  ChatRunActiveError,
+  ChatRunExpiredError,
+  ChatRunResyncRequiredError,
+  sendAfterOwnRunEnds,
+} from "@/lib/api/domains/chat/resumableChatStream";
+import { createIdempotencyKey } from "@/lib/api/idempotency";
+import { ChatRunTracker } from "@/lib/chat/chatRunTracker";
+import { seedChatFromSlack } from "@/lib/api/domains/chat/api";
+import { fetchAgentDocumentTokenMaximum } from "@/lib/api/domains/chat/api";
+
+import { buildChatUrl, processRawChatHistory } from "@/app/app/services/lib";
+import { renameChatSession } from "@/lib/api/domains/chat/api";
+import {
   createChatSession,
-  nameChatSession,
   updateLlmOverrideForChatSession,
-} from "@/app/app/services/lib";
+} from "@/lib/api/domains/chat/api";
 import { StreamStopInfo } from "@/lib/search/interfaces";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Route } from "next";
@@ -18,13 +38,20 @@ import {
   buildImmediateMessages,
   buildEmptyMessage,
 } from "@/app/app/services/messageTree";
-import { AgentId, MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
-import i18n from "@/i18n/config";
-import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
-import { SEARCH_TOOL_ID } from "@/app/app/components/tools/constants";
-import { OnyxDocument } from "@/lib/search/interfaces";
-import { FilterManager, LlmDescriptor, LlmManager } from "@/lib/hooks";
 import {
+  AgentId,
+  MinimalPersonaSnapshot,
+} from "@/lib/api/domains/agents/types";
+import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
+import { SEARCH_TOOL_ID } from "@/lib/api/domains/tools/constants";
+import { AtlasDocument } from "@/lib/search/interfaces";
+import { FilterManager } from "@/lib/api/domains/knowledge/hooks";
+import {
+  LlmDescriptor,
+  LlmManager,
+} from "@/lib/api/domains/model-providers/hooks";
+import {
+  BackendChatSession,
   BackendMessage,
   ChatFileType,
   CitationMap,
@@ -37,7 +64,7 @@ import {
   StreamingError,
   ToolCallMetadata,
   UserKnowledgeFilePacket,
-} from "@/app/app/interfaces";
+} from "@/lib/api/domains/chat/types";
 import { StreamStopReason } from "@/lib/search/interfaces";
 import {
   flowModelsSupportImageInput,
@@ -60,24 +87,27 @@ import {
 } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
 import { getExtensionContext } from "@/lib/extension/utils";
-import useChatSessions from "@/hooks/useChatSessions";
-import { usePinnedAgents } from "@/hooks/useAgents";
+import { useChatSessions } from "@/lib/api/domains/chat/hooks";
+
 import {
   useChatSessionStore,
   useCurrentMessageTree,
   useCurrentChatState,
   useCurrentMessageHistory,
 } from "@/app/app/stores/useChatSessionStore";
-import { Packet, MessageStart } from "@/app/app/services/streamingModels";
-import useAgentPreferences from "@/hooks/useAgentPreferences";
+import {
+  selectDocumentContext,
+  useDocumentPanelStore,
+} from "@/app/app/stores/useDocumentPanelStore";
+import { Packet, MessageStart } from "@/lib/api/domains/chat/streaming-types";
+import { useAgentPreferences } from "@/lib/api/domains/preferences/hooks";
 import { useForcedTools } from "@/lib/hooks/useForcedTools";
 import { ProjectFile, useProjectsContext } from "@/providers/ProjectsContext";
 import { useAppParams } from "@/hooks/appNavigation";
 import { projectFilesToFileDescriptors } from "@/app/app/services/fileUtils";
-import { UserFileStatus } from "@/app/app/projects/projectsService";
-import { authenticatedFetch, errorHandlingFetcher } from "@/lib/fetcher";
-import { flowApi } from "@/components/flow-canvas/api/flowApi";
-import useSWR from "swr";
+import { UserFileStatus } from "@/lib/api/domains/projects/types";
+import { usePublishedFlowSpec } from "@/lib/api/domains/agents/hooks";
+import i18n from "@/i18n/config";
 
 const SYSTEM_MESSAGE_ID = -3;
 
@@ -101,6 +131,15 @@ export interface OnSubmitProps {
   // Answers to an ask_user card: resumes the parked run with structured
   // values instead of text.
   resumePayload?: Record<string, unknown> | null;
+  // Renders a run that is already executing on the server (page reload,
+  // another tab, a lost stream) instead of sending a new message. Only
+  // `attachToActiveRun` sets it.
+  attachRun?: AttachRunRequest | null;
+}
+
+interface AttachRunRequest {
+  sessionId: string;
+  run: ActiveRunInfo;
 }
 
 interface RegenerationRequest {
@@ -137,29 +176,55 @@ export function resolveActivePersonaId(
   return liveAgent?.external_id ?? liveAgent?.id;
 }
 
+// Mirrors the backend's INPUT_PREVIEW_MAX_CHARS: a longer message arrives
+// truncated in the run's input_preview.
+const RUN_INPUT_PREVIEW_MAX_CHARS = 2000;
+
+/**
+ * Where an attached run's answer belongs in the visible chain. The run's own
+ * user message is usually already in the loaded history (the checkpoint holds
+ * it from the first step): the answer then goes under that node. When it is
+ * not there yet, a user node has to be created under the chain's last node.
+ */
+export function resolveAttachTarget(
+  history: Message[],
+  inputPreview: string
+): { userNode: Message } | { parentNodeId: number } {
+  const lastUser = [...history].reverse().find((m) => m.type === "user");
+  const matchesPreview =
+    lastUser !== undefined &&
+    (inputPreview === "" ||
+      lastUser.message === inputPreview ||
+      (inputPreview.length >= RUN_INPUT_PREVIEW_MAX_CHARS &&
+        lastUser.message.startsWith(inputPreview)));
+  if (lastUser && matchesPreview) {
+    return { userNode: lastUser };
+  }
+  return {
+    parentNodeId: history[history.length - 1]?.nodeId ?? SYSTEM_NODE_ID,
+  };
+}
+
 interface UseChatControllerProps {
   filterManager: FilterManager;
   llmManager: LlmManager;
   liveAgent: MinimalPersonaSnapshot | undefined;
   availableAgents: MinimalPersonaSnapshot[];
   existingChatSessionId: string | null;
-  selectedDocuments: OnyxDocument[];
+  selectedDocuments: AtlasDocument[];
   searchParams: ReadonlyURLSearchParams;
   resetInputBar: () => void;
   setSelectedAgentFromId: (agentId: AgentId | null) => void;
   onSubmitComplete?: () => void | Promise<void>;
+  // Puts a message the server turned away (409) back into the input bar.
+  restoreInputBar?: (message: string, files: ProjectFile[]) => void;
 }
 
-async function stopChatSession(chatSessionId: string): Promise<void> {
-  const response = await authenticatedFetch(
-    `/api/chat/stop-chat-session/${chatSessionId}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }
-  );
+async function stopChatSession(
+  chatSessionId: string,
+  clientRequestId?: string
+): Promise<void> {
+  const response = await stopActiveChatSession(chatSessionId, clientRequestId);
 
   if (!response.ok) {
     throw new Error(`Failed to stop chat session: ${response.statusText}`);
@@ -176,6 +241,7 @@ export default function useChatController({
   resetInputBar,
   setSelectedAgentFromId,
   onSubmitComplete,
+  restoreInputBar,
 }: UseChatControllerProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -241,6 +307,16 @@ export default function useChatController({
   const currentChatState = useCurrentChatState();
 
   const navigatingAway = useRef(false);
+  // What this tab knows about the runs it started or attached to.
+  const runTracker = useRef(new ChatRunTracker());
+  // onSubmit and attachToActiveRun call each other; refs break the cycle and
+  // always reach the latest closures.
+  const onSubmitRef = useRef<(props: OnSubmitProps) => Promise<void>>(
+    async () => {}
+  );
+  const attachToActiveRunRef = useRef<
+    (sessionId: string, run: ActiveRunInfo) => Promise<void>
+  >(async () => {});
 
   // Local state that doesn't need to be in the store
   const [_maxTokens, setMaxTokens] = useState<number>(4096);
@@ -252,10 +328,7 @@ export default function useChatController({
   const isFlowAgent =
     liveAgent?.graph_schema === "flow" &&
     Boolean(liveAgent?.agent_definition_id);
-  const { data: flowSpec } = useSWR<WireFlowSpec>(
-    isFlowAgent ? flowApi.published(liveAgent!.agent_definition_id!) : null,
-    errorHandlingFetcher
-  );
+  const { data: flowSpec } = usePublishedFlowSpec<WireFlowSpec>(liveAgent);
   const flowAcceptsImages = useMemo(
     () =>
       flowModelsSupportImageInput(
@@ -354,7 +427,7 @@ export default function useChatController({
 
     try {
       // Name chat based on AI response
-      const response = await nameChatSession(chatSessionId);
+      const response = await renameChatSession(chatSessionId, null);
 
       if (!response.ok) {
         console.error("Failed to name chat session, status:", response.status);
@@ -404,17 +477,40 @@ export default function useChatController({
     return newCompleteMessageTree;
   };
 
+  // Replaces the session's tree with the persisted conversation, e.g. when a
+  // run's live stream can no longer be replayed.
+  const reloadSessionMessages = async (chatSessionId: string) => {
+    try {
+      const response = await fetchInitialChatSession(
+        chatSessionId,
+        new AbortController().signal
+      );
+      if (!response.ok) return;
+      const session = (await response.json()) as BackendChatSession;
+      updateSessionMessageTree(
+        chatSessionId,
+        processRawChatHistory(session.messages, session.packets)
+      );
+    } catch (error) {
+      console.error("Failed to reload the chat session:", error);
+    }
+  };
+
   const stopGenerating = useCallback(async () => {
     const currentSession = getCurrentSessionId();
     const lastMessage = currentMessageHistory[currentMessageHistory.length - 1];
 
     // Abort the frontend stream immediately so token rendering stops at once.
     abortSession(currentSession);
+    runTracker.current.settleSession(currentSession);
 
     // Call the backend stop endpoint to set the Redis fence
     // This signals the backend to stop processing as soon as possible
     // The backend will emit a STOP packet when it detects the fence
-    stopChatSession(currentSession).catch((error) => {
+    stopChatSession(
+      currentSession,
+      runTracker.current.requestIdOf(currentSession)
+    ).catch((error) => {
       console.error("Failed to stop chat session:", error);
     });
 
@@ -450,6 +546,7 @@ export default function useChatController({
       regenerationRequest,
       additionalContext,
       resumePayload,
+      attachRun,
     }: OnSubmitProps) => {
       const projectId = params(SEARCH_PARAM_NAMES.PROJECT_ID);
       const parsedProjectIdFromUrl =
@@ -474,7 +571,14 @@ export default function useChatController({
       ]
         .filter(Boolean)
         .join("\n\n");
-      {
+      // An attach renders a run that is already executing: it sends nothing,
+      // so it must not touch the URL, the input bar or the session's model.
+      // It also runs right after a session load, before this closure has
+      // re-rendered, so it reads the session straight from the store.
+      const attachedSession = attachRun
+        ? useChatSessionStore.getState().sessions.get(attachRun.sessionId)
+        : undefined;
+      if (!attachRun) {
         const params = new URLSearchParams(searchParams?.toString() || "");
         if (params.has(SEARCH_PARAM_NAMES.PROJECT_ID)) {
           params.delete(SEARCH_PARAM_NAMES.PROJECT_ID);
@@ -483,12 +587,11 @@ export default function useChatController({
             : pathname;
           router.replace(newUrl as Route, { scroll: false });
         }
+        updateSubmittedMessage(getCurrentSessionId(), message);
       }
 
-      updateSubmittedMessage(getCurrentSessionId(), message);
-
       navigatingAway.current = false;
-      let frozenSessionId = getCurrentSessionId();
+      let frozenSessionId = attachRun?.sessionId ?? getCurrentSessionId();
       updateCanContinue(false, frozenSessionId);
       setUncaughtError(frozenSessionId, null);
       setLoadingError(frozenSessionId, null);
@@ -496,7 +599,8 @@ export default function useChatController({
       // Check if the last message was an error and remove it before proceeding with a new message
       // Ensure this isn't a regeneration or resend, as those operations should preserve the history leading up to the point of regeneration/resend.
       let currentMessageTreeLocal =
-        currentMessageTree || new Map<number, Message>();
+        (attachRun ? attachedSession?.messageTree : currentMessageTree) ||
+        new Map<number, Message>();
       let currentHistory = getLatestMessageChain(currentMessageTreeLocal);
       let lastMessage = currentHistory[currentHistory.length - 1];
 
@@ -504,7 +608,8 @@ export default function useChatController({
         lastMessage &&
         lastMessage.type === "error" &&
         !messageIdToResend &&
-        !regenerationRequest
+        !regenerationRequest &&
+        !attachRun
       ) {
         const newMessageTree = new Map(currentMessageTreeLocal);
         const parentNodeId = lastMessage.parentNodeId;
@@ -552,7 +657,10 @@ export default function useChatController({
         lastMessage = currentHistory[currentHistory.length - 1];
       }
 
-      if (currentChatState != "input") {
+      if (attachRun) {
+        // Something else already streams into this session: nothing to show.
+        if ((attachedSession?.chatState ?? "input") !== "input") return;
+      } else if (currentChatState != "input") {
         if (currentChatState == "uploading") {
           toast.error(i18n.t("chat.toasts.waitUpload"));
         } else {
@@ -566,7 +674,8 @@ export default function useChatController({
       // Check both the prop and the store's currentSessionId to determine if this is a new session
       // For pages like NRF where existingChatSessionId is always null, we need to check if
       // we already have a session from a previous message
-      const isNewSession = existingChatSessionId === null && !currentSessionId;
+      const isNewSession =
+        !attachRun && existingChatSessionId === null && !currentSessionId;
 
       const searchParamBasedChatSessionName =
         searchParams?.get(SEARCH_PARAM_NAMES.TITLE) || null;
@@ -600,7 +709,9 @@ export default function useChatController({
       } else {
         // Use the existing session ID from props or from the store
         currChatSessionId =
-          existingChatSessionId || (currentSessionId as string);
+          attachRun?.sessionId ||
+          existingChatSessionId ||
+          (currentSessionId as string);
       }
       frozenSessionId = currChatSessionId;
       // update the selected model for the chat session if one is specified so that
@@ -611,14 +722,16 @@ export default function useChatController({
       // chat session, it is unexpected for that model to be used when they
       // return to this session the next day.
       let finalLLM = modelOverride || llmManager.currentLlm;
-      updateLlmOverrideForChatSession(
-        currChatSessionId,
-        structureValue(
-          finalLLM.name || "",
-          finalLLM.provider || "",
-          finalLLM.modelName || ""
-        )
-      );
+      if (!attachRun) {
+        updateLlmOverrideForChatSession(
+          currChatSessionId,
+          structureValue(
+            finalLLM.name || "",
+            finalLLM.provider || "",
+            finalLLM.modelName || ""
+          )
+        );
+      }
 
       // mark the session as the current session
       updateStatesWithNewSessionId(currChatSessionId);
@@ -631,7 +744,9 @@ export default function useChatController({
         );
       }
 
+      // An attached run is titled by the server when it completes.
       const shouldAutoNameChatSessionAfterResponse =
+        !attachRun &&
         !searchParamBasedChatSessionName &&
         !hadAnyUserMessagesBeforeSubmit &&
         !sessions.get(currChatSessionId)?.description;
@@ -749,8 +864,29 @@ export default function useChatController({
       // immediately reflects the user message
       let initialUserNode: Message;
       let initialAgentNode: Message;
+      const attachTarget = attachRun
+        ? resolveAttachTarget(currentHistory, attachRun.run.input_preview)
+        : null;
+      const reusesAttachedUserNode =
+        attachTarget !== null && "userNode" in attachTarget;
 
-      if (regenerationRequest) {
+      if (attachTarget && "userNode" in attachTarget) {
+        // The run's user message is already on screen: only the answer is new.
+        initialUserNode = attachTarget.userNode;
+        initialAgentNode = buildEmptyMessage({
+          messageType: "assistant",
+          parentNodeId: initialUserNode.nodeId,
+          nodeIdOffset: 1,
+        });
+      } else if (attachTarget) {
+        const result = buildImmediateMessages(
+          attachTarget.parentNodeId,
+          currMessage,
+          []
+        );
+        initialUserNode = result.initialUserNode;
+        initialAgentNode = result.initialAgentNode;
+      } else if (regenerationRequest) {
         // For regeneration: keep the existing user message, only create new agent
         initialUserNode = regenerationRequest.parentMessage;
         initialAgentNode = buildEmptyMessage({
@@ -774,18 +910,42 @@ export default function useChatController({
       }
       initialAgentNode.alternateAgentID = activePersonaId ?? null;
 
+      // Restored when the turn is abandoned in favour of an in-flight run.
+      const messageTreeBeforeTurn = currentMessageTreeLocal;
+
       // make messages appear + clear input bar
-      const messagesToUpsert = regenerationRequest
-        ? [initialAgentNode] // Only upsert the new agent for regeneration
-        : [initialUserNode, initialAgentNode]; // Upsert both for normal/edit flow
+      // An attached run's answer stays a skeleton until its replay reaches the
+      // screen; the flag lives only on this first upsert (later ones replace it).
+      const placeholderAgentNode: Message = attachRun
+        ? { ...initialAgentNode, resuming: true }
+        : initialAgentNode;
+      const messagesToUpsert =
+        regenerationRequest || reusesAttachedUserNode
+          ? [placeholderAgentNode] // Only upsert the new agent for regeneration
+          : [initialUserNode, placeholderAgentNode]; // Upsert both for normal/edit flow
       currentMessageTreeLocal = upsertToCompleteMessageTree({
         messages: messagesToUpsert,
         completeMessageTreeOverride: currentMessageTreeLocal,
         chatSessionId: frozenSessionId,
       });
-      resetInputBar();
+      if (!attachRun) {
+        resetInputBar();
+      }
 
       let answer = "";
+
+      let resumePlaceholderShown = Boolean(attachRun);
+      // Drops the skeleton flag when nothing else will replace the node soon:
+      // the replay had nothing to show, or the stream ended without content.
+      const dropResumePlaceholder = () => {
+        if (!resumePlaceholderShown) return;
+        resumePlaceholderShown = false;
+        currentMessageTreeLocal = upsertToCompleteMessageTree({
+          messages: [{ ...initialAgentNode, resuming: false }],
+          completeMessageTreeOverride: currentMessageTreeLocal,
+          chatSessionId: frozenSessionId,
+        });
+      };
 
       const stopReason: StreamStopReason | null = null;
       let query: string | null = null;
@@ -793,7 +953,7 @@ export default function useChatController({
         selectedDocuments.length > 0
           ? RetrievalType.SelectedDocs
           : RetrievalType.None;
-      let documents: OnyxDocument[] = selectedDocuments;
+      let documents: AtlasDocument[] = selectedDocuments;
       let citations: CitationMap | null = null;
       let aiMessageImages: FileDescriptor[] | null = null;
       let error: string | null = null;
@@ -807,7 +967,9 @@ export default function useChatController({
       // Snapshot of files the user attached at submit time — must never grow during streaming.
       // user_files packets from the stream represent knowledge-base context, not user uploads,
       // so they are kept separate and only used for agent-side context (agentContextFiles).
-      const userMessageFiles = [...effectiveFileDescriptors];
+      const userMessageFiles = reusesAttachedUserNode
+        ? [...(initialUserNode.files ?? [])]
+        : [...effectiveFileDescriptors];
       let agentContextFiles: typeof effectiveFileDescriptors = [];
       let packets: Packet[] = [];
       let packetsVersion = 0;
@@ -843,58 +1005,86 @@ export default function useChatController({
         const messageOrigin = isExtension ? "chrome_extension" : "webapp";
 
         const stack = new CurrentMessageFIFO();
-        updateCurrentMessageFIFO(stack, {
-          signal: controller.signal,
-          message: currMessage,
-          fileDescriptors: effectiveFileDescriptors,
-          parentMessageId: (() => {
-            const parentId =
-              regenerationRequest?.parentMessage.messageId ||
-              messageToResendParent?.messageId ||
-              lastSuccessfulMessageId;
-            // Don't send SYSTEM_MESSAGE_ID (-3) as parent, use null instead
-            // The backend expects null for "the first message in the chat"
-            return parentId === SYSTEM_MESSAGE_ID ? null : parentId;
-          })(),
-          chatSessionId: currChatSessionId,
-          personaId: activePersonaId,
-          isRegenerate: Boolean(regenerationRequest),
-          // Editing (as opposed to retrying) sends the message's own id so
-          // the backend forks the checkpoint at it and replaces its content,
-          // excluding the old response and anything sent after it.
-          editTargetMessageId:
-            hasExplicitResendTarget && !regenerationRequest
-              ? messageIdToResend
-              : undefined,
-          filters: buildFilters(
-            filterManager.selectedSources,
-            filterManager.selectedDocumentSets,
-            filterManager.timeRange,
-            filterManager.selectedTags
-          ),
-          modelProviderId:
-            modelOverride?.providerId || llmManager.currentLlm.providerId,
-          modelProviderType:
-            modelOverride?.provider || llmManager.currentLlm.provider,
-          modelVersion:
-            modelOverride?.modelName ||
-            llmManager.currentLlm.modelName ||
-            searchParams?.get(SEARCH_PARAM_NAMES.MODEL_VERSION) ||
-            undefined,
-          temperature: llmManager.temperature || undefined,
-          deepResearch,
-          enabledToolIds:
-            disabledToolIds && liveAgent
-              ? liveAgent.tools
-                  .filter((tool) => !disabledToolIds?.includes(tool.id))
-                  .map((tool) => tool.id)
-              : undefined,
-          forcedToolId: effectiveForcedToolId,
-          origin: messageOrigin,
-          additionalContext: effectiveAdditionalContext || undefined,
-          projectId: activeProjectId,
-          resumePayload: resumePayload ?? null,
-        });
+        const clientRequestId = createIdempotencyKey();
+        const runKey = attachRun ? attachRun.run.run_id : clientRequestId;
+        if (attachRun) {
+          runTracker.current.beginAttach(frozenSessionId, runKey);
+        } else {
+          runTracker.current.beginSend(frozenSessionId, clientRequestId);
+        }
+        const packetSource = attachRun
+          ? attachToRunStream(attachRun.run.run_id, controller.signal, {
+              attach: openRunEvents,
+              onReplayChange: (replaying) => stack.setReplaying(replaying),
+            })
+          : sendAfterOwnRunEnds(
+              () =>
+                sendMessage({
+                  signal: controller.signal,
+                  onReplayChange: (replaying) => stack.setReplaying(replaying),
+                  idempotencyKey: clientRequestId,
+                  message: currMessage,
+                  fileDescriptors: effectiveFileDescriptors,
+                  parentMessageId: (() => {
+                    const parentId =
+                      regenerationRequest?.parentMessage.messageId ||
+                      messageToResendParent?.messageId ||
+                      lastSuccessfulMessageId;
+                    // Don't send SYSTEM_MESSAGE_ID (-3) as parent, use null instead
+                    // The backend expects null for "the first message in the chat"
+                    return parentId === SYSTEM_MESSAGE_ID ? null : parentId;
+                  })(),
+                  chatSessionId: currChatSessionId,
+                  personaId: activePersonaId,
+                  isRegenerate: Boolean(regenerationRequest),
+                  // Editing (as opposed to retrying) sends the message's own id so
+                  // the backend forks the checkpoint at it and replaces its content,
+                  // excluding the old response and anything sent after it.
+                  editTargetMessageId:
+                    hasExplicitResendTarget && !regenerationRequest
+                      ? messageIdToResend
+                      : undefined,
+                  filters: buildFilters(
+                    filterManager.selectedSources,
+                    filterManager.selectedDocumentSets,
+                    filterManager.timeRange,
+                    filterManager.selectedTags
+                  ),
+                  modelProviderId:
+                    modelOverride?.providerId ||
+                    llmManager.currentLlm.providerId,
+                  modelProviderType:
+                    modelOverride?.provider || llmManager.currentLlm.provider,
+                  modelVersion:
+                    modelOverride?.modelName ||
+                    llmManager.currentLlm.modelName ||
+                    searchParams?.get(SEARCH_PARAM_NAMES.MODEL_VERSION) ||
+                    undefined,
+                  temperature: llmManager.temperature || undefined,
+                  deepResearch,
+                  enabledToolIds:
+                    disabledToolIds && liveAgent
+                      ? liveAgent.tools
+                          .filter((tool) => !disabledToolIds?.includes(tool.id))
+                          .map((tool) => tool.id)
+                      : undefined,
+                  forcedToolId: effectiveForcedToolId,
+                  origin: messageOrigin,
+                  additionalContext: effectiveAdditionalContext || undefined,
+                  // Read at send time: every send path (composer, follow-ups, fix requests) attaches it.
+                  documentContext: selectDocumentContext(
+                    useDocumentPanelStore.getState()
+                  ),
+                  projectId: activeProjectId,
+                  resumePayload: resumePayload ?? null,
+                }),
+              {
+                findActiveRun: () => fetchActiveRun(currChatSessionId),
+                isOwnRequest: (id) => runTracker.current.isOwnRequest(id),
+                signal: controller.signal,
+              }
+            );
+        updateCurrentMessageFIFO(stack, packetSource, controller.signal);
 
         const delay = (ms: number) => {
           return new Promise((resolve) => setTimeout(resolve, ms));
@@ -903,7 +1093,16 @@ export default function useChatController({
         await delay(50);
         while (!stack.isComplete || !stack.isEmpty()) {
           if (stack.error && !controller.signal.aborted) {
-            throw new Error(stack.error);
+            // The typed error lets the catch below tell an in-flight run
+            // (409) or an expired replay apart from a real failure.
+            throw stack.errorObject ?? new Error(stack.error);
+          }
+          if (
+            resumePlaceholderShown &&
+            !stack.sourceReplaying &&
+            stack.isEmpty()
+          ) {
+            dropResumePlaceholder();
           }
           if (stack.isEmpty()) {
             await delay(0.5);
@@ -936,7 +1135,7 @@ export default function useChatController({
                   .user_message_id;
 
                 // Track extension queries in PostHog (reuses isExtension/extensionContext from above)
-                if (isExtension && posthog) {
+                if (isExtension && posthog && !attachRun) {
                   posthog.capture("extension_chat_query", {
                     extension_context: extensionContext,
                     assistant_id: liveAgent?.id,
@@ -994,17 +1193,28 @@ export default function useChatController({
               (packet as any).error != null
             ) {
               const streamingError = packet as StreamingError;
-              error = streamingError.error;
+              const structured =
+                typeof streamingError.error === "object"
+                  ? streamingError.error
+                  : null;
+              const errorMessage =
+                structured?.message ??
+                (typeof streamingError.error === "string"
+                  ? streamingError.error
+                  : streamingError.content) ??
+                "";
+              error = errorMessage;
               stackTrace = streamingError.stack_trace || null;
-              errorCode = streamingError.error_code || null;
+              errorCode = streamingError.error_code || structured?.code || null;
               isRetryable = streamingError.is_retryable ?? true;
-              errorDetails = streamingError.details || null;
+              errorDetails =
+                streamingError.details || structured?.details || null;
 
-              setUncaughtError(frozenSessionId, streamingError.error);
+              setUncaughtError(frozenSessionId, errorMessage);
               updateChatStateAction(frozenSessionId, "input");
               updateSubmittedMessage(getCurrentSessionId(), "");
 
-              throw new Error(streamingError.error);
+              throw new Error(errorMessage);
             } else if (Object.hasOwn(packet, "message_id")) {
               finalMessage = packet as BackendMessage;
             } else if (Object.hasOwn(packet, "stop_reason")) {
@@ -1013,6 +1223,9 @@ export default function useChatController({
                 updateCanContinue(true, frozenSessionId);
               }
             } else if (Object.hasOwn(packet, "obj")) {
+              // History replayed by a reload or re-attach is shown at once,
+              // not played back as live output; the renderers key off this.
+              if (stack.replaying) (packet as Packet).replayed = true;
               packets.push(packet as Packet);
               packetsVersion++;
 
@@ -1064,21 +1277,30 @@ export default function useChatController({
             parentMessage =
               parentMessage || currentMessageTreeLocal?.get(SYSTEM_NODE_ID)!;
 
+            // A replay (reload, re-attach) can queue thousands of packets:
+            // publish once the queue drains instead of once per packet.
+            if (stack.replaying && !stack.isEmpty()) continue;
+
             // Debug: log packets being passed to message tree
             console.log(
               "[ChatController] Updating message tree with packets:",
               packets.length
             );
 
+            // This upsert replaces the placeholder node, flag included.
+            resumePlaceholderShown = false;
             currentMessageTreeLocal = upsertToCompleteMessageTree({
               messages: [
                 {
                   ...initialUserNode,
-                  messageId: resolveStreamedMessageId(
-                    newUserMessageId,
-                    finalMessage?.parent_message ??
-                      finalMessage?.parentMessageId
-                  ),
+                  // A reused user node keeps its real id until the stream
+                  // reports one.
+                  messageId:
+                    resolveStreamedMessageId(
+                      newUserMessageId,
+                      finalMessage?.parent_message ??
+                        finalMessage?.parentMessageId
+                    ) ?? initialUserNode.messageId,
                   files: userMessageFiles,
                 },
                 {
@@ -1118,21 +1340,63 @@ export default function useChatController({
             });
           }
         }
+        // A stream that fails before its first packet (a 409 answers at
+        // once) completes before the loop above ever runs.
+        if (stack.error && !controller.signal.aborted) {
+          throw stack.errorObject ?? new Error(stack.error);
+        }
+        dropResumePlaceholder();
+        runTracker.current.settle(runKey);
       } catch (e: any) {
+        if (e instanceof ChatRunActiveError) {
+          // Another tab or device is already answering in this thread: drop
+          // the optimistic turn and show that answer instead of an error.
+          updateSessionMessageTree(frozenSessionId, messageTreeBeforeTurn);
+          resetRegenerationState(frozenSessionId);
+          setStreamingStartTime(frozenSessionId, null);
+          updateChatStateAction(frozenSessionId, "input");
+          toast.error(i18n.t("chat.toasts.runStillActive"));
+          if (!attachRun && !regenerationRequest && !hasExplicitResendTarget) {
+            restoreInputBar?.(currMessage, currentMessageFiles);
+          }
+          const active = await fetchActiveRun(frozenSessionId).catch(
+            () => null
+          );
+          if (active) {
+            void attachToActiveRunRef.current(frozenSessionId, active);
+          }
+          return;
+        }
+        if (
+          e instanceof ChatRunResyncRequiredError ||
+          e instanceof ChatRunExpiredError
+        ) {
+          // The live stream is gone but the run's result is persisted: show
+          // the saved conversation instead of a partial answer.
+          updateSessionMessageTree(frozenSessionId, messageTreeBeforeTurn);
+          resetRegenerationState(frozenSessionId);
+          setStreamingStartTime(frozenSessionId, null);
+          updateChatStateAction(frozenSessionId, "input");
+          toast.info(i18n.t("chat.toasts.runReplayExpired"));
+          await reloadSessionMessages(frozenSessionId);
+          return;
+        }
         console.log("Error:", e);
         const errorMsg = e.message;
         currentMessageTreeLocal = upsertToCompleteMessageTree({
           messages: [
-            {
-              nodeId: initialUserNode.nodeId,
-              message: currMessage,
-              type: "user",
-              files: effectiveFileDescriptors,
-              toolCall: null,
-              parentNodeId: parentMessage?.nodeId || SYSTEM_NODE_ID,
-              packets: [],
-              packetCount: 0,
-            },
+            reusesAttachedUserNode
+              ? initialUserNode
+              : {
+                  nodeId: initialUserNode.nodeId,
+                  message: currMessage,
+                  type: "user",
+                  files: effectiveFileDescriptors,
+                  toolCall: null,
+                  parentNodeId: parentMessage?.nodeId || SYSTEM_NODE_ID,
+                  packets: [],
+                  packetCount: 0,
+                },
             {
               nodeId: initialAgentNode.nodeId,
               message: errorMsg,
@@ -1161,6 +1425,14 @@ export default function useChatController({
       if (shouldAutoNameChatSessionAfterResponse) {
         handleNewSessionNaming(currChatSessionId);
       }
+      // The user is looking at this chat: advance the read watermark so the
+      // sidebar's unread dot does not fire for an answer already on screen, then
+      // refresh so the row settles from "running" to read. The server bump is
+      // awaited so the refresh below reads the updated watermark.
+      if (getCurrentSessionId() === frozenSessionId) {
+        await markChatSessionSeen(frozenSessionId).catch(() => {});
+      }
+      void refreshChatSessions();
       await onSubmitComplete?.();
     },
     [
@@ -1193,6 +1465,41 @@ export default function useChatController({
       onSubmitComplete,
     ]
   );
+
+  onSubmitRef.current = onSubmit;
+
+  /**
+   * Renders a run that is executing on the server — after a reload, from
+   * another tab, or after the stream was lost — under its user message. It
+   * is single-flight per session and a no-op while that session already
+   * shows a stream or is no longer the one on screen.
+   */
+  const attachToActiveRun = useCallback(
+    async (sessionId: string, run: ActiveRunInfo) => {
+      const state = useChatSessionStore.getState();
+      const chatState = state.sessions.get(sessionId)?.chatState ?? "input";
+      if (
+        runTracker.current.isSettled(run) ||
+        chatState !== "input" ||
+        state.currentSessionId !== sessionId ||
+        !runTracker.current.tryBeginAttach(sessionId)
+      ) {
+        return;
+      }
+      try {
+        await onSubmitRef.current({
+          message: run.input_preview,
+          currentMessageFiles: [],
+          deepResearch: false,
+          attachRun: { sessionId, run },
+        });
+      } finally {
+        runTracker.current.endAttach(sessionId);
+      }
+    },
+    []
+  );
+  attachToActiveRunRef.current = attachToActiveRun;
 
   const handleMessageSpecificFileUpload = useCallback(
     async (acceptedFiles: File[]) => {
@@ -1261,18 +1568,9 @@ export default function useChatController({
       }
 
       try {
-        const response = await authenticatedFetch(
-          "/api/chat/seed-chat-session-from-slack",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              chat_session_id: slackChatId,
-            }),
-          }
-        );
+        const response = await seedChatFromSlack({
+          chat_session_id: slackChatId,
+        });
 
         if (!response.ok) {
           throw new Error("Failed to seed chat from Slack");
@@ -1295,9 +1593,7 @@ export default function useChatController({
     if (!liveAgent?.id) return; // avoid calling with undefined persona id
 
     async function fetchMaxTokens() {
-      const response = await authenticatedFetch(
-        `/api/chat/max-selected-document-tokens?persona_id=${liveAgent?.id}`
-      );
+      const response = await fetchAgentDocumentTokenMaximum(liveAgent?.id);
       if (response.ok) {
         const maxTokens = (await response.json()).max_tokens as number;
         setMaxTokens(maxTokens);
@@ -1332,6 +1628,7 @@ export default function useChatController({
     // actions
     onSubmit,
     stopGenerating,
+    attachToActiveRun,
     handleMessageSpecificFileUpload,
   };
 }

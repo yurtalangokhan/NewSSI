@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import type { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import FlowCard from "@/sections/cards/FlowCard";
 
-jest.mock("@/hooks/useAgents", () => ({
+jest.mock("@/lib/api/domains/agents/hooks", () => ({
   useAgents: () => ({ refresh: jest.fn() }),
   usePinnedAgents: () => ({ pinnedAgents: [], togglePinnedAgent: jest.fn() }),
   useAgent: () => ({ agent: null, refresh: jest.fn() }),

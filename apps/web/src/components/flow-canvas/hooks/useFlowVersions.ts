@@ -1,6 +1,14 @@
+import { agentsEndpoints } from "@/lib/api/domains/agents/endpoints";
+import {
+  fetchCanvasFlowVersion,
+  fetchFlowVersions,
+  publishCanvasFlow,
+  rollbackCanvasFlow,
+} from "@/lib/api/domains/agents/api";
+
 /**
  * Version history + publish + rollback for a flow-backed agent
- * definition. Mirrors `FlowVersionsRoute.py` exactly — see that file's
+ * definition. Mirrors `flow_versions_route.py` exactly — see that file's
  * response shapes; not hand-guessed.
  *
  * Publish/rollback error handling follows design spec §10 precisely:
@@ -8,7 +16,7 @@
  *   `"conflict"` result so the caller (VersionBar) can offer
  *   reload-and-retry — never silently retried, never discarding the
  *   user's draft.
- * - 400 with `{detail: {errors: [...]}}` → publish refused by server-side
+ * - 400 with `error.details.errors` (the ResponseModel error envelope) → publish refused by server-side
  *   validation. Returned as `"invalid"` with the raw issues so the
  *   caller can route each one to its `node_id`.
  * P3's `publish_flow` validates regardless of client state — this hook's
@@ -18,9 +26,7 @@
  */
 
 import useSWR from "swr";
-import { errorHandlingFetcher } from "@/lib/fetcher";
 import type { WireFlowSpec } from "../types/flow";
-import { flowApi } from "@/components/flow-canvas/api/flowApi";
 
 export type FlowVersionStatus = "draft" | "published" | "archived";
 
@@ -71,8 +77,8 @@ export function useFlowVersions(definitionId: string) {
     isLoading,
     mutate,
   } = useSWR<FlowVersion[]>(
-    flowApi.versions(definitionId),
-    errorHandlingFetcher
+    agentsEndpoints.flowVersions(definitionId).browserPath,
+    () => fetchFlowVersions<FlowVersion[]>(definitionId)
   );
 
   async function publish(
@@ -84,12 +90,7 @@ export function useFlowVersions(definitionId: string) {
       body.expected_version_no = expectedVersionNo;
     if (notes) body.notes = notes;
 
-    const res = await fetch(flowApi.publish(definitionId), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    });
+    const res = await publishCanvasFlow(definitionId, body);
 
     if (res.status === 409) {
       const body = await safeJson(res);
@@ -99,8 +100,10 @@ export function useFlowVersions(definitionId: string) {
 
     if (res.status === 400) {
       const body = await safeJson(res);
-      const detail = body?.detail as { errors?: PublishIssue[] } | undefined;
-      return { kind: "invalid", errors: detail?.errors ?? [] };
+      const error = body?.error as
+        | { details?: { errors?: PublishIssue[] } }
+        | undefined;
+      return { kind: "invalid", errors: error?.details?.errors ?? [] };
     }
 
     if (!res.ok) {
@@ -113,11 +116,8 @@ export function useFlowVersions(definitionId: string) {
   }
 
   async function rollback(targetVersionNo: number): Promise<FlowVersion> {
-    const res = await fetch(flowApi.rollback(definitionId), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ target_version_no: targetVersionNo }),
+    const res = await rollbackCanvasFlow(definitionId, {
+      target_version_no: targetVersionNo,
     });
 
     if (!res.ok) {
@@ -132,9 +132,7 @@ export function useFlowVersions(definitionId: string) {
   async function getVersionDetail(
     versionNo: number
   ): Promise<FlowVersionDetail | null> {
-    const res = await fetch(flowApi.version(definitionId, versionNo), {
-      credentials: "include",
-    });
+    const res = await fetchCanvasFlowVersion(definitionId, versionNo);
     if (res.status === 404) return null;
     if (!res.ok)
       throw new Error(`Failed to load version ${versionNo}: ${res.status}`);

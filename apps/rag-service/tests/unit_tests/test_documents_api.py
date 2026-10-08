@@ -1,21 +1,14 @@
 import json
 
-from langconnect.models.graph import BuildProgress
+from src.graph.schemas import BuildProgress
 from tests.unit_tests.fixtures import (
+    gateway_headers,
     get_async_test_client,
 )
 
-USER_1_HEADERS = {
-    "Authorization": "Bearer user1",
-}
+USER_1_HEADERS = gateway_headers("user1")
 
-USER_2_HEADERS = {
-    "Authorization": "Bearer user2",
-}
-
-NO_SUCH_USER_HEADERS = {
-    "Authorization": "Bearer no_such_user",
-}
+USER_2_HEADERS = gateway_headers("user2")
 
 
 def idempotency_headers(base_headers: dict[str, str], key: str) -> dict[str, str]:
@@ -90,7 +83,9 @@ async def test_documents_create_and_list_and_delete_and_search() -> None:
         assert results[0]["id"] == docs[0]["id"]
         assert results[0]["page_content"] == "Hello world. This is a test document."
         assert results[0]["metadata"]["file_id"] == docs[0]["metadata"]["file_id"]
-        assert results[0]["metadata"]["source"] is None
+        # The source is the name the uploader gave the file, not the
+        # server's spooled temp path -- see test_document_source_metadata.py.
+        assert results[0]["metadata"]["source"] == "test.txt"
 
         # Delete a document
         doc_id = docs[0]["id"]
@@ -158,7 +153,7 @@ async def test_documents_search_empty_query() -> None:
             headers=USER_1_HEADERS,
         )
         assert resp.status_code == 400
-        assert error_body(resp)["code"] == "request.invalid"
+        assert error_body(resp)["code"] == "document.search_query_empty"
         assert "Search query cannot be empty" in error_body(resp)["message"]
 
 
@@ -404,7 +399,7 @@ async def test_document_mutations_blocked_while_graph_building(
             return BuildProgress(collection_id=collection_id, status="building")
 
         monkeypatch.setattr(
-            "langconnect.services.build_lock.get_build_progress",
+            "src.collections.write_guards.get_build_progress",
             _fake_progress,
         )
 
@@ -566,3 +561,27 @@ async def test_documents_create_ownership_validation():
         assert response.status_code == 404
         assert error_body(response)["code"] == "collection.not_found"
         assert "Collection not found" in error_body(response)["message"]
+
+
+async def test_documents_create_rejects_a_batch_over_the_file_count_limit() -> None:
+    """Spec T4: MAX_FILE_COUNT is enforced before any file is read or any
+    collection-mutability check runs.
+    """
+    async with get_async_test_client() as client:
+        collection_response = await client.post(
+            "/api/v1/collections",
+            json={"name": "file_count_limit_col", "metadata": {}},
+            headers=idempotency_headers(USER_1_HEADERS, "docs-col-create-file-count"),
+        )
+        assert collection_response.status_code == 201
+        collection_id = collection_response.json()["uuid"]
+
+        files = [("files", (f"f{i}.txt", b"x", "text/plain")) for i in range(21)]
+
+        response = await client.post(
+            f"/api/v1/collections/{collection_id}/documents",
+            files=files,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-file-count-limit"),
+        )
+
+        assert response.status_code == 413

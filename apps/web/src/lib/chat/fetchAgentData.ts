@@ -1,6 +1,6 @@
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
-import { filterAgents } from "@/lib/agents";
-import { fetchAgentsSS } from "@/lib/agentsSS";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
+import { filterAgents } from "@/lib/api/domains/agents/selectors";
+import { fetchAgentsSS } from "@/lib/api/domains/agents/server";
 
 export async function fetchAgentData(): Promise<MinimalPersonaSnapshot[]> {
   try {

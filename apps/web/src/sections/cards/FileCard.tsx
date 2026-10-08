@@ -1,9 +1,10 @@
 "use client";
+import { chatEndpoints } from "@/lib/api/domains/chat/endpoints";
 
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { ProjectFile } from "@/app/app/projects/projectsService";
-import { UserFileStatus } from "@/app/app/projects/projectsService";
+import type { ProjectFile } from "@/lib/api/domains/projects/types";
+import { UserFileStatus } from "@/lib/api/domains/projects/types";
 import { cn, isImageFile } from "@/lib/utils";
 import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import { SvgFileText, SvgX } from "@opal/icons";
@@ -150,7 +151,7 @@ export function FileCard({
       return `data:${fileWithData._mime_type};base64,${fileWithData._inline_data}`;
     }
     if (file.file_id) {
-      return `/api/chat/file/${file.file_id}`;
+      return chatEndpoints.fetchCsvChatFile(file.file_id).browserPath;
     }
     return null;
   }, [

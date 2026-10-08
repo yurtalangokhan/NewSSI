@@ -1,10 +1,10 @@
+import { validateAgentCompositionResponse } from "@/lib/api/domains/agents/api";
 /**
  * Hook for real-time composition validation.
  * Validates agent composition before saving.
  */
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { authenticatedFetch } from "@/lib/fetcher";
 
 interface CompositionValidationResult {
   valid: boolean;
@@ -53,20 +53,11 @@ export function useCompositionValidation(
           setIsValidating(true);
           setError(null);
 
-          const response = await authenticatedFetch(
-            "/api/agent-definitions/validate-composition",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                agent_id: agentId,
-                graph_schema: graphSchema,
-                sub_agent_ids: subAgentIds,
-              }),
-            }
-          );
+          const response = await validateAgentCompositionResponse({
+            agent_id: agentId,
+            graph_schema: graphSchema,
+            sub_agent_ids: subAgentIds,
+          });
 
           if (!response.ok) {
             throw new Error(`Validation failed: ${response.statusText}`);

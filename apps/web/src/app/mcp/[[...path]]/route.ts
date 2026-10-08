@@ -1,5 +1,9 @@
-import { MCP_INTERNAL_URL } from "@/lib/constants";
+import { toolsEndpoints } from "@/lib/api/domains/tools/endpoints";
+
 import { NextRequest, NextResponse } from "next/server";
+import { backendRequest } from "@/lib/api/http/server";
+import { stripTrustedContextHeaders } from "@/lib/api/proxySecurity";
+import { appSettings } from "@/lib/settings";
 
 type RouteContext = {
   params?: Promise<{
@@ -23,23 +27,21 @@ const proxyHandler = async (
 
   try {
     const resolvedParams = context.params ? await context.params : undefined;
-    const targetUrl = buildTargetUrl(
-      resolvedParams?.path,
-      request.nextUrl.searchParams
-    );
     const headers = buildForwardHeaders(request.headers);
-    const fetchOptions: RequestInit & { duplex?: "half" } = {
+
+    // Use the same public tools service as other web requests, forwarding auth.
+    const response = await backendRequest({
+      ...toolsEndpoints.mcpProxy(resolvedParams?.path).backend,
+      query: request.nextUrl.searchParams,
       method: request.method,
       headers,
       signal: request.signal,
-    };
-
-    if (supportsRequestBody(request) && request.body) {
-      fetchOptions.body = request.body;
-      fetchOptions.duplex = "half";
-    }
-
-    const response = await fetch(targetUrl, fetchOptions);
+      // @ts-ignore - Required by undici for stream request bodies in Node runtime.
+      duplex: "half",
+      ...(supportsRequestBody(request) && request.body
+        ? { body: request.body }
+        : {}),
+    });
     return response;
   } catch (error: unknown) {
     console.error("MCP Proxy error:", error);
@@ -55,10 +57,10 @@ const proxyHandler = async (
 };
 
 const isProxyEnabled = (): boolean => {
-  if (process.env.OVERRIDE_API_PRODUCTION === "true") {
+  if (appSettings.OVERRIDE_API_PRODUCTION) {
     return true;
   }
-  return process.env.NODE_ENV === "development";
+  return appSettings.NODE_ENV === "development";
 };
 
 const buildForwardHeaders = (requestHeaders: Headers): Headers => {
@@ -66,36 +68,13 @@ const buildForwardHeaders = (requestHeaders: Headers): Headers => {
   headers.delete("host");
   headers.delete("connection");
   headers.delete("content-length");
+  stripTrustedContextHeaders(headers);
   return headers;
 };
 
 const supportsRequestBody = (request: NextRequest): boolean => {
   const method = request.method.toUpperCase();
   return method !== "GET" && method !== "HEAD";
-};
-
-const trimSlashes = (value: string): string => value.replace(/^\/+|\/+$/g, "");
-
-const sanitizePathSegments = (segments: string[] | undefined): string[] =>
-  segments?.filter(Boolean).map((segment) => encodeURIComponent(segment)) ?? [];
-
-const buildTargetUrl = (
-  pathSegments: string[] | undefined,
-  searchParams: URLSearchParams
-): string => {
-  const target = new URL(MCP_INTERNAL_URL);
-  const forwardedPath = sanitizePathSegments(pathSegments).join("/");
-
-  const basePath = trimSlashes(target.pathname);
-  const combinedPath = [basePath, trimSlashes(forwardedPath)]
-    .filter(Boolean)
-    .join("/");
-
-  target.pathname = combinedPath ? `/${combinedPath}` : "/";
-  const queryString = searchParams.toString();
-  target.search = queryString;
-
-  return target.toString();
 };
 
 type Handler = (

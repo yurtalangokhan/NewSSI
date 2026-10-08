@@ -1,10 +1,11 @@
 "use client";
+import { datasourcesEndpoints } from "@/lib/api/domains/datasources/endpoints";
 
 import { useTranslation } from "react-i18next";
-import { buildCCPairInfoUrl } from "@/app/admin/connector/[ccPairId]/lib";
+
 import { PageSelector } from "@/components/PageSelector";
 import { IndexAttemptStatus } from "@/components/Status";
-import { deleteCCPair } from "@/lib/documentDeletion";
+import { deleteCCPair } from "@/lib/api/domains/datasources/hooks";
 import { FailedConnectorIndexingStatus } from "@/lib/types";
 import Button from "@/refresh-components/buttons/Button";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
@@ -61,7 +62,11 @@ export function FailedReIndexAttempts({
                 pendingConnectorDeletion.connectorId,
                 pendingConnectorDeletion.credentialId,
                 () =>
-                  mutate(buildCCPairInfoUrl(pendingConnectorDeletion.ccPairId))
+                  mutate(
+                    datasourcesEndpoints.ccPairInfoWithQuery(
+                      pendingConnectorDeletion.ccPairId
+                    ).browserPath
+                  )
               );
             } catch (error) {
               console.error("Error deleting connector:", error);
@@ -158,9 +163,9 @@ export function FailedReIndexAttempts({
                               reindexingProgress.credential_id,
                               () =>
                                 mutate(
-                                  buildCCPairInfoUrl(
+                                  datasourcesEndpoints.ccPairInfoWithQuery(
                                     reindexingProgress.cc_pair_id
-                                  )
+                                  ).browserPath
                                 )
                             );
                           } catch (error) {

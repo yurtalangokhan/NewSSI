@@ -122,9 +122,21 @@ export function FlowEditorShell({
       // outside the editor page's subtree, so the `--lf-*` tokens scoped
       // to that class would otherwise not resolve.
       className={cn(
-        "langflow-canvas fixed inset-0 z-canvas-fullscreen flex h-screen w-screen bg-canvas",
+        // `flex-col`: callers that put a top bar ahead of the canvas row in
+        // `children` (FlowAgentEditorPage's VersionBar) need it stacked
+        // above, not squeezed beside it — a row direction would put the
+        // canvas next to a full-height toolbar instead of below it.
+        "langflow-canvas fixed inset-0 z-canvas-fullscreen flex flex-col h-screen w-screen bg-canvas",
         isNestedInModal && "z-canvas-fullscreen-modal",
-        "animate-in fade-in zoom-in-95 duration-200"
+        // `fade-in` only — never a `zoom-in-*`/scale transform here. This
+        // portal remount is exactly when xyflow's per-node ResizeObserver
+        // takes its one-time getBoundingClientRect() handle measurement;
+        // a scale transform in flight on this ancestor at that instant
+        // gets baked into every handle's offset (xyflow only normalizes by
+        // its own pan/zoom, not external CSS transforms) and is never
+        // remeasured afterward, permanently detaching edges from their
+        // ports.
+        "animate-in fade-in duration-200"
       )}
       // Opened from inside a modal, Radix's Dialog sets
       // `document.body.style.pointerEvents = "none"` while it's open and

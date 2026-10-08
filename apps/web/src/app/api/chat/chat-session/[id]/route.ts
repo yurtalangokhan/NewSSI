@@ -1,8 +1,7 @@
-import { getInternalUrl } from "@/lib/env.server";
-import { buildServiceUrl } from "@/lib/api/gatewayRouting";
-import { NextResponse } from "next/server";
+import { chatEndpoints } from "@/lib/api/domains/chat/endpoints";
+import { backendRequest } from "@/lib/api/http/server";
 
-const INTERNAL_URL = getInternalUrl();
+import { NextResponse } from "next/server";
 
 export async function GET(
   request: Request,
@@ -11,18 +10,16 @@ export async function GET(
   const { id } = await params;
 
   try {
-    // Proxy to backend for chat session share status
-    const response = await fetch(
-      buildServiceUrl(
-        INTERNAL_URL,
-        "agent",
-        `/api/chat/get-chat-session/${id}`
-      ).toString()
-    );
-    const data = await response.json();
+    const response = await backendRequest({
+      ...chatEndpoints.shareSession(id).backend,
+    });
+    if (!response.ok) throw new Error("Backend request failed");
+    const data = (await response.json()) as {
+      chat_session_id: string;
+      shared_status: string;
+    };
     return NextResponse.json(data);
   } catch (error) {
-    // Return default private status if backend not available
     return NextResponse.json({
       chat_session_id: id,
       shared_status: "private",
@@ -38,9 +35,6 @@ export async function PATCH(
 
   try {
     const body = await request.json();
-
-    // Proxy to backend for chat session share status update
-    // For now, just return success
     return NextResponse.json({
       chat_session_id: id,
       shared_status: body.shared_status || "private",

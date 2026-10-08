@@ -12,9 +12,9 @@ async def test_live_endpoint_override_preserves_credentials_and_saved_config(mon
     config = {"host": "postgres", "port": 5432, "password": "saved", "database": "source"}
     monkeypatch.setattr(
         tools,
-        "get_settings",
-        lambda: SimpleNamespace(
-            connector_postgres_endpoints=json.dumps(
+        "env",
+        SimpleNamespace(
+            CONNECTOR_POSTGRES_ENDPOINTS=json.dumps(
                 {"assigned": {"host": "published", "port": 8124}}
             )
         ),
@@ -41,9 +41,9 @@ async def test_live_endpoint_override_preserves_credentials_and_saved_config(mon
 async def test_endpoint_override_cannot_change_credentials(monkeypatch):
     monkeypatch.setattr(
         tools,
-        "get_settings",
-        lambda: SimpleNamespace(
-            connector_postgres_endpoints=json.dumps({"assigned": {"password": "replacement"}})
+        "env",
+        SimpleNamespace(
+            CONNECTOR_POSTGRES_ENDPOINTS=json.dumps({"assigned": {"password": "replacement"}})
         ),
     )
     monkeypatch.setattr(

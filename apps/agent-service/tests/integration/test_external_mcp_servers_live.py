@@ -118,8 +118,8 @@ async def _list_tools(url: str, headers: dict[str, str] | None = None):
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("server_url, strict", OAUTH_SERVERS)
 async def test_oauth_discovery_bootstraps_authorization_flow(server_url: str, strict: bool):
-    from service.MCPCredentialService import MCPAuthError
-    from service.MCPOAuthService import MCPOAuthService
+    from service.mcp.mcp_credential_service import MCPAuthError
+    from service.mcp.mcp_oauth_service import MCPOAuthService
 
     svc = MCPOAuthService()
 
@@ -188,7 +188,7 @@ async def test_print_infra_reachability_summary(capsys):
         url = p.values[0]
         status = "?"
         try:
-            from service.MCPOAuthService import MCPOAuthService
+            from service.mcp.mcp_oauth_service import MCPOAuthService
 
             md = await MCPOAuthService().discover(url)
             status = f"oauth ok  (authz={md['authorization_endpoint']}, dcr={'yes' if md.get('registration_endpoint') else 'no'})"

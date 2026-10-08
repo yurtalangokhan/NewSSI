@@ -13,7 +13,7 @@
  * with its own label/clear chrome; upstream's is a bare `Input` with an
  * icon, which is what this now renders.
  *
- * Adapted for Onyx: data comes from GET /flow-components (P1 Task 6) via
+ * Adapted for Atlas: data comes from GET /flow-components (P1 Task 6) via
  * useSWR, already grouped by category server-side — Langflow's own
  * category-grouping/bundle logic is not needed. Search is a from-scratch
  * matcher (componentSearch.ts), not a Fuse.js port (fuse.js is not a
@@ -24,8 +24,10 @@
 
 "use client";
 
+import type { StoreApi } from "zustand";
 import EmptyMessage from "@/refresh-components/EmptyMessage";
 import { cn } from "@/lib/utils";
+import type { FlowStore } from "../stores/flowStore";
 import {
   SvgChevronRight,
   SvgClock,
@@ -157,9 +159,17 @@ export type ComponentSidebarProps = {
    * collapse-panel trigger lives here rather than as an absolute overlay
    * on top of the search row, which it used to visually collide with. */
   onCollapse?: () => void;
+  /** Threaded down to every `ComponentSidebarItem` so hovering one can
+   * publish its output types to the same canvas store `TemplateNode` reads
+   * from (flow-canvas-connect-ux). Optional — omitting it just means
+   * hovering shows no port-dot preview and glows nothing. */
+  store?: StoreApi<FlowStore>;
 };
 
-export function ComponentSidebar({ onCollapse }: ComponentSidebarProps = {}) {
+export function ComponentSidebar({
+  onCollapse,
+  store,
+}: ComponentSidebarProps = {}) {
   const { t } = useTranslation();
   const { data: grouped, isLoading, error } = useComponentTemplates();
   const { recents, recordUsage } = useRecentComponents();
@@ -291,7 +301,7 @@ export function ComponentSidebar({ onCollapse }: ComponentSidebarProps = {}) {
         <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
           {recentTemplates.length > 0 && !search && (
             <CategorySection
-              label={t("flowCanvas.sidebar.recentlyUsed", "Recently used")}
+              label={t("flowCanvas.sidebar.recentlyUsed", "Recently Used")}
               icon={SvgClock}
               open={!collapsedCategories.has(RECENTS_CATEGORY)}
               onToggle={() => toggleCategory(RECENTS_CATEGORY)}
@@ -300,7 +310,8 @@ export function ComponentSidebar({ onCollapse }: ComponentSidebarProps = {}) {
                 <ComponentSidebarItem
                   key={`recent-${t.type}`}
                   template={t}
-                  onDragStart={recordUsage}
+                  onUsed={recordUsage}
+                  store={store}
                 />
               ))}
             </CategorySection>
@@ -327,7 +338,8 @@ export function ComponentSidebar({ onCollapse }: ComponentSidebarProps = {}) {
                   <ComponentSidebarItem
                     key={t.type}
                     template={t}
-                    onDragStart={recordUsage}
+                    onUsed={recordUsage}
+                    store={store}
                   />
                 ))}
               </CategorySection>

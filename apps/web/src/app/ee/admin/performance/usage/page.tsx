@@ -1,15 +1,15 @@
 "use client";
 
 import { AdminDateRangeSelector } from "@/components/dateRangeSelectors/AdminDateRangeSelector";
-import { OnyxBotChart } from "@/app/ee/admin/performance/usage/OnyxBotChart";
+import { AtlasBotChart } from "@/app/ee/admin/performance/usage/AtlasBotChart";
 import { FeedbackChart } from "@/app/ee/admin/performance/usage/FeedbackChart";
 import { QueryPerformanceChart } from "@/app/ee/admin/performance/usage/QueryPerformanceChart";
 import { PersonaMessagesChart } from "@/app/ee/admin/performance/usage/PersonaMessagesChart";
 import { useTimeRange } from "@/app/ee/admin/performance/lib";
 import UsageReports from "@/app/ee/admin/performance/usage/UsageReports";
 import Separator from "@/refresh-components/Separator";
-import { useAdminPersonas } from "@/hooks/useAdminPersonas";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { useAdminPersonas } from "@/lib/api/domains/agents/hooks";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { useTranslation } from "react-i18next";
 
@@ -43,7 +43,7 @@ export default function AnalyticsPage() {
         />
         <QueryPerformanceChart timeRange={timeRange} />
         <FeedbackChart timeRange={timeRange} />
-        <OnyxBotChart timeRange={timeRange} />
+        <AtlasBotChart timeRange={timeRange} />
         <PersonaMessagesChart
           availablePersonas={personas}
           timeRange={timeRange}

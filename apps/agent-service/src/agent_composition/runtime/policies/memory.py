@@ -13,7 +13,7 @@ from typing import Any
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.runnables import RunnableConfig
 
-from core.logger import get_logger
+from core.observability.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -36,8 +36,9 @@ class MemoryPolicy:
       and persists them to the LangGraph store.
     - build_event_emitters: builds on-save event emitters for streaming.
 
-    Memory recall (pre-run enrichment) is handled by a Perceptron, not
-    this policy. This policy only handles post-run extraction and persistence.
+    This policy only handles post-run extraction and persistence. Pre-run
+    recall is not part of it, and no component performs it today: the
+    Perceptron port that was meant to is gone, having never been implemented.
     """
 
     key: str = "memory"
@@ -50,24 +51,15 @@ class MemoryPolicy:
         return self._config.enabled
 
     def _get_langgraph_store(self):
-        """Get the global LangGraph store for long-term memory.
+        """Resolve the process-wide LangGraph store, shared with the agent runtimes."""
+        from memory.recall import resolve_langgraph_store
 
-        This is the same lookup used by LazyLoadingAgent._get_langgraph_store.
-        """
-        try:
-            from service.LangGraphStoreService import get_langgraph_store
+        return resolve_langgraph_store()
 
-            return get_langgraph_store()
-        except Exception as exc:
-            logger.warning("[MemoryPolicy] Could not resolve LangGraph store: %s", exc)
-            return None
-
-    def _resolve_model(
-        self, configurable: dict[str, Any], default_model_key: str
-    ) -> BaseChatModel | None:
+    def _resolve_model(self, configurable: dict[str, Any], default_model_key: str) -> BaseChatModel | None:
         """Resolve the chat model from config or default."""
         try:
-            from core.llm import get_model_from_config
+            from infrastructure.llm.llm import get_model_from_config
 
             model_key = self._config.model_key or configurable.get("model") or default_model_key
             return get_model_from_config(configurable, model_key)
@@ -97,7 +89,7 @@ class MemoryPolicy:
             return
 
         try:
-            from memory.long_term import build_event_emitters, extract_and_save_memories
+            from memory.long_term import extract_memories_for_turn
 
             model = self._resolve_model(configurable, "default")
             if model is None:
@@ -109,20 +101,15 @@ class MemoryPolicy:
                 output_messages = output["messages"]
 
             all_messages = list(original_messages) + list(output_messages)
-            extract_mem = configurable.get("extract_memory", self._config.extract_memory)
-            _, on_save = build_event_emitters(configurable)
-            await extract_and_save_memories(
-                store,
-                user_id,
-                all_messages,
-                model,
-                memories,
-                on_save=on_save,
-                extract_memory=extract_mem,
-            )
+            # This policy's own default (self._config.extract_memory) only
+            # applies when configurable doesn't say otherwise.
+            configurable = {
+                **configurable,
+                "extract_memory": configurable.get("extract_memory", self._config.extract_memory),
+            }
+            await extract_memories_for_turn(user_id, configurable, all_messages, model, memories)
         except Exception as e:
             logger.warning("[MemoryPolicy] Memory save failed: %s", e)
 
     async def close(self) -> None:
         """Memory policy has no persistent resources to close."""
-        pass

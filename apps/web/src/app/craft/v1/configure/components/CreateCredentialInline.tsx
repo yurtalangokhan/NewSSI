@@ -14,7 +14,7 @@ import {
   credentialTemplates,
   getDisplayNameForCredentialKey,
 } from "@/lib/connectors/credentials";
-import { createCredential } from "@/lib/credential";
+import { createCredential } from "@/lib/api/domains/datasources/api";
 import { getSourceMetadata } from "@/lib/sources";
 
 interface CreateCredentialInlineProps {

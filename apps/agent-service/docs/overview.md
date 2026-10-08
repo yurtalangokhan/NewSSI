@@ -12,7 +12,6 @@ agent runtime code in separate modules.
 | Area | Location |
 |---|---|
 | FastAPI routes | `src/api/routes/` |
-| Controllers | `src/controller/` |
 | Business services | `src/service/` |
 | Repositories and persistence | `src/repository/`, `src/core/db/` |
 | Agent composition | `src/agent_composition/` |

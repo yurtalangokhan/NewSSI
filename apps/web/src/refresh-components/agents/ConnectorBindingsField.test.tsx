@@ -1,4 +1,5 @@
 import React from "react";
+import "@/i18n/config";
 import { Formik } from "formik";
 import { fireEvent, render, screen } from "@tests/setup/test-utils";
 

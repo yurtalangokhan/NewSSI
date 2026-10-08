@@ -1,7 +1,6 @@
 "use client";
 
-import { authenticatedFetch } from "@/lib/fetcher";
-
+import { parseApiErrorResponse } from "@/lib/api/errors";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
@@ -26,7 +25,7 @@ interface OAuthCallbackConfig {
   defaultRedirectPath?: string;
 
   // API integration - all flows now use the same pattern
-  callbackApiUrl: string; // Required - API endpoint to call
+  callback: (code: string, state: string) => Promise<Response>;
 
   // Error message mapping
   errorMessageMap?: Record<string, string>;
@@ -118,37 +117,20 @@ export default function OAuthCallbackPage({ config }: OAuthCallbackPageProps) {
 
       try {
         // Make API call to process callback - all flows use this pattern now
-        const url = `${config.callbackApiUrl}?code=${encodeURIComponent(
-          code
-        )}&state=${encodeURIComponent(state)}`;
-
-        const response = await authenticatedFetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        });
+        const response = await config.callback(code, state);
 
         if (!response.ok) {
-          let errorMessage = "Failed to complete authorization";
-          try {
-            const errorData = await response.json();
-            if (errorData.detail && config.errorMessageMap) {
-              // Use custom error mapping
-              for (const [pattern, message] of Object.entries(
-                config.errorMessageMap
-              )) {
-                if (errorData.detail.includes(pattern)) {
-                  errorMessage = message;
-                  break;
-                }
-              }
-            } else if (errorData.error) {
-              errorMessage = errorData.error;
+          // The backend's own message is already localized; the per-flow map
+          // only refines it for failures a flow wants to word differently.
+          const parsed = await parseApiErrorResponse(response);
+          let errorMessage = parsed.userMessage;
+          for (const [pattern, message] of Object.entries(
+            config.errorMessageMap ?? {}
+          )) {
+            if (parsed.userMessage.includes(pattern)) {
+              errorMessage = message;
+              break;
             }
-          } catch (parseError) {
-            console.error("Error parsing response:", parseError);
           }
           throw new Error(errorMessage);
         }

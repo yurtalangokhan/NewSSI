@@ -8,7 +8,7 @@ import {
   ResearchAgentPacket,
   ResearchAgentStart,
   IntermediateReportDelta,
-} from "@/app/app/services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 import {
   MessageRenderer,
   FullChatState,
@@ -162,11 +162,11 @@ export const ResearchAgentRenderer: MessageRenderer<
     [fullReportContent]
   );
 
-  // Get markdown components for rendering (stable across renders)
-  // Uses processed content so code block extraction offsets match rendered content
+  // Get markdown components for rendering (stable across renders).
+  // renderMarkdown hands processedReportContent to the code renderer, so code
+  // block extraction offsets match the rendered content.
   const markdownComponents = useMarkdownComponents(
     state,
-    processedReportContent,
     "text-text-03 font-main-ui-body"
   );
 
@@ -181,9 +181,11 @@ export const ResearchAgentRenderer: MessageRenderer<
       renderMarkdown(
         processedReportContent,
         markdownComponents,
-        "text-text-03 font-main-ui-body"
+        "text-text-03 font-main-ui-body",
+        undefined,
+        { isStreaming: isReportStreaming }
       ),
-    [processedReportContent, markdownComponents]
+    [processedReportContent, markdownComponents, isReportStreaming]
   );
 
   // HIGHLIGHT mode: return raw content with header embedded in content

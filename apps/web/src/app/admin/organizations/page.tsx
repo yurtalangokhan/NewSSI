@@ -1,6 +1,26 @@
 "use client";
+import { accessEndpoints } from "@/lib/api/domains/access/endpoints";
 
-import { authenticatedFetch } from "@/lib/fetcher";
+import {
+  fetchOrganizationTreeLevelTwo,
+  fetchOrganizationScope,
+  fetchAllOrganizationMembers,
+  fetchOrganizationManagementCapability,
+} from "@/lib/api/domains/access/api";
+
+import { getOrganizationMatches } from "@/components/organization/organizationSearch";
+import { searchOrganizationTree } from "@/lib/api/domains/access/api";
+import { fetchOrganizationChildren } from "@/lib/api/domains/access/api";
+import { fetchOrganizationMembers } from "@/lib/api/domains/access/api";
+import { fetchOrganizationChildren as refreshOrganizationChildren } from "@/lib/api/domains/access/api";
+import { fetchOrganizationAncestors } from "@/lib/api/domains/access/api";
+import { createOrganizationNode } from "@/lib/api/domains/access/api";
+import { updateOrganizationNode } from "@/lib/api/domains/access/api";
+import { deleteOrganizationNode } from "@/lib/api/domains/access/api";
+import { moveOrganizationNode } from "@/lib/api/domains/access/api";
+import { addOrganizationMember } from "@/lib/api/domains/access/api";
+import { updateOrganizationMemberRole } from "@/lib/api/domains/access/api";
+import { removeOrganizationMember } from "@/lib/api/domains/access/api";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSWR, { mutate } from "swr";
@@ -18,6 +38,7 @@ import type {
   OrganizationNode,
   OrganizationRevealRequest,
 } from "@/components/organization/organizationTypes";
+import { OrganizationSummaryCounts } from "@/components/organization/OrganizationSummaryCounts";
 import { OrganizationUserAssignmentsPanel } from "@/components/organization/OrganizationUserAssignmentsPanel";
 import { toast } from "@/hooks/useToast";
 import { useUser } from "@/providers/UserProvider";
@@ -33,9 +54,9 @@ const DEFAULT_TREE_PANE_WIDTH = 480;
 const MIN_TREE_PANE_WIDTH = 320;
 const TREE_PANE_WIDTH_STORAGE_KEY = "admin-organizations-tree-pane-width";
 const ORGANIZATION_TREE_KEY =
-  "/api/user-service/organizations/tree?max_depth=2";
-const ORGANIZATION_LAYOUT_KEY = "/api/user-service/organizations/layout";
-const ORGANIZATION_MEMBERS_KEY = "/api/user-service/organizations/members";
+  accessEndpoints.fetchOrganizationTreeLevelTwo().browserPath;
+const ORGANIZATION_MEMBERS_KEY =
+  accessEndpoints.fetchAllOrganizationMembers().browserPath;
 const SHOW_MEMBERS_STORAGE_KEY = "admin-organizations-show-members";
 
 function TabLoadingDots() {
@@ -64,11 +85,23 @@ function findOrganization(
   return null;
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
+async function fetchJson<T>(request: Promise<Response>): Promise<T> {
+  const response = await request;
   if (!response.ok)
     throw new Error(await responseDetail(response, "Request failed"));
   return response.json();
+}
+
+function findLoadedAncestors(
+  organizations: OrganizationNode[],
+  id: string
+): OrganizationNode[] | null {
+  for (const organization of organizations) {
+    if (organization.id === id) return [];
+    const ancestors = findLoadedAncestors(organization.children ?? [], id);
+    if (ancestors) return [organization, ...ancestors];
+  }
+  return null;
 }
 
 async function responseDetail(response: Response, fallback: string) {
@@ -137,10 +170,15 @@ interface PendingReveal extends OrganizationRevealRequest {
 }
 
 export default function OrganizationsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { hasPermission } = useUser();
-  const canCreateRoot = hasPermission("org:create");
-  const canEditLayout = hasPermission("org:update");
+  const { data: organizationScope } = useSWR<{
+    global_access: boolean;
+    root_ids: string[];
+  }>(accessEndpoints.organizationScope.browserPath, fetchOrganizationScope);
+  const canCreateRoot =
+    hasPermission("org:create") && organizationScope?.global_access === true;
+  const canMoveOrganization = hasPermission("org:move");
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<OrganizationNode[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -248,7 +286,11 @@ export default function OrganizationsPage() {
 
   const { data: treeData, isLoading } = useSWR<
     { roots: OrganizationNode[] } | OrganizationNode[]
-  >(ORGANIZATION_TREE_KEY, fetchJson);
+  >(ORGANIZATION_TREE_KEY, () =>
+    fetchJson<{ roots: OrganizationNode[] } | OrganizationNode[]>(
+      fetchOrganizationTreeLevelTwo()
+    )
+  );
   const rawOrganizations = useMemo(() => {
     if (!treeData) return [];
     return "roots" in treeData ? treeData.roots : treeData;
@@ -279,13 +321,14 @@ export default function OrganizationsPage() {
       searchControllerRef.current = controller;
       setSearchLoading(true);
       setSearchError(null);
+      let useLoadedMatches = true;
       try {
-        const response = await fetch(
-          `/api/user-service/organizations/search?q=${encodeURIComponent(
-            trimmedQuery
-          )}&max_results=100`,
-          { signal: controller.signal }
+        const response = await searchOrganizationTree(
+          encodeURIComponent(trimmedQuery),
+          controller.signal,
+          false
         );
+        useLoadedMatches = response.status !== 401 && response.status !== 403;
         if (!response.ok) throw new Error("organization-search-failed");
         const data = (await response.json()) as {
           results?: OrganizationNode[];
@@ -306,14 +349,29 @@ export default function OrganizationsPage() {
         ) {
           return;
         }
-        setSearchError(t("admin.organizations.tree.searchFailed"));
+        const matches = useLoadedMatches
+          ? getOrganizationMatches(
+              organizations,
+              trimmedQuery,
+              i18n.language
+            ).slice(0, 100)
+          : [];
+        setSearchResults(matches);
+        setResultsLimited(false);
+        setSearchError(
+          t(
+            matches.length
+              ? "admin.organizations.tree.searchLoadedOnly"
+              : "admin.organizations.tree.searchFailed"
+          )
+        );
       } finally {
         if (requestId === searchRequestIdRef.current) {
           setSearchLoading(false);
         }
       }
     },
-    [t]
+    [organizations, i18n.language, t]
   );
 
   useEffect(
@@ -323,12 +381,16 @@ export default function OrganizationsPage() {
     []
   );
   const membersKey = selectedOrg
-    ? `/api/user-service/organizations/${selectedOrg.id}/users`
+    ? accessEndpoints.fetchOrganizationMembers(selectedOrg.id).browserPath
     : null;
   const { data: membersData, isLoading: membersLoading } = useSWR<{
     users: OrganizationMember[];
     count: number;
-  }>(membersKey, fetchJson);
+  }>(membersKey, () =>
+    fetchJson<{ users: OrganizationMember[]; count: number }>(
+      fetchOrganizationMembers(selectedOrg!.id)
+    )
+  );
   const members = membersData?.users ?? [];
   const {
     data: allMembersData,
@@ -337,7 +399,7 @@ export default function OrganizationsPage() {
   } = useSWR<{
     members_by_organization: OrganizationMembersByUnit;
     count: number;
-  }>(null, fetchJson);
+  }>(null, () => fetchJson(fetchAllOrganizationMembers()));
   const membersByOrganizationId = useMemo(() => {
     const base = allMembersData?.members_by_organization ?? {};
     const merged: OrganizationMembersByUnit = { ...base, ...unitMembersMap };
@@ -373,7 +435,7 @@ export default function OrganizationsPage() {
 
       if (shouldLoadChildren) {
         promises.push(
-          fetch(`/api/user-service/organizations/${orgId}/children`)
+          fetchOrganizationChildren(orgId)
             .then(async (res) => {
               if (res.ok) {
                 const data = await res.json();
@@ -391,7 +453,7 @@ export default function OrganizationsPage() {
 
       if (shouldLoadMembers) {
         promises.push(
-          fetch(`/api/user-service/organizations/${orgId}/users`)
+          fetchOrganizationMembers(orgId)
             .then(async (res) => {
               if (res.ok) {
                 const data = await res.json();
@@ -421,11 +483,16 @@ export default function OrganizationsPage() {
     [showMembers, subunitsByParentId, unitMembersMap]
   );
   const capabilityKey = selectedOrg
-    ? `/api/user-service/organizations/${selectedOrg.id}/management-capability`
+    ? accessEndpoints.fetchOrganizationManagementCapability(selectedOrg.id)
+        .browserPath
     : null;
   const { data: capability, isLoading: capabilityLoading } = useSWR<{
     editable: boolean;
-  }>(capabilityKey, fetchJson);
+  }>(capabilityKey, () =>
+    fetchJson<{ editable: boolean }>(
+      fetchOrganizationManagementCapability(selectedOrg!.id)
+    )
+  );
   const editable = capability?.editable === true;
 
   useEffect(() => {
@@ -452,9 +519,7 @@ export default function OrganizationsPage() {
     const results = await Promise.all(
       parentIds.map(async (parentId) => {
         try {
-          const response = await fetch(
-            `/api/user-service/organizations/${parentId}/children`
-          );
+          const response = await refreshOrganizationChildren(parentId);
           if (response.status === 404) {
             return { parentId, status: "removed" as const };
           }
@@ -503,14 +568,6 @@ export default function OrganizationsPage() {
     await Promise.all([mutate(ORGANIZATION_TREE_KEY), refreshSubunits()]);
   }, [refreshSubunits]);
 
-  const refreshOrganizationsAndLayout = useCallback(async () => {
-    await Promise.all([
-      mutate(ORGANIZATION_TREE_KEY),
-      mutate(ORGANIZATION_LAYOUT_KEY),
-      refreshSubunits(),
-    ]);
-  }, [refreshSubunits]);
-
   const handleSelectOrg = useCallback((organization: OrganizationNode) => {
     setSelectedOrgId(organization.id);
     setActiveTab("users");
@@ -521,41 +578,51 @@ export default function OrganizationsPage() {
       setRevealLoading(true);
       setSearchError(null);
       try {
-        const ancestorsResponse = await fetch(
-          `/api/user-service/organizations/${result.id}/ancestors`
-        );
-        if (!ancestorsResponse.ok) throw new Error("reveal-failed");
-        const ancestorsData = (await ancestorsResponse.json()) as {
-          ancestors?: OrganizationNode[];
-        };
-        const ancestors = Array.isArray(ancestorsData.ancestors)
-          ? ancestorsData.ancestors.filter(
-              (ancestor) => ancestor.id !== result.id
-            )
-          : [];
-        setSubunitsByParentId((current) => {
-          const next = { ...current };
-          let nestedChild = result;
-          [...ancestors].reverse().forEach((ancestor) => {
-            next[ancestor.id] = mergeOrganizationsById(
-              current[ancestor.id] ?? [],
-              [nestedChild]
+        let ancestors = findLoadedAncestors(organizations, result.id);
+        if (!ancestors) {
+          const response = await fetchOrganizationAncestors(result.id, false);
+          if (!response.ok) throw new Error("reveal-failed");
+          const data = await response.json();
+          if (!Array.isArray(data.ancestors)) throw new Error("reveal-failed");
+          ancestors = data.ancestors.filter(
+            (ancestor: OrganizationNode) => ancestor.id !== result.id
+          );
+        }
+        const ancestorNodes = ancestors ?? [];
+        // A path is not a complete child list. Fetch each level's siblings before
+        // marking it loaded, so counts and later expansion remain accurate.
+        const childLists = await Promise.all(
+          ancestorNodes.map(async (ancestor) => {
+            const cached = subunitsByParentIdRef.current[ancestor.id];
+            if (cached) return [ancestor.id, cached] as const;
+            const response = await fetchOrganizationChildren(
+              ancestor.id,
+              false
             );
-            nestedChild = {
-              ...ancestor,
-              children: mergeOrganizationsById(ancestor.children ?? [], [
-                nestedChild,
-              ]),
-              has_children: true,
-            };
-          });
-          return next;
-        });
+            if (!response.ok) throw new Error("reveal-failed");
+            const data = await response.json();
+            if (!Array.isArray(data.children)) throw new Error("reveal-failed");
+            return [
+              ancestor.id,
+              mergeOrganizationsById(data.children as OrganizationNode[]),
+            ] as const;
+          })
+        );
+        for (let index = 0; index < childLists.length; index++) {
+          const nextId = ancestorNodes[index + 1]?.id ?? result.id;
+          if (!childLists[index]![1].some((child) => child.id === nextId)) {
+            throw new Error("missing-target");
+          }
+        }
+        setSubunitsByParentId((current) => ({
+          ...current,
+          ...Object.fromEntries(childLists),
+        }));
         setPendingReveal({
           id: ++revealRequestIdRef.current,
           surface,
           result,
-          ancestorIds: ancestors.map(({ id }) => id),
+          ancestorIds: ancestorNodes.map(({ id }) => id),
         });
       } catch (error) {
         const message = t("admin.organizations.tree.revealFailed");
@@ -569,7 +636,7 @@ export default function OrganizationsPage() {
         setRevealLoading(false);
       }
     },
-    [t]
+    [organizations, t]
   );
 
   const handleRevealReady = useCallback(
@@ -589,14 +656,11 @@ export default function OrganizationsPage() {
         .replace(/\s+/g, "-")
         .replace(/-+/g, "-")
         .replace(/^-+|-+$/g, "");
-      const response = await authenticatedFetch(
-        "/api/user-service/organizations",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, code, parent_id: parentId }),
-        }
-      );
+      const response = await createOrganizationNode({
+        name,
+        code,
+        parent_id: parentId,
+      });
       if (!response.ok) {
         toast.error(
           await responseDetail(
@@ -606,22 +670,15 @@ export default function OrganizationsPage() {
         );
         return;
       }
-      await refreshOrganizationsAndLayout();
+      await refreshOrganizations();
       toast.success(t("admin.organizations.notifications.created"));
     },
-    [refreshOrganizationsAndLayout, t]
+    [refreshOrganizations, t]
   );
 
   const handleUpdateOrg = useCallback(
     async (id: string, updates: Partial<OrganizationNode>) => {
-      const response = await authenticatedFetch(
-        `/api/user-service/organizations/${id}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updates),
-        }
-      );
+      const response = await updateOrganizationNode(id, updates);
       if (!response.ok) {
         toast.error(
           await responseDetail(
@@ -638,12 +695,7 @@ export default function OrganizationsPage() {
 
   const handleDeleteOrg = useCallback(
     async (id: string) => {
-      const response = await authenticatedFetch(
-        `/api/user-service/organizations/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await deleteOrganizationNode(id);
       if (!response.ok) {
         toast.error(
           await responseDetail(
@@ -653,22 +705,17 @@ export default function OrganizationsPage() {
         );
         return;
       }
-      await refreshOrganizationsAndLayout();
+      await refreshOrganizations();
       if (selectedOrgId === id) setSelectedOrgId(null);
     },
-    [refreshOrganizationsAndLayout, selectedOrgId, t]
+    [refreshOrganizations, selectedOrgId, t]
   );
 
   const handleMoveOrg = useCallback(
     async (id: string, newParentId: string | null) => {
-      const response = await authenticatedFetch(
-        `/api/user-service/organizations/${id}/move`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ new_parent_id: newParentId }),
-        }
-      );
+      const response = await moveOrganizationNode(id, {
+        new_parent_id: newParentId,
+      });
       if (!response.ok) {
         toast.error(
           await responseDetail(
@@ -678,11 +725,11 @@ export default function OrganizationsPage() {
         );
         return false;
       }
-      await refreshOrganizationsAndLayout();
+      await refreshOrganizations();
       toast.success(t("admin.organizations.notifications.moved"));
       return true;
     },
-    [refreshOrganizationsAndLayout, t]
+    [refreshOrganizations, t]
   );
 
   async function refreshMembers() {
@@ -696,14 +743,10 @@ export default function OrganizationsPage() {
     role: OrganizationMember["role_in_org"]
   ) {
     if (!selectedOrg) return;
-    const response = await authenticatedFetch(
-      `/api/user-service/organizations/${selectedOrg.id}/users`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, role_in_org: role }),
-      }
-    );
+    const response = await addOrganizationMember(selectedOrg.id, {
+      user_id: userId,
+      role_in_org: role,
+    });
     if (!response.ok) {
       throw new Error(
         await responseDetail(
@@ -720,13 +763,10 @@ export default function OrganizationsPage() {
     role: OrganizationMember["role_in_org"]
   ) {
     if (!selectedOrg) return;
-    const response = await authenticatedFetch(
-      `/api/user-service/organizations/${selectedOrg.id}/users/${userId}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role_in_org: role }),
-      }
+    const response = await updateOrganizationMemberRole(
+      selectedOrg.id,
+      userId,
+      { role_in_org: role }
     );
     if (!response.ok) {
       toast.error(
@@ -747,10 +787,7 @@ export default function OrganizationsPage() {
       !confirm(t("admin.organizations.notifications.memberRemoveConfirm"))
     )
       return;
-    const response = await authenticatedFetch(
-      `/api/user-service/organizations/${selectedOrg.id}/users/${userId}`,
-      { method: "DELETE" }
-    );
+    const response = await removeOrganizationMember(selectedOrg.id, userId);
     if (!response.ok) {
       toast.error(
         await responseDetail(
@@ -849,7 +886,11 @@ export default function OrganizationsPage() {
                 "flex flex-col gap-4 border-b border-border-02 p-6"
               )}
             >
-              <div className={cn("flex items-start justify-between gap-6")}>
+              <div
+                className={cn(
+                  "flex flex-wrap items-center justify-between gap-4"
+                )}
+              >
                 <div className={cn("flex min-w-0 items-center gap-3")}>
                   <div
                     className={cn("rounded-12 bg-background-neutral-03 p-2")}
@@ -862,24 +903,11 @@ export default function OrganizationsPage() {
                     </Text>
                   </div>
                 </div>
-                <div className={cn("flex gap-6")}>
-                  <div className={cn("text-right")}>
-                    <Text figureSmallValue text04 as="p">
-                      {members.length}
-                    </Text>
-                    <Text figureSmallLabel text03>
-                      {t("admin.organizations.page.activeMembers")}
-                    </Text>
-                  </div>
-                  <div className={cn("text-right")}>
-                    <Text figureSmallValue text04 as="p">
-                      {selectedOrg.permission_count ?? 0}
-                    </Text>
-                    <Text figureSmallLabel text03>
-                      {t("admin.organizations.page.directGrants")}
-                    </Text>
-                  </div>
-                </div>
+                <OrganizationSummaryCounts
+                  organizationId={selectedOrg.id}
+                  activeMembers={members.length}
+                  membersLoading={membersLoading}
+                />
               </div>
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <Tabs.List
@@ -908,13 +936,26 @@ export default function OrganizationsPage() {
 
             <div className={cn("flex-1 overflow-y-auto p-6")}>
               {activeTab === "users" ? (
-                <OrganizationUserAssignmentsPanel
-                  assignments={members}
-                  onAdd={handleAddUser}
-                  onRoleChange={handleRoleChange}
-                  onRemove={handleRemoveUser}
-                  editable={editable}
-                />
+                membersLoading ? (
+                  <div
+                    role="region"
+                    aria-label={t("admin.organizations.page.countsLoading")}
+                    aria-busy="true"
+                  >
+                    <TableSkeleton rowCount={6} />
+                  </div>
+                ) : (
+                  <OrganizationUserAssignmentsPanel
+                    key={selectedOrg.id}
+                    organizationId={selectedOrg.id}
+                    globalAccess={organizationScope?.global_access === true}
+                    assignments={members}
+                    onAdd={handleAddUser}
+                    onRoleChange={handleRoleChange}
+                    onRemove={handleRemoveUser}
+                    editable={editable}
+                  />
+                )
               ) : (
                 <OrganizationAccessPanel
                   organization={selectedOrg}
@@ -952,8 +993,9 @@ export default function OrganizationsPage() {
           members={members}
           editable={editable}
           capabilityLoading={Boolean(selectedOrg) && capabilityLoading}
+          globalAccess={organizationScope?.global_access === true}
           canCreateRoot={canCreateRoot}
-          canEditLayout={canEditLayout}
+          canMoveOrganization={canMoveOrganization}
           onClose={() => setIsDesignerOpen(false)}
           onSelectOrg={handleSelectOrg}
           onCreateOrg={handleCreateOrg}

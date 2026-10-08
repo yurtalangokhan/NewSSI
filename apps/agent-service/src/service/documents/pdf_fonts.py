@@ -11,10 +11,10 @@ for.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
+import os
 
-from core.logger import get_logger
+from core.observability.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -115,9 +115,7 @@ def _register_all() -> None:
         pdfmetrics.registerFontFamily(
             base, normal=base, bold=bold_name, italic=italic_name, boldItalic=bold_italic_name
         )
-        _registered_families[bucket] = FontFamily(
-            base, base, bold_name, italic_name, bold_italic_name
-        )
+        _registered_families[bucket] = FontFamily(base, base, bold_name, italic_name, bold_italic_name)
 
 
 def resolve_font_family(requested: str | None) -> FontFamily:
@@ -130,6 +128,4 @@ def resolve_font_family(requested: str | None) -> FontFamily:
     """
     _register_all()
     bucket = _FAMILY_ALIASES.get((requested or "").strip().lower(), "sans")
-    return (
-        _registered_families.get(bucket) or _registered_families.get("sans") or _HELVETICA_FALLBACK
-    )
+    return _registered_families.get(bucket) or _registered_families.get("sans") or _HELVETICA_FALLBACK

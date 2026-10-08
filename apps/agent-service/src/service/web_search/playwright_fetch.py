@@ -1,24 +1,29 @@
 """Shared Playwright-based fetching helpers.
 
 Centralizes the browser-launch tuning and bot-detection-aware navigation
-logic that was originally embedded in `onyx.connectors.web.connector`.
+logic that was originally embedded in `atlas.connectors.web.connector`.
 
 Two consumers:
 - `WebConnector` (long-lived `BrowserContext` reused across many pages
   in a single crawl) uses `start_playwright()` directly.
-- `OnyxWebCrawler` (lazy fallback when its `requests`-based fetch hits
+- `AtlasWebCrawler` (lazy fallback when its `requests`-based fetch hits
   a Cloudflare/bot challenge) uses `fetch_rendered_html()` to do a
   one-shot navigation per URL.
 """
 
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 
-from playwright.sync_api import BrowserContext, Playwright, sync_playwright
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import (
+    BrowserContext,
+    Error as PlaywrightError,
+    Playwright,
+    TimeoutError as PlaywrightTimeoutError,
+    sync_playwright,
+)
 
-from core.logger import get_logger
-from models.web_search import RenderedPage
+from core.observability.logger import get_logger
+from schemas.web_search import RenderedPage
 from service.web_search.url import SSRFException, validate_outbound_http_url
 
 logger = get_logger(__name__)
@@ -67,7 +72,7 @@ def start_playwright() -> tuple[Playwright, BrowserContext]:
     """Launch a Playwright Chromium context tuned to look like a real browser.
 
     Used by both the long-lived web-connector crawl and the one-shot
-    OnyxWebCrawler fallback. Caller owns lifecycle and must call
+    AtlasWebCrawler fallback. Caller owns lifecycle and must call
     `context.close()` + `playwright.stop()` when done.
     """
     playwright = sync_playwright().start()
@@ -123,11 +128,7 @@ def start_playwright() -> tuple[Playwright, BrowserContext]:
         });
     """)
 
-    if (
-        WEB_CONNECTOR_OAUTH_CLIENT_ID
-        and WEB_CONNECTOR_OAUTH_CLIENT_SECRET
-        and WEB_CONNECTOR_OAUTH_TOKEN_URL
-    ):
+    if WEB_CONNECTOR_OAUTH_CLIENT_ID and WEB_CONNECTOR_OAUTH_CLIENT_SECRET and WEB_CONNECTOR_OAUTH_TOKEN_URL:
         # Imported lazily so the OAuth deps don't get pulled in unless configured.
         from oauthlib.oauth2 import BackendApplicationClient
         from requests_oauthlib import OAuth2Session
@@ -209,7 +210,7 @@ _CLOUDFLARE_CHALLENGE_BODY_MARKERS = (
 def looks_like_cloudflare_challenge(html: str) -> bool:
     """Did this rendered HTML come back as a Cloudflare challenge page?
 
-    Used by callers (e.g. `OnyxWebCrawler`) to distinguish "we got real
+    Used by callers (e.g. `AtlasWebCrawler`) to distinguish "we got real
     content" from "Chromium rendered the challenge interstitial itself
     because CF didn't let us through". The latter must NOT be returned
     to the LLM as if it were the page.
@@ -267,10 +268,8 @@ def fetch_rendered_html(
                     page.wait_for_timeout(bot_challenge_grace_ms)
 
                 # Best-effort wait for network to settle (SPA / CF challenge JS).
-                try:
+                with suppress(PlaywrightTimeoutError):
                     page.wait_for_load_state("networkidle", timeout=bot_challenge_grace_ms)
-                except PlaywrightTimeoutError:
-                    pass
 
                 html = page.content()
                 final_url = page.url
@@ -283,23 +282,10 @@ def fetch_rendered_html(
                 )
             finally:
                 page.close()
-    except Exception as exc:
-        msg = str(exc)
-        if "Executable doesn't exist" in msg:
-            # Friendlier message for the common "venv has Playwright but
-            # Chromium binary not installed" footgun. Production Docker
-            # images install it during build (see backend/Dockerfile),
-            # but local dev `pip install`s won't.
-            logger.warning(
-                "Playwright fallback unavailable for %s: Chromium binary not "
-                "installed. Run `playwright install chromium` in your venv.",
-                url,
-            )
-        else:
-            logger.warning(
-                "Playwright fallback failed to render %s (%s: %s)",
-                url,
-                exc.__class__.__name__,
-                msg.splitlines()[0] if msg else "",
-            )
+    except (PlaywrightError, SSRFException) as exc:
+        logger.warning(
+            "Playwright fallback failed to render %s (%s)",
+            url,
+            exc.__class__.__name__,
+        )
         return None

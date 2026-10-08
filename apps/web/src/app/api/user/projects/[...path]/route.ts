@@ -1,4 +1,6 @@
+import { projectsEndpoints } from "@/lib/api/domains/projects/endpoints";
 import { proxyToBackend } from "@/lib/api/proxy";
+
 import { NextRequest } from "next/server";
 
 /**
@@ -16,36 +18,47 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const pathStr = (await params).path.join("/");
-  return proxyToBackend(request, `/api/user/projects/${pathStr}`);
+  return proxyToBackend(
+    request,
+    projectsEndpoints.path((await params).path).backend
+  );
 }
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const pathStr = (await params).path.join("/");
-  return proxyToBackend(request, `/api/user/projects/${pathStr}`, {
-    method: "POST",
-  });
+  return proxyToBackend(
+    request,
+    projectsEndpoints.path((await params).path).backend,
+    {
+      method: "POST",
+    }
+  );
 }
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const pathStr = (await params).path.join("/");
-  return proxyToBackend(request, `/api/user/projects/${pathStr}`, {
-    method: "PATCH",
-  });
+  return proxyToBackend(
+    request,
+    projectsEndpoints.path((await params).path).backend,
+    {
+      method: "PATCH",
+    }
+  );
 }
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const pathStr = (await params).path.join("/");
-  return proxyToBackend(request, `/api/user/projects/${pathStr}`, {
-    method: "DELETE",
-  });
+  return proxyToBackend(
+    request,
+    projectsEndpoints.path((await params).path).backend,
+    {
+      method: "DELETE",
+    }
+  );
 }

@@ -20,6 +20,7 @@ export interface OrganizationFlowNodeData extends Record<string, unknown> {
   readOnly: boolean;
   canAddChild?: boolean;
   canManage?: boolean;
+  canDelete?: boolean;
   actionMode?: "rename" | "delete";
   isDraft?: boolean;
   searchMatch?: boolean;
@@ -86,10 +87,47 @@ export function organizationTreeToLayoutPositions(
 
   interface LayoutNode {
     id: string;
-    x: number;
     depth: number;
-    width: number;
+    left: number[];
+    right: number[];
     children: { node: LayoutNode; leftOffset: number }[];
+  }
+
+  function packSubtrees(nodes: LayoutNode[], gap: number): number[] {
+    // Compare occupied space at matching depths instead of reserving each
+    // subtree's widest row at every level. Packing in both directions keeps
+    // shallow middle branches centered between their larger neighbors.
+    function pack(direction: 1 | -1): number[] {
+      const contour: number[] = [];
+      const offsets = new Array<number>(nodes.length);
+      for (let step = 0; step < nodes.length; step += 1) {
+        const index = direction === 1 ? step : nodes.length - 1 - step;
+        const node = nodes[index]!;
+        const near = direction === 1 ? node.left : node.right;
+        const far = direction === 1 ? node.right : node.left;
+        let offset = 0;
+        for (let depth = 0; depth < near.length; depth += 1) {
+          if (contour[depth] !== undefined) {
+            offset = Math.max(
+              offset,
+              contour[depth]! + gap - direction * near[depth]!
+            );
+          }
+        }
+        offsets[index] = direction * offset;
+        for (let depth = 0; depth < far.length; depth += 1) {
+          contour[depth] = Math.max(
+            contour[depth] ?? -Infinity,
+            offset + direction * far[depth]!
+          );
+        }
+      }
+      return offsets;
+    }
+
+    const forward = pack(1);
+    const backward = pack(-1);
+    return forward.map((offset, index) => (offset + backward[index]!) / 2);
   }
 
   function buildSubtree(
@@ -106,102 +144,63 @@ export function organizationTreeToLayoutPositions(
       );
     const rawChildren = isExpanded ? organization.children ?? [] : [];
 
-    if (rawChildren.length === 0) {
-      return {
-        id: organization.id,
-        x: siblingGap / 2,
-        depth,
-        width: siblingGap,
-        children: [],
-      };
-    }
-
-    let currentX = 0;
-    const childrenWithOffsets: { node: LayoutNode; leftOffset: number }[] = [];
-
-    rawChildren.forEach((child) => {
-      const childLayout = buildSubtree(child, depth + 1);
-      childrenWithOffsets.push({ node: childLayout, leftOffset: currentX });
-      currentX += childLayout.width;
+    const children = rawChildren.map((child) => buildSubtree(child, depth + 1));
+    const offsets = packSubtrees(children, siblingGap);
+    const parentX =
+      children.length > 0
+        ? (offsets[0]! + offsets[offsets.length - 1]!) / 2
+        : 0;
+    const left = [0];
+    const right = [0];
+    const childrenWithOffsets = children.map((node, index) => {
+      const leftOffset = offsets[index]! - parentX;
+      node.left.forEach((coordinate, childDepth) => {
+        left[childDepth + 1] = Math.min(
+          left[childDepth + 1] ?? Infinity,
+          coordinate + leftOffset
+        );
+        right[childDepth + 1] = Math.max(
+          right[childDepth + 1] ?? -Infinity,
+          node.right[childDepth]! + leftOffset
+        );
+      });
+      return { node, leftOffset };
     });
-
-    const firstChild = childrenWithOffsets[0]!;
-    const lastChild = childrenWithOffsets[childrenWithOffsets.length - 1]!;
-    const firstChildCenter = firstChild.leftOffset + firstChild.node.x;
-    const lastChildCenter = lastChild.leftOffset + lastChild.node.x;
-    const parentX = (firstChildCenter + lastChildCenter) / 2;
 
     return {
       id: organization.id,
-      x: parentX,
       depth,
-      width: Math.max(siblingGap, currentX),
+      left,
+      right,
       children: childrenWithOffsets,
     };
   }
 
   function assignCoordinates(layoutNode: LayoutNode, leftX: number): void {
-    const absX = leftX + layoutNode.x;
     positions[layoutNode.id] = vertical
-      ? { x: absX, y: layoutNode.depth * levelGap }
-      : { x: layoutNode.depth * levelGap, y: absX };
+      ? { x: leftX, y: layoutNode.depth * levelGap }
+      : { x: layoutNode.depth * levelGap, y: leftX };
 
     layoutNode.children.forEach(({ node: child, leftOffset }) => {
       assignCoordinates(child, leftX + leftOffset);
     });
   }
 
-  let rootCursor = 0;
-  organizations.forEach((organization, rootIndex) => {
-    if (rootIndex > 0) {
-      rootCursor += Math.max(ROOT_GAP, siblingGap);
-    }
-    const layoutNode = buildSubtree(organization, 0);
-    assignCoordinates(layoutNode, rootCursor);
-    rootCursor += layoutNode.width;
+  const roots = organizations.map((organization) =>
+    buildSubtree(organization, 0)
+  );
+  const rootOffsets = packSubtrees(roots, Math.max(ROOT_GAP, siblingGap));
+  let minimumX = 0;
+  roots.forEach((root, index) => {
+    root.left.forEach((coordinate) => {
+      minimumX = Math.min(minimumX, coordinate + rootOffsets[index]!);
+    });
+  });
+  roots.forEach((root, index) => {
+    assignCoordinates(root, rootOffsets[index]! - minimumX + siblingGap / 2);
   });
 
   return positions;
-}
-
-export function inferOrganizationLayoutOrientation(
-  organizations: OrganizationTreeNode[],
-  positions: OrganizationPositionMap
-): OrganizationLayoutOrientation {
-  const horizontalSteps: number[] = [];
-  const verticalSteps: number[] = [];
-
-  function visit(organization: OrganizationTreeNode) {
-    const parentPosition = positions[organization.id];
-    for (const child of organization.children ?? []) {
-      const childPosition = positions[child.id];
-      if (parentPosition && childPosition) {
-        horizontalSteps.push(childPosition.x - parentPosition.x);
-        verticalSteps.push(childPosition.y - parentPosition.y);
-      }
-      visit(child);
-    }
-  }
-
-  organizations.forEach(visit);
-  if (horizontalSteps.length === 0) return "vertical";
-
-  function axisConsistency(steps: number[]) {
-    const sorted = [...steps].sort((first, second) => first - second);
-    const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
-    const range = (sorted[sorted.length - 1] ?? 0) - (sorted[0] ?? 0);
-    return {
-      score: range / Math.max(Math.abs(median), 1),
-      step: Math.abs(median),
-    };
-  }
-
-  const horizontal = axisConsistency(horizontalSteps);
-  const vertical = axisConsistency(verticalSteps);
-  if (horizontal.score !== vertical.score) {
-    return horizontal.score < vertical.score ? "horizontal" : "vertical";
-  }
-  return horizontal.step > vertical.step ? "horizontal" : "vertical";
 }
 
 export function repositionOrganizationSubtree(
@@ -313,13 +312,10 @@ function isOnSelectedPath(
 
 export function organizationTreeToFlowGraph(
   organizations: OrganizationTreeNode[],
-  savedPositions: OrganizationPositionMap = {},
+  positions: OrganizationPositionMap = {},
   writableOrganizationIds = new Set<string>(),
   selectedOrganizationId?: string,
-  layoutOrientation = inferOrganizationLayoutOrientation(
-    organizations,
-    savedPositions
-  ),
+  layoutOrientation: OrganizationLayoutOrientation = "vertical",
   expandedNodeIds = new Set<string>(),
   collapsedNodeIds = new Set<string>()
 ): OrganizationGraph {
@@ -349,8 +345,8 @@ export function organizationTreeToFlowGraph(
     let position: XYPosition;
     let delta: XYPosition;
 
-    if (savedPositions[organization.id]) {
-      position = savedPositions[organization.id]!;
+    if (positions[organization.id]) {
+      position = positions[organization.id]!;
       delta = {
         x: position.x - fallbackPosition.x,
         y: position.y - fallbackPosition.y,

@@ -349,7 +349,7 @@ describe("OrganizationTree single-root action", () => {
     ).toBeInTheDocument();
   });
 
-  it("differentiates the selected organization with a light gray background", () => {
+  it("differentiates the selected organization with a blue accent", () => {
     render(
       <OrganizationTree
         organizations={[
@@ -367,7 +367,69 @@ describe("OrganizationTree single-root action", () => {
     );
 
     expect(screen.getByText("Enterprise").parentElement).toHaveClass(
-      "bg-background-neutral-02"
+      "bg-action-link-05/10",
+      "border-l-action-link-05"
+    );
+  });
+
+  it("highlights only the selected ancestor chain and updates on selection", () => {
+    const organizations = [
+      {
+        id: "root",
+        name: "Root",
+        path: "/",
+        parent_id: null,
+        children: [
+          {
+            id: "parent",
+            name: "Parent",
+            path: "/root",
+            parent_id: "root",
+            children: [
+              {
+                id: "leaf",
+                name: "Leaf",
+                path: "/root/parent",
+                parent_id: "parent",
+                children: [],
+              },
+            ],
+          },
+          {
+            id: "sibling",
+            name: "Sibling",
+            path: "/root",
+            parent_id: "root",
+            children: [],
+          },
+        ],
+      },
+    ];
+    const { rerender } = render(
+      <OrganizationTree
+        organizations={organizations}
+        selectedOrgId="leaf"
+        {...handlers}
+      />
+    );
+    const state = (name: string) => screen.getByText(name).parentElement;
+    expect(state("Root")).toHaveAttribute("data-selection-state", "ancestor");
+    expect(state("Parent")).toHaveAttribute("data-selection-state", "ancestor");
+    expect(state("Leaf")).toHaveAttribute("data-selection-state", "selected");
+    expect(state("Sibling")).toHaveAttribute("data-selection-state", "none");
+    rerender(
+      <OrganizationTree
+        organizations={organizations}
+        selectedOrgId="sibling"
+        {...handlers}
+      />
+    );
+    expect(state("Root")).toHaveAttribute("data-selection-state", "ancestor");
+    expect(state("Parent")).toHaveAttribute("data-selection-state", "none");
+    expect(state("Leaf")).toHaveAttribute("data-selection-state", "none");
+    expect(state("Sibling")).toHaveAttribute(
+      "data-selection-state",
+      "selected"
     );
   });
 

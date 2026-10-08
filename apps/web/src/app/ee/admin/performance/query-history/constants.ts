@@ -1,9 +1,13 @@
-export const LIST_QUERY_HISTORY_URL = "/api/admin/query-history/list";
+import { systemEndpoints } from "@/lib/api/domains/system/endpoints";
+
+export const LIST_QUERY_HISTORY_URL =
+  systemEndpoints.queryHistoryList.browserPath;
 export const START_QUERY_HISTORY_EXPORT_URL =
-  "/api/admin/query-history/start-export";
+  systemEndpoints.queryHistoryStartExport.browserPath;
 export const CHECK_QUERY_HISTORY_EXPORT_STATUS_URL =
-  "/api/admin/query-history/export-status";
-export const DOWNLOAD_QUERY_HISTORY_URL = "/api/admin/query-history/download";
+  systemEndpoints.queryHistoryExportStatus.browserPath;
+export const DOWNLOAD_QUERY_HISTORY_URL =
+  systemEndpoints.queryHistoryDownload.browserPath;
 export const MAX_RETRIES = 10;
 export const RETRY_COOLDOWN_MILLISECONDS = 200;
 

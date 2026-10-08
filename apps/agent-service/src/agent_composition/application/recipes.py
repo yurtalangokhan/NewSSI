@@ -5,7 +5,7 @@ Built-in agents are represented here as *recipes* over the same composer
 recipe is a flat configuration dict compatible with ``AgentFactory.create``,
 which constructs a ``DynamicAgent`` from it.
 
-Routing policy (see ``agents.agents`` resolver):
+Routing policy (see ``agents.registry.registry`` resolver):
 
 * Keys that still live in the legacy static registry (``chatbot``,
   ``configurable-mcp-agent``) continue to be served from that registry for
@@ -26,7 +26,7 @@ from typing import Any
 
 # Canonical flat-config recipes for built-in agents. These mirror the JSON
 # configs previously loaded by the reflection-based ``agents.factory`` and the
-# static registry in ``agents.agents``, expressed as ``AgentFactory``-compatible
+# static registry in ``agents.registry.registry``, expressed as ``AgentFactory``-compatible
 # definition configs.
 BUILTIN_RECIPES: dict[str, dict[str, Any]] = {
     "chatbot": {
@@ -47,9 +47,7 @@ BUILTIN_RECIPES: dict[str, dict[str, Any]] = {
         "stages": [
             {
                 "name": "enricher",
-                "system_prompt": (
-                    "You are a project enricher. Analyze input and expand with details."
-                ),
+                "system_prompt": ("You are a project enricher. Analyze input and expand with details."),
                 "mcp_tools": [],
             }
         ],

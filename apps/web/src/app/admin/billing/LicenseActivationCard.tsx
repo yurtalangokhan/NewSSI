@@ -1,4 +1,5 @@
 "use client";
+import { errorMessageFromUnknown } from "@/lib/api/errors";
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,11 +10,11 @@ import InputFile from "@/refresh-components/inputs/InputFile";
 import { Section } from "@/layouts/general-layouts";
 import * as InputLayouts from "@/layouts/input-layouts";
 import { SvgXCircle, SvgCheckCircle, SvgXOctagon } from "@opal/icons";
-import { uploadLicense } from "@/lib/billing/svc";
-import { LicenseStatus } from "@/lib/billing/interfaces";
+import { uploadLicense } from "@/lib/api/domains/billing/api";
+import { LicenseStatus } from "@/lib/api/domains/billing/types";
 import { formatDateShort } from "@/lib/dateUtils";
 
-const BILLING_HELP_URL = "https://docs.onyx.app/more/billing";
+const BILLING_HELP_URL = "https://docs.atlas.app/more/billing";
 
 interface LicenseActivationCardProps {
   isOpen: boolean;
@@ -69,7 +70,7 @@ export default function LicenseActivationCard({
       }, 1000);
     } catch (err) {
       console.error("Error activating license:", err);
-      setError(err instanceof Error ? err.message : t("activateFailed"));
+      setError(errorMessageFromUnknown(err, t("activateFailed")));
     } finally {
       setIsActivating(false);
     }

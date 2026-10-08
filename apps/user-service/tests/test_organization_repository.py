@@ -1,328 +1,270 @@
-"""Tests for OrganizationRepository."""
+"""Organization repository contracts against a simulated Keycloak admin API."""
 
-import uuid
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
-from types import SimpleNamespace
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, patch
+from uuid import UUID, uuid4
 
+import httpx
+from error_contract import NotFoundError
 import pytest
 
+from src.core.exceptions import ConflictError
 from src.repository.organization_repository import OrganizationRepository
+from tests.test_keycloak_organizations import CHILD, ROOT, Admin
 
 
-def _organization(
-    *,
-    organization_id: uuid.UUID | None = None,
-    name: str = "Organization",
-    code: str = "ORG",
-    parent_id: uuid.UUID | None = None,
-    path: str = "/",
-    level: int = 0,
-    metadata: dict[str, Any] | None = None,
-) -> SimpleNamespace:
-    now = datetime.now(UTC)
-    return SimpleNamespace(
-        id=organization_id or uuid.uuid4(),
-        name=name,
-        code=code,
-        description=None,
-        parent_id=parent_id,
-        path=path,
-        level=level,
-        order_index=0,
-        is_active=True,
-        metadata_json=metadata or {},
-        created_at=now,
-        updated_at=now,
-        created_by=None,
+@pytest.mark.asyncio
+@pytest.mark.parametrize("query", ["load test 00092", "00092 load", "  load   test 00092 "])
+async def test_search_matches_all_words_instead_of_a_contiguous_phrase(query):
+    admin = Admin()
+    admin.groups[str(CHILD)]["name"] = "Load Test Group 00092"
+    assert [g["id"] for g in await OrganizationRepository(admin).search(query)] == [CHILD]
+
+
+@pytest.mark.asyncio
+async def test_create_root_and_child_preserves_metadata():
+    admin = Admin()
+    admin.groups.clear()
+    repo = OrganizationRepository(admin)
+    root = await repo.create("Enterprise", "ROOT", metadata={"nested": {"key": 7}})
+    child = await repo.create("Department", "DEPT", parent_id=root["id"], created_by=ROOT)
+    assert child["path"] == f"/{root['id']}/"
+    assert child["created_by"] == ROOT
+    assert root["metadata"] == {"nested": {"key": 7}}
+    assert root["created_at"]
+    with pytest.raises(ConflictError):
+        await repo.create("Second root", "SECOND")
+    with pytest.raises(ConflictError):
+        await repo.create("Duplicate", "DEPT", parent_id=root["id"])
+    with pytest.raises(NotFoundError):
+        await repo.create("Orphan", "ORPHAN", parent_id=uuid4())
+
+
+@pytest.mark.asyncio
+async def test_update_preserves_external_attributes_and_roundtrips_fields():
+    admin = Admin()
+    admin.groups[str(CHILD)]["attributes"] = {"external": ["kept"]}
+    repo = OrganizationRepository(admin)
+
+    async def project(mutation):
+        return await mutation()
+
+    with patch(
+        "src.repository.keycloak_resource_authorization.project_resource_permission_mutation",
+        AsyncMock(side_effect=project),
+    ) as projection:
+        result = await repo.update(
+            CHILD,
+            name="New",
+            code="NEW",
+            metadata={"color": "green"},
+            is_active=False,
+            order_index=9,
+        )
+    projection.assert_awaited_once()
+    assert result["code"] == "NEW"
+    assert result["metadata"] == {"color": "green"}
+    assert result["order_index"] == 9
+    assert admin.groups[str(CHILD)]["attributes"]["external"] == ["kept"]
+    assert await repo.list_all(is_active=True) == ([await repo.get_by_id(ROOT)], 1)
+    assert await repo.get_by_id(uuid4()) is None
+    assert await repo.update(uuid4(), name="Missing") is None
+
+
+@pytest.mark.asyncio
+async def test_paginated_children_counts_tree_depth_and_ancestors():
+    admin = Admin()
+    for i in range(10, 115):
+        group_id = str(UUID(int=i))
+        admin.groups[group_id] = {"id": group_id, "name": str(i), "parentId": str(ROOT)}
+    repo = OrganizationRepository(admin)
+    children = await repo.get_children(ROOT)
+    assert len(children) == 106
+    assert any(path.startswith(f"/groups/{ROOT}/children?") for _, path, _ in admin.calls)
+    assert not any(path.startswith("/groups?") for _, path, _ in admin.calls)
+    assert not any("partial-export" in path for _, path, _ in admin.calls)
+    assert (await repo.get_ancestors(CHILD))[0]["id"] == ROOT
+    items, total = await repo.list_all(skip=105, limit=1, parent_id=ROOT)
+    assert len(items) == 1 and total == 106
+    assert (await repo.get_tree(max_depth=0))["roots"][0]["children_count"] == 106
+
+
+@pytest.mark.asyncio
+async def test_delete_cleans_subtree_resource_grants():
+    repo = OrganizationRepository(Admin())
+    cleanup = AsyncMock(return_value=1)
+
+    async def project(mutation):
+        return await mutation()
+
+    with (
+        patch(
+            "src.repository.resource_permission_repository.ResourcePermissionRepository.delete_organization_permissions",
+            cleanup,
+        ),
+        patch(
+            "src.repository.keycloak_resource_authorization.project_resource_permission_mutation",
+            AsyncMock(side_effect=project),
+        ) as projection,
+    ):
+        assert await repo.delete(ROOT)
+    assert {call.args[0] for call in cleanup.call_args_list} == {ROOT, CHILD}
+    assert await repo.get_by_id(CHILD) is None
+    assert projection.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_ten_thousand_organizations_skip_leaf_queries():
+    admin = Admin()
+    for index in range(10, 10008):
+        group_id = str(UUID(int=index))
+        admin.groups[group_id] = {
+            "id": group_id,
+            "name": f"Department {index}",
+            "parentId": str(ROOT),
+        }
+    organizations, total = await OrganizationRepository(admin).list_all(skip=9990, limit=10)
+    assert total == 10000
+    assert len(organizations) == 10
+    assert all(org["level"] == 1 and org["path"] == f"/{ROOT}/" for org in organizations)
+    assert len(admin.calls) == 11
+    assert all(method == "GET" for method, _, _ in admin.calls)
+    assert all(
+        path.startswith("/groups?") or path == "/groups/count?top=false"
+        for _, path, _ in admin.calls
     )
 
 
-def _result(*organizations: SimpleNamespace) -> MagicMock:
-    result = MagicMock()
-    result.scalars.return_value.all.return_value = list(organizations)
-    return result
+@pytest.mark.asyncio
+async def test_missing_child_counts_are_derived_from_complete_inventory():
+    class UnknownCounts(Admin):
+        async def _keycloak_request(self, method, path, **kwargs):
+            response = await super()._keycloak_request(method, path, **kwargs)
+            data = response.json()
+            if isinstance(data, list):
+                data = [
+                    {key: value for key, value in group.items() if key != "subGroupCount"}
+                    for group in data
+                ]
+            return httpx.Response(response.status_code, json=data, request=response.request)
 
-
-def _count_result(value: int) -> MagicMock:
-    result = MagicMock()
-    result.scalar_one.return_value = value
-    return result
-
-
-def _row_result(rows: list[tuple[Any, Any]]) -> MagicMock:
-    result = MagicMock()
-    result.all.return_value = rows
-    return result
-
-
-def _repository_with_session(session: MagicMock) -> OrganizationRepository:
-    repository = OrganizationRepository()
-
-    @asynccontextmanager
-    async def session_context():
-        yield session
-
-    repository._session = session_context  # type: ignore[method-assign]
-    return repository
+    admin = UnknownCounts()
+    groups, count = await OrganizationRepository(admin).list_all()
+    assert count == 2
+    assert groups[1]["parent_id"] == ROOT
+    assert len(admin.calls) == 2
+    assert not any("/children" in path for _, path, _ in admin.calls)
 
 
 @pytest.mark.asyncio
-async def test_create_root_organization() -> None:
-    session = MagicMock()
-    session.add = MagicMock()
-    session.flush = AsyncMock()
-    session.refresh = AsyncMock()
-    repository = _repository_with_session(session)
+async def test_group_inventory_reuses_one_admin_scope_for_all_pages():
+    from src.repository.keycloak_group_inventory import read_group_inventory
 
-    org = await repository.create(
-        name="Root Org",
-        code="ROOT",
-        parent_id=None,
-        description="Test root organization",
-    )
+    class ScopedAdmin(Admin):
+        entered = 0
+        active = False
 
-    assert org["name"] == "Root Org"
-    assert org["code"] == "ROOT"
-    assert org["parent_id"] is None
-    assert org["path"] == "/"
-    assert org["description"] == "Test root organization"
+        @asynccontextmanager
+        async def admin_request_scope(self):
+            self.entered += 1
+            self.active = True
+            try:
+                yield
+            finally:
+                self.active = False
 
+        async def _keycloak_request(self, method, path, **kwargs):
+            assert self.active
+            return await super()._keycloak_request(method, path, **kwargs)
 
-@pytest.mark.asyncio
-async def test_create_child_organization_uses_parent_path() -> None:
-    parent_id = uuid.uuid4()
-    parent = _organization(organization_id=parent_id, path="/", level=0)
-    session = MagicMock()
-    session.get = AsyncMock(return_value=parent)
-    session.add = MagicMock()
-    session.flush = AsyncMock()
-    session.refresh = AsyncMock()
-    repository = _repository_with_session(session)
-
-    child = await repository.create(name="Child Org", code="CHILD", parent_id=parent_id)
-
-    assert child["name"] == "Child Org"
-    assert child["parent_id"] == parent_id
-    assert child["path"] == f"/{parent_id}/"
-    assert child["level"] == 1
+    admin = ScopedAdmin()
+    groups = await read_group_inventory(admin, page_size=1)
+    assert len(groups) == 2
+    assert admin.entered == 1
+    assert not admin.active
+    assert len(admin.calls) == 3
 
 
 @pytest.mark.asyncio
-async def test_create_child_organization_rejects_missing_parent() -> None:
-    session = MagicMock()
-    session.get = AsyncMock(return_value=None)
-    repository = _repository_with_session(session)
-    parent_id = uuid.uuid4()
+async def test_single_group_reads_only_its_parent_chain_and_preserves_counts():
+    from tests.test_keycloak_organizations import USER
 
-    with pytest.raises(ValueError, match=f"Parent organization {parent_id} not found"):
-        await repository.create(name="Child Org", code="CHILD", parent_id=parent_id)
-
-
-@pytest.mark.asyncio
-async def test_get_by_id_returns_dict() -> None:
-    org_id = uuid.uuid4()
-    session = MagicMock()
-    session.get = AsyncMock(return_value=_organization(organization_id=org_id, name="Test Org"))
-    repository = _repository_with_session(session)
-
-    org = await repository.get_by_id(org_id)
-
-    assert org is not None
-    assert org["id"] == org_id
-    assert org["name"] == "Test Org"
-
-
-@pytest.mark.asyncio
-async def test_get_by_id_not_found() -> None:
-    session = MagicMock()
-    session.get = AsyncMock(return_value=None)
-    repository = _repository_with_session(session)
-
-    result = await repository.get_by_id(uuid.uuid4())
-
-    assert result is None
+    admin = Admin()
+    admin.groups[str(USER)] = {"id": str(USER), "name": "Leaf", "parentId": str(CHILD)}
+    for group in admin.groups.values():
+        group["subGroupCount"] = 0 if group["id"] == str(USER) else 1
+    repo = OrganizationRepository(admin)
+    leaf = await repo.get_by_id(USER)
+    assert leaf["path"] == f"/{ROOT}/{CHILD}/"
+    assert leaf["level"] == 2 and leaf["parent_id"] == CHILD
+    assert leaf["children_count"] == 0 and not leaf["has_children"]
+    assert [path for _, path, _ in admin.calls] == [
+        f"/groups/{USER}",
+        f"/groups/{CHILD}",
+        f"/groups/{ROOT}",
+    ]
+    admin.calls.clear()
+    missing = uuid4()
+    assert await repo.get_by_id(missing) is None
+    assert [path for _, path, _ in admin.calls] == [f"/groups/{missing}"]
 
 
 @pytest.mark.asyncio
-async def test_update_organization_updates_allowed_fields() -> None:
-    org = _organization(name="Old Name")
-    session = MagicMock()
-    session.get = AsyncMock(return_value=org)
-    session.flush = AsyncMock()
-    session.refresh = AsyncMock()
-    repository = _repository_with_session(session)
+async def test_user_memberships_resolve_only_relevant_groups_and_share_ancestors():
+    import json
 
-    updated = await repository.update(
-        org.id,
-        name="New Name",
-        description="Updated description",
-    )
+    from src.repository.user_organization_repository import MEMBERSHIPS, UserOrganizationRepository
+    from tests.test_keycloak_organizations import USER
 
-    assert updated is not None
-    assert updated["name"] == "New Name"
-    assert updated["description"] == "Updated description"
-    assert updated["path"] == "/"
-
-
-@pytest.mark.asyncio
-async def test_list_all_returns_items_and_total() -> None:
-    org1 = _organization(name="Org 1", code="ORG1")
-    org2 = _organization(name="Org 2", code="ORG2")
-    session = MagicMock()
-    session.execute = AsyncMock(side_effect=[_count_result(2), _result(org1, org2)])
-    repository = _repository_with_session(session)
-
-    orgs, total = await repository.list_all()
-
-    assert total == 2
-    assert [org["name"] for org in orgs] == ["Org 1", "Org 2"]
+    admin = Admin()
+    inactive = uuid4()
+    admin.groups[str(inactive)] = {
+        "id": str(inactive),
+        "name": "Old",
+        "parentId": str(ROOT),
+        "subGroupCount": 0,
+    }
+    admin.groups[str(ROOT)]["subGroupCount"] = 2
+    admin.groups[str(CHILD)]["subGroupCount"] = 0
+    admin.users[str(USER)]["attributes"][MEMBERSHIPS] = [json.dumps({str(inactive): {}})]
+    repo = UserOrganizationRepository(admin)
+    active = await repo.get_user_organizations(USER)
+    assert [item["organization_id"] for item in active] == [CHILD]
+    assert f"/groups/{inactive}" not in [path for _, path, _ in admin.calls]
+    admin.calls.clear()
+    memberships = await repo.get_user_organizations(USER, include_inactive=True)
+    assert {item["organization_id"]: item["is_active"] for item in memberships} == {
+        CHILD: True,
+        inactive: False,
+    }
+    paths = [path for _, path, _ in admin.calls]
+    assert paths.count(f"/groups/{ROOT}") == 1
+    assert not any(path.startswith("/groups?") or "/children" in path for path in paths)
 
 
 @pytest.mark.asyncio
-async def test_get_children_adds_child_counts() -> None:
-    parent_id = uuid.uuid4()
-    child1 = _organization(name="Child 1", code="CHILD1", parent_id=parent_id)
-    child2 = _organization(name="Child 2", code="CHILD2", parent_id=parent_id)
-    session = MagicMock()
-    session.execute = AsyncMock(
-        side_effect=[
-            _result(child1, child2),
-            _row_result([(child1.id, 1)]),
-        ]
-    )
-    repository = _repository_with_session(session)
+async def test_single_user_lookup_uses_scope_and_filters_disabled_organizations():
+    from src.repository.user_organization_repository import UserOrganizationRepository
+    from tests.test_keycloak_organizations import USER
 
-    children = await repository.get_children(parent_id)
+    class ScopedAdmin(Admin):
+        depth = 0
 
-    assert [child["name"] for child in children] == ["Child 1", "Child 2"]
-    assert children[0]["children_count"] == 1
-    assert children[0]["has_children"] is True
-    assert children[1]["children_count"] == 0
-    assert children[1]["has_children"] is False
+        @asynccontextmanager
+        async def admin_request_scope(self):
+            self.depth += 1
+            try:
+                yield
+            finally:
+                self.depth -= 1
 
+        async def _keycloak_request(self, method, path, **kwargs):
+            assert self.depth > 0
+            return await super()._keycloak_request(method, path, **kwargs)
 
-@pytest.mark.asyncio
-async def test_get_descendants_uses_parent_path() -> None:
-    root_id = uuid.uuid4()
-    root = _organization(organization_id=root_id, path="/", level=0)
-    dept = _organization(name="Department", code="DEPT", parent_id=root_id, path=f"/{root_id}/")
-    team = _organization(name="Team", code="TEAM", parent_id=dept.id, path=f"/{root_id}/{dept.id}/")
-    session = MagicMock()
-    session.get = AsyncMock(return_value=root)
-    session.execute = AsyncMock(side_effect=[_result(dept, team), _row_result([])])
-    repository = _repository_with_session(session)
-
-    descendants = await repository.get_children(root_id, direct_only=False)
-
-    assert [descendant["name"] for descendant in descendants] == ["Department", "Team"]
-
-
-@pytest.mark.asyncio
-async def test_get_ancestors_returns_path_entries() -> None:
-    root_id = uuid.uuid4()
-    dept_id = uuid.uuid4()
-    team_id = uuid.uuid4()
-    team = _organization(organization_id=team_id, path=f"/{root_id}/{dept_id}/", level=2)
-    root = _organization(organization_id=root_id, name="Root", code="ROOT")
-    dept = _organization(organization_id=dept_id, name="Department", code="DEPT")
-    session = MagicMock()
-    session.get = AsyncMock(return_value=team)
-    session.execute = AsyncMock(return_value=_result(root, dept))
-    repository = _repository_with_session(session)
-
-    ancestors = await repository.get_ancestors(team_id)
-
-    assert [ancestor["name"] for ancestor in ancestors] == ["Root", "Department"]
-
-
-@pytest.mark.asyncio
-async def test_move_organization_updates_descendant_paths() -> None:
-    root1_id = uuid.uuid4()
-    root2_id = uuid.uuid4()
-    child_id = uuid.uuid4()
-    grandchild_id = uuid.uuid4()
-    root2 = _organization(organization_id=root2_id, path="/", level=0)
-    child = _organization(
-        organization_id=child_id,
-        parent_id=root1_id,
-        path=f"/{root1_id}/",
-        level=1,
-    )
-    grandchild = _organization(
-        organization_id=grandchild_id,
-        parent_id=child_id,
-        path=f"/{root1_id}/{child_id}/",
-        level=2,
-    )
-    session = MagicMock()
-    session.get = AsyncMock(side_effect=[child, root2])
-    session.execute = AsyncMock(return_value=_result(grandchild))
-    session.flush = AsyncMock()
-    session.refresh = AsyncMock()
-    repository = _repository_with_session(session)
-
-    moved = await repository.move_organization(child_id, root2_id)
-
-    assert moved is not None
-    assert moved["parent_id"] == root2_id
-    assert moved["path"] == f"/{root2_id}/"
-    assert grandchild.path == f"/{root2_id}/{child_id}/"
-
-
-@pytest.mark.asyncio
-async def test_get_tree_builds_hierarchy() -> None:
-    root = _organization(name="Root", code="ROOT")
-    child1 = _organization(
-        name="Child 1", code="CHILD1", parent_id=root.id, path=f"/{root.id}/", level=1
-    )
-    child2 = _organization(
-        name="Child 2", code="CHILD2", parent_id=root.id, path=f"/{root.id}/", level=1
-    )
-    grandchild = _organization(
-        name="Grandchild",
-        code="GRANDCHILD",
-        parent_id=child1.id,
-        path=f"/{root.id}/{child1.id}/",
-        level=2,
-    )
-    session = MagicMock()
-    session.execute = AsyncMock(
-        side_effect=[
-            _result(root, child1, child2, grandchild),
-            _row_result([(root.id, 2), (child1.id, 1)]),
-        ]
-    )
-    repository = _repository_with_session(session)
-
-    tree = await repository.get_tree()
-
-    roots = tree["roots"]
-    assert len(roots) == 1
-    assert roots[0]["name"] == "Root"
-    assert len(roots[0]["children"]) == 2
-    child1_node = next(child for child in roots[0]["children"] if child["name"] == "Child 1")
-    assert child1_node["children"][0]["name"] == "Grandchild"
-
-
-@pytest.mark.asyncio
-async def test_metadata_storage() -> None:
-    metadata = {"region": "US-West", "cost_center": "12345", "tags": ["prod"]}
-    session = MagicMock()
-    session.add = MagicMock()
-    session.flush = AsyncMock()
-    session.refresh = AsyncMock()
-    repository = _repository_with_session(session)
-
-    org = await repository.create(
-        name="Org with Metadata",
-        code="METADATA",
-        parent_id=None,
-        metadata=metadata,
-    )
-
-    assert org["metadata"]["region"] == "US-West"
-    assert org["metadata"]["cost_center"] == "12345"
-    assert "prod" in org["metadata"]["tags"]
+    admin = ScopedAdmin()
+    admin.groups[str(CHILD)]["attributes"] = {"agenticai.organization.is_active": ["false"]}
+    repo = UserOrganizationRepository(admin)
+    assert await repo.get_user_organizations(USER) == []
+    assert len(await repo.get_user_organizations(USER, include_inactive=True)) == 1
+    assert admin.depth == 0

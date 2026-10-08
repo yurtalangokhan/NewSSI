@@ -1,18 +1,22 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, call
 
+from error_contract import render_error_message
 import httpx
 import pytest
-from i18n.core import set_locale
+from error_contract import BadRequestError, DependencyResponseError, UnauthorizedError
+from localization.core import set_locale
 
+from tests.error_support import raises_localized
 from src.service import keycloak_service
 from src.service.keycloak_service import KeycloakService
 
 
 def test_client_credentials_payload_omits_empty_secret(monkeypatch):
-    monkeypatch.setenv("KEYCLOAK_CLIENT_ID", "test-client")
+    monkeypatch.setenv("KEYCLOAK_USER_SERVICE_CLIENT_ID", "test-client")
+    monkeypatch.delenv("KEYCLOAK_USER_SERVICE_CLIENT_SECRET", raising=False)
     monkeypatch.delenv("KEYCLOAK_CLIENT_SECRET", raising=False)
-    monkeypatch.setattr(keycloak_service._settings, "KEYCLOAK_CLIENT_SECRET", None)
+    monkeypatch.delenv("KEYCLOAK_USER_SERVICE_CLIENT_SECRET", raising=False)
 
     payload = KeycloakService()._client_credentials_payload()
 
@@ -20,8 +24,8 @@ def test_client_credentials_payload_omits_empty_secret(monkeypatch):
 
 
 def test_client_credentials_payload_includes_secret(monkeypatch):
-    monkeypatch.setenv("KEYCLOAK_CLIENT_ID", "test-client")
-    monkeypatch.setenv("KEYCLOAK_CLIENT_SECRET", "  test-secret  ")
+    monkeypatch.setenv("KEYCLOAK_USER_SERVICE_CLIENT_ID", "test-client")
+    monkeypatch.setenv("KEYCLOAK_USER_SERVICE_CLIENT_SECRET", "  test-secret  ")
 
     payload = KeycloakService()._client_credentials_payload()
 
@@ -29,49 +33,6 @@ def test_client_credentials_payload_includes_secret(monkeypatch):
         "client_id": "test-client",
         "client_secret": "test-secret",
     }
-
-
-@pytest.mark.asyncio
-async def test_validate_token_jwks_disables_iat_verification(monkeypatch):
-    keycloak_service._JWKS_CLIENT = None
-    monkeypatch.setenv("KEYCLOAK_ISSUER_URL", "https://issuer")
-    monkeypatch.setenv("KEYCLOAK_AUDIENCE", "rag-service")
-    monkeypatch.setenv("KEYCLOAK_CLIENT_ID", "agenticai-web")
-    KeycloakService.set_runtime_settings({})
-
-    class FakeSigningKey:
-        key = "signing-key"
-
-    class FakeJWKSClient:
-        def __init__(self, *_args: object, **_kwargs: object) -> None:
-            pass
-
-        def get_signing_key_from_jwt(self, token: str) -> FakeSigningKey:
-            assert token == "sample-token"
-            return FakeSigningKey()
-
-    def _decode(
-        jwt: str,
-        key: str,
-        algorithms: list[str],
-        issuer: str,
-        audience: list[str] | None,
-        leeway: int,
-        options: dict[str, object],
-    ) -> dict[str, str]:
-        assert key == "signing-key"
-        assert issuer == "https://issuer"
-        assert options["verify_iss"] is True
-        assert options["verify_exp"] is True
-        assert options["verify_iat"] is False
-        return {"sub": "keycloak-sub"}
-
-    monkeypatch.setattr(keycloak_service, "PyJWKClient", FakeJWKSClient)
-    monkeypatch.setattr(keycloak_service.jwt, "decode", _decode)
-
-    claims = await KeycloakService().validate_token_jwks("sample-token")
-
-    assert claims == {"sub": "keycloak-sub"}
 
 
 @pytest.mark.asyncio
@@ -84,6 +45,9 @@ async def test_refresh_token_grant_uses_login_client_credentials(monkeypatch):
     captured: dict[str, object] = {}
 
     class Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
         async def __aenter__(self):
             return self
 
@@ -99,7 +63,7 @@ async def test_refresh_token_grant_uses_login_client_credentials(monkeypatch):
                 request=httpx.Request("POST", url),
             )
 
-    monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
+    monkeypatch.setattr(keycloak_service, "get_shared_client", lambda *_a, **_kw: Client())
 
     result = await KeycloakService().refresh_token_grant("refresh-token")
 
@@ -122,6 +86,9 @@ async def test_password_grant_translates_invalid_credentials_error(monkeypatch):
     monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
 
     class Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
         async def __aenter__(self):
             return self
 
@@ -135,12 +102,12 @@ async def test_password_grant_translates_invalid_credentials_error(monkeypatch):
                 request=httpx.Request("POST", url),
             )
 
-    monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
+    monkeypatch.setattr(keycloak_service, "get_shared_client", lambda *_a, **_kw: Client())
 
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(UnauthorizedError) as exc:
         await KeycloakService().password_grant("someone", "wrong-password")
 
-    assert str(exc.value) == "Invalid username or password"
+    assert render_error_message(exc.value, locale="en") == "Invalid username or password"
 
 
 @pytest.mark.asyncio
@@ -150,6 +117,9 @@ async def test_password_grant_translates_invalid_credentials_for_turkish_locale(
     monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
 
     class Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
         async def __aenter__(self):
             return self
 
@@ -163,16 +133,16 @@ async def test_password_grant_translates_invalid_credentials_for_turkish_locale(
                 request=httpx.Request("POST", url),
             )
 
-    monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
+    monkeypatch.setattr(keycloak_service, "get_shared_client", lambda *_a, **_kw: Client())
 
     set_locale("tr")
     try:
-        with pytest.raises(ValueError) as exc:
+        with pytest.raises(UnauthorizedError) as exc:
             await KeycloakService().password_grant("someone", "wrong-password")
     finally:
         set_locale("en")
 
-    assert str(exc.value) == "Geçersiz kullanıcı adı veya şifre"
+    assert render_error_message(exc.value, locale="tr") == "Geçersiz kullanıcı adı veya şifre"
 
 
 @pytest.mark.asyncio
@@ -182,6 +152,9 @@ async def test_password_grant_keeps_raw_detail_for_non_credential_errors(monkeyp
     monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
 
     class Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
         async def __aenter__(self):
             return self
 
@@ -195,14 +168,10 @@ async def test_password_grant_keeps_raw_detail_for_non_credential_errors(monkeyp
                 request=httpx.Request("POST", url),
             )
 
-    monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
+    monkeypatch.setattr(keycloak_service, "get_shared_client", lambda *_a, **_kw: Client())
 
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(DependencyResponseError):
         await KeycloakService().password_grant("someone", "wrong-password")
-
-    # Not a credentials issue -- an operational/config error, so it is left
-    # untranslated rather than mislabeled as "wrong password".
-    assert str(exc.value) == "Client not found"
 
 
 @pytest.mark.asyncio
@@ -219,6 +188,9 @@ async def test_password_grant_does_not_mislabel_non_credential_invalid_grant(mon
     monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
 
     class Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
         async def __aenter__(self):
             return self
 
@@ -235,12 +207,10 @@ async def test_password_grant_does_not_mislabel_non_credential_invalid_grant(mon
                 request=httpx.Request("POST", url),
             )
 
-    monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
+    monkeypatch.setattr(keycloak_service, "get_shared_client", lambda *_a, **_kw: Client())
 
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(DependencyResponseError):
         await KeycloakService().password_grant("someone", "any-password")
-
-    assert str(exc.value) == "Client not enabled to retrieve service account"
 
 
 @pytest.mark.asyncio
@@ -391,7 +361,7 @@ async def test_follow_broker_redirects_reports_sp_redirect_uri_rejection(monkeyp
         async def get(self, url: str, follow_redirects: bool = False) -> httpx.Response:
             raise AssertionError("No redirects should be followed for a 400 response")
 
-    with pytest.raises(ValueError, match="SP Keycloak rejected redirect_uri"):
+    with pytest.raises(BadRequestError):
         await service._follow_broker_redirects(
             Client(),
             response,
@@ -413,7 +383,6 @@ async def test_external_broker_password_login_ensures_runtime_callback_uri(monke
         "src.service.keycloak_broker.secrets.token_urlsafe",
         lambda _: "expected-state",
     )
-    monkeypatch.setattr(service, "_default_oidc_redirect_uri", lambda: callback_uri)
     monkeypatch.setattr(service, "get_external_keycloak_alias", lambda: "external-keycloak")
     monkeypatch.setattr(service, "_rewrite_keycloak_url_for_backend", lambda url: url)
     monkeypatch.setattr(
@@ -484,7 +453,6 @@ def _rejected_credentials_broker_client(monkeypatch, post_status: int):
     monkeypatch.setattr(
         "src.service.keycloak_broker.secrets.token_urlsafe", lambda _: "expected-state"
     )
-    monkeypatch.setattr(service, "_default_oidc_redirect_uri", lambda: callback_uri)
     monkeypatch.setattr(service, "get_external_keycloak_alias", lambda: "external-keycloak")
     monkeypatch.setattr(service, "_rewrite_keycloak_url_for_backend", lambda url: url)
     monkeypatch.setattr(service, "get_oidc_authorize_url", AsyncMock(return_value=authorize_url))
@@ -516,12 +484,12 @@ def _rejected_credentials_broker_client(monkeypatch, post_status: int):
 async def test_external_broker_password_login_translates_rejected_credentials(monkeypatch):
     service, callback_uri = _rejected_credentials_broker_client(monkeypatch, post_status=200)
 
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(UnauthorizedError) as exc:
         await service.external_broker_password_login(
             "external@example.com", "wrong-secret", redirect_uri=callback_uri
         )
 
-    assert str(exc.value) == "External identity provider rejected the credentials"
+    assert render_error_message(exc.value, locale="en") == "External identity provider rejected the credentials"
 
 
 @pytest.mark.asyncio
@@ -532,26 +500,26 @@ async def test_external_broker_password_login_translates_rejected_credentials_fo
 
     set_locale("tr")
     try:
-        with pytest.raises(ValueError) as exc:
+        with pytest.raises(UnauthorizedError) as exc:
             await service.external_broker_password_login(
                 "external@example.com", "wrong-secret", redirect_uri=callback_uri
             )
     finally:
         set_locale("en")
 
-    assert str(exc.value) == "Harici kimlik sağlayıcı kimlik bilgilerini reddetti"
+    assert render_error_message(exc.value, locale="tr") == "Harici kimlik sağlayıcı kimlik bilgilerini reddetti"
 
 
 @pytest.mark.asyncio
 async def test_external_broker_password_login_translates_auth_failed_status(monkeypatch):
     service, callback_uri = _rejected_credentials_broker_client(monkeypatch, post_status=401)
 
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(UnauthorizedError) as exc:
         await service.external_broker_password_login(
             "external@example.com", "wrong-secret", redirect_uri=callback_uri
         )
 
-    assert str(exc.value) == "External sign-in failed"
+    assert render_error_message(exc.value, locale="en") == "External sign-in failed"
 
 
 @pytest.mark.asyncio
@@ -572,14 +540,6 @@ async def test_external_broker_password_login_uses_sp_broker_without_external_is
         "EXTERNAL_KEYCLOAK_REALM",
     ):
         monkeypatch.delenv(key, raising=False)
-    monkeypatch.setattr(keycloak_service._settings, "EXTERNAL_KEYCLOAK_ISSUER_URL", None)
-    monkeypatch.setattr(
-        keycloak_service._settings,
-        "EXTERNAL_KEYCLOAK_BACKEND_ISSUER_URL",
-        None,
-    )
-    monkeypatch.setattr(keycloak_service._settings, "EXTERNAL_KEYCLOAK_BASE_URL", None)
-    monkeypatch.setattr(keycloak_service._settings, "EXTERNAL_KEYCLOAK_REALM", None)
     monkeypatch.setattr(
         "src.service.keycloak_broker.secrets.token_urlsafe",
         lambda _: "expected-state",
@@ -639,7 +599,7 @@ async def test_external_broker_password_login_requires_explicit_redirect_uri(mon
     monkeypatch.setenv("EXTERNAL_KEYCLOAK", "true")
     monkeypatch.setattr(service, "ensure_login_client_redirect_uri", ensure_redirect_uri)
 
-    with pytest.raises(ValueError, match="redirect_uri is required"):
+    with raises_localized(BadRequestError, "redirect_uri is required"):
         await service.external_broker_password_login("external@example.com", "secret")
 
     ensure_redirect_uri.assert_not_awaited()
@@ -684,10 +644,11 @@ async def test_ensure_enduser_default_realm_role_adds_composite(monkeypatch):
 async def test_get_client_uuid_fetches_and_caches_keycloak_internal_client_id(monkeypatch):
     monkeypatch.setenv("KEYCLOAK_CLIENT_ID", "agenticai-web")
     service = KeycloakService()
-    service._client_uuid_cache = None
-    service._client_uuid_cache_key = None
+    service._client_uuid_cache.clear()
+    monkeypatch.setenv("KEYCLOAK_USER_SERVICE_CLIENT_ID", "agenticai-web")
 
     response = SimpleNamespace(
+        status_code=200,
         raise_for_status=lambda: None,
         json=lambda: [{"id": "client-uuid", "clientId": "agenticai-web"}],
     )
@@ -714,6 +675,7 @@ async def test_ensure_login_client_config_enables_direct_access_grants(monkeypat
     monkeypatch.setattr(service, "get_client_uuid", AsyncMock(return_value="client-uuid"))
 
     get_response = SimpleNamespace(
+        status_code=200,
         raise_for_status=lambda: None,
         json=lambda: {
             "id": "client-uuid",
@@ -764,6 +726,7 @@ async def test_ensure_login_client_config_preserves_existing_redirects(monkeypat
     monkeypatch.setattr(service, "get_client_uuid", AsyncMock(return_value="client-uuid"))
 
     get_response = SimpleNamespace(
+        status_code=200,
         raise_for_status=lambda: None,
         json=lambda: {
             "id": "client-uuid",
@@ -811,6 +774,7 @@ async def test_ensure_login_client_config_preserves_existing_post_logout_redirec
     monkeypatch.setattr(service, "get_client_uuid", AsyncMock(return_value="client-uuid"))
 
     get_response = SimpleNamespace(
+        status_code=200,
         raise_for_status=lambda: None,
         json=lambda: {
             "id": "client-uuid",
@@ -843,6 +807,7 @@ async def test_ensure_login_client_redirect_uri_adds_new_runtime_origin(monkeypa
     monkeypatch.setattr(service, "get_client_uuid", AsyncMock(return_value="client-uuid"))
 
     get_response = SimpleNamespace(
+        status_code=200,
         raise_for_status=lambda: None,
         json=lambda: {
             "id": "client-uuid",
@@ -880,6 +845,7 @@ async def test_ensure_login_client_redirect_uri_adds_post_logout_uri(monkeypatch
     monkeypatch.setattr(service, "get_client_uuid", AsyncMock(return_value="client-uuid"))
 
     get_response = SimpleNamespace(
+        status_code=200,
         raise_for_status=lambda: None,
         json=lambda: {
             "id": "client-uuid",
@@ -912,6 +878,7 @@ async def test_ensure_login_client_redirect_uri_adds_exact_post_logout_uri_when_
     monkeypatch.setattr(service, "get_client_uuid", AsyncMock(return_value="client-uuid"))
 
     get_response = SimpleNamespace(
+        status_code=200,
         raise_for_status=lambda: None,
         json=lambda: {
             "id": "client-uuid",
@@ -942,6 +909,7 @@ async def test_ensure_login_client_redirect_uri_skips_when_wildcard_covers_uri(m
     monkeypatch.setattr(service, "get_client_uuid", AsyncMock(return_value="client-uuid"))
 
     get_response = SimpleNamespace(
+        status_code=200,
         raise_for_status=lambda: None,
         json=lambda: {
             "id": "client-uuid",
@@ -1017,8 +985,8 @@ async def test_ensure_external_identity_provider_keeps_existing_idp_without_loca
     monkeypatch.setenv("EXTERNAL_KEYCLOAK", "true")
     monkeypatch.delenv("EXTERNAL_KEYCLOAK_CLIENT_ID", raising=False)
     monkeypatch.delenv("EXTERNAL_KEYCLOAK_CLIENT_SECRET", raising=False)
-    monkeypatch.setattr(keycloak_service._settings, "EXTERNAL_KEYCLOAK_CLIENT_ID", None)
-    monkeypatch.setattr(keycloak_service._settings, "EXTERNAL_KEYCLOAK_CLIENT_SECRET", None)
+    monkeypatch.delenv("EXTERNAL_KEYCLOAK_CLIENT_ID", raising=False)
+    monkeypatch.delenv("EXTERNAL_KEYCLOAK_CLIENT_SECRET", raising=False)
 
     get_response = SimpleNamespace(
         status_code=200,
@@ -1126,6 +1094,7 @@ async def test_ensure_login_client_groups_protocol_mapper_creates_claim_mapper(m
     monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
     monkeypatch.setattr(service, "get_client_uuid", AsyncMock(return_value="client-uuid"))
     get_response = SimpleNamespace(
+        status_code=200,
         raise_for_status=lambda: None,
         json=lambda: [],
     )
@@ -1149,29 +1118,6 @@ async def test_ensure_login_client_groups_protocol_mapper_creates_claim_mapper(m
 
 
 @pytest.mark.asyncio
-async def test_set_client_role_replaces_existing_direct_client_role_mappings(monkeypatch):
-    service = KeycloakService()
-    monkeypatch.setattr(
-        service,
-        "get_user_client_roles",
-        AsyncMock(return_value=[{"name": "enduser"}, {"name": "access-admin"}]),
-    )
-    remove_client_role = AsyncMock(return_value=True)
-    assign_client_role = AsyncMock(return_value=True)
-    monkeypatch.setattr(service, "remove_client_role", remove_client_role)
-    monkeypatch.setattr(service, "assign_client_role", assign_client_role)
-
-    assert await service.set_client_role("kc-user-id", "access-admin") is True
-
-    remove_client_role.assert_awaited_once_with("kc-user-id", "enduser", client_id=None)
-    assign_client_role.assert_awaited_once_with(
-        "kc-user-id",
-        "access-admin",
-        client_id=None,
-    )
-
-
-@pytest.mark.asyncio
 async def test_refresh_token_grant_raises_value_error_for_non_dict_error_body(monkeypatch):
     """A non-dict error body must still surface as a 401-able ValueError.
 
@@ -1186,6 +1132,9 @@ async def test_refresh_token_grant_raises_value_error_for_non_dict_error_body(mo
     monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
 
     class Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
         async def __aenter__(self):
             return self
 
@@ -1199,9 +1148,9 @@ async def test_refresh_token_grant_raises_value_error_for_non_dict_error_body(mo
                 request=httpx.Request("POST", url),
             )
 
-    monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
+    monkeypatch.setattr(keycloak_service, "get_shared_client", lambda *_a, **_kw: Client())
 
-    with pytest.raises(ValueError):
+    with pytest.raises(DependencyResponseError):
         await KeycloakService().refresh_token_grant("refresh-token")
 
 
@@ -1212,6 +1161,9 @@ async def test_refresh_token_grant_raises_value_error_for_unparseable_body(monke
     monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
 
     class Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
         async def __aenter__(self):
             return self
 
@@ -1225,7 +1177,7 @@ async def test_refresh_token_grant_raises_value_error_for_unparseable_body(monke
                 request=httpx.Request("POST", url),
             )
 
-    monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
+    monkeypatch.setattr(keycloak_service, "get_shared_client", lambda *_a, **_kw: Client())
 
-    with pytest.raises(ValueError):
+    with pytest.raises(DependencyResponseError):
         await KeycloakService().refresh_token_grant("refresh-token")

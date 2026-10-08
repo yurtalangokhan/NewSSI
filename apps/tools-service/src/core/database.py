@@ -8,31 +8,63 @@ try:
 except ImportError:  # pragma: no cover - optional dependency in local dev
     asyncpg = None
 
+from config_manager import env
+
 from .observability import retry_async
-from .settings import get_settings
+
+#: What a failed health probe swallows: the driver's errors when it is installed
+#: (``get_pool`` refuses to run without it), timeouts and socket errors.
+_DB_ERRORS: tuple[type[BaseException], ...] = (
+    (asyncpg.PostgresError, asyncpg.InterfaceError) if asyncpg is not None else ()
+)
+_HEALTH_ERRORS: tuple[type[BaseException], ...] = (*_DB_ERRORS, TimeoutError, OSError)
+
+
+def _identifier(name: str) -> str:
+    return '"' + str(name).replace('"', '""') + '"'
+
+
+def _literal(value: str) -> str:
+    return "'" + str(value).replace("'", "''") + "'"
 
 
 async def ensure_database_exists() -> None:
-    """Create the configured tools-service database if it doesn't exist."""
+    """Create the tools-service role and database if they don't exist.
+
+    With the admin credentials (``POSTGRES_ADMIN_USER`` / ``POSTGRES_ADMIN_PASSWORD``)
+    this bootstraps like the other services' ``0000_bootstrap`` migrations: the login
+    role is created, or its password set to the configured one, and the database is
+    created owned by that role. Without them the service role itself has to exist and
+    hold CREATEDB; the database is then created without an explicit owner.
+    """
     if asyncpg is None:
         raise RuntimeError("asyncpg is not installed")
 
-    config = get_settings().postgres_config
+    config = env.tool_postgres_config
+    admin_user, admin_password = env.POSTGRES_ADMIN_USER, env.POSTGRES_ADMIN_PASSWORD
+    bootstrap = bool(admin_user and admin_password)
     conn = await asyncpg.connect(
-        user=config["user"],
-        password=config["password"],
+        user=admin_user if bootstrap else config["user"],
+        password=admin_password if bootstrap else config["password"],
         host=config["host"],
         port=config["port"],
         database="postgres",
         timeout=5,
     )
     try:
+        if bootstrap:
+            role_exists = await conn.fetchval("SELECT 1 FROM pg_roles WHERE rolname = $1", config["user"])
+            await conn.execute(
+                f"{'ALTER' if role_exists else 'CREATE'} ROLE {_identifier(config['user'])} "
+                f"LOGIN PASSWORD {_literal(config['password'])}"
+            )
         exists = await conn.fetchval(
             "SELECT 1 FROM pg_database WHERE datname = $1",
             config["database"],
         )
         if not exists:
-            await conn.execute(f'CREATE DATABASE "{config["database"]}"')
+            owner = f" OWNER {_identifier(config['user'])}" if bootstrap else ""
+            await conn.execute(f"CREATE DATABASE {_identifier(config['database'])}{owner}")
     finally:
         await conn.close()
 
@@ -56,7 +88,7 @@ class DatabaseManager:
     @property
     def config(self) -> dict:
         """Get database configuration from centralized settings."""
-        return get_settings().postgres_config
+        return env.tool_postgres_config
 
     async def get_pool(self):
         """
@@ -114,7 +146,7 @@ class DatabaseManager:
             async with pool.acquire() as conn:
                 await conn.fetchval("SELECT 1")
             return True
-        except Exception:
+        except _HEALTH_ERRORS:
             return False
 
 

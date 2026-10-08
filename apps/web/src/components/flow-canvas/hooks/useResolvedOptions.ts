@@ -1,7 +1,7 @@
 /**
  * Resolves a dynamic `options_source` (P1 Task 5, 12 sources) via
  * `GET /flow-components/options/{source}`. Mirrors
- * apps/agent-service/src/api/routes/FlowComponentsRoute.py's response
+ * apps/agent-service/src/api/routes/flow_components_route.py's response
  * shape exactly: `{ source, available, items }`, `items` built from the
  * backend's `OptionItem` dataclass (`domain/flows/resolvers.py`).
  *
@@ -15,7 +15,7 @@
 
 import useSWR from "swr";
 import { useTranslation } from "react-i18next";
-import { languageKeyedFetcher } from "@/lib/fetcher";
+import { fetchResolvedComponentOptions } from "@/lib/api/domains/agents/api";
 import { optionsRequestKey } from "@/components/flow-canvas/fields/optionDependencies";
 
 export type ResolvedOptionItem = {
@@ -44,6 +44,7 @@ export function useResolvedOptions(
   const { i18n } = useTranslation();
   return useSWR<ResolvedOptionsResponse>(
     source ? [optionsRequestKey(source, depends), i18n.language || "en"] : null,
-    languageKeyedFetcher
+    () =>
+      fetchResolvedComponentOptions<ResolvedOptionsResponse>(source!, depends)
   );
 }

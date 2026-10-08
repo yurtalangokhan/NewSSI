@@ -1,28 +1,10 @@
-"""Generate and persist deterministic organization-page load-test data."""
+"""Generate deterministic organization-page fixtures; SQL identity writes are retired."""
 
 import argparse
 import asyncio
-import sys
 import uuid
-from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
-
-from sqlalchemy import delete, insert, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from src.core.database.engine import close_db_engine, get_session_factory  # noqa: E402
-from src.core.database.models.organization_layout_model import (  # noqa: E402
-    OrganizationLayoutModel,
-)
-from src.core.database.models.organization_model import OrganizationModel  # noqa: E402
-from src.core.database.models.user_model import UserModel  # noqa: E402
-from src.core.database.models.user_organization_model import (  # noqa: E402
-    UserOrganizationModel,
-)
 
 LOAD_TEST_MARKER = "organization-page-load-test-v1"
 LOAD_TEST_CODE_PREFIX = "LOADTEST_"
@@ -39,17 +21,16 @@ class SeedConfig:
     max_depth: int = 7
     batch_size: int = 5_000
     seed: str = "organization-page-load-test"
-    include_layouts: bool = True
 
 
 @dataclass(frozen=True)
 class SeedDataset:
-    """Rows ready for SQLAlchemy bulk inserts."""
+    """Deterministic synthetic identity fixture rows."""
 
     organizations: list[dict[str, Any]]
     users: list[dict[str, Any]]
     memberships: list[dict[str, Any]]
-    layouts: list[dict[str, Any]]
+    user_roles: list[dict[str, Any]]
 
 
 def _validate_config(config: SeedConfig) -> None:
@@ -97,13 +78,13 @@ def generate_dataset(
         if index == 0:
             row_parent_id = parent_id
             level = parent_level + 1
-            path = f"{parent_path}{organization_id}/" if parent_path else f"/{organization_id}/"
+            path = f"{parent_path or '/'}{parent_id}/" if parent_id else "/"
         else:
             parent_index = (index - 1) // factor
             parent = organizations[parent_index]
             row_parent_id = parent["id"]
             level = parent["level"] + 1
-            path = f"{parent['path']}{organization_id}/"
+            path = f"{parent['path']}{row_parent_id}/"
 
         ordinal = level_ordinals.get(level, 0)
         level_ordinals[level] = ordinal + 1
@@ -129,6 +110,7 @@ def generate_dataset(
 
     users: list[dict[str, Any]] = []
     memberships: list[dict[str, Any]] = []
+    user_roles: list[dict[str, Any]] = []
     for index in range(config.users):
         user_id = _stable_uuid(config.seed, "user", index)
         organization = organizations[index % len(organizations)]
@@ -144,8 +126,7 @@ def generate_dataset(
                 "hashed_password": None,
                 "is_active": True,
                 "is_verified": True,
-                "is_superuser": False,
-                "role": "enduser",
+                "role": "Unit Manager" if is_manager else "enduser",
                 "groups": [LOAD_TEST_MARKER],
                 "invited": False,
                 "password_configured": False,
@@ -153,34 +134,19 @@ def generate_dataset(
                 "team_name": "Organization Load Test",
             }
         )
+        user_roles.append({"user_id": user_id, "role_name": users[-1]["role"], "is_primary": True})
         memberships.append(
             {
                 "id": _stable_uuid(config.seed, "membership", index),
                 "user_id": user_id,
                 "organization_id": organization["id"],
-                "role_in_org": "unit_manager" if is_manager else "member",
                 "is_primary": True,
                 "is_active": True,
                 "assigned_by": None,
             }
         )
 
-    layouts = []
-    if config.include_layouts:
-        root_level = organizations[0]["level"]
-        for organization in organizations:
-            peers = level_ordinals[organization["level"]]
-            span = min(float(max(peers - 1, 0) * 280), 1_800_000.0)
-            step = span / (peers - 1) if peers > 1 else 0.0
-            layouts.append(
-                {
-                    "organization_id": organization["id"],
-                    "position_x": -span / 2 + organization["order_index"] * step,
-                    "position_y": float((organization["level"] - root_level) * 190),
-                }
-            )
-
-    return SeedDataset(organizations, users, memberships, layouts)
+    return SeedDataset(organizations, users, memberships, user_roles)
 
 
 def is_load_test_organization(row: dict[str, Any]) -> bool:
@@ -196,57 +162,22 @@ def is_load_test_user_email(email: str) -> bool:
     return email.lower().endswith(f"@{LOAD_TEST_EMAIL_DOMAIN}")
 
 
-def _batches(rows: Sequence[dict[str, Any]], batch_size: int) -> Iterable[Sequence[dict[str, Any]]]:
-    for start in range(0, len(rows), batch_size):
-        yield rows[start : start + batch_size]
-
-
-async def _cleanup(session: AsyncSession) -> None:
-    await session.execute(
-        delete(OrganizationModel).where(
-            OrganizationModel.code.startswith(LOAD_TEST_CODE_PREFIX),
-            OrganizationModel.metadata_json["seed_marker"].astext == LOAD_TEST_MARKER,
-        )
-    )
-    await session.execute(
-        delete(UserModel).where(UserModel.email.endswith(f"@{LOAD_TEST_EMAIL_DOMAIN}"))
-    )
+RETIRED_SEED_MESSAGE = (
+    "SQL identity seeding is retired because Keycloak owns organizations and users. "
+    "Use generate_dataset() for offline fixtures; provision load-test identities "
+    "through the Keycloak-backed management APIs."
+)
 
 
 async def cleanup() -> None:
-    """Delete only records carrying the reserved load-test markers."""
-    factory = get_session_factory()
-    async with factory() as session, session.begin():
-        await _cleanup(session)
+    """Refuse the obsolete SQL cleanup path without changing external identities."""
+    raise RuntimeError(RETIRED_SEED_MESSAGE)
 
 
 async def seed(config: SeedConfig) -> SeedDataset:
-    """Replace the namespaced dataset in one transaction."""
+    """Refuse the obsolete SQL writer; deterministic fixture generation remains available."""
     _validate_config(config)
-    factory = get_session_factory()
-    async with factory() as session, session.begin():
-        await _cleanup(session)
-        root = (
-            await session.execute(
-                select(OrganizationModel).where(OrganizationModel.parent_id.is_(None)).limit(1)
-            )
-        ).scalar_one_or_none()
-        dataset = generate_dataset(
-            config,
-            parent_id=root.id if root else None,
-            parent_path=root.path if root else "",
-            parent_level=root.level if root else -1,
-        )
-        tables_and_rows = (
-            (OrganizationModel, dataset.organizations),
-            (UserModel, dataset.users),
-            (UserOrganizationModel, dataset.memberships),
-            (OrganizationLayoutModel, dataset.layouts),
-        )
-        for model, rows in tables_and_rows:
-            for batch in _batches(rows, config.batch_size):
-                await session.execute(insert(model), batch)
-    return dataset
+    raise RuntimeError(RETIRED_SEED_MESSAGE)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -257,7 +188,6 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-depth", type=int, default=7)
     parser.add_argument("--batch-size", type=int, default=5_000)
     parser.add_argument("--seed", default="organization-page-load-test")
-    parser.add_argument("--no-layouts", action="store_true")
     return parser
 
 
@@ -272,7 +202,6 @@ async def _run(args: argparse.Namespace) -> None:
         max_depth=args.max_depth,
         batch_size=args.batch_size,
         seed=args.seed,
-        include_layouts=not args.no_layouts,
     )
     dataset = await seed(config)
     print(
@@ -285,8 +214,8 @@ def main() -> None:
     args = _parser().parse_args()
     try:
         asyncio.run(_run(args))
-    finally:
-        asyncio.run(close_db_engine())
+    except RuntimeError as error:
+        _parser().exit(2, f"{error}\n")
 
 
 if __name__ == "__main__":

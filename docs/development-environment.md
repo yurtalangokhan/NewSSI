@@ -6,33 +6,33 @@ from app runtime env.
 
 ## Env Ownership
 
-- `configs/.env` is only for third-party service compose:
-  `configs/docker-compose-services.yml`, Kong rendering, Keycloak bootstrap,
-  Postgres, Neo4j, Airbyte, Milvus, and MinIO.
-- `apps/web/.env` is the web runtime env.
-- `apps/agent-service/.env`, `apps/rag-service/.env`,
-  `apps/user-service/.env`, and `apps/tools-service/.env` are service runtime
-  env files.
-- `.vscode/launch.json` uses the app env files directly for host-based local
-  development.
-- `configs/docker-compose-dev.yml` also reads the app env files, then overrides
-  host-only gateway URLs to Docker-network URLs such as `http://kong:8000`.
+- `configs/.env` is the single source of truth. It configures third-party
+  compose (`configs/docker-compose-services.yml`, Apisix rendering, Keycloak
+  bootstrap, Postgres, Neo4j, Milvus, MinIO) **and** every service's
+  runtime, including the web frontend.
+- Services never read per-service `.env` files. The shared `config_manager` package
+  loads `configs/.env` once per process and exposes typed values through
+  `from config_manager import env`.
+- Docker Compose passes the same `configs/.env` to every container via
+  `env_file`, then overrides host-only gateway URLs to Docker-network URLs
+  such as `http://apisix:8000`.
+- `.vscode/launch.json` may point `AGENTICAI_ENV_FILE` at `configs/.env` for
+  host-based local development.
 
 Do not commit real `.env` files. They are ignored because they can contain
-service client secrets. Use the env manager script to create or validate them.
+service client secrets. Use the env manager command to validate them.
 
 ## Env Commands
 
 From the repository root:
 
 ```sh
-make env-init
+# Provide configs/.env manually before validation
 make env-check
 make env-test
 ```
 
-`make env-init` creates missing env files and appends missing keys with an
-inline description and a safe development default when one exists.
+`configs/.env` is supplied manually. The repository does not generate env files or credentials.
 
 `make env-check` reports:
 
@@ -45,22 +45,22 @@ Keycloak bootstrap flow that writes service client secrets.
 
 ## Traffic Rules
 
-All external HTTP traffic goes through Kong on port `8000`.
+All external HTTP traffic goes through Apisix on port `8000`.
 
 For VS Code or host-based service launches:
 
 - Web calls `http://localhost:8000`.
-- Services call internal Kong routes such as
+- Services call internal Apisix routes such as
   `http://localhost:8000/internal/user-service`.
-- Kong reaches host services through `host.docker.internal` upstreams from
+- Apisix reaches host services through `host.docker.internal` upstreams from
   `configs/.env`.
 
 For Docker Compose app services:
 
-- App containers still read `apps/*/.env`.
-- `configs/docker-compose-dev.yml` overrides gateway URLs to
-  `http://kong:8000`.
-- Backend service ports are published so Kong's host upstreams can still reach
+- App containers use the environment values passed by Compose.
+- `deploy/docker/docker-compose-dev.yml` points gateway URLs to
+  `http://apisix:8000`.
+- Backend service ports are published so Apisix's host upstreams can still reach
   them when the app stack is containerized.
 
 ## Start Order
@@ -68,7 +68,7 @@ For Docker Compose app services:
 1. Prepare env files:
 
    ```sh
-   make env-init
+   # Provide configs/.env manually
    make env-check
    ```
 
@@ -109,7 +109,7 @@ For Docker Compose app services:
 
 ## Health Checks
 
-Kong-routed checks:
+Apisix-routed checks:
 
 ```sh
 curl http://localhost:8000/user-service/health
@@ -124,7 +124,7 @@ curl http://localhost:8000/tools-service/health
 ```
 
 Direct service ports are useful only for debugging a single service. The app
-architecture should prefer Kong-routed URLs.
+architecture should prefer Apisix-routed URLs.
 
 ## Ollama GPU operations
 

@@ -1,12 +1,39 @@
 "use client";
+import { errorMessageFromUnknown } from "@/lib/api/errors";
+import { accessEndpoints } from "@/lib/api/domains/access/endpoints";
+
+import {
+  fetchCoarseRolePermissionsByName,
+  fetchCoarseRoles,
+  fetchRoleServiceClients,
+  fetchCompositeRolePermissions,
+  fetchCompositeRoles,
+  fetchPermissionCatalog,
+  updateCoarseRolePermissions,
+  updateCompositeRoleIds,
+  patchCompositeRole,
+  deleteCompositeRoleResponse,
+  deleteCoarseRoleResponse,
+  createCoarseRole,
+} from "@/lib/api/domains/access/api";
+
+import { createCompositeRole } from "@/lib/api/domains/access/api";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Button from "@/refresh-components/buttons/Button";
+import CopyIconButton from "@/refresh-components/buttons/CopyIconButton";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import InputTextArea from "@/refresh-components/inputs/InputTextArea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Modal from "@/refresh-components/Modal";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
 import Tabs from "@/refresh-components/Tabs";
@@ -14,8 +41,7 @@ import Text from "@/refresh-components/texts/Text";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
-import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { parseApiErrorPayload } from "@/lib/api/errors";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/useToast";
@@ -27,13 +53,15 @@ import {
   SvgShield,
   SvgTrash,
 } from "@opal/icons";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
+import { isIdentityCatalogKey } from "@/lib/api/identityCatalog";
 import useSWRMutation from "swr/mutation";
 import { useTranslation } from "react-i18next";
-import i18n from "@/i18n/config";
 import { useUser } from "@/providers/UserProvider";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 import { formatRoleName } from "@/lib/auth/roles";
+import useRoleDistribution from "@/hooks/useRoleDistribution";
+import i18n from "@/i18n/config";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.ROLES]!;
 
@@ -45,12 +73,14 @@ interface Permission {
   description: string | null;
   entity: string;
   service: string;
+  service_client: string | null;
   action: string;
   feature: string | null;
   is_system: boolean;
 }
 
 interface CompositeRole {
+  id: string;
   name: string;
   description: string | null;
   permissions: string[];
@@ -60,10 +90,12 @@ interface CompositeRole {
 }
 
 interface CoarseRole {
+  id: string;
   name: string;
   description: string | null;
   service_client: string;
   permissions: string[];
+  is_builtin: boolean;
 }
 
 // ─── Feature taxonomy ───────────────────────────────────────────────
@@ -108,8 +140,31 @@ function coarseRoleLabel(name: string) {
   return formatRoleName(name);
 }
 
-function rolePath(name: string) {
-  return encodeURIComponent(name);
+/** Roles are addressed by their immutable Keycloak role ID, never by name. */
+function rolePath(roleId: string) {
+  return encodeURIComponent(roleId);
+}
+
+interface KeycloakRoleIdProps {
+  roleId: string;
+}
+
+function KeycloakRoleId({ roleId }: KeycloakRoleIdProps) {
+  const { t } = useTranslation("common", { keyPrefix: "admin.rolesPage" });
+  return (
+    <div className="mt-2 flex min-w-0 items-center gap-2">
+      <Text secondaryBody text03 className="shrink-0">
+        {t("roleIdLabel")}
+      </Text>
+      <Text secondaryMono text04 className="min-w-0 truncate">
+        {roleId}
+      </Text>
+      <CopyIconButton
+        getCopyText={() => roleId}
+        tooltip={t("copyRoleIdTooltip")}
+      />
+    </div>
+  );
 }
 
 function groupByFeature(
@@ -175,14 +230,10 @@ function EmptyState({
 // ─── API helpers ────────────────────────────────────────────────────
 
 async function putPermissions(
-  url: string,
+  roleName: string,
   { arg }: { arg: { permissions: string[] } }
 ) {
-  const res = await authenticatedFetch(url, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(arg),
-  });
+  const res = await updateCoarseRolePermissions(roleName, arg);
   if (!res.ok) {
     const fallback = i18n.t("admin.rolesPage.savePermissionsFailed");
     const parsed = parseApiErrorPayload(
@@ -195,34 +246,12 @@ async function putPermissions(
 }
 
 async function putRoleIds(
-  url: string,
+  roleName: string,
   { arg }: { arg: { role_ids: string[] } }
 ) {
-  const res = await authenticatedFetch(url, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(arg),
-  });
+  const res = await updateCompositeRoleIds(roleName, arg);
   if (!res.ok) {
     const fallback = i18n.t("admin.rolesPage.saveRoleAssignmentFailed");
-    const parsed = parseApiErrorPayload(
-      await res.json().catch(() => null),
-      res.status
-    );
-    throw new Error(parsed.userMessage || fallback);
-  }
-  return res.json();
-}
-
-async function postSync(_url: string) {
-  const res = await authenticatedFetch(
-    "/api/user-service/roles/sync-keycloak",
-    {
-      method: "POST",
-    }
-  );
-  if (!res.ok) {
-    const fallback = i18n.t("admin.rolesPage.syncToKeycloakFailed");
     const parsed = parseApiErrorPayload(
       await res.json().catch(() => null),
       res.status
@@ -235,12 +264,8 @@ async function postSync(_url: string) {
 async function postCreateCompositeRole(
   _url: string,
   { arg }: { arg: { name: string; description: string } }
-) {
-  const params = new URLSearchParams({ name: arg.name });
-  if (arg.description) params.set("description", arg.description);
-  const res = await authenticatedFetch(`/api/user-service/roles/?${params}`, {
-    method: "POST",
-  });
+): Promise<CompositeRole> {
+  const res = await createCompositeRole(arg);
   if (!res.ok) {
     const fallback = i18n.t("admin.rolesPage.createCompositeRoleFailed");
     const parsed = parseApiErrorPayload(
@@ -252,14 +277,29 @@ async function postCreateCompositeRole(
   return res.json();
 }
 
+async function postCreateFeatureBundle(payload: {
+  name: string;
+  service_client: string;
+  description: string;
+  permissions: string[];
+}): Promise<CoarseRole> {
+  const res = await createCoarseRole(payload);
+  if (!res.ok) {
+    const fallback = i18n.t("admin.rolesPage.createFeatureBundleFailed");
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
+    );
+    throw new Error(parsed.userMessage || fallback);
+  }
+  return res.json();
+}
+
 async function patchRole(
-  url: string,
-  { arg }: { arg: Record<string, string> }
+  roleId: string,
+  { arg }: { arg: { description?: string } }
 ) {
-  const params = new URLSearchParams(arg);
-  const res = await authenticatedFetch(`${url}?${params}`, {
-    method: "PATCH",
-  });
+  const res = await patchCompositeRole(roleId, arg);
   if (!res.ok) {
     const fallback = i18n.t("admin.rolesPage.updateRoleFailed");
     const parsed = parseApiErrorPayload(
@@ -271,8 +311,8 @@ async function patchRole(
   return res.json();
 }
 
-async function deleteRole(url: string) {
-  const res = await authenticatedFetch(url, { method: "DELETE" });
+async function deleteRole(roleName: string) {
+  const res = await deleteCompositeRoleResponse(roleName);
   if (!res.ok) {
     const fallback = i18n.t("admin.rolesPage.deleteRoleFailed");
     const parsed = parseApiErrorPayload(
@@ -282,6 +322,18 @@ async function deleteRole(url: string) {
     throw new Error(parsed.userMessage || fallback);
   }
   return res.json();
+}
+
+async function deleteFeatureBundle(roleId: string) {
+  const res = await deleteCoarseRoleResponse(roleId);
+  if (!res.ok) {
+    const fallback = i18n.t("admin.rolesPage.deleteRoleFailed");
+    const parsed = parseApiErrorPayload(
+      await res.json().catch(() => null),
+      res.status
+    );
+    throw new Error(parsed.userMessage || fallback);
+  }
 }
 
 // ─── Skeletons ──────────────────────────────────────────────────────
@@ -384,24 +436,36 @@ function RolesPageSkeleton() {
   );
 }
 
-function CreateCompositeRoleModal({
+function CreateRoleModal({
+  layer,
   open,
   onClose,
   onCreated,
 }: {
+  layer: "composite" | "coarse";
   open: boolean;
   onClose: () => void;
-  onCreated: (name: string) => void;
+  onCreated: (roleId: string) => void;
 }) {
   const { t } = useTranslation("common", { keyPrefix: "admin.rolesPage" });
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [serviceClient, setServiceClient] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { data: serviceClients, error: serviceClientsError } = useSWR<{
+    service_clients: string[];
+  }>(
+    open && layer === "coarse"
+      ? accessEndpoints.roleServiceClients.browserPath
+      : null,
+    () => fetchRoleServiceClients<{ service_clients: string[] }>()
+  );
 
   const reset = () => {
     setName("");
     setDescription("");
+    setServiceClient("");
     setError(null);
   };
 
@@ -413,24 +477,31 @@ function CreateCompositeRoleModal({
 
   const handleCreate = async () => {
     const nextName = name.trim();
-    if (!nextName) {
-      setError(t("compositeRoleNameRequired"));
+    if (!nextName || (layer === "coarse" && !serviceClient)) {
+      setError(
+        t(!nextName ? "compositeRoleNameRequired" : "serviceClientRequired")
+      );
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      await postCreateCompositeRole("", {
-        arg: {
-          name: nextName,
-          description: description.trim(),
-        },
-      });
-      onCreated(nextName);
+      const created =
+        layer === "composite"
+          ? await postCreateCompositeRole("", {
+              arg: { name: nextName, description: description.trim() },
+            })
+          : await postCreateFeatureBundle({
+              name: nextName,
+              service_client: serviceClient,
+              description: description.trim(),
+              permissions: [],
+            });
+      onCreated(created.id);
       reset();
       onClose();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t("unknownError"));
+      setError(errorMessageFromUnknown(e, t("unknownError")));
     } finally {
       setLoading(false);
     }
@@ -441,11 +512,16 @@ function CreateCompositeRoleModal({
       <Modal.Content width="sm">
         <Modal.Header
           icon={SvgShield}
-          title={t("createCompositeRoleTitle")}
-          description={t("createCompositeRoleDescription", {
-            defaultValue:
-              "Create a composite role profile to bundle permissions and service roles.",
-          })}
+          title={t(
+            layer === "composite"
+              ? "createCompositeRoleTitle"
+              : "createFeatureBundleTitle"
+          )}
+          description={t(
+            layer === "composite"
+              ? "createCompositeRoleDescription"
+              : "createFeatureBundleDescription"
+          )}
           onClose={handleClose}
         />
         <Modal.Body twoTone>
@@ -465,19 +541,28 @@ function CreateCompositeRoleModal({
           >
             <div className="flex w-full flex-col gap-1.5">
               <Text headingH3 text05 className="text-sm font-medium">
-                {t("compositeRoleNameLabel")}
+                {t(
+                  layer === "composite"
+                    ? "compositeRoleNameLabel"
+                    : "featureBundleNameLabel"
+                )}
               </Text>
               <Text secondaryBody text04 className="text-xs">
-                {t("compositeRoleNameDescription", {
-                  defaultValue:
-                    "Unique identifier for this role (e.g. analyst, data-scientist).",
-                })}
+                {t(
+                  layer === "composite"
+                    ? "compositeRoleNameDescription"
+                    : "featureBundleNameDescription"
+                )}
               </Text>
               <InputTypeIn
                 autoFocus
                 showClearButton
                 className="w-full"
-                placeholder={t("compositeRoleNamePlaceholder")}
+                placeholder={t(
+                  layer === "composite"
+                    ? "compositeRoleNamePlaceholder"
+                    : "featureBundleNamePlaceholder"
+                )}
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
@@ -485,6 +570,36 @@ function CreateCompositeRoleModal({
                 }}
               />
             </div>
+
+            {layer === "coarse" && (
+              <div className="flex w-full flex-col gap-1.5">
+                <Text headingH3 text05 className="text-sm font-medium">
+                  {t("serviceClientLabel")}
+                </Text>
+                <Text secondaryBody text04 className="text-xs">
+                  {t("serviceClientDescription")}
+                </Text>
+                <Select value={serviceClient} onValueChange={setServiceClient}>
+                  <SelectTrigger aria-label={t("serviceClientLabel")}>
+                    <SelectValue
+                      placeholder={t("selectServiceClientPlaceholder")}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(serviceClients?.service_clients ?? []).map((clientId) => (
+                      <SelectItem key={clientId} value={clientId}>
+                        {clientId}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {serviceClientsError && (
+                  <Text secondaryBody className="text-status-danger-05">
+                    {t("serviceClientsLoadFailed")}
+                  </Text>
+                )}
+              </div>
+            )}
 
             <div className="flex w-full flex-col gap-1.5">
               <div className="flex items-center gap-1.5">
@@ -498,10 +613,11 @@ function CreateCompositeRoleModal({
                 </Text>
               </div>
               <Text secondaryBody text04 className="text-xs">
-                {t("compositeRoleDescriptionHelper", {
-                  defaultValue:
-                    "Summary of the access and responsibilities granted by this role.",
-                })}
+                {t(
+                  layer === "composite"
+                    ? "compositeRoleDescriptionHelper"
+                    : "featureBundleDescriptionHelper"
+                )}
               </Text>
               <InputTextArea
                 rows={3}
@@ -520,9 +636,21 @@ function CreateCompositeRoleModal({
           <Button
             action
             onClick={handleCreate}
-            disabled={loading || !name.trim()}
+            disabled={
+              loading ||
+              !name.trim() ||
+              (layer === "coarse" &&
+                (!serviceClient ||
+                  !serviceClients?.service_clients.includes(serviceClient)))
+            }
           >
-            {loading ? t("creatingButton") : t("createCompositeRoleTitle")}
+            {loading
+              ? t("creatingButton")
+              : t(
+                  layer === "composite"
+                    ? "createCompositeRoleTitle"
+                    : "createFeatureBundleTitle"
+                )}
           </Button>
         </Modal.Footer>
       </Modal.Content>
@@ -540,6 +668,11 @@ function RolesManager() {
     "composite"
   );
   const [selectedRole, setSelectedRole] = useState<string>("");
+  const [roleIdsDraft, setRoleIdsDraft] = useState<{
+    roleId: string;
+    ids: string[];
+  } | null>(null);
+  useEffect(() => setRoleIdsDraft(null), [selectedRole]);
   const [selectedCoarseRole, setSelectedCoarseRole] = useState<string>("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [roleSearch, setRoleSearch] = useState("");
@@ -548,9 +681,9 @@ function RolesManager() {
   const [includedSearch, setIncludedSearch] = useState("");
   const [editingDescription, setEditingDescription] = useState(false);
   const [descriptionDraft, setDescriptionDraft] = useState("");
-  const [deleteConfirmRole, setDeleteConfirmRole] = useState<string | null>(
-    null
-  );
+  const [deleteConfirmRole, setDeleteConfirmRole] = useState<
+    CompositeRole | CoarseRole | null
+  >(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const permSearchRef = useRef<HTMLInputElement>(null);
 
@@ -559,10 +692,14 @@ function RolesManager() {
     isLoading: compLoading,
     mutate: mutateComp,
   } = useSWR<{
-    composite_roles: CompositeRole[];
-  }>("/api/user-service/roles/", errorHandlingFetcher, {
-    dedupingInterval: 30000,
-  });
+    roles: CompositeRole[];
+  }>(
+    accessEndpoints.compositeRoles.browserPath,
+    () => fetchCompositeRoles<{ roles: CompositeRole[] }>(),
+    {
+      dedupingInterval: 30000,
+    }
+  );
 
   const {
     data: coarseData,
@@ -570,39 +707,49 @@ function RolesManager() {
     mutate: mutateCoarseData,
   } = useSWR<{
     roles: CoarseRole[];
-  }>("/api/user-service/coarse-roles/", errorHandlingFetcher, {
-    dedupingInterval: 30000,
-  });
+  }>(
+    accessEndpoints.coarseRoles.browserPath,
+    () => fetchCoarseRoles<{ roles: CoarseRole[] }>(),
+    {
+      dedupingInterval: 30000,
+    }
+  );
 
   const { data: permsData, isLoading: permsLoading } = useSWR<{
     permissions: Permission[];
-  }>("/api/user-service/permissions/", errorHandlingFetcher, {
-    dedupingInterval: 30000,
-  });
+  }>(
+    accessEndpoints.permissionCatalog.browserPath,
+    () => fetchPermissionCatalog<{ permissions: Permission[] }>(),
+    {
+      dedupingInterval: 30000,
+    }
+  );
 
   const {
     data: rolePermsData,
     isLoading: rolePermsLoading,
     mutate: mutateRolePerms,
-  } = useSWR<{ name: string; permissions: string[] }>(
+  } = useSWR<{
+    name: string;
+    permissions: string[];
+    role_ids?: string[];
+    role_names?: string[];
+  }>(
     selectedRole
-      ? `/api/user-service/roles/${rolePath(selectedRole)}/permissions`
+      ? accessEndpoints.encodedCompositeRolePermissionsKey(
+          rolePath(selectedRole)
+        ).browserPath
       : null,
-    errorHandlingFetcher,
+    () =>
+      fetchCompositeRolePermissions<{ name: string; permissions: string[] }>(
+        selectedRole!
+      ),
     { dedupingInterval: 5000 }
   );
 
-  const {
-    data: roleIdsData,
-    mutate: mutateRoleIds,
-    isLoading: roleIdsLoading,
-  } = useSWR<{ name: string; role_ids: string[] }>(
-    selectedRole
-      ? `/api/user-service/roles/${rolePath(selectedRole)}/role-ids`
-      : null,
-    errorHandlingFetcher,
-    { dedupingInterval: 5000 }
-  );
+  // /permissions already returns role_ids, so the separate /role-ids GET was a
+  // second full role lookup for data we were about to receive anyway.
+  const roleIdsData = rolePermsData;
 
   const {
     data: coarseRolePermsData,
@@ -610,40 +757,45 @@ function RolesManager() {
     isLoading: coarseRolePermsLoading,
   } = useSWR<{ name: string; permissions: string[] }>(
     selectedCoarseRole
-      ? `/api/user-service/coarse-roles/${rolePath(
-          selectedCoarseRole
-        )}/permissions`
+      ? accessEndpoints.encodedCoarseRolePermissionsKey(
+          rolePath(selectedCoarseRole)
+        ).browserPath
       : null,
-    errorHandlingFetcher,
+    () =>
+      fetchCoarseRolePermissionsByName<{ name: string; permissions: string[] }>(
+        selectedCoarseRole!
+      ),
     { dedupingInterval: 5000 }
   );
 
   const { trigger: saveCoarsePermissions, isMutating: isSaving } =
     useSWRMutation(
       selectedCoarseRole
-        ? `/api/user-service/coarse-roles/${rolePath(
-            selectedCoarseRole
-          )}/permissions`
+        ? accessEndpoints.encodedCoarseRolePermissionsKey(
+            rolePath(selectedCoarseRole)
+          ).browserPath
         : null,
-      putPermissions,
+      (_key, args: { arg: { permissions: string[] } }) =>
+        putPermissions(selectedCoarseRole, args),
       {
         onSuccess: () => {
           mutateCoarseRolePerms();
           mutateCoarseData();
           toast.success(t("permissionsSavedToast"));
         },
-        onError: (err) => toast.error(err.message),
+        onError: (err) => toast.error(errorMessageFromUnknown(err)),
       }
     );
 
   const { trigger: saveRoleIds, isMutating: isSavingRoleIds } = useSWRMutation(
     selectedRole
-      ? `/api/user-service/roles/${rolePath(selectedRole)}/role-ids`
+      ? accessEndpoints.encodedCompositeRoleIdsKey(rolePath(selectedRole))
+          .browserPath
       : null,
-    putRoleIds,
+    (_key, args: { arg: { role_ids: string[] } }) =>
+      putRoleIds(selectedRole, args),
     {
       onSuccess: (data) => {
-        mutateRoleIds();
         mutateRolePerms();
         mutateComp();
         toast.success(
@@ -652,51 +804,74 @@ function RolesManager() {
           })
         );
       },
-      onError: (err) => toast.error(err.message),
+      onError: (err) => toast.error(errorMessageFromUnknown(err)),
     }
   );
 
-  const { trigger: syncToKeycloak, isMutating: isSyncing } = useSWRMutation(
-    "/api/user-service/roles/sync-keycloak",
-    postSync,
-    {
-      onSuccess: () => toast.success(t("syncedToKeycloakToast")),
-      onError: (err) => toast.error(err.message),
-    }
-  );
+  const { mutate: mutateCatalog } = useSWRConfig();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const roles = useMemo(() => compData?.composite_roles ?? [], [compData]);
+  async function refreshCatalog() {
+    setIsRefreshing(true);
+    try {
+      await mutateCatalog(isIdentityCatalogKey, undefined, {
+        revalidate: true,
+        throwOnError: true,
+      });
+      toast.success(t("refreshedFromKeycloakToast"));
+    } catch (error) {
+      toast.error(
+        errorMessageFromUnknown(error, t("refreshFromKeycloakFailed"))
+      );
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+
+  const roles = useMemo(() => compData?.roles ?? [], [compData]);
 
   const selectedComp = useMemo(
-    () => roles.find((role) => role.name === selectedRole) ?? null,
+    () => roles.find((role) => role.id === selectedRole) ?? null,
     [roles, selectedRole]
   );
 
-  const coarseRoles = useMemo(() => coarseData?.roles ?? [], [coarseData]);
+  const coarseRoles = useMemo(() => {
+    const platformRoleNames = new Set(roles.map((role) => role.name));
+    return (coarseData?.roles ?? []).filter(
+      (role) => !platformRoleNames.has(role.name)
+    );
+  }, [coarseData, roles]);
 
   const selectedCoarse = useMemo(
-    () => coarseRoles.find((role) => role.name === selectedCoarseRole) ?? null,
+    () => coarseRoles.find((role) => role.id === selectedCoarseRole) ?? null,
     [coarseRoles, selectedCoarseRole]
   );
 
-  const isBuiltin = selectedComp?.is_builtin ?? false;
+  const isBuiltin = selectedComp?.is_builtin === true;
   const effectivePermissions = rolePermsData?.permissions ?? [];
   const isWildcard = effectivePermissions.includes("*");
   const selectedCoarseIsWildcard =
     selectedCoarse?.permissions?.includes("*") ||
     coarseRolePermsData?.permissions?.includes("*") ||
     false;
-  const canMutate = canManageRoles && !isBuiltin;
+  const canMutate =
+    canManageRoles &&
+    Boolean(selectedComp) &&
+    selectedComp?.is_builtin !== true;
   const canMutateCoarse =
     canManageRoles && Boolean(selectedCoarseRole) && !selectedCoarseIsWildcard;
+  const canDeleteCoarse =
+    canManageRoles &&
+    Boolean(selectedCoarse) &&
+    selectedCoarse?.is_builtin !== true;
 
   useEffect(() => {
     if (roles.length === 0) {
       setSelectedRole("");
       return;
     }
-    if (!roles.some((role) => role.name === selectedRole)) {
-      setSelectedRole(roles[0]?.name ?? "");
+    if (!roles.some((role) => role.id === selectedRole)) {
+      setSelectedRole(roles[0]?.id ?? "");
     }
   }, [roles, selectedRole]);
 
@@ -705,8 +880,8 @@ function RolesManager() {
       setSelectedCoarseRole("");
       return;
     }
-    if (!coarseRoles.some((role) => role.name === selectedCoarseRole)) {
-      setSelectedCoarseRole(coarseRoles[0]?.name ?? "");
+    if (!coarseRoles.some((role) => role.id === selectedCoarseRole)) {
+      setSelectedCoarseRole(coarseRoles[0]?.id ?? "");
     }
   }, [coarseRoles, selectedCoarseRole]);
 
@@ -732,8 +907,30 @@ function RolesManager() {
   }, [coarseRoles, coarseRoleSearch]);
 
   const groupedPermissions = useMemo(
-    () => groupByFeature(permsData?.permissions ?? []),
-    [permsData]
+    () =>
+      groupByFeature(
+        (permsData?.permissions ?? []).filter(
+          (permission) =>
+            permission.service_client === selectedCoarse?.service_client ||
+            permission.name.startsWith("system.settings:")
+        )
+      ),
+    [permsData, selectedCoarse?.service_client]
+  );
+
+  const editablePermissionNames = useMemo(
+    () =>
+      new Set(
+        (permsData?.permissions ?? [])
+          .filter(
+            (permission) =>
+              permission.service_client != null &&
+              permission.service_client === selectedCoarse?.service_client &&
+              !permission.name.startsWith("system.settings:")
+          )
+          .map((permission) => permission.name)
+      ),
+    [permsData, selectedCoarse?.service_client]
   );
 
   const filteredGrouped = useMemo(() => {
@@ -772,8 +969,13 @@ function RolesManager() {
   }, [coarseRolePermsData, permsData]);
 
   const selectedRoleIds = useMemo(
-    () => new Set(roleIdsData?.role_ids ?? []),
-    [roleIdsData]
+    () =>
+      new Set(
+        roleIdsDraft?.roleId === selectedRole
+          ? roleIdsDraft.ids
+          : roleIdsData?.role_ids ?? []
+      ),
+    [roleIdsDraft, selectedRole, roleIdsData]
   );
 
   const includedCoarseRoles = useMemo(() => {
@@ -787,7 +989,7 @@ function RolesManager() {
 
   const handleToggle = useCallback(
     (name: string) => {
-      if (!canMutateCoarse) return;
+      if (!canMutateCoarse || !editablePermissionNames.has(name)) return;
       mutateCoarseRolePerms(
         (prev) => {
           const perms = prev?.permissions ?? [];
@@ -802,7 +1004,12 @@ function RolesManager() {
         { revalidate: false }
       );
     },
-    [canMutateCoarse, mutateCoarseRolePerms, selectedCoarseRole]
+    [
+      canMutateCoarse,
+      editablePermissionNames,
+      mutateCoarseRolePerms,
+      selectedCoarseRole,
+    ]
   );
 
   const handleSelectAll = useCallback(
@@ -812,6 +1019,7 @@ function RolesManager() {
         (prev) => {
           const current = new Set(prev?.permissions ?? []);
           for (const p of perms) {
+            if (!editablePermissionNames.has(p.name)) continue;
             if (checked) current.add(p.name);
             else current.delete(p.name);
           }
@@ -820,7 +1028,12 @@ function RolesManager() {
         { revalidate: false }
       );
     },
-    [canMutateCoarse, mutateCoarseRolePerms, selectedCoarseRole]
+    [
+      canMutateCoarse,
+      editablePermissionNames,
+      mutateCoarseRolePerms,
+      selectedCoarseRole,
+    ]
   );
 
   const [isUpdatingDescription, setIsUpdatingDescription] = useState(false);
@@ -834,28 +1047,34 @@ function RolesManager() {
   }, [catalogNames, selectedPermsSet, saveCoarsePermissions]);
 
   const handleToggleRole = useCallback(
-    (roleName: string) => {
+    (bundleId: string) => {
       if (!canMutate || !selectedRole) return;
-      const current = new Set(roleIdsData?.role_ids ?? []);
-      if (current.has(roleName)) current.delete(roleName);
-      else current.add(roleName);
-      saveRoleIds({ role_ids: Array.from(current) });
+      setRoleIdsDraft((draft) => {
+        const current = new Set(
+          draft?.roleId === selectedRole
+            ? draft.ids
+            : roleIdsData?.role_ids ?? []
+        );
+        if (current.has(bundleId)) current.delete(bundleId);
+        else current.add(bundleId);
+        return { roleId: selectedRole, ids: Array.from(current) };
+      });
     },
-    [canMutate, selectedRole, roleIdsData, saveRoleIds]
+    [canMutate, selectedRole, roleIdsData]
   );
 
   const handleUpdateDescription = useCallback(
     async (description: string) => {
       setIsUpdatingDescription(true);
       try {
-        await patchRole(`/api/user-service/roles/${rolePath(selectedRole)}`, {
+        await patchRole(selectedRole, {
           arg: { description },
         });
         mutateComp();
         toast.success(t("roleUpdatedToast"));
         setEditingDescription(false);
       } catch (err: any) {
-        toast.error(err.message);
+        toast.error(errorMessageFromUnknown(err));
       } finally {
         setIsUpdatingDescription(false);
       }
@@ -867,24 +1086,45 @@ function RolesManager() {
     if (!deleteConfirmRole) return;
     setIsDeleting(true);
     try {
-      await deleteRole(
-        `/api/user-service/roles/${rolePath(deleteConfirmRole)}`
-      );
-      mutateComp();
-      if (deleteConfirmRole === selectedRole) {
-        const remaining = roles.filter(
-          (role) => role.name !== deleteConfirmRole
-        );
-        setSelectedRole(remaining[0]?.name ?? "");
+      if ("service_client" in deleteConfirmRole) {
+        await deleteFeatureBundle(deleteConfirmRole.id);
+        void mutateCoarseData();
+        void mutateComp();
+        void mutateRolePerms();
+        if (deleteConfirmRole.id === selectedCoarseRole) {
+          const remaining = coarseRoles.filter(
+            (role) => role.id !== deleteConfirmRole.id
+          );
+          setSelectedCoarseRole(remaining[0]?.id ?? "");
+        }
+      } else {
+        await deleteRole(deleteConfirmRole.id);
+        void mutateComp();
+        if (deleteConfirmRole.id === selectedRole) {
+          const remaining = roles.filter(
+            (role) => role.id !== deleteConfirmRole.id
+          );
+          setSelectedRole(remaining[0]?.id ?? "");
+        }
       }
       setDeleteConfirmRole(null);
       toast.success(t("roleDeletedToast"));
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(errorMessageFromUnknown(err));
     } finally {
       setIsDeleting(false);
     }
-  }, [deleteConfirmRole, selectedRole, roles, mutateComp, t]);
+  }, [
+    deleteConfirmRole,
+    selectedRole,
+    roles,
+    selectedCoarseRole,
+    coarseRoles,
+    mutateCoarseData,
+    mutateComp,
+    mutateRolePerms,
+    t,
+  ]);
 
   const isInitialLoading = compLoading || coarseLoading || permsLoading;
 
@@ -894,7 +1134,7 @@ function RolesManager() {
 
   const isRightPanelLoading =
     activeLayer === "composite"
-      ? Boolean(selectedRole) && (rolePermsLoading || roleIdsLoading)
+      ? Boolean(selectedRole) && rolePermsLoading
       : Boolean(selectedCoarseRole) && coarseRolePermsLoading;
 
   const isCurrentTabLoading =
@@ -923,16 +1163,20 @@ function RolesManager() {
               secondary
               onClick={() => setCreateModalOpen(true)}
             >
-              {t("newRoleButton")}
+              {t(
+                activeLayer === "composite"
+                  ? "newRoleButton"
+                  : "newFeatureBundleButton"
+              )}
             </Button>
           )}
           <Button
             leftIcon={SvgRefreshCw}
             secondary
-            disabled={isSyncing || !canManageRoles}
-            onClick={() => syncToKeycloak()}
+            disabled={isRefreshing}
+            onClick={() => void refreshCatalog()}
           >
-            {isSyncing ? t("syncingButton") : t("syncButton")}
+            {isRefreshing ? t("refreshingButton") : t("refreshButton")}
           </Button>
         </div>
       </div>
@@ -990,12 +1234,12 @@ function RolesManager() {
             <div className="flex flex-col gap-1">
               {activeLayer === "composite" &&
                 filteredRoles.map((role) => {
-                  const selected = selectedRole === role.name;
+                  const selected = selectedRole === role.id;
                   const isAll = (role.permissions ?? []).includes("*");
                   return (
                     <LineItem
-                      key={role.name}
-                      onClick={() => setSelectedRole(role.name)}
+                      key={role.id}
+                      onClick={() => setSelectedRole(role.id)}
                       selected={selected}
                       emphasized={selected}
                       rightChildren={selected ? <SvgCheck size={14} /> : null}
@@ -1037,11 +1281,11 @@ function RolesManager() {
                 })}
               {activeLayer === "coarse" &&
                 filteredCoarseRoles.map((role) => {
-                  const selected = selectedCoarseRole === role.name;
+                  const selected = selectedCoarseRole === role.id;
                   return (
                     <LineItem
-                      key={role.name}
-                      onClick={() => setSelectedCoarseRole(role.name)}
+                      key={role.id}
+                      onClick={() => setSelectedCoarseRole(role.id)}
                       selected={selected}
                       emphasized={selected}
                       rightChildren={selected ? <SvgCheck size={14} /> : null}
@@ -1104,6 +1348,7 @@ function RolesManager() {
                             </span>
                           )}
                         </div>
+                        <KeycloakRoleId roleId={selectedComp.id} />
                         {editingDescription ? (
                           <div className="mt-2 flex items-center gap-2">
                             <InputTypeIn
@@ -1205,7 +1450,7 @@ function RolesManager() {
                           onClick={() => {
                             if (selectedRole && roleIdsData?.role_ids) {
                               void saveRoleIds({
-                                role_ids: roleIdsData.role_ids,
+                                role_ids: Array.from(selectedRoleIds),
                               });
                             }
                           }}
@@ -1219,9 +1464,7 @@ function RolesManager() {
                             leftIcon={SvgTrash}
                             secondary
                             className="text-danger-03"
-                            onClick={() =>
-                              setDeleteConfirmRole(selectedComp.name)
-                            }
+                            onClick={() => setDeleteConfirmRole(selectedComp)}
                           >
                             {t("deleteButton")}
                           </Button>
@@ -1229,94 +1472,6 @@ function RolesManager() {
                       </div>
                     </div>
                   </div>
-                )}
-
-                {selectedComp && (
-                  <Card className="mb-4">
-                    <CardHeader className="flex flex-row items-center justify-between gap-3">
-                      <div>
-                        <CardTitle className="text-sm">
-                          {t("includedServiceRolesTitle", {
-                            defaultValue: "Included service roles",
-                          })}
-                        </CardTitle>
-                        <Text secondaryBody text04 className="mt-1 block">
-                          {t("includedServiceRolesDescription", {
-                            defaultValue:
-                              "Inherited service roles contribute to this role's effective permissions.",
-                          })}
-                        </Text>
-                      </div>
-                      <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
-                        {t("includedServiceRolesSelectedCount", {
-                          count: selectedRoleIds.size,
-                          defaultValue: "{{count}} selected",
-                        })}
-                      </span>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="relative mb-3">
-                        <InputTypeIn
-                          leftSearchIcon
-                          placeholder={t("searchIncludedRolesPlaceholder")}
-                          value={includedSearch}
-                          onChange={(e) => setIncludedSearch(e.target.value)}
-                        />
-                      </div>
-                      {includedCoarseRoles.length === 0 ? (
-                        <Text secondaryBody text04>
-                          {t("noServiceRolesMatchSearch", {
-                            defaultValue: "No service roles match",
-                          })}
-                        </Text>
-                      ) : (
-                        <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
-                          {includedCoarseRoles.map((role) => (
-                            <label
-                              key={`${role.service_client}:${role.name}`}
-                              className={cn(
-                                "flex items-center gap-2 rounded-06 px-3 py-2",
-                                canMutate
-                                  ? "cursor-pointer hover:bg-background-neutral-02"
-                                  : ""
-                              )}
-                            >
-                              {canMutate && (
-                                <Checkbox
-                                  checked={selectedRoleIds.has(role.name)}
-                                  disabled={isSavingRoleIds}
-                                  onCheckedChange={() =>
-                                    handleToggleRole(role.name)
-                                  }
-                                />
-                              )}
-                              <span className="min-w-0">
-                                <Text
-                                  secondaryBody
-                                  text02
-                                  className="block truncate"
-                                >
-                                  {role.name}
-                                </Text>
-                                <Text
-                                  secondaryBody
-                                  text04
-                                  className="block truncate text-xs"
-                                >
-                                  {t("serviceRolePermissionCount", {
-                                    serviceClient: role.service_client,
-                                    count: role.permissions.length,
-                                    defaultValue:
-                                      "{{serviceClient}} · {{count}} permissions",
-                                  })}
-                                </Text>
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
                 )}
 
                 {activeLayer === "coarse" && selectedCoarse && (
@@ -1330,6 +1485,7 @@ function RolesManager() {
                         >
                           {coarseRoleLabel(selectedCoarse.name)}
                         </Text>
+                        <KeycloakRoleId roleId={selectedCoarse.id} />
                         <Text secondaryBody text04 className="mt-2 block">
                           {selectedCoarse.description || t("noDescription")}
                         </Text>
@@ -1341,21 +1497,35 @@ function RolesManager() {
                               })}
                         </Text>
                       </div>
-                      {!selectedCoarseIsWildcard && (
+                      {(!selectedCoarseIsWildcard || canDeleteCoarse) && (
                         <div className="flex shrink-0 items-center gap-2">
-                          {isSaving && (
+                          {!selectedCoarseIsWildcard && isSaving && (
                             <div className="flex items-center gap-1.5 text-xs text-text-03">
                               <SimpleLoader className="h-3.5 w-3.5" />
                               <span>{t("savingButton")}</span>
                             </div>
                           )}
-                          <Button
-                            leftIcon={isSaving ? SimpleLoader : SvgCheck}
-                            disabled={isSaving || !canMutateCoarse}
-                            onClick={handleSave}
-                          >
-                            {isSaving ? t("savingButton") : t("saveButton")}
-                          </Button>
+                          {!selectedCoarseIsWildcard && (
+                            <Button
+                              leftIcon={isSaving ? SimpleLoader : SvgCheck}
+                              disabled={isSaving || !canMutateCoarse}
+                              onClick={handleSave}
+                            >
+                              {isSaving ? t("savingButton") : t("saveButton")}
+                            </Button>
+                          )}
+                          {canDeleteCoarse && (
+                            <Button
+                              leftIcon={SvgTrash}
+                              secondary
+                              className="text-danger-03"
+                              onClick={() =>
+                                setDeleteConfirmRole(selectedCoarse)
+                              }
+                            >
+                              {t("deleteButton")}
+                            </Button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1389,7 +1559,7 @@ function RolesManager() {
                             <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
                               {includedCoarseRoles.map((role) => (
                                 <label
-                                  key={role.name}
+                                  key={role.id}
                                   className={cn(
                                     "flex items-center gap-2 rounded-06 px-3 py-2",
                                     canMutate
@@ -1399,18 +1569,30 @@ function RolesManager() {
                                 >
                                   {canMutate && (
                                     <Checkbox
-                                      checked={selectedRoleIds.has(role.name)}
+                                      checked={selectedRoleIds.has(role.id)}
                                       disabled={isSavingRoleIds}
                                       onCheckedChange={() =>
-                                        handleToggleRole(role.name)
+                                        handleToggleRole(role.id)
                                       }
                                     />
                                   )}
-                                  <span className="min-w-0">
+                                  {!canMutate &&
+                                    selectedRoleIds.has(role.id) && (
+                                      <span
+                                        role="img"
+                                        aria-label={t(
+                                          "assignedFeatureBundleLabel"
+                                        )}
+                                        className="shrink-0 self-start text-success-02"
+                                      >
+                                        <SvgCheck size={16} />
+                                      </span>
+                                    )}
+                                  <span className="min-w-0 flex-1">
                                     <Text
                                       secondaryBody
                                       text05
-                                      className="block truncate capitalize"
+                                      className="block whitespace-normal break-words capitalize [overflow-wrap:anywhere]"
                                     >
                                       {coarseRoleLabel(role.name)}
                                     </Text>
@@ -1494,11 +1676,17 @@ function RolesManager() {
                       const entities = filteredGrouped[feature];
                       if (!entities) return null;
                       const featurePerms = Object.values(entities).flat();
+                      const editableFeaturePerms = featurePerms.filter((p) =>
+                        editablePermissionNames.has(p.name)
+                      );
                       const featureSelected = featurePerms.filter((p) =>
                         selectedPermsSet.has(p.name)
                       ).length;
                       const featureAll =
-                        featureSelected === featurePerms.length;
+                        editableFeaturePerms.length > 0 &&
+                        editableFeaturePerms.every((p) =>
+                          selectedPermsSet.has(p.name)
+                        );
                       return (
                         <div key={feature} className="mb-5">
                           <div className="mb-3 flex items-center gap-2">
@@ -1506,8 +1694,12 @@ function RolesManager() {
                             {canMutateCoarse && (
                               <Checkbox
                                 checked={featureAll}
+                                disabled={editableFeaturePerms.length === 0}
                                 onCheckedChange={(checked) =>
-                                  handleSelectAll(featurePerms, !!checked)
+                                  handleSelectAll(
+                                    editableFeaturePerms,
+                                    !!checked
+                                  )
                                 }
                               />
                             )}
@@ -1520,10 +1712,17 @@ function RolesManager() {
                             <div className="h-px flex-1 bg-border-01" />
                           </div>
                           {Object.entries(entities).map(([entity, perms]) => {
+                            const editableEntityPerms = perms.filter((p) =>
+                              editablePermissionNames.has(p.name)
+                            );
                             const selectedCount = perms.filter((p) =>
                               selectedPermsSet.has(p.name)
                             ).length;
-                            const allSelected = selectedCount === perms.length;
+                            const allSelected =
+                              editableEntityPerms.length > 0 &&
+                              editableEntityPerms.every((p) =>
+                                selectedPermsSet.has(p.name)
+                              );
                             return (
                               <Card key={entity} className="mb-2">
                                 <CardHeader className="flex flex-row items-center justify-between">
@@ -1531,8 +1730,14 @@ function RolesManager() {
                                     {canMutateCoarse && (
                                       <Checkbox
                                         checked={allSelected}
+                                        disabled={
+                                          editableEntityPerms.length === 0
+                                        }
                                         onCheckedChange={(checked) =>
-                                          handleSelectAll(perms, !!checked)
+                                          handleSelectAll(
+                                            editableEntityPerms,
+                                            !!checked
+                                          )
                                         }
                                       />
                                     )}
@@ -1551,7 +1756,10 @@ function RolesManager() {
                                         key={perm.name}
                                         className={cn(
                                           "flex items-center gap-2 rounded-06 px-2 py-1.5 hover:bg-background-neutral-02",
-                                          canMutateCoarse
+                                          canMutateCoarse &&
+                                            editablePermissionNames.has(
+                                              perm.name
+                                            )
                                             ? "cursor-pointer"
                                             : ""
                                         )}
@@ -1561,6 +1769,11 @@ function RolesManager() {
                                             checked={selectedPermsSet.has(
                                               perm.name
                                             )}
+                                            disabled={
+                                              !editablePermissionNames.has(
+                                                perm.name
+                                              )
+                                            }
                                             onCheckedChange={() =>
                                               handleToggle(perm.name)
                                             }
@@ -1619,11 +1832,17 @@ function RolesManager() {
         </div>
       )}
 
-      <CreateCompositeRoleModal
+      <CreateRoleModal
+        key={activeLayer}
+        layer={activeLayer}
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        onCreated={(name) => {
-          void mutateComp().then(() => setSelectedRole(name));
+        onCreated={(roleId) => {
+          if (activeLayer === "composite") {
+            void mutateComp().then(() => setSelectedRole(roleId));
+          } else {
+            void mutateCoarseData().then(() => setSelectedCoarseRole(roleId));
+          }
         }}
       />
 
@@ -1641,10 +1860,15 @@ function RolesManager() {
           <div className="flex flex-col gap-2">
             <Text as="p" text04>
               {t("confirmDeleteRole", {
-                name: roleLabel(deleteConfirmRole),
-                defaultValue: `Are you sure you want to delete "${roleLabel(
-                  deleteConfirmRole
-                )}"?`,
+                name:
+                  "service_client" in deleteConfirmRole
+                    ? coarseRoleLabel(deleteConfirmRole.name)
+                    : roleLabel(deleteConfirmRole.name),
+                defaultValue: `Are you sure you want to delete "${
+                  "service_client" in deleteConfirmRole
+                    ? coarseRoleLabel(deleteConfirmRole.name)
+                    : roleLabel(deleteConfirmRole.name)
+                }"?`,
               })}
             </Text>
             <Text as="p" secondaryBody text03>
@@ -1665,23 +1889,39 @@ function RolesManager() {
 export default function Page() {
   const { t } = useTranslation();
   const { data: compData, isLoading: isRolesLoading } = useSWR<{
-    composite_roles: CompositeRole[];
-  }>("/api/user-service/roles/", errorHandlingFetcher, {
-    dedupingInterval: 30000,
-  });
+    roles: CompositeRole[];
+  }>(
+    accessEndpoints.compositeRoles.browserPath,
+    () => fetchCompositeRoles<{ roles: CompositeRole[] }>(),
+    {
+      dedupingInterval: 30000,
+    }
+  );
   const { data: permsData, isLoading: permsLoading } = useSWR<{
     permissions: Permission[];
-  }>("/api/user-service/permissions/", errorHandlingFetcher, {
-    dedupingInterval: 30000,
-  });
-  const { data: roleDistributionData, isLoading: roleDistributionLoading } =
-    useSWR<{ distribution: { role: string; count: number }[] }>(
-      "/api/user-service/users/role-distribution",
-      errorHandlingFetcher
-    );
-  const roles = compData?.composite_roles ?? [];
+  }>(
+    accessEndpoints.permissionCatalog.browserPath,
+    () => fetchPermissionCatalog<{ permissions: Permission[] }>(),
+    {
+      dedupingInterval: 30000,
+    }
+  );
+  const { distribution, state: roleDistributionState } = useRoleDistribution();
+  const roles = compData?.roles ?? [];
   const builtInRolesCount = roles.filter((r) => r.is_builtin).length;
-  const topRole = roleDistributionData?.distribution[0] ?? null;
+  const topRole = distribution[0] ?? null;
+  const topRoleSummary =
+    roleDistributionState === "loading"
+      ? "..."
+      : roleDistributionState === "calculating"
+        ? t("admin.roles.topRoleCalculating", { defaultValue: "Calculating…" })
+        : roleDistributionState === "unavailable"
+          ? t("admin.roles.topRoleUnavailable", {
+              defaultValue: "Unavailable",
+            })
+          : topRole
+            ? `${formatRoleName(topRole.role)} · ${topRole.count}`
+            : t("admin.roles.noRoleData", { defaultValue: "No data" });
   return (
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
@@ -1730,11 +1970,7 @@ export default function Page() {
               label: t("admin.roles.topRoleLabel", {
                 defaultValue: "Most used role",
               }),
-              value: roleDistributionLoading
-                ? "..."
-                : topRole
-                  ? `${formatRoleName(topRole.role)} · ${topRole.count}`
-                  : t("admin.roles.noRoleData", { defaultValue: "No data" }),
+              value: topRoleSummary,
             },
           ]}
         />

@@ -1,25 +1,31 @@
 "use client";
 
 import { useMemo, useCallback, useState } from "react";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
-import type { FullPersona } from "@/app/admin/agents/interfaces";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
+import type { FullPersona } from "@/lib/api/domains/agents/types";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
 import AgentAvailabilityBadge from "@/refresh-components/agents/AgentAvailabilityBadge";
 import Button from "@/refresh-components/buttons/Button";
 import { useAppRouter } from "@/hooks/appNavigation";
 import IconButton from "@/refresh-components/buttons/IconButton";
-import { usePinnedAgents, useAgent, useAgents } from "@/hooks/useAgents";
+import {
+  usePinnedAgents,
+  useAgent,
+  useAgents,
+} from "@/lib/api/domains/agents/hooks";
 import { cn, noProp } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
 import {
   checkUserOwnsAgent,
+  resolveAgentOwnerEmail,
+} from "@/lib/api/domains/agents/selectors";
+import {
   updateAgentSharedStatus,
   updateAgentFeaturedStatus,
   deleteAgent,
-  resolveAgentOwnerEmail,
-} from "@/lib/agents";
+} from "@/lib/api/domains/agents/api";
 import { useUser } from "@/providers/UserProvider";
 import {
   SvgActions,

@@ -1,9 +1,11 @@
 "use client";
+import { datasourcesEndpoints } from "@/lib/api/domains/datasources/endpoints";
 
-import { CCPairFullInfo, ConnectorCredentialPairStatus } from "./types";
+import { ConnectorCredentialPairStatus } from "@/lib/api/domains/datasources/types";
+import { CCPairFullInfo } from "./types";
 import { mutate } from "swr";
-import { buildCCPairInfoUrl } from "./lib";
-import { setCCPairStatus } from "@/lib/ccPair";
+
+import { setCCPairStatus } from "@/lib/api/domains/datasources/hooks";
 import { useState } from "react";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
 
@@ -22,7 +24,9 @@ export function useStatusChange(ccPair: CCPairFullInfo | null) {
       await setCCPairStatus(ccPair.id, newStatus);
 
       // Use mutate to revalidate the status on the backend
-      await mutate(buildCCPairInfoUrl(ccPair.id));
+      await mutate(
+        datasourcesEndpoints.ccPairInfoWithQuery(ccPair.id).browserPath
+      );
     } catch (error) {
       console.error("Failed to update status", error);
     } finally {

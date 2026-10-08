@@ -1,14 +1,53 @@
 """
 File Operation Tools Category.
 Provides tools for reading, writing, and listing files.
+
+Every tool in this module accepts a path relative to the workspace and
+resolves it through ``resolve_in_workspace`` before touching the
+filesystem — see spec TS-2. Before this fix, WORKSPACE_DIR was never even
+imported here: every tool used a bare ``open()``/``Path()`` on whatever
+string the model supplied, so ``file_read("/proc/self/environ")`` or
+``file_write("/app/server.py", ...)`` worked exactly as asked.
 """
 
-from pathlib import Path
+from itertools import islice
+import shutil
 from typing import Any
 
-from i18n import t
+from localization import t
 
 from ..core.base import BaseToolCategory
+from ..core.observability import get_logger
+from ..core.schema import BoundedLimit, GlobPattern, LongText
+from ..core.workspace import (
+    WorkspacePath,
+    guard_workspace_escape,
+    resolve_in_workspace,
+    workspace_root,
+)
+from .response import tool_error_message
+
+logger = get_logger(__name__)
+
+
+def _safe_error(exc: Exception) -> str:
+    """The exception's kind, never its text.
+
+    ``str(exc)`` on an OSError carries the absolute path it failed on, and on
+    a parser error the document's internals. The model gets the classification
+    it can act on; the detail goes to the log.
+    """
+    logger.warning("%s failed: %s", type(exc).__name__, exc, exc_info=True)
+    return tool_error_message(exc)
+
+
+# Byte and item caps. Spec TS-11: file_read previously called
+# f.readlines()[:max_lines], which materialises the entire file in memory
+# before the slice is applied; file_list materialised the whole glob result
+# before truncating to 100 items.
+MAX_READ_BYTES = 1_000_000
+MAX_WRITE_BYTES = 5_000_000
+MAX_LIST_ITEMS = 100
 
 
 def normalize_content(content: str) -> str:
@@ -128,119 +167,158 @@ class FileTools(BaseToolCategory):
         """Register all file operation tools with MCP."""
 
         @mcp.tool()
-        def file_read(file_path: str, max_lines: int = 1000) -> str:
+        @guard_workspace_escape
+        def file_read(file_path: WorkspacePath, max_lines: BoundedLimit = 1000) -> str:
             """
-            Read content from a file.
+            Read content from a file inside the workspace.
 
             Args:
-                file_path: Path to the file
+                file_path: Path to the file, relative to the workspace
                 max_lines: Maximum lines to read (default: 1000)
 
             Returns:
                 File content
             """
+            path = resolve_in_workspace(file_path, root=workspace_root())
             try:
-                with open(file_path, encoding="utf-8") as f:
-                    lines = f.readlines()[:max_lines]
-                    content = "".join(lines)
-                    if len(lines) == max_lines:
-                        content += f"\n... [truncated at {max_lines} lines]"
-                    return content
-            except Exception as e:
-                return t("file.read_error", error=str(e))
+                chunks: list[str] = []
+                bytes_read = 0
+                truncated = False
+                lines_read = 0
+                with open(path, encoding="utf-8") as f:
+                    # Iterate line by line rather than f.readlines()[:max_lines]:
+                    # the previous version materialised the entire file in
+                    # memory before applying the slice.
+                    for line in f:
+                        if lines_read >= max_lines:
+                            truncated = True
+                            break
+                        encoded_len = len(line.encode("utf-8"))
+                        if bytes_read + encoded_len > MAX_READ_BYTES:
+                            truncated = True
+                            break
+                        chunks.append(line)
+                        bytes_read += encoded_len
+                        lines_read += 1
+                content = "".join(chunks)
+                if truncated:
+                    content += f"\n... [truncated at {lines_read} lines / {MAX_READ_BYTES} bytes]"
+                return content
+            except (OSError, UnicodeError, ValueError) as e:
+                return t("file.read_error", error=_safe_error(e))
 
         @mcp.tool()
-        def file_write(file_path: str, content: str, append: bool = False) -> str:
+        @guard_workspace_escape
+        def file_write(file_path: WorkspacePath, content: LongText, append: bool = False) -> str:
             """
-            Write content to a file.
+            Write content to a file inside the workspace.
             Use \\n for newlines when writing multi-line content.
 
             Args:
-                file_path: Path to the file
+                file_path: Path to the file, relative to the workspace
                 content: Content to write (use \\n for newlines)
                 append: Append to file instead of overwrite (default: False)
 
             Returns:
                 Success or error message
             """
+            path = resolve_in_workspace(file_path, root=workspace_root())
+            content = normalize_content(content)
+            if len(content.encode("utf-8")) > MAX_WRITE_BYTES:
+                return t(
+                    "file.write_error",
+                    error=f"content exceeds the {MAX_WRITE_BYTES} byte limit",
+                )
             try:
-                # Normalize escaped characters from UI input
-                content = normalize_content(content)
-
+                path.parent.mkdir(parents=True, exist_ok=True)
                 mode = "a" if append else "w"
-                with open(file_path, mode, encoding="utf-8") as f:
+                with open(path, mode, encoding="utf-8") as f:
                     f.write(content)
                 return f"Successfully wrote to {file_path}"
-            except Exception as e:
-                return t("file.write_error", error=str(e))
+            except (OSError, UnicodeError, ValueError) as e:
+                return t("file.write_error", error=_safe_error(e))
 
         @mcp.tool()
-        def file_list(directory: str, pattern: str | None = None) -> str:
+        @guard_workspace_escape
+        def file_list(directory: WorkspacePath = ".", pattern: GlobPattern | None = None) -> str:
             """
-            List files in a directory.
+            List files in a directory inside the workspace.
 
             Args:
-                directory: Directory path
+                directory: Directory path, relative to the workspace
                 pattern: Optional glob pattern (e.g., "*.py")
 
             Returns:
                 List of files
             """
+            path = resolve_in_workspace(directory, root=workspace_root())
             try:
-                path = Path(directory)
                 if not path.exists():
                     return t("file.directory_not_found", directory=directory)
+                if not path.is_dir():
+                    return t("file.directory_not_found", directory=directory)
 
-                files = list(path.glob(pattern)) if pattern else list(path.iterdir())
+                iterator = path.glob(pattern) if pattern else path.iterdir()
 
                 result = []
-                for f in files[:100]:  # Limit to 100 items
-                    file_type = "DIR" if f.is_dir() else "FILE"
-                    size = f.stat().st_size if f.is_file() else "-"
-                    result.append(f"{file_type}\t{size}\t{f.name}")
+                shown = 0
+                # islice rather than list(...)[:100]: the previous version
+                # materialised the entire glob/iterdir result before slicing.
+                for entry in islice(iterator, MAX_LIST_ITEMS):
+                    if entry.is_symlink():
+                        # A symlink inside the workspace can point anywhere;
+                        # listing it as if it were a plain file would surface
+                        # its target's metadata without a boundary check.
+                        continue
+                    file_type = "DIR" if entry.is_dir() else "FILE"
+                    size = entry.stat().st_size if entry.is_file() else "-"
+                    result.append(f"{file_type}\t{size}\t{entry.name}")
+                    shown += 1
 
-                if len(files) > 100:
-                    result.append(f"... and {len(files) - 100} more items")
+                if next(iterator, None) is not None:
+                    result.append(f"... and more items (showing first {MAX_LIST_ITEMS})")
 
                 return "\n".join(result) if result else "Empty directory"
-            except Exception as e:
-                return t("file.list_error", error=str(e))
+            except (OSError, UnicodeError, ValueError) as e:
+                return t("file.list_error", error=_safe_error(e))
 
         @mcp.tool()
-        def create_directory(dir_path: str, parents: bool = True) -> str:
+        @guard_workspace_escape
+        def create_directory(dir_path: WorkspacePath, parents: bool = True) -> str:
             """
-            Create a directory (and parent directories if needed).
+            Create a directory inside the workspace (and parent directories if needed).
 
             Args:
-                dir_path: Path to the directory to create
+                dir_path: Path to the directory to create, relative to the workspace
                 parents: Create parent directories if they don't exist (default: True)
 
             Returns:
                 Success or error message
             """
+            path = resolve_in_workspace(dir_path, root=workspace_root())
             try:
-                path = Path(dir_path)
                 if path.exists():
                     return t("file.directory_exists", dir_path=dir_path)
 
                 path.mkdir(parents=parents, exist_ok=True)
                 return f"Successfully created directory: {dir_path}"
-            except Exception as e:
-                return t("file.create_directory_error", error=str(e))
+            except (OSError, UnicodeError, ValueError) as e:
+                return t("file.create_directory_error", error=_safe_error(e))
 
         @mcp.tool()
-        def file_exists(file_path: str) -> str:
+        @guard_workspace_escape
+        def file_exists(file_path: WorkspacePath) -> str:
             """
-            Check if a file or directory exists.
+            Check if a file or directory exists inside the workspace.
 
             Args:
-                file_path: Path to check
+                file_path: Path to check, relative to the workspace
 
             Returns:
                 Existence status and type (file/directory)
             """
+            path = resolve_in_workspace(file_path, root=workspace_root())
             try:
-                path = Path(file_path)
                 if not path.exists():
                     return t("file.path_not_found", file_path=file_path)
 
@@ -248,17 +326,19 @@ class FileTools(BaseToolCategory):
                     size = path.stat().st_size
                     return f"FILE exists: {file_path} ({size} bytes)"
                 elif path.is_dir():
-                    items = len(list(path.iterdir()))
+                    items = sum(1 for _ in islice(path.iterdir(), MAX_LIST_ITEMS))
                     return f"DIRECTORY exists: {file_path} ({items} items)"
                 else:
                     return f"EXISTS (special): {file_path}"
-            except Exception as e:
-                return t("file.check_error", error=str(e))
+            except (OSError, UnicodeError, ValueError) as e:
+                return t("file.check_error", error=_safe_error(e))
 
         @mcp.tool()
-        def file_update(file_path: str, old_text: str, new_text: str) -> str:
+        @guard_workspace_escape
+        def file_update(file_path: WorkspacePath, old_text: LongText, new_text: LongText) -> str:
             """
-            Update an existing file by replacing a specific text block with new content.
+            Update an existing file inside the workspace by replacing a specific
+            text block with new content.
             Use \\n for newlines in both old_text and new_text.
 
             This tool finds the exact occurrence of old_text in the file and replaces it
@@ -266,7 +346,7 @@ class FileTools(BaseToolCategory):
             specific sections of code.
 
             Args:
-                file_path: Path to the file to update
+                file_path: Path to the file to update, relative to the workspace
                 old_text: The exact text to find and replace (use \\n for newlines)
                 new_text: The replacement text (use \\n for newlines)
 
@@ -275,13 +355,13 @@ class FileTools(BaseToolCategory):
 
             Example:
                 file_update(
-                    file_path="/workspace/myproject/main.py",
+                    file_path="myproject/main.py",
                     old_text="def add(a, b):\\n    return a + b",
                     new_text="def add(a, b):\\n    \"\"\"Add two numbers.\"\"\"\\n    return a + b"
                 )
             """
+            path = resolve_in_workspace(file_path, root=workspace_root())
             try:
-                path = Path(file_path)
                 if not path.exists():
                     return t("file.file_not_found", file_path=file_path)
                 if not path.is_file():
@@ -292,7 +372,7 @@ class FileTools(BaseToolCategory):
                 new_text = normalize_content(new_text)
 
                 # Read current content
-                with open(file_path, encoding="utf-8") as f:
+                with open(path, encoding="utf-8") as f:
                     content = f.read()
 
                 # Check if old_text exists
@@ -315,7 +395,7 @@ class FileTools(BaseToolCategory):
                 new_content = content.replace(old_text, new_text, 1)
 
                 # Write back
-                with open(file_path, "w", encoding="utf-8") as f:
+                with open(path, "w", encoding="utf-8") as f:
                     f.write(new_content)
 
                 # Calculate change stats
@@ -328,33 +408,41 @@ class FileTools(BaseToolCategory):
                     f"  Occurrences replaced: 1"
                 )
 
-            except Exception as e:
-                return t("file.update_error", error=str(e))
+            except (OSError, UnicodeError, ValueError) as e:
+                return t("file.update_error", error=_safe_error(e))
 
         @mcp.tool()
-        def file_delete(file_path: str, recursive: bool = False) -> str:
+        @guard_workspace_escape
+        def file_delete(file_path: WorkspacePath, recursive: bool = False) -> str:
             """
-            Delete a file or directory.
+            Delete a file or directory inside the workspace.
 
             Args:
-                file_path: Path to delete
+                file_path: Path to delete, relative to the workspace
                 recursive: Delete directories recursively (default: False for safety)
 
             Returns:
                 Success or error message
             """
+            root = workspace_root().resolve()
+            path = resolve_in_workspace(file_path, root=root)
+            if path == root:
+                # resolve_in_workspace allows the root itself (it is a valid
+                # read/list target); deleting it would destroy every other
+                # principal's data sharing the same workspace mount.
+                return t(
+                    "file.delete_error",
+                    error="refusing to delete the workspace root",
+                )
             try:
-                path = Path(file_path)
                 if not path.exists():
                     return t("file.delete_path_not_found", file_path=file_path)
 
-                if path.is_file():
+                if path.is_file() or path.is_symlink():
                     path.unlink()
                     return f"Successfully deleted file: {file_path}"
                 elif path.is_dir():
                     if recursive:
-                        import shutil
-
                         shutil.rmtree(path)
                         return f"Successfully deleted directory recursively: {file_path}"
                     else:
@@ -365,5 +453,5 @@ class FileTools(BaseToolCategory):
                         return f"Successfully deleted empty directory: {file_path}"
 
                 return t("file.cannot_delete", file_path=file_path)
-            except Exception as e:
-                return t("file.delete_error", error=str(e))
+            except (OSError, UnicodeError, ValueError) as e:
+                return t("file.delete_error", error=_safe_error(e))

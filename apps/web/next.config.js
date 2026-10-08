@@ -1,18 +1,11 @@
 // Always require withSentryConfig
 const { withSentryConfig } = require("@sentry/nextjs");
+const { requireEnv } = require("./src/lib/env/requireEnv");
 
-const cspHeader = `
-    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-    font-src 'self' https://fonts.gstatic.com;
-    object-src 'none';
-    base-uri 'self';
-    form-action 'self';
-    ${
-      process.env.NEXT_PUBLIC_CLOUD_ENABLED === "true"
-        ? "upgrade-insecure-requests;"
-        : ""
-    }
-`;
+// The Content-Security-Policy header moved to src/proxy.ts: script-src
+// needs a fresh nonce per request (replacing the 'unsafe-inline' temporary
+// exception this file used to carry — see Task 38), which a static header
+// here cannot generate. Every other security header below is unaffected.
 
 const isDevelopment = process.env.NODE_ENV === "development";
 const optimizePackageImportsConfig = isDevelopment
@@ -36,7 +29,7 @@ const onDemandEntriesConfig = isDevelopment
 const nextConfig = {
   productionBrowserSourceMaps: false,
   output: "standalone",
-  transpilePackages: ["@onyx/opal"],
+  transpilePackages: ["@atlas/opal"],
   onDemandEntries: onDemandEntriesConfig,
   turbopack: {
     root: __dirname,
@@ -64,10 +57,6 @@ const nextConfig = {
       {
         source: "/(.*)",
         headers: [
-          {
-            key: "Content-Security-Policy",
-            value: cspHeader.replace(/\n/g, ""),
-          },
           {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
@@ -102,7 +91,14 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    const backendUrl = process.env.INTERNAL_URL || "http://localhost:8080";
+    const backendUrl = requireEnv(
+      "AGENT_SERVICE_URL",
+      process.env.AGENT_SERVICE_URL
+    ).replace(/\/+$/, "");
+    const posthogHost = requireEnv(
+      "NEXT_PUBLIC_POSTHOG_HOST",
+      process.env.NEXT_PUBLIC_POSTHOG_HOST
+    );
     return {
       // beforeFiles: checked before any filesystem/API routes
       beforeFiles: [],
@@ -114,9 +110,7 @@ const nextConfig = {
         },
         {
           source: "/ph_ingest/:path*",
-          destination: `${
-            process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com"
-          }/:path*`,
+          destination: `${posthogHost}/:path*`,
         },
         // For auth routes without /api prefix
         {
@@ -126,7 +120,7 @@ const nextConfig = {
       ],
       // fallback: only matched if NO filesystem/API route matches.
       // This ensures /api/rag/* is handled by app/api/rag/[...path]/route.ts
-      // (which proxies to LANGCONNECT_URL) and NOT forwarded to the backend.
+      // (which proxies to RAG_SERVICE_URL) and NOT forwarded to the backend.
       fallback: [
         // OpenAPI documentation
         {
@@ -177,7 +171,7 @@ const nextConfig = {
       // Legacy /assistants → /agents redirects (added in PR #8869).
       // Preserves backward compatibility for bookmarks, shared links, and
       // hardcoded URLs that still reference the old /assistants paths.
-      // TODO: Remove these redirects in v4.0 — https://linear.app/onyx-app/issue/ENG-3771
+      // TODO: Remove these redirects in v4.0 — https://linear.app/atlas-app/issue/ENG-3771
       {
         source: "/admin/assistants",
         destination: "/admin/agents",
@@ -206,10 +200,20 @@ const sentryEnabled = Boolean(
   process.env.SENTRY_AUTH_TOKEN && process.env.NEXT_PUBLIC_SENTRY_DSN
 );
 
-// Sentry webpack plugin options
+// Sentry webpack plugin options.
+// org/project are only required when Sentry is actually enabled: with it
+// disabled, dryRun below skips the real upload these identify, and a
+// deployment that never configured Sentry must still build. A hardcoded
+// "atlas-vl"/"atlas-web" would otherwise let an enabled-but-misconfigured
+// deployment upload source maps to the wrong org silently, or just fail the
+// upload with an unexplained 404 in CI.
 const sentryWebpackPluginOptions = {
-  org: process.env.SENTRY_ORG || "onyx-vl",
-  project: process.env.SENTRY_PROJECT || "onyx-web",
+  org: sentryEnabled
+    ? requireEnv("SENTRY_ORG", process.env.SENTRY_ORG)
+    : process.env.SENTRY_ORG,
+  project: sentryEnabled
+    ? requireEnv("SENTRY_PROJECT", process.env.SENTRY_PROJECT)
+    : process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,
   silent: !sentryEnabled, // Silence output when Sentry is disabled
   dryRun: !sentryEnabled, // Don't upload source maps when Sentry is disabled

@@ -1,7 +1,11 @@
+import { integrationsEndpoints } from "@/lib/api/domains/integrations/endpoints";
+
+import { fetchConnectorOAuthRedirectResponse } from "@/lib/api/domains/datasources/api";
+import { fetchConnectorOAuthDetails } from "@/lib/api/domains/integrations/api";
+
 import useSWR from "swr";
 import { ValidSources } from "../types";
 import { OAuthDetails } from "./credentials";
-import { errorHandlingFetcher } from "../fetcher";
 
 export async function getConnectorOauthRedirectUrl(
   connector: ValidSources,
@@ -11,8 +15,9 @@ export async function getConnectorOauthRedirectUrl(
     desired_return_url: window.location.href,
     ...additional_kwargs,
   });
-  const response = await fetch(
-    `/api/connector/oauth/authorize/${connector}?${queryParams.toString()}`
+  const response = await fetchConnectorOAuthRedirectResponse(
+    connector,
+    queryParams
   );
 
   if (!response.ok) {
@@ -26,8 +31,8 @@ export async function getConnectorOauthRedirectUrl(
 
 export function useOAuthDetails(sourceType: ValidSources) {
   return useSWR<OAuthDetails>(
-    `/api/connector/oauth/details/${sourceType}`,
-    errorHandlingFetcher,
+    integrationsEndpoints.connectorOAuthDetails(sourceType).browserPath,
+    () => fetchConnectorOAuthDetails<OAuthDetails>(sourceType),
     {
       shouldRetryOnError: false,
     }

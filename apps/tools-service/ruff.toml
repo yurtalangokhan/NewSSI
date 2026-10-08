@@ -1,0 +1,80 @@
+# Shared Ruff configuration (base: agent-service ruff.toml).
+# Keep this file identical across Python services.
+
+line-length = 120
+indent-width = 4
+target-version = "py311"
+
+respect-gitignore = true
+force-exclude = true
+
+extend-exclude = [
+    "test",
+    "tests",
+]
+
+[lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # import sorting
+    "B",      # flake8-bugbear
+    "UP",     # pyupgrade
+    "SIM",    # flake8-simplify
+    "C4",     # flake8-comprehensions
+    "ARG",    # unused arguments
+    "N",      # PEP 8 naming
+    "S",      # security checks
+    "ASYNC",  # async/await correctness
+    "PERF",   # performance anti-patterns
+    "FAST",   # FastAPI-specific checks
+    "RUF",    # Ruff-specific rules
+]
+
+ignore = [
+    "E501",
+]
+
+fixable = ["ALL"]
+unfixable = []
+
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+
+# Turkish letters (ı, İ) are technically meaningful in docstrings about
+# case-folding behavior; they are not confusable typos.
+allowed-confusables = ["ı", "İ"]
+
+[lint.per-file-ignores]
+# __init__.py modules exist to re-export the public surface of a package.
+"__init__.py" = ["F401"]
+# Alembic migrations are one-shot scripts whose SQL is built from literal,
+# code-controlled seed constants; rewriting them to bound parameters would
+# touch already-applied history for no security gain.
+"**/migrations/**" = ["S608"]
+
+[lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Body",
+    "fastapi.Header",
+    "fastapi.Cookie",
+    "fastapi.Form",
+    "fastapi.File",
+    "fastapi.Security",
+]
+
+[lint.isort]
+combine-as-imports = true
+force-sort-within-sections = true
+
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = "dynamic"

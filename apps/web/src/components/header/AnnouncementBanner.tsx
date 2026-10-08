@@ -1,6 +1,6 @@
 "use client";
 
-import { authenticatedFetch } from "@/lib/fetcher";
+import { dismissNotification } from "@/lib/api/domains/notifications/api";
 import { useState, useEffect, useContext } from "react";
 import { CustomTooltip } from "../tooltip/CustomTooltip";
 import { SettingsContext } from "@/providers/SettingsProvider";
@@ -36,12 +36,7 @@ export function AnnouncementBanner() {
 
   const handleDismiss = async (notificationId: number) => {
     try {
-      const response = await authenticatedFetch(
-        `/api/notifications/${notificationId}/dismiss`,
-        {
-          method: "POST",
-        }
-      );
+      const response = await dismissNotification(notificationId);
       if (response.ok) {
         Cookies.set(
           `${DISMISSED_NOTIFICATION_COOKIE_PREFIX}${notificationId}`,

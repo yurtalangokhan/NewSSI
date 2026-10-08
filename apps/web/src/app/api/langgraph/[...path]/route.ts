@@ -1,9 +1,10 @@
-import { getInternalUrl } from "@/lib/env.server";
+import { agentsEndpoints } from "@/lib/api/domains/agents/endpoints";
 import { NextRequest, NextResponse } from "next/server";
-import { internalServerErrorResponse } from "@/lib/api/errorResponse";
+import { errorResponseFromException } from "@/lib/api/errorResponse";
+import { throwTransportError } from "@/lib/api/errors";
 import { getCookieValue } from "@/lib/api/proxy";
-
-const INTERNAL_URL = getInternalUrl();
+import { backendRequest } from "@/lib/api/http/server";
+import { stripTrustedContextHeaders } from "@/lib/api/proxySecurity";
 
 // LangGraph SDK proxy - maps SDK calls to agent-service endpoints
 // SDK calls: /threads/search, /threads/{id}, /threads/{id}/state, etc.
@@ -14,10 +15,6 @@ async function proxyLangGraphRequest(
 ) {
   const url = new URL(request.url);
   const path = url.pathname.replace("/api/langgraph", "");
-  const targetUrl = new URL(`${INTERNAL_URL}${path}`);
-  if (method === "GET") {
-    targetUrl.search = url.search;
-  }
 
   const requestCookie = request.headers.get("cookie") || "";
   const body =
@@ -30,6 +27,7 @@ async function proxyLangGraphRequest(
     const headers = new Headers(request.headers);
     headers.delete("host");
     headers.delete("content-length");
+    stripTrustedContextHeaders(headers);
     headers.set(
       "Content-Type",
       request.headers.get("content-type") || "application/json"
@@ -48,11 +46,13 @@ async function proxyLangGraphRequest(
   };
 
   const execute = (cookieHeader: string, accessTokenOverride?: string | null) =>
-    fetch(targetUrl.toString(), {
+    backendRequest({
+      ...agentsEndpoints.agentProxyTarget(path).backend,
+      query: method === "GET" ? url.searchParams : undefined,
       method,
       body,
       headers: buildHeaders(cookieHeader, accessTokenOverride),
-    });
+    }).catch((error: unknown) => throwTransportError(error, request));
 
   const response = await execute(requestCookie);
 
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     return await proxyLangGraphRequest(request, "GET");
   } catch (error) {
     console.error("LangGraph proxy GET error:", error);
-    return internalServerErrorResponse("Proxy error");
+    return errorResponseFromException(error, request);
   }
 }
 
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     return await proxyLangGraphRequest(request, "POST");
   } catch (error) {
     console.error("LangGraph proxy POST error:", error);
-    return internalServerErrorResponse("Proxy error");
+    return errorResponseFromException(error, request);
   }
 }
 
@@ -102,7 +102,7 @@ export async function PATCH(request: NextRequest) {
     return await proxyLangGraphRequest(request, "PATCH");
   } catch (error) {
     console.error("LangGraph proxy PATCH error:", error);
-    return internalServerErrorResponse("Proxy error");
+    return errorResponseFromException(error, request);
   }
 }
 
@@ -111,6 +111,6 @@ export async function DELETE(request: NextRequest) {
     return await proxyLangGraphRequest(request, "DELETE");
   } catch (error) {
     console.error("LangGraph proxy DELETE error:", error);
-    return internalServerErrorResponse("Proxy error");
+    return errorResponseFromException(error, request);
   }
 }

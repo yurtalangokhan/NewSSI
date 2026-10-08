@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from error_contract import DependencyUnavailableError, NotFoundError
 import pytest
 
 
 def _service():
-    from service.MCPToolService import MCPToolService
+    from service.mcp.mcp_tool_service import MCPToolService
 
     return MCPToolService(tool_repo=AsyncMock(), provider_repo=AsyncMock())
 
@@ -80,8 +81,9 @@ async def test_sync_uses_resolved_auth_headers_and_upserts():
     client.get_tools = AsyncMock(return_value=[fake_tool])
 
     with (
-        patch("service.MCPToolService.MultiServerMCPClient", return_value=client),
-        patch("service.MCPToolService.MCPCredentialService") as cs,
+        patch("service.mcp.mcp_tool_service.MultiServerMCPClient", return_value=client),
+        patch("service.mcp.mcp_tool_service.MCPCredentialService") as cs,
+        patch("service.mcp.mcp_tool_service.validate_mcp_server_url", AsyncMock(return_value=None)),
     ):
         cs.get_instance.return_value.resolve_headers = AsyncMock(
             return_value={"Authorization": "Bearer K"}
@@ -111,8 +113,9 @@ async def test_sync_accepts_uuid_string_and_defaults_user_none():
     client = MagicMock()
     client.get_tools = AsyncMock(return_value=[])
     with (
-        patch("service.MCPToolService.MultiServerMCPClient", return_value=client),
-        patch("service.MCPToolService.MCPCredentialService") as cs,
+        patch("service.mcp.mcp_tool_service.MultiServerMCPClient", return_value=client),
+        patch("service.mcp.mcp_tool_service.MCPCredentialService") as cs,
+        patch("service.mcp.mcp_tool_service.validate_mcp_server_url", AsyncMock(return_value=None)),
     ):
         cs.get_instance.return_value.resolve_headers = AsyncMock(return_value={})
         out = await svc.sync_tools_from_provider("11111111-1111-1111-1111-111111111111")
@@ -122,7 +125,7 @@ async def test_sync_accepts_uuid_string_and_defaults_user_none():
 
 
 @pytest.mark.asyncio
-async def test_sync_wraps_connection_failure_as_runtime_error():
+async def test_sync_reports_connection_failure_as_dependency_unavailable():
     svc = _service()
     svc._provider_repo.get_by_int_id.return_value = {
         "id": "p1",
@@ -134,13 +137,15 @@ async def test_sync_wraps_connection_failure_as_runtime_error():
     client = MagicMock()
     client.get_tools = AsyncMock(side_effect=RuntimeError("boom"))
     with (
-        patch("service.MCPToolService.MultiServerMCPClient", return_value=client),
-        patch("service.MCPToolService.MCPCredentialService") as cs,
+        patch("service.mcp.mcp_tool_service.MultiServerMCPClient", return_value=client),
+        patch("service.mcp.mcp_tool_service.MCPCredentialService") as cs,
+        patch("service.mcp.mcp_tool_service.validate_mcp_server_url", AsyncMock(return_value=None)),
     ):
         cs.get_instance.return_value.resolve_headers = AsyncMock(return_value={})
-        with pytest.raises(RuntimeError) as ei:
+        with pytest.raises(DependencyUnavailableError) as ei:
             await svc.sync_tools_from_provider(1000, user_id="u1")
-    assert "MCP server" in str(ei.value)
+    # The upstream diagnostic never reaches the caller.
+    assert "boom" not in str(ei.value)
 
 
 @pytest.mark.asyncio
@@ -194,8 +199,9 @@ async def test_execute_tool_happy_path():
     client = MagicMock()
     client.get_tools = AsyncMock(return_value=[tool])
     with (
-        patch("service.MCPToolService.MultiServerMCPClient", return_value=client),
-        patch("service.MCPToolService.MCPCredentialService") as cs,
+        patch("service.mcp.mcp_tool_service.MultiServerMCPClient", return_value=client),
+        patch("service.mcp.mcp_tool_service.MCPCredentialService") as cs,
+        patch("service.mcp.mcp_tool_service.validate_mcp_server_url", AsyncMock(return_value=None)),
     ):
         cs.get_instance.return_value.resolve_headers = AsyncMock(return_value={})
         out = await svc.execute_tool(1000, "do_thing", {"a": 1}, user_id="u1")
@@ -204,7 +210,7 @@ async def test_execute_tool_happy_path():
 
 
 @pytest.mark.asyncio
-async def test_execute_tool_unknown_tool_returns_error_not_raise():
+async def test_execute_tool_unknown_tool_is_reported_as_not_found():
     svc = _service()
     svc._provider_repo.get_by_int_id.return_value = {
         "id": "p1",
@@ -216,13 +222,13 @@ async def test_execute_tool_unknown_tool_returns_error_not_raise():
     client = MagicMock()
     client.get_tools = AsyncMock(return_value=[])
     with (
-        patch("service.MCPToolService.MultiServerMCPClient", return_value=client),
-        patch("service.MCPToolService.MCPCredentialService") as cs,
+        patch("service.mcp.mcp_tool_service.MultiServerMCPClient", return_value=client),
+        patch("service.mcp.mcp_tool_service.MCPCredentialService") as cs,
+        patch("service.mcp.mcp_tool_service.validate_mcp_server_url", AsyncMock(return_value=None)),
     ):
         cs.get_instance.return_value.resolve_headers = AsyncMock(return_value={})
-        out = await svc.execute_tool(1000, "missing", {}, user_id="u1")
-    assert out["result"] is None
-    assert "not found" in out["error"]
+        with pytest.raises(NotFoundError):
+            await svc.execute_tool(1000, "missing", {}, user_id="u1")
 
 
 @pytest.mark.asyncio
@@ -241,25 +247,27 @@ async def test_execute_tool_invoke_failure_is_captured():
     client = MagicMock()
     client.get_tools = AsyncMock(return_value=[tool])
     with (
-        patch("service.MCPToolService.MultiServerMCPClient", return_value=client),
-        patch("service.MCPToolService.MCPCredentialService") as cs,
+        patch("service.mcp.mcp_tool_service.MultiServerMCPClient", return_value=client),
+        patch("service.mcp.mcp_tool_service.MCPCredentialService") as cs,
+        patch("service.mcp.mcp_tool_service.validate_mcp_server_url", AsyncMock(return_value=None)),
     ):
         cs.get_instance.return_value.resolve_headers = AsyncMock(return_value={})
         out = await svc.execute_tool(1000, "boom", {}, user_id="u1")
     assert out["result"] is None
-    assert "upstream 500" in out["error"]
+    assert out["error"] == "Internal server error"
+    assert "upstream 500" not in out["error"]
 
 
 @pytest.mark.asyncio
-async def test_execute_tool_unknown_provider_raises_valueerror():
+async def test_execute_tool_unknown_provider_is_reported_as_not_found():
     svc = _service()
     svc._provider_repo.get_by_int_id.return_value = None
-    with pytest.raises(ValueError):
+    with pytest.raises(NotFoundError):
         await svc.execute_tool(999999, "x", {}, user_id="u1")
 
 
 def test_qualify_mcp_tool_name_slugs_server_name():
-    from service.MCPToolService import qualify_mcp_tool_name
+    from service.mcp.mcp_tool_service import qualify_mcp_tool_name
 
     assert (
         qualify_mcp_tool_name({"name": "Microsoft Release Communications"}, "get_x")

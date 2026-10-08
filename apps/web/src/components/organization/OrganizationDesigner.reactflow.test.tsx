@@ -2,41 +2,14 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import "@/i18n/config";
 
 import { OrganizationDesigner } from "@/components/organization/OrganizationDesigner";
-import { useOrganizationLayout } from "@/components/organization/useOrganizationLayout";
 import { render, setupUser } from "@tests/setup/test-utils";
-
-jest.mock("@/components/organization/useOrganizationLayout", () => ({
-  useOrganizationLayout: jest.fn(),
-}));
 
 jest.mock("@/components/organization/OrganizationDesignerInspector", () => ({
   OrganizationDesignerInspector: () => <aside>Inspector</aside>,
 }));
 
-const mockedUseOrganizationLayout = jest.mocked(useOrganizationLayout);
-
-describe("OrganizationDesigner with React Flow", () => {
-  const setPosition = jest.fn();
-
-  beforeEach(() => {
-    mockedUseOrganizationLayout.mockReturnValue({
-      positions: { root: { x: 20, y: 30 } },
-      writableOrganizationIds: new Set(["root"]),
-      status: "idle",
-      error: undefined,
-      isLoading: false,
-      hasDirtyPositions: false,
-      isWritable: () => true,
-      setPosition,
-      replacePositionsAndSave: jest.fn().mockResolvedValue(true),
-      flush: jest.fn().mockResolvedValue(true),
-      retry: jest.fn().mockResolvedValue(true),
-      discard: jest.fn(),
-      refresh: jest.fn(),
-    });
-  });
-
-  it("renders keyboard position changes through the real controlled React Flow", async () => {
+describe("OrganizationDesigner real React Flow", () => {
+  it("protects automatic positions from keyboard movement through real React Flow", async () => {
     const user = setupUser();
     const { container } = render(
       <OrganizationDesigner
@@ -53,8 +26,9 @@ describe("OrganizationDesigner with React Flow", () => {
         members={[]}
         editable
         canCreateRoot={false}
-        canEditLayout
+        canMoveOrganization
         capabilityLoading={false}
+        globalAccess={false}
         onClose={jest.fn()}
         onSelectOrg={jest.fn()}
         onCreateOrg={jest.fn().mockResolvedValue(undefined)}
@@ -79,10 +53,7 @@ describe("OrganizationDesigner with React Flow", () => {
     node.focus();
     await user.keyboard("{ArrowRight}");
 
-    await waitFor(() =>
-      expect(node.style.transform).not.toBe(initialTransform)
-    );
-    expect(setPosition).toHaveBeenCalledWith("root", { x: 25, y: 30 });
+    await waitFor(() => expect(node.style.transform).toBe(initialTransform));
   });
 
   it("creates a child from a temporary connected canvas node", async () => {
@@ -104,8 +75,9 @@ describe("OrganizationDesigner with React Flow", () => {
         members={[]}
         editable
         canCreateRoot={false}
-        canEditLayout
+        canMoveOrganization
         capabilityLoading={false}
+        globalAccess={false}
         onClose={jest.fn()}
         onSelectOrg={jest.fn()}
         onCreateOrg={onCreateOrg}

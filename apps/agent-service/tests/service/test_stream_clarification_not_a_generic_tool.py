@@ -17,18 +17,18 @@ from types import SimpleNamespace
 import pytest
 from langchain_core.messages import AIMessage, AIMessageChunk, ToolMessage
 
-from service.AgentStreamService import (
+from service.orchestration.agent_stream_service import (
     _RunContext,
     _SseFramer,
     _stream_completed_messages,
     _stream_token_events,
 )
-from service.DocumentProgressTracker import DocumentProgressTracker
-from service.WebSearchProgressTracker import WebSearchProgressTracker
+from service.storage.document_progress_tracker import DocumentProgressTracker
+from service.web_search.web_search_progress_tracker import WebSearchProgressTracker
 
 
 def _ctx():
-    tp = SimpleNamespace(feed=lambda *_a, **_k: [], flush=lambda: [])
+    tp = SimpleNamespace(feed=lambda *_a, **_k: [], flush=list)
     return _RunContext(
         agent=None,
         user_input=SimpleNamespace(message="rapor hazırla", stream_tokens=True, thread_id="t"),

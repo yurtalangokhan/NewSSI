@@ -33,6 +33,12 @@ export class AppFocus {
     return this.value === "new-session";
   }
 
+  /** Whether the chat background is painted behind this part of the app —
+   * everything that renders the chat surface except projects. */
+  showsChatBackground(): boolean {
+    return this.isChat() || this.isAgent() || this.isNewSession();
+  }
+
   isMoreAgents(): boolean {
     return this.value === "more-agents";
   }

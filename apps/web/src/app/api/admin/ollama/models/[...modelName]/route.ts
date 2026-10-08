@@ -1,9 +1,7 @@
+import { modelProvidersEndpoints } from "@/lib/api/domains/model-providers/endpoints";
 import { proxyToBackend } from "@/lib/api/proxy";
-import { NextRequest } from "next/server";
 
-function ollamaModelPath(modelName: string[]) {
-  return `/api/admin/ollama/models/${modelName.join("/")}`;
-}
+import { NextRequest } from "next/server";
 
 export async function DELETE(
   request: NextRequest,
@@ -11,7 +9,9 @@ export async function DELETE(
 ) {
   return proxyToBackend(
     request,
-    ollamaModelPath((await props.params).modelName),
+    modelProvidersEndpoints.deleteOllamaModel(
+      (await props.params).modelName.join("/")
+    ).backend,
     { method: "DELETE" }
   );
 }

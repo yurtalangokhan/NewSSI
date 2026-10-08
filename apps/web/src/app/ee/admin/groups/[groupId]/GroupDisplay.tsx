@@ -25,6 +25,7 @@ import { Bubble } from "@/components/Bubble";
 import { BookmarkIcon, RobotIcon } from "@/components/icons/icons";
 import { AddTokenRateLimitForm } from "./AddTokenRateLimitForm";
 import { GenericTokenRateLimitTable } from "@/app/admin/token-rate-limits/TokenRateLimitTables";
+import { fetchGroupTokenRateLimitsById } from "@/lib/api/domains/system/api";
 import { useUser } from "@/providers/UserProvider";
 import { formatRoleName } from "@/lib/auth/roles";
 
@@ -378,7 +379,8 @@ export const GroupDisplay = ({
       />
 
       <GenericTokenRateLimitTable
-        fetchUrl={`/api/admin/token-rate-limits/user-group/${userGroup.id}`}
+        requestKey={`group-token-rate-limits-${userGroup.id}`}
+        loadData={() => fetchGroupTokenRateLimitsById(userGroup.id)}
         hideHeading
         isAdmin={isAdmin}
       />

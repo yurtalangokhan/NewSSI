@@ -1,6 +1,9 @@
 "use client";
+import { fetchKnowledgeSelector } from "@/lib/api/domains/datasources/api";
+import { errorMessageFromUnknown } from "@/lib/api/http/errors";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface KnowledgeCollection {
   id: string;
@@ -17,28 +20,31 @@ export interface KnowledgeCollections {
 export function useKnowledgeCollections(enabled: boolean): {
   collections: KnowledgeCollections | null;
   isLoading: boolean;
+  error: string | null;
 } {
+  const { i18n } = useTranslation();
   const [collections, setCollections] = useState<KnowledgeCollections | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
 
     let cancelled = false;
     setIsLoading(true);
+    setError(null);
 
-    fetch(`/api/datasources/knowledge-selector?ts=${Date.now()}`, {
-      cache: "no-store",
-    })
-      .then((r) => r.json())
+    fetchKnowledgeSelector<KnowledgeCollections>(Date.now())
       .then((data: KnowledgeCollections) => {
         if (!cancelled) setCollections(data);
       })
-      .catch(() => {
-        if (!cancelled)
+      .catch((caught: unknown) => {
+        if (!cancelled) {
+          setError(errorMessageFromUnknown(caught));
           setCollections({ document_processing: [], knowledge_graph: [] });
+        }
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -47,7 +53,7 @@ export function useKnowledgeCollections(enabled: boolean): {
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
+  }, [enabled, i18n.language]);
 
-  return { collections, isLoading };
+  return { collections, isLoading, error };
 }

@@ -32,12 +32,10 @@ agenticai/
 │   │   ├── tests/
 │   │   └── pyproject.toml
 │   │
-│   ├── rag-service/                # RAG / LangConnect
-│   │   ├── langconnect/
-│   │   │   ├── api/               # FastAPI routers
-│   │   │   ├── services/          # Business logic
-│   │   │   ├── database/          # PG + Neo4j + Milvus access
-│   │   │   ├── models/            # Pydantic models
+│   ├── rag-service/                # RAG & retrieval
+│   │   ├── src/
+│   │   │   ├── <domain>/          # router + service (+ repository / schemas)
+│   │   │   ├── shared/            # Cross-cutting infra (auth, DB, vector stores)
 │   │   │   └── server.py          # FastAPI app entrypoint
 │   │   ├── docs/                  # Service-local docs
 │   │   ├── tests/
@@ -56,26 +54,27 @@ agenticai/
 │       ├── src/
 │       │   ├── app/               # App Router pages
 │       │   ├── components/        # Shared components
-│       │   ├── refresh-components/ # Onyx design system components
+│       │   ├── refresh-components/ # Atlas design system components
 │       │   ├── icons/             # ONLY icon source (never external libs)
 │       │   ├── hooks/             # One hook per file
 │       │   ├── lib/               # Utilities (cn, etc.)
 │       │   ├── providers/         # React context providers
 │       │   └── layouts/           # Layout components
-│       ├── lib/opal/              # @onyx/opal workspace (shared components lib)
+│       ├── lib/opal/              # @atlas/opal workspace (shared components lib)
 │       ├── docs/                  # Service-local docs
 │       ├── tests/
 │       └── tailwind-themes/       # Custom color tokens (no Tailwind defaults)
 │
 ├── configs/                        # Centralized config
 │   ├── .env                       # Infrastructure env vars
-│   ├── docker-compose-services.yml # Infra (PG, Neo4j, Milvus, Airbyte, Keycloak)
+│   ├── docker-compose-services.yml # Infra (PG, Neo4j, Milvus, Redis, Keycloak)
 │   ├── docker-compose-dev.yml     # App service containers
 │   ├── docker-compose-prod.yml    # Production compose
-│   └── kong/kong.yml              # Kong API gateway config
+│   └── apisix/apisix.yaml         # APISIX gateway routes (rendered at start)
 │
 ├── scripts/                        # Dev tooling
-│   ├── quality/check.sh           # Pre-commit / pre-push quality gate runner
+│   ├── quality/check.sh           # Quality gate runner (pre-push, make quality-*)
+│   ├── quality/fix.sh             # Pre-commit formatting auto-fix
 │   ├── git-hooks/                 # pre-commit, pre-push scripts
 │   ├── env_manager.py             # Env file management
 │   └── install-git-hooks.sh       # Hook installation
@@ -139,8 +138,8 @@ def get_settings() -> Settings:
 ### rag-service
 
 ```
-langconnect/api/*.py  →  langconnect/services/*.py  →  langconnect/database/*
-(routers)                (business logic)               (PG + Neo4j + Milvus)
+src/<domain>/router.py  →  src/<domain>/service.py  →  src/<domain>/repository.py
+(routers)                  (business logic)             (PG + Neo4j + Milvus)
 ```
 
 Flatter stack. Services use raw SQLAlchemy or LangChain primitives directly.
@@ -158,7 +157,7 @@ Each tool category extends `BaseToolCategory` and auto-registers on startup. The
 
 ## API gateway routing
 
-All external traffic goes through **Kong on port 8000**. New callers must use
+All external traffic goes through **APISIX on port 8000**. New callers must use
 service-scoped paths. Legacy `/api/*` paths remain as compatibility aliases
 while clients migrate.
 
@@ -175,7 +174,6 @@ while clients migrate.
 | `/user-service/api/v1/auth/type`, `/user-service/api/v1/auth/login`, `/user-service/api/v1/auth/external/login` | user-service | Public |
 | `/user-service/api/v1/auth/logout`, `/user-service/api/v1/auth/refresh`, `/user-service/api/v1/auth/register` | user-service | Public |
 | `/user-service/api/v1/auth/oidc/authorize`, `/user-service/api/v1/auth/oidc/callback` | user-service | Public |
-| `/agent-service/api/v1/auth/health` | agent-service | Public |
 | `/rag-service/api/v1/graph/health` | rag-service | Public |
 | `/user-service/api/v1/*` | user-service | JWT |
 | `/agent-service/api/v1/*` | agent-service | JWT |
@@ -188,7 +186,7 @@ while clients migrate.
 ## API versioning
 
 Backend services use path-based API versioning. The canonical public prefix is
-`/api/v1`, and service-scoped Kong routes expose that prefix under each service
+`/api/v1`, and service-scoped gateway routes expose that prefix under each service
 path, such as `/agent-service/api/v1/*`.
 
 The shared versioning contract lives in `configs/api-versioning.toml`. Python
@@ -206,8 +204,9 @@ Use these rules when changing API versions:
 - Treat `supported_versions` and `deprecated_versions` as metadata. Updating
   TOML alone must not publish a new route surface.
 - To publish `/api/v2`, add explicit v2 router registration or a v2
-  sub-application, keep `/api/v1` registered for compatibility, and update Kong,
-  frontend clients, API docs, and regression tests in the same change.
+  sub-application, keep `/api/v1` registered for compatibility, and update the
+  gateway routes, frontend clients, API docs, and regression tests in the same
+  change.
 - Put breaking request or response schema changes in the versioned API layer.
   Share controller, service, and repository logic when behavior is compatible.
 
@@ -249,7 +248,7 @@ make docker-verify    # compose config + web image build
 ### Root level
 
 ```sh
-make env-init         # create missing .env files
+# Provide configs/.env manually
 make env-check        # validate env files
 make docker-config    # validate compose files
 make docker-verify    # compose config + image builds
@@ -269,7 +268,9 @@ make validate         # all services + docker-verify
 2. Create the controller method in `controller/`
 3. Create the service method in `service/`
 4. If data access needed: add to repository or create a new one
-5. Define request/response models in `schema/`
+5. Define request/response models in the owning service's DTO module
+   (`src/models/` in agent-service and tools-service, `src/schema/` in
+   user-service) — one DTO directory per service, never both
 6. Register the router in `app.py` (or `main.py`)
 
 ### Idempotency for mutating endpoints
@@ -355,18 +356,40 @@ The canonical runtime is documented in
 
 ## Validation gates
 
-The Git hook quality runner auto-formats and auto-fixes changed source files
-before it validates them. Python changes run targeted `ruff format` and
-`ruff check --fix` on changed Python files. Web changes run targeted Prettier
-and ESLint `--fix` on changed web source files. During pre-commit, the hook
-refreshes only those auto-fixed staged files before it runs whitespace,
-lint, typecheck, and test gates.
+The pre-commit hook only auto-fixes formatting. It runs
+`scripts/quality/fix.sh staged`, which applies targeted `ruff format` and
+`ruff check --fix` to staged Python files, and Prettier plus ESLint `--fix` to
+staged web source files, then re-stages the fixed files. On web files the
+commit fix also turns on `unused-imports/no-unused-imports`, which the ESLint
+config leaves off, so unused imports are removed. Findings that can't be fixed
+automatically don't block the commit. The hook refuses to run when a
+fixable file is partially staged, so unstaged hunks never slip into a commit.
 
-The hook also runs the **architecture & code-quality gate**
+The quality gates run on push, or on demand with `make quality-staged`. The
+pre-push hook runs `scripts/quality/check.sh push`, which repeats the auto-fix
+in strict mode and then runs the service validate, i18n, and
+**architecture & code-quality gate**
 (`scripts/quality/check_architecture.py`), which enforces the SOLID / clean-architecture
 rules from `docs/oop-solid-architecture.md` on the changed files. HARD violations
 block the commit/push. Run it standalone with `make architecture-check` (full-tree
 report) or see `docs/coding-standards.md` ("Architecture & code-quality gate").
+
+The push gate checks every file that the unpushed commits change. When the
+branch has no upstream yet, the gate compares it with its fork point from the
+first existing ref among `origin/dev`, `dev`, `origin/master`, and `master`. Set
+`QUALITY_BASE_REF` to use a different base. If the push auto-fix changes a file,
+the push fails and lists the file, because the pushed commits don't contain
+the fix. Commit the fix, then push again.
+
+The push gate rebuilds a Python service image only when a pushed file is one
+of that image's build inputs: its Dockerfile, or a source that the Dockerfile
+copies from the build context (for example `packages/localization/` or the
+service's `locales/`). The gate finds each Dockerfile through the service's
+`build` block in `deploy/docker/docker-compose-dev.yml` and reads the inputs
+from that Dockerfile, so renames need no gate changes. If a service's build
+definition or Dockerfile is missing, the push fails. Changes to compose files, the root `Makefile`, or `.dockerignore` rebuild all
+four images. Changes to `scripts/`, `docs/`, or service tests don't trigger a
+build.
 
 **Agents must run this gate locally during development and resolve every HARD
 finding in the files they change before committing or pushing.** The hook will
@@ -408,7 +431,7 @@ make -C apps/web docker-verify
 ## Environment & startup
 
 ```sh
-make env-init         # create .env files
+# Provide configs/.env manually
 make env-check        # validate them
 ```
 
@@ -442,10 +465,10 @@ curl http://localhost:8000/tools-service/health
 
 | Service | Line length | Ruff config | Test default | Run command |
 |---------|-------------|-------------|--------------|-------------|
-| agent-service | 100 | `ruff.toml` | skips app/voice/integration | `uv run src/run_service.py` |
-| user-service | 100 | `pyproject.toml` | all tests | `uv run uvicorn src.main:app` |
-| rag-service | 88 | `pyproject.toml` (select=ALL) | `tests/unit_tests` only | `uv run uvicorn langconnect.server:APP` |
-| tools-service | 100 | `pyproject.toml` | all tests | `uv run python server.py` |
+| agent-service | 120 | `ruff.toml` (shared base) | skips app/voice/integration | `uv run src/run_service.py` |
+| user-service | 120 | `ruff.toml` (shared base) | all tests | `uv run uvicorn src.main:app` |
+| rag-service | 120 | `ruff.toml` (shared base) | `tests/unit_tests` only | `uv run uvicorn src.server:APP` |
+| tools-service | 120 | `ruff.toml` (shared base) | all tests | `uv run python server.py` |
 
 ---
 
@@ -474,6 +497,6 @@ curl http://localhost:8000/tools-service/health
 3. If Docker/imports changed: `make docker-verify`
 4. `git add` files
 5. `make quality-staged` — pre-commit gate
-6. `git commit` (hooks run automatically)
+6. `git commit` (pre-commit hook auto-fixes formatting)
 7. `make quality-push` — pre-push gate
 8. `git push` (never `--no-verify` without explicit approval)

@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { accessEndpoints } from "@/lib/api/domains/access/endpoints";
 
 const USER_SERVICE_COLLECTION_PATHS = new Set([
   "coarse-roles",
@@ -12,13 +13,8 @@ export function isUserServiceCollectionPath(path: string[]): boolean {
 }
 
 export function buildUserServicePath(path: string[], request: NextRequest) {
-  let result = `/api/v1/${path.join("/")}`;
-  if (
-    (isUserServiceCollectionPath(path) ||
-      request.nextUrl.pathname.endsWith("/")) &&
-    !result.endsWith("/")
-  ) {
-    result += "/";
-  }
-  return result;
+  return accessEndpoints.userServiceProxy(
+    path,
+    isUserServiceCollectionPath(path) || request.nextUrl.pathname.endsWith("/")
+  ).backend.path;
 }

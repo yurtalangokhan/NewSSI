@@ -10,6 +10,7 @@ Wraps a compiled LangGraph graph so it satisfies the
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+import contextlib
 from typing import Any
 
 from langgraph.graph.state import CompiledStateGraph
@@ -50,18 +51,14 @@ class LangGraphExecutableAgent:
             yield AgentChunk(delta=chunk if isinstance(chunk, str) else str(chunk), metadata={})
 
     async def astream_events(self, request: AgentRunRequest) -> AsyncIterator[AgentEvent]:
-        async for event in self._graph.astream_events(
-            request.inputs, config=self._config_from(request)
-        ):
+        async for event in self._graph.astream_events(request.inputs, config=self._config_from(request)):
             if isinstance(event, dict):
                 yield AgentEvent(name=event.get("event", "unknown"), payload=event)
             else:
                 yield AgentEvent(name="unknown", payload={"event": event})
 
     async def aget_state(self, request: StateRequest) -> AgentState:
-        snapshot = await self._graph.aget_state(
-            config={"configurable": {"thread_id": request.thread_id}}
-        )
+        snapshot = await self._graph.aget_state(config={"configurable": {"thread_id": request.thread_id}})
         return self._snapshot_to_state(snapshot)
 
     async def aupdate_state(self, request: StateUpdateRequest) -> AgentState:
@@ -72,18 +69,14 @@ class LangGraphExecutableAgent:
         return self._snapshot_to_state(snapshot)
 
     async def aget_state_history(self, request: StateRequest) -> AsyncIterator[AgentState]:
-        async for snapshot in self._graph.aget_state_history(
-            config={"configurable": {"thread_id": request.thread_id}}
-        ):
+        async for snapshot in self._graph.aget_state_history(config={"configurable": {"thread_id": request.thread_id}}):
             yield self._snapshot_to_state(snapshot)
 
     async def close(self) -> None:
         closer = getattr(self._graph, "close", None)
         if callable(closer):
-            try:
+            with contextlib.suppress(Exception):
                 await closer()
-            except Exception:
-                pass
 
     @staticmethod
     def _snapshot_to_state(snapshot: Any) -> AgentState:

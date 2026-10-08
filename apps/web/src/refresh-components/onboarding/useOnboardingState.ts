@@ -8,10 +8,10 @@ import {
   OnboardingStep,
 } from "./types";
 import { WellKnownLLMProviderDescriptor } from "@/interfaces/llm";
-import { updateUserPersonalization } from "@/lib/userSettings";
+import { updatePersonalization as updateUserPersonalization } from "@/lib/api/domains/preferences/api";
 import { useUser } from "@/providers/UserProvider";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
-import { useLLMProviders } from "@/hooks/useLLMProviders";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
+import { useLLMProviders } from "@/lib/api/domains/model-providers/hooks";
 import { useProviderStatus } from "@/components/chat/ProviderContext";
 
 export function useOnboardingState(liveAgent?: MinimalPersonaSnapshot): {

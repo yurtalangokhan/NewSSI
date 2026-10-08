@@ -1,8 +1,11 @@
 import { NextRequest } from "next/server";
 import { GET } from "@/app/api/agent/[...path]/route";
 
-jest.mock("@/lib/env.server", () => ({
-  getAgentServiceUrl: () => "http://agent-service",
+jest.mock("@/lib/settings", () => ({
+  appSettings: {
+    ...jest.requireActual("@/lib/settings").appSettings,
+    AGENT_SERVICE_URL: "http://agent-service",
+  },
 }));
 
 describe("/api/agent proxy auth refresh", () => {
@@ -39,7 +42,7 @@ describe("/api/agent proxy auth refresh", () => {
     expect(response.status).toBe(401);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(fetchSpy).toHaveBeenCalledWith(
-      new URL("http://agent-service/api/v1/datasources"),
+      "http://agent-service/api/v1/datasources",
       expect.any(Object)
     );
   });

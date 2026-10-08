@@ -1,6 +1,9 @@
+import { sessionEndpoints } from "@/lib/api/domains/session/endpoints";
 import { validateInternalRedirect } from "@/lib/auth/redirectValidation";
-import { getDomain } from "@/lib/redirectSS";
-import { buildUserServiceUrl } from "@/lib/utilsSS";
+import { getDomain } from "@/lib/navigation/redirect.server";
+
+import { backendRequest } from "@/lib/api/http/server";
+import { forwardSetCookies } from "@/lib/auth/forwardSetCookies";
 import { NextRequest, NextResponse } from "next/server";
 
 // have to use this so we don't hit the redirect URL with a `POST` request
@@ -12,8 +15,9 @@ async function handleSamlCallback(
 ) {
   // Wrapper around the FastAPI endpoint /api/auth/saml/callback,
   // which adds back a redirect to the main app.
-  const url = new URL(buildUserServiceUrl("/api/auth/saml/callback"));
-  url.search = request.nextUrl.search;
+  let query: URLSearchParams | undefined = new URLSearchParams(
+    request.nextUrl.searchParams
+  );
 
   const fetchOptions: RequestInit = {
     method,
@@ -42,13 +46,17 @@ async function handleSamlCallback(
         formData.set("RelayState", relayState);
       }
       // Clear query on backend URL and send as POST with form body
-      url.search = "";
+      query = undefined;
       fetchOptions.method = "POST";
       fetchOptions.body = formData;
     }
   }
 
-  const response = await fetch(url.toString(), fetchOptions);
+  const response = await backendRequest({
+    ...sessionEndpoints.samlCallback.backend,
+    query,
+    ...fetchOptions,
+  });
   const setCookieHeader = response.headers.get("set-cookie");
 
   if (!setCookieHeader) {
@@ -65,7 +73,7 @@ async function handleSamlCallback(
     new URL(redirectDestination, getDomain(request)),
     SEE_OTHER_REDIRECT_STATUS
   );
-  redirectResponse.headers.set("set-cookie", setCookieHeader);
+  forwardSetCookies(response.headers, redirectResponse.headers);
   return redirectResponse;
 }
 

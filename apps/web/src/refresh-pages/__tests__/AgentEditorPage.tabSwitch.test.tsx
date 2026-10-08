@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, waitFor, fireEvent } from "@tests/setup/test-utils";
 import AgentEditorPage from "@/refresh-pages/AgentEditorPage";
-import * as agentLib from "@/app/admin/agents/lib";
+import * as agentLib from "@/lib/api/domains/agents/api";
 
 const routerPush = jest.fn();
 const routerBack = jest.fn();
@@ -17,6 +17,7 @@ jest.mock("next/navigation", () => ({
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => key,
+    i18n: { language: "en" },
   }),
   initReactI18next: {
     type: "3rdParty",
@@ -34,37 +35,35 @@ jest.mock("@/providers/SettingsProvider", () => ({
   }),
 }));
 
-jest.mock("@/hooks/useAgents", () => ({
+jest.mock("@/lib/api/domains/agents/hooks", () => ({
+  ...jest.requireActual("@/lib/api/domains/agents/hooks"),
   useAgents: () => ({ agents: [], refresh: jest.fn() }),
 }));
 
-jest.mock("@/hooks/useMcpServersForAgentEditor", () => ({
+jest.mock("@/lib/api/domains/tools/hooks", () => ({
+  ...jest.requireActual("@/lib/api/domains/tools/hooks"),
   __esModule: true,
-  default: () => ({ mcpData: { mcp_servers: [] }, isLoading: false }),
+  useMcpServersForAgentEditor: () => ({
+    mcpData: { mcp_servers: [] },
+    isLoading: false,
+  }),
+  useOpenApiTools: () => ({ openApiTools: [], isLoading: false }),
+  useAvailableTools: () => ({ tools: [], isLoading: false }),
+  useBuiltInTools: () => ({ tools: [], isLoading: false }),
 }));
 
-jest.mock("@/hooks/useOpenApiTools", () => ({
-  __esModule: true,
-  default: () => ({ openApiTools: [], isLoading: false }),
-}));
-
-jest.mock("@/hooks/useAvailableModels", () => ({
+jest.mock("@/lib/api/domains/model-providers/hooks", () => ({
+  ...jest.requireActual("@/lib/api/domains/model-providers/hooks"),
   useAvailableModels: () => ({ llmProviders: [] }),
 }));
 
-jest.mock("@/hooks/useAvailableTools", () => ({
-  useAvailableTools: () => ({ tools: [], isLoading: false }),
-}));
-
-jest.mock("@/hooks/useBuiltInTools", () => ({
-  __esModule: true,
-  default: () => ({ tools: [], isLoading: false }),
-}));
-
-jest.mock("@/hooks/useConnectorToolOptions", () => ({
-  __esModule: true,
-  CONNECTOR_OPERATIONS: ["list_resources", "read"],
-  default: () => ({ options: [], isLoading: false, error: undefined }),
+jest.mock("@/lib/api/domains/datasources/hooks", () => ({
+  ...jest.requireActual("@/lib/api/domains/datasources/hooks"),
+  useConnectorToolOptions: () => ({
+    options: [],
+    isLoading: false,
+    error: undefined,
+  }),
 }));
 
 jest.mock("@/refresh-components/agents/AgentIconPicker", () => ({
@@ -72,8 +71,10 @@ jest.mock("@/refresh-components/agents/AgentIconPicker", () => ({
   default: () => <div data-testid="agent-icon-picker" />,
 }));
 
-jest.mock("@/lib/mailConfigs", () => ({
+jest.mock("@/lib/api/domains/system/api", () => ({
   buildMcpToolConfigs: () => ({}),
+}));
+jest.mock("@/lib/api/domains/system/hooks", () => ({
   useMailConfigs: () => ({ mailConfigs: [], isLoading: false }),
 }));
 

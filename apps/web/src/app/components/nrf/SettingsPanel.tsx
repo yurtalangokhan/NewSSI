@@ -11,7 +11,15 @@ import { useTheme } from "next-themes";
 import {
   CHAT_BACKGROUND_OPTIONS,
   CHAT_BACKGROUND_NONE,
+  isCanvasBackground,
+  isNoBackground,
+  type ChatBackgroundOption,
 } from "@/lib/constants/chatBackgrounds";
+import useResolvedColorMode from "@/hooks/useResolvedColorMode";
+import { preloadChatBackgroundImage } from "@/lib/chatBackgroundClient";
+import SimpleTooltip from "@/refresh-components/SimpleTooltip";
+import { ChatBackgroundPreview } from "@/refresh-components/backgrounds/ChatBackgroundPreview";
+import type { TurksatMode } from "@/lib/turksatBackgrounds/types";
 
 interface SettingRowProps {
   label: string;
@@ -36,69 +44,73 @@ const SettingRow = ({ label, description, children }: SettingRowProps) => (
 );
 
 interface BackgroundThumbnailProps {
-  thumbnailUrl: string;
-  label: string;
-  isNone?: boolean;
+  option: ChatBackgroundOption;
+  canvasMode: TurksatMode;
   isSelected: boolean;
   onClick: () => void;
+  onMouseEnter?: () => void;
 }
 
 const BackgroundThumbnail = ({
-  thumbnailUrl,
-  label,
-  isNone = false,
+  option,
+  canvasMode,
   isSelected,
   onClick,
+  onMouseEnter,
 }: BackgroundThumbnailProps) => (
-  <button
-    onClick={onClick}
-    className="relative overflow-hidden rounded-xl transition-all aspect-video cursor-pointer border-none p-0 bg-transparent group"
-    title={label}
-    aria-label={`${label} background${isSelected ? " (selected)" : ""}`}
-  >
-    {isNone ? (
-      <div className="absolute inset-0 bg-background flex items-center justify-center">
-        <Text secondaryBody text03>
-          None
-        </Text>
-      </div>
-    ) : (
-      <div
-        className="absolute inset-0 bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
-        style={{ backgroundImage: `url(${thumbnailUrl})` }}
+  <SimpleTooltip tooltip={option.label} side="bottom">
+    <button
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onFocus={onMouseEnter}
+      className="relative overflow-hidden rounded-xl transition-all aspect-video cursor-pointer border-none p-0 bg-transparent group"
+      aria-label={`${option.label} background${
+        isSelected ? " (selected)" : ""
+      }`}
+    >
+      <ChatBackgroundPreview
+        option={option}
+        canvasMode={canvasMode}
+        noneContent={
+          <Text secondaryBody text03>
+            None
+          </Text>
+        }
       />
-    )}
-    <div
-      className={cn(
-        "absolute inset-0 transition-all rounded-xl",
-        isSelected
-          ? "ring-2 ring-inset ring-theme-primary-05"
-          : "ring-1 ring-inset ring-border-02 group-hover:ring-border-03"
+      <div
+        className={cn(
+          "absolute inset-0 transition-all rounded-xl",
+          isSelected
+            ? "ring-2 ring-inset ring-theme-primary-05"
+            : "ring-1 ring-inset ring-border-02 group-hover:ring-border-03"
+        )}
+      />
+      {isSelected && (
+        <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-theme-primary-05 flex items-center justify-center">
+          <SvgCheck className="w-3 h-3 stroke-text-inverted-05" />
+        </div>
       )}
-    />
-    {isSelected && (
-      <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-theme-primary-05 flex items-center justify-center">
-        <SvgCheck className="w-3 h-3 stroke-text-inverted-05" />
-      </div>
-    )}
-  </button>
+    </button>
+  </SimpleTooltip>
 );
 
 export const SettingsPanel = ({
   settingsOpen,
   toggleSettings,
-  handleUseOnyxToggle,
+  handleUseAtlasToggle,
 }: {
   settingsOpen: boolean;
   toggleSettings: () => void;
-  handleUseOnyxToggle: (checked: boolean) => void;
+  handleUseAtlasToggle: (checked: boolean) => void;
 }) => {
-  const { useOnyxAsNewTab } = useNRFPreferences();
+  const { useAtlasAsNewTab } = useNRFPreferences();
   const { theme, setTheme } = useTheme();
   const { user, updateUserChatBackground } = useUser();
 
   const currentBackgroundId = user?.preferences?.chat_background ?? "none";
   const isDark = theme === "dark";
+  // TÜRKSAT thumbnails preview the variant that will actually be shown.
+  const canvasMode = useResolvedColorMode();
 
   const toggleTheme = () => {
     setTheme(isDark ? "light" : "dark");
@@ -169,10 +181,10 @@ export const SettingsPanel = ({
               General
             </Text>
             <div className="flex flex-col gap-1 bg-background-tint-01 rounded-2xl px-4">
-              <SettingRow label="Use Onyx as new tab page">
+              <SettingRow label="Use Atlas as new tab page">
                 <Switch
-                  checked={useOnyxAsNewTab}
-                  onCheckedChange={handleUseOnyxToggle}
+                  checked={useAtlasAsNewTab}
+                  onCheckedChange={handleUseAtlasToggle}
                 />
               </SettingRow>
             </div>
@@ -187,11 +199,15 @@ export const SettingsPanel = ({
               {CHAT_BACKGROUND_OPTIONS.map((bg) => (
                 <BackgroundThumbnail
                   key={bg.id}
-                  thumbnailUrl={bg.thumbnail}
-                  label={bg.label}
-                  isNone={bg.src === CHAT_BACKGROUND_NONE}
+                  option={bg}
+                  canvasMode={canvasMode}
                   isSelected={currentBackgroundId === bg.id}
                   onClick={() => handleBackgroundChange(bg.id)}
+                  onMouseEnter={() => {
+                    if (!isCanvasBackground(bg) && !isNoBackground(bg)) {
+                      preloadChatBackgroundImage(bg.src);
+                    }
+                  }}
                 />
               ))}
             </div>

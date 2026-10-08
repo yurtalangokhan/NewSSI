@@ -1,9 +1,10 @@
 "use client";
 
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { DocumentSetCreationForm } from "../DocumentSetCreationForm";
-import { useConnectorStatus, useUserGroups } from "@/lib/hooks";
+import { useConnectorStatus } from "@/lib/api/domains/datasources/hooks";
+import { useUserGroups } from "@/lib/api/domains/access/hooks";
 import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { useRouter, notFound } from "next/navigation";

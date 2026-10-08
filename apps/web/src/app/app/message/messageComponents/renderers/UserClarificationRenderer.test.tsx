@@ -6,7 +6,7 @@ import {
   ClarificationQuestion,
   PacketType,
   UserClarificationPacket,
-} from "@/app/app/services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({

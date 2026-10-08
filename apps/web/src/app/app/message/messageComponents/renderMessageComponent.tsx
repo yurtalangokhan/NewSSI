@@ -1,4 +1,4 @@
-import React, { JSX, memo } from "react";
+import { JSX, memo } from "react";
 import {
   ChatPacket,
   ImageGenerationToolPacket,
@@ -6,7 +6,7 @@ import {
   PacketType,
   ReasoningPacket,
   StopReason,
-} from "../../services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 import {
   FullChatState,
   MessageRenderer,
@@ -18,6 +18,8 @@ import { ImageToolRenderer } from "./renderers/ImageToolRenderer";
 import { PythonToolRenderer } from "./timeline/renderers/code/PythonToolRenderer";
 import { ReasoningRenderer } from "./timeline/renderers/reasoning/ReasoningRenderer";
 import CustomToolRenderer from "./renderers/CustomToolRenderer";
+import KnowledgeRetrievalRenderer from "@/app/app/message/messageComponents/timeline/renderers/knowledge/KnowledgeRetrievalRenderer";
+import { isKnowledgePacket } from "@/app/app/message/messageComponents/timeline/renderers/knowledge/knowledgeCalls";
 import GeneratedFileRenderer from "./renderers/GeneratedFileRenderer";
 import { HumanInputRenderer } from "./renderers/HumanInputRenderer";
 import { UserClarificationRenderer } from "./renderers/UserClarificationRenderer";
@@ -29,7 +31,7 @@ import { DeepResearchPlanRenderer } from "./timeline/renderers/deepresearch/Deep
 import { ResearchAgentRenderer } from "./timeline/renderers/deepresearch/ResearchAgentRenderer";
 import { WebSearchToolRenderer } from "./timeline/renderers/search/WebSearchToolRenderer";
 import { InternalSearchToolRenderer } from "./timeline/renderers/search/InternalSearchToolRenderer";
-import { SearchToolStart } from "../../services/streamingModels";
+import { SearchToolStart } from "@/lib/api/domains/chat/streaming-types";
 import { isLongTermMemoryPackets } from "./timeline/packetHelpers";
 
 // Different types of chat packets using discriminated unions
@@ -210,6 +212,11 @@ export function findRenderer(
   }
   if (groupedPackets.packets.some((packet) => isFileReaderToolPacket(packet))) {
     return FileReaderToolRenderer;
+  }
+  // Knowledge searches ride custom_tool_* packets but render as evidence
+  // cards, so they must be claimed before the generic tool renderer.
+  if (groupedPackets.packets.some((packet) => isKnowledgePacket(packet))) {
+    return KnowledgeRetrievalRenderer;
   }
   if (groupedPackets.packets.some((packet) => isCustomToolPacket(packet))) {
     return CustomToolRenderer;

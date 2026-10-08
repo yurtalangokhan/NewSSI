@@ -13,7 +13,7 @@ import { InvitedUserSnapshot } from "@/lib/types";
 import { TableHeader } from "@/components/ui/table";
 import { InviteUserButton } from "@/components/admin/users/buttons/InviteUserButton";
 import { ErrorCallout } from "@/components/ErrorCallout";
-import { FetchError } from "@/lib/fetcher";
+import { FetchError } from "@/lib/api/http/errors";
 import Text from "@/refresh-components/texts/Text";
 
 const USERS_PER_PAGE = 10;

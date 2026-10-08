@@ -1,17 +1,21 @@
 import { NextRequest } from "next/server";
 
+jest.mock("@/lib/settings", () => ({
+  appSettings: {
+    ...jest.requireActual("@/lib/settings").appSettings,
+    AGENT_SERVICE_URL: "http://apisix:8000",
+  },
+}));
+
 describe("/api/chat/send-chat-message route", () => {
   let fetchSpy: jest.SpyInstance;
-  const previousInternalUrl = process.env.INTERNAL_URL;
 
   beforeEach(() => {
-    process.env.INTERNAL_URL = "http://kong:8000";
     fetchSpy = jest.spyOn(global, "fetch");
   });
 
   afterEach(() => {
     fetchSpy.mockRestore();
-    process.env.INTERNAL_URL = previousInternalUrl;
   });
 
   it("forwards the incoming Idempotency-Key to the backend stream endpoint", async () => {
@@ -43,13 +47,12 @@ describe("/api/chat/send-chat-message route", () => {
 
     expect(response.status).toBe(200);
     expect(fetchSpy).toHaveBeenCalledWith(
-      "http://kong:8000/agent-service/api/v1/chat/send-chat-message",
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          "Idempotency-Key": "idem-stream-123",
-          Authorization: "Bearer access-token",
-        }),
-      })
+      "http://apisix:8000/agent-service/api/v1/chat/messages",
+      expect.any(Object)
     );
+    const [, init] = fetchSpy.mock.calls[0]!;
+    const headers = new Headers(init.headers);
+    expect(headers.get("Idempotency-Key")).toBe("idem-stream-123");
+    expect(headers.get("Authorization")).toBe("Bearer access-token");
   });
 });

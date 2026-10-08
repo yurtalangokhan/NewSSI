@@ -8,11 +8,11 @@ import {
   updateSeatCount,
   refreshLicenseCache,
   uploadLicense,
-} from "./svc";
+} from "@/lib/api/domains/billing/api";
 
-// Mock NEXT_PUBLIC_CLOUD_ENABLED
-jest.mock("@/lib/constants", () => ({
-  NEXT_PUBLIC_CLOUD_ENABLED: false,
+// The cloud flag now lives on the settings surface rather than in constants.
+jest.mock("@/lib/settings", () => ({
+  appSettings: { NEXT_PUBLIC_CLOUD_ENABLED: false },
 }));
 
 describe("billing actions", () => {
@@ -209,8 +209,8 @@ describe("billing actions (cloud mode)", () => {
     fetchSpy = jest.spyOn(global, "fetch");
     // Override to cloud mode
     jest.resetModules();
-    jest.doMock("@/lib/constants", () => ({
-      NEXT_PUBLIC_CLOUD_ENABLED: true,
+    jest.doMock("@/lib/settings", () => ({
+      appSettings: { NEXT_PUBLIC_CLOUD_ENABLED: true },
     }));
   });
 
@@ -221,7 +221,9 @@ describe("billing actions (cloud mode)", () => {
 
   test("uses cloud endpoint for checkout session", async () => {
     // Re-import with cloud mode
-    const { createCheckoutSession: cloudCheckout } = await import("./svc");
+    const { createCheckoutSession: cloudCheckout } = await import(
+      "@/lib/api/domains/billing/api"
+    );
 
     // Mock POST /api/tenants/create-checkout-session
     fetchSpy.mockResolvedValueOnce({
@@ -239,7 +241,9 @@ describe("billing actions (cloud mode)", () => {
 
   test("uploadLicense throws error in cloud mode", async () => {
     // Re-import with cloud mode
-    const { uploadLicense: cloudUploadLicense } = await import("./svc");
+    const { uploadLicense: cloudUploadLicense } = await import(
+      "@/lib/api/domains/billing/api"
+    );
 
     await expect(cloudUploadLicense("test-key")).rejects.toThrow(
       "only available for self-hosted"

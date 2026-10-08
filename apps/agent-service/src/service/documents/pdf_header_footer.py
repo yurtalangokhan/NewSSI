@@ -20,11 +20,11 @@ def needs_deferred_page_count(template: str) -> bool:
 
 def resolve_segment(template: str, page_num: int, substitutions: dict[str, str]) -> str:
     def replace(match: re.Match[str]) -> str:
-        token = match.group(1)
-        if token == "page":
+        placeholder = match.group(1)
+        if placeholder == "page":
             return str(page_num)
-        if token == "pages":
+        if placeholder == "pages":
             return "{pages}"
-        return substitutions.get(token, "")
+        return substitutions.get(placeholder, "")
 
     return _PLACEHOLDER_RE.sub(replace, template)

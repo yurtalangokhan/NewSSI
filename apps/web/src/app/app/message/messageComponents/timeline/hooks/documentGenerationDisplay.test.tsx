@@ -7,7 +7,7 @@
  * that first appears on the STOP packet renders its whole content instantly.
  */
 import { act, renderHook } from "@testing-library/react";
-import { Packet, PacketType } from "@/app/app/services/streamingModels";
+import { Packet, PacketType } from "@/lib/api/domains/chat/streaming-types";
 import { usePacketProcessor } from "./usePacketProcessor";
 import { usePacedTurnGroups } from "./usePacedTurnGroups";
 import { withPinnedDocumentGroups } from "./packetProcessor";

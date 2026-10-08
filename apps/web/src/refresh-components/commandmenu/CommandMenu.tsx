@@ -34,6 +34,7 @@ import type {
   CommandMenuFooterActionProps,
   CommandMenuContextValue,
 } from "./types";
+import { appSettings } from "@/lib/settings";
 
 // =============================================================================
 // Context
@@ -163,7 +164,7 @@ function CommandMenuRoot({ open, onOpenChange, children }: CommandMenuProps) {
       defaultHighlight: boolean = true
     ) => {
       if (
-        process.env.NODE_ENV === "development" &&
+        appSettings.NODE_ENV === "development" &&
         itemCallbacks.current.has(value)
       ) {
         console.warn(

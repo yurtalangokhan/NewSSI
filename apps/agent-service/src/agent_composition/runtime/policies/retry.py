@@ -17,7 +17,7 @@ from agent_composition.domain.ports import (
     RuntimePolicyRequest,
     RuntimePolicyResult,
 )
-from core.logger import get_logger
+from core.observability.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -54,13 +54,13 @@ class RetryPolicy:
     def is_enabled(self) -> bool:
         return self._config.enabled
 
-    async def before_run(self, request: RuntimePolicyRequest) -> RuntimePolicyDecision:
+    async def before_run(self, request: RuntimePolicyRequest) -> RuntimePolicyDecision:  # noqa: ARG002
         """Check before a run — currently always allows."""
         if not self._config.enabled:
             return RuntimePolicyDecision(continue_run=True, reason="retry disabled")
         return RuntimePolicyDecision(continue_run=True, reason="retry enabled")
 
-    async def after_run(self, request: RuntimePolicyRequest, result: Any) -> RuntimePolicyResult:
+    async def after_run(self, request: RuntimePolicyRequest, result: Any) -> RuntimePolicyResult:  # noqa: ARG002
         """Check after a run — currently always passes."""
         if not self._config.enabled:
             return RuntimePolicyResult(metadata={"skipped": "retry disabled"})
@@ -68,7 +68,6 @@ class RetryPolicy:
 
     async def close(self) -> None:
         """Retry policy has no persistent resources to close."""
-        pass
 
     async def run_with_retry(
         self,
@@ -118,9 +117,7 @@ class RetryPolicy:
         # All attempts exhausted
         if last_exc is not None:
             raise last_exc  # pragma: no cover
-        raise RuntimeError(
-            f"[RetryPolicy] {operation_name} failed after {self._config.max_attempts} attempts"
-        )
+        raise RuntimeError(f"[RetryPolicy] {operation_name} failed after {self._config.max_attempts} attempts")
 
     def _new_operation(self, operation: RetryOperation[T]) -> Coroutine[Any, Any, T]:
         if callable(operation):

@@ -1,6 +1,6 @@
 "use client";
-
-import { authenticatedFetch } from "@/lib/fetcher";
+import { modelProvidersEndpoints } from "@/lib/api/domains/model-providers/endpoints";
+import { deleteUserLlmProvider } from "@/lib/api/domains/model-providers/api";
 
 import { useState, useMemo } from "react";
 import { useSWRConfig } from "swr";
@@ -8,28 +8,28 @@ import { toast } from "@/hooks/useToast";
 import {
   useAdminLLMProviders,
   useWellKnownLLMProviders,
-} from "@/hooks/useLLMProviders";
-import { useAvailableModels } from "@/hooks/useAvailableModels";
+} from "@/lib/api/domains/model-providers/hooks";
+import { useAvailableModels } from "@/lib/api/domains/model-providers/hooks";
 import {
   useAllProviders,
   useUrlProviders,
   useApiKeyProviders,
   useWellKnownLangChainProviders,
-} from "@/hooks/useProviders";
+} from "@/lib/api/domains/model-providers/hooks";
 import LLMConfigurationSkeleton from "@/refresh-components/skeletons/LLMConfigurationSkeleton";
 import { Content, ContentAction } from "@opal/layouts";
 import { Button } from "@opal/components";
 import { Hoverable } from "@opal/core";
 import { SvgArrowExchange, SvgSettings, SvgTrash } from "@opal/icons";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import * as GeneralLayouts from "@/layouts/general-layouts";
 import {
   getProviderDisplayName,
   getProviderIcon,
   getProviderProductName,
 } from "@/lib/llmConfig/providers";
-import { deleteLlmProvider } from "@/lib/llmConfig/svc";
+import { deleteLlmProvider } from "@/lib/api/domains/model-providers/api";
 import Text from "@/refresh-components/texts/Text";
 import { Horizontal as HorizontalInput } from "@/layouts/input-layouts";
 import Card from "@/refresh-components/cards/Card";
@@ -44,7 +44,7 @@ import {
   UrlBasedProvider,
   ApiKeyProvider,
 } from "@/interfaces/llm";
-import { LLM_PROVIDERS_ADMIN_URL } from "@/lib/llmConfig/constants";
+
 import { resolveDefaultModelSelection } from "@/lib/llmConfig/utils";
 import { getModalForExistingProvider } from "@/sections/modals/llmConfig/getModal";
 import { OpenAIModal } from "@/sections/modals/llmConfig/OpenAIModal";
@@ -156,7 +156,7 @@ function ExistingProviderCard({
     setIsDeleting(true);
     try {
       await deleteLlmProvider(provider.id);
-      mutate(LLM_PROVIDERS_ADMIN_URL);
+      mutate(modelProvidersEndpoints.getAdminProvider.browserPath);
       deleteModal.toggle(false);
       toast.success(t("admin.llm.providerDeletedSuccess"));
     } catch (e) {
@@ -346,12 +346,7 @@ function ApiKeyProviderCard({ provider, onDeleted }: ApiKeyProviderCardProps) {
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const res = await authenticatedFetch(
-        `/api/admin/user-providers/${provider.id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const res = await deleteUserLlmProvider(provider.id);
       if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
       toast({ message: t("admin.llm.providerDeletedSuccess") });
       deleteModal.toggle(false);

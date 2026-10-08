@@ -19,10 +19,10 @@ describe("gateway service routing", () => {
     );
   });
 
-  it("adds service scope when the base URL points at Kong", () => {
+  it("adds service scope when the base URL points at apisix", () => {
     expect(
-      buildServiceUrl("http://kong:8000", "rag", "/collections").toString()
-    ).toBe("http://kong:8000/rag-service/api/v1/collections");
+      buildServiceUrl("http://apisix:8000", "rag", "/collections").toString()
+    ).toBe("http://apisix:8000/rag-service/api/v1/collections");
   });
 
   it("does not add service scope for direct service URLs", () => {
@@ -38,10 +38,20 @@ describe("gateway service routing", () => {
   it("keeps already service-scoped gateway bases stable", () => {
     expect(
       buildServiceUrl(
-        "http://kong:8000/user-service",
+        "http://apisix:8000/user-service",
         "user",
         "/api/users/me"
       ).toString()
-    ).toBe("http://kong:8000/user-service/api/v1/users/me");
+    ).toBe("http://apisix:8000/user-service/api/v1/users/me");
+  });
+
+  it("does not duplicate the MCP mount in a tools service base", () => {
+    expect(
+      buildServiceUrl(
+        "http://apisix:8000/tools-service/mcp",
+        "tools",
+        "/mcp"
+      ).toString()
+    ).toBe("http://apisix:8000/tools-service/mcp");
   });
 });

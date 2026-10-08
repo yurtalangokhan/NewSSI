@@ -1,10 +1,11 @@
+import { modelProvidersEndpoints } from "@/lib/api/domains/model-providers/endpoints";
 import { LoadingAnimation } from "@/components/Loading";
 import Text from "@/refresh-components/texts/Text";
 import Button from "@/refresh-components/buttons/Button";
 import { SvgTrash } from "@opal/icons";
 import { LLMProviderView } from "@/interfaces/llm";
-import { LLM_PROVIDERS_ADMIN_URL } from "@/lib/llmConfig/constants";
-import { deleteLlmProvider } from "@/lib/llmConfig/svc";
+
+import { deleteLlmProvider } from "@/lib/api/domains/model-providers/api";
 import { useTranslation } from "react-i18next";
 
 interface FormActionButtonsProps {
@@ -30,7 +31,7 @@ export function FormActionButtons({
 
     try {
       await deleteLlmProvider(existingLlmProvider.id);
-      mutate(LLM_PROVIDERS_ADMIN_URL);
+      mutate(modelProvidersEndpoints.getAdminProvider.browserPath);
       onClose();
     } catch (e) {
       const message =

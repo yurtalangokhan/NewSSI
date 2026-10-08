@@ -1,9 +1,9 @@
 "use client";
 
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { CUSTOM_ANALYTICS_ENABLED } from "@/lib/constants";
+import { useCustomAnalyticsEnabled } from "@/lib/hooks/useCustomAnalyticsEnabled";
 import { Callout } from "@/components/ui/callout";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import Text from "@/components/ui/text";
 import { CustomAnalyticsUpdateForm } from "./CustomAnalyticsUpdateForm";
 import { useTranslation } from "react-i18next";
@@ -12,8 +12,9 @@ const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.CUSTOM_ANALYTICS]!;
 
 function Main() {
   const { t } = useTranslation();
+  const { customAnalyticsEnabled } = useCustomAnalyticsEnabled();
 
-  if (!CUSTOM_ANALYTICS_ENABLED) {
+  if (!customAnalyticsEnabled) {
     return (
       <div>
         <div className="mt-4">

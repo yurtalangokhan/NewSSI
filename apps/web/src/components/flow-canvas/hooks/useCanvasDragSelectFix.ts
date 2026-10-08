@@ -1,7 +1,7 @@
 /**
  * Ported from Langflow (MIT) — src/frontend/src/pages/FlowPage/components/PageComponent/hooks/useCanvasDragSelectFix.ts
  * Upstream: https://github.com/langflow-ai/langflow @ 3ec070e9
- * Adapted for Onyx: verbatim — a real browser-bug workaround with no
+ * Adapted for Atlas: verbatim — a real browser-bug workaround with no
  * Langflow-specific coupling.
  *
  * Brief: .tmp/flow-canvas-task-24-brief.md

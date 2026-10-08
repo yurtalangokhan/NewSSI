@@ -161,7 +161,7 @@ describe("AnthropicOnboardingForm", () => {
      * This test verifies that the exact curated list of Anthropic visible models
      * matches what's returned from /api/admin/llm/built-in/options.
      * The expected models are defined in ANTHROPIC_VISIBLE_MODEL_NAMES in
-     * backend/onyx/llm/llm_provider_options.py
+     * backend/atlas/llm/llm_provider_options.py
      */
     test("llmDescriptor contains the correct default visible models from built-in options", () => {
       const expectedModelNames = [
@@ -190,7 +190,7 @@ describe("AnthropicOnboardingForm", () => {
     });
 
     test("ANTHROPIC_DEFAULT_VISIBLE_MODELS matches backend ANTHROPIC_VISIBLE_MODEL_NAMES", () => {
-      // These are the exact model names from backend/onyx/llm/llm_provider_options.py
+      // These are the exact model names from backend/atlas/llm/llm_provider_options.py
       // ANTHROPIC_VISIBLE_MODEL_NAMES = {"claude-opus-4-5", "claude-sonnet-4-5", "claude-haiku-4-5"}
       const backendVisibleModelNames = new Set([
         "claude-opus-4-5",

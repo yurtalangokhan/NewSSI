@@ -8,7 +8,10 @@ import { useTranslation } from "react-i18next";
 import { BlinkingBar } from "@/app/app/message/BlinkingBar";
 import Text from "@/refresh-components/texts/Text";
 import { SvgEditBig } from "@opal/icons";
-import { LongTermMemoryObj, Packet } from "@/app/app/services/streamingModels";
+import {
+  LongTermMemoryObj,
+  Packet,
+} from "@/lib/api/domains/chat/streaming-types";
 
 interface LtmState {
   isRecall: boolean;

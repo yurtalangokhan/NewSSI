@@ -1,6 +1,7 @@
 "use client";
+import { setBuildProviderDefault } from "@/lib/api/domains/model-providers/api";
 
-import { authenticatedFetch } from "@/lib/fetcher";
+import { createProviderConfiguration } from "@/lib/api/domains/model-providers/api";
 
 import { useState, useEffect, useMemo } from "react";
 import { usePostHog } from "posthog-js/react";
@@ -21,7 +22,7 @@ import {
   getDefaultLlmSelection,
 } from "@/app/craft/onboarding/constants";
 import { LLMProviderDescriptor } from "@/interfaces/llm";
-import { LLM_PROVIDERS_ADMIN_URL } from "@/lib/llmConfig/constants";
+
 import {
   buildInitialValues,
   testApiKeyHelper,
@@ -253,14 +254,7 @@ export default function BuildOnboardingModal({
     }
 
     try {
-      const response = await authenticatedFetch(
-        `${LLM_PROVIDERS_ADMIN_URL}?is_creation=true`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await createProviderConfiguration(payload);
 
       if (!response.ok) {
         setErrorMessage(
@@ -273,12 +267,7 @@ export default function BuildOnboardingModal({
       if (!llmProviders || llmProviders.length === 0) {
         const newProvider = await response.json();
         if (newProvider?.id) {
-          await authenticatedFetch(
-            `${LLM_PROVIDERS_ADMIN_URL}/${newProvider.id}/default`,
-            {
-              method: "POST",
-            }
-          );
+          await setBuildProviderDefault(newProvider.id);
         }
       }
 
@@ -421,7 +410,7 @@ export default function BuildOnboardingModal({
             />
           )}
 
-          {/* Page 1 - What is Onyx Craft? */}
+          {/* Page 1 - What is Atlas Craft? */}
           {currentStep === "page1" && (
             <OnboardingInfoPages
               step="page1"

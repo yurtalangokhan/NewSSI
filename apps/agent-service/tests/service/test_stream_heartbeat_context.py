@@ -3,7 +3,7 @@ from contextvars import ContextVar
 
 import pytest
 
-from service.AgentStreamService import _Heartbeat, _with_idle_heartbeat
+from service.orchestration.agent_stream_service import _Heartbeat, _with_idle_heartbeat
 
 
 @pytest.mark.asyncio

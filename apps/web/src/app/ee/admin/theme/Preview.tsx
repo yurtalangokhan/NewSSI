@@ -6,7 +6,7 @@ import type { Components } from "react-markdown";
 import Text from "@/refresh-components/texts/Text";
 import Truncated from "@/refresh-components/texts/Truncated";
 import { cn, ensureHrefProtocol } from "@/lib/utils";
-import { OnyxIcon } from "@/components/icons/icons";
+import { AtlasIcon } from "@/components/icons/icons";
 import MinimalMarkdown from "@/components/chat/MinimalMarkdown";
 
 const previewMarkdownComponents = {
@@ -68,17 +68,17 @@ export interface PreviewProps {
 
 function PreviewLogo({
   logoSrc,
-  forceOnyxIcon,
+  forceAtlasIcon,
   size,
   className,
 }: {
   logoSrc?: string;
-  forceOnyxIcon?: boolean;
+  forceAtlasIcon?: boolean;
   size: number;
   className?: string;
 }) {
   const { t } = useTranslation("common", { keyPrefix: "themePreview" });
-  return logoSrc && !forceOnyxIcon ? (
+  return logoSrc && !forceAtlasIcon ? (
     <img
       src={logoSrc}
       alt={t("logoAlt")}
@@ -90,7 +90,7 @@ function PreviewLogo({
       className={cn("flex-shrink-0 rounded-full", className)}
     />
   ) : (
-    <OnyxIcon size={size} className={cn("flex-shrink-0", className)} />
+    <AtlasIcon size={size} className={cn("flex-shrink-0", className)} />
   );
 }
 
@@ -126,7 +126,7 @@ function PreviewStart({
               <PreviewLogo
                 logoSrc={logoSrc}
                 size={16}
-                forceOnyxIcon={
+                forceAtlasIcon={
                   logoDisplayStyle === "logo_and_name" &&
                   !applicationDisplayName
                 }
@@ -135,7 +135,7 @@ function PreviewStart({
             {(logoDisplayStyle === "logo_and_name" ||
               logoDisplayStyle === "name_only") && (
               <Truncated mainUiAction text04 nowrap>
-                {applicationDisplayName || "Onyx"}
+                {applicationDisplayName || "Atlas"}
               </Truncated>
             )}
           </div>

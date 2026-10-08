@@ -3,10 +3,11 @@ import { use } from "react";
 
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { refreshDocumentSets, useDocumentSets } from "../hooks";
-import { useConnectorStatus, useUserGroups } from "@/lib/hooks";
+import { useConnectorStatus } from "@/lib/api/domains/datasources/hooks";
+import { useUserGroups } from "@/lib/api/domains/access/hooks";
 import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import CardSection from "@/components/admin/CardSection";
 import { DocumentSetCreationForm } from "../DocumentSetCreationForm";
 import { useRouter, notFound } from "next/navigation";

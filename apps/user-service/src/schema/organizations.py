@@ -1,7 +1,7 @@
 """Pydantic schemas for organization management."""
 
-import uuid
 from typing import Any
+import uuid
 
 from pydantic import BaseModel, Field
 
@@ -32,34 +32,6 @@ class OrganizationMoveRequest(BaseModel):
     new_parent_id: uuid.UUID | None = None
 
 
-class OrganizationLayoutPosition(BaseModel):
-    """One canvas coordinate for an organization."""
-
-    organization_id: uuid.UUID
-    x: float = Field(ge=-100_000_000, le=100_000_000, allow_inf_nan=False)
-    y: float = Field(ge=-100_000_000, le=100_000_000, allow_inf_nan=False)
-
-
-class OrganizationLayoutUpdateRequest(BaseModel):
-    """Shared organization positions to create or update atomically."""
-
-    positions: list[OrganizationLayoutPosition] = Field(max_length=100_000)
-
-
-class OrganizationLayoutReadResponse(BaseModel):
-    """Shared positions and the organizations that the actor may move."""
-
-    positions: list[OrganizationLayoutPosition]
-    writable_organization_ids: list[uuid.UUID]
-
-
-class OrganizationLayoutUpdateResponse(BaseModel):
-    """Positions saved by a shared-layout update."""
-
-    positions: list[OrganizationLayoutPosition]
-    count: int
-
-
 class OrganizationMemberIdentity(BaseModel):
     """Public identity fields for a directly assigned organization member."""
 
@@ -68,6 +40,7 @@ class OrganizationMemberIdentity(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     username: str | None = None
+    role: str | None = None
 
 
 class OrganizationDirectMember(BaseModel):
@@ -86,6 +59,23 @@ class OrganizationMembersByUnitResponse(BaseModel):
 
     members_by_organization: dict[str, list[OrganizationDirectMember]]
     count: int
+
+
+class AssignableOrganizationUser(BaseModel):
+    """Public identity shown in an organization member picker."""
+
+    id: uuid.UUID
+    email: str
+    first_name: str | None = None
+    last_name: str | None = None
+    username: str | None = None
+
+
+class AssignableOrganizationUsersResponse(BaseModel):
+    """Bounded candidates and the total number of matching eligible users."""
+
+    users: list[AssignableOrganizationUser]
+    total: int
 
 
 class UserOrganizationAssignRequest(BaseModel):
@@ -152,6 +142,20 @@ class ScopedResourcePermissionsResponse(BaseModel):
 
     permissions: list[dict[str, Any]]
     count: int
+
+
+class OrganizationResource(BaseModel):
+    """Caller-visible resource supplied by its owning service."""
+
+    id: str
+    name: str
+    description: str | None = None
+
+
+class OrganizationWorkspaceResponse(ScopedResourcePermissionsResponse):
+    """Organization assignments and available resources in one response."""
+
+    resources: list[OrganizationResource]
 
 
 class BulkUserAssignRequest(BaseModel):

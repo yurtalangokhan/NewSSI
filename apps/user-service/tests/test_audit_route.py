@@ -14,7 +14,8 @@ from unittest.mock import AsyncMock
 from fastapi.testclient import TestClient
 
 from src.api.dependencies import require_auth_or_internal_service_token
-from src.api.routes.audit_route import _resolve_user_id
+from src.controller.audit_controller import AuditController
+from src.schema.audit import AuditLogRequest
 from src.main import create_app
 from src.service import audit_service as audit_service_module
 
@@ -25,36 +26,40 @@ def _authorized_client(app):
 
 
 # ---------------------------------------------------------------------------
-# _resolve_user_id — the FK-safety logic
+# AuditController — the FK-safety logic (actor ids are external references)
 # ---------------------------------------------------------------------------
 
 
-def test_resolve_user_id_accepts_a_real_uuid():
+async def _logged_call(monkeypatch, user_id):
+    fake_service = AsyncMock()
+    fake_service.log.return_value = {"id": "log-x"}
+    monkeypatch.setattr(audit_service_module, "_audit_service", fake_service)
+    request = AuditLogRequest(action="flow:published", resource="flow:abc", user_id=user_id)
+    await AuditController().create_log(request)
+    return fake_service.log.call_args.kwargs
+
+
+async def test_controller_accepts_a_real_uuid(monkeypatch):
     real_id = str(uuid.uuid4())
-    details: dict = {}
 
-    resolved = _resolve_user_id(real_id, details)
+    kwargs = await _logged_call(monkeypatch, real_id)
 
-    assert str(resolved) == real_id
-    assert details == {}
-
-
-def test_resolve_user_id_falls_back_for_non_uuid_identifiers():
-    details: dict = {}
-
-    resolved = _resolve_user_id("dev-user", details)
-
-    assert resolved is None
-    assert details["actor_identity"] == "dev-user"
+    assert str(kwargs["user_id"]) == real_id
+    assert kwargs["details"] == {}
 
 
-def test_resolve_user_id_handles_missing_identifier():
-    details: dict = {}
+async def test_controller_falls_back_for_non_uuid_identifiers(monkeypatch):
+    kwargs = await _logged_call(monkeypatch, "dev-user")
 
-    resolved = _resolve_user_id(None, details)
+    assert kwargs["user_id"] is None
+    assert kwargs["details"]["actor_identity"] == "dev-user"
 
-    assert resolved is None
-    assert details == {}
+
+async def test_controller_handles_missing_identifier(monkeypatch):
+    kwargs = await _logged_call(monkeypatch, None)
+
+    assert kwargs["user_id"] is None
+    assert kwargs["details"] == {}
 
 
 # ---------------------------------------------------------------------------

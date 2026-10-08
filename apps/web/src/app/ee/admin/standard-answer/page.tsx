@@ -21,7 +21,7 @@ import { MagnifyingGlass } from "@phosphor-icons/react";
 import { useState, JSX } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { deleteStandardAnswer } from "./lib";
+import { deleteStandardAnswer } from "@/lib/api/domains/agents/api";
 import { FilterDropdown } from "@/components/search/filtering/FilterDropdown";
 import { FiTag } from "react-icons/fi";
 import { PageSelector } from "@/components/PageSelector";
@@ -30,7 +30,7 @@ import { TableHeader } from "@/components/ui/table";
 import CreateButton from "@/refresh-components/buttons/CreateButton";
 import { SvgEdit, SvgTrash } from "@opal/icons";
 import { Button } from "@opal/components";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { useTranslation } from "react-i18next";
 const NUM_RESULTS_PER_PAGE = 10;
 

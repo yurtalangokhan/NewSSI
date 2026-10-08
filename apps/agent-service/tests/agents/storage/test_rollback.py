@@ -4,7 +4,7 @@ a previously published version (design spec 5.3).
 Rollback never mutates the target row; it creates a NEW published version
 whose flow_spec is a copy of the target's, then archives whatever was
 published before. Reuses publish_draft's transaction shape (Task 16) —
-same real SQLite harness, same atomicity guarantee.
+same in-memory test harness, same atomicity guarantee.
 
 Brief: .tmp/flow-canvas-task-17-brief.md
 """
@@ -15,9 +15,9 @@ from uuid import uuid4
 
 import pytest
 
-from core.db.models.agent_definition import AgentDefinitionModel, FlowVersionStatus
 from core.exceptions import FlowVersionConflictError
-from repository.flow_version_repository import FlowVersionRepository
+from infrastructure.db.models.agent_definition import AgentDefinitionModel, FlowVersionStatus
+from infrastructure.db.repositories.flow_version_repo import FlowVersionRepository
 
 
 async def _make_definition(session) -> AgentDefinitionModel:

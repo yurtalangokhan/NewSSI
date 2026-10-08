@@ -1,16 +1,15 @@
 import i18next, { i18n as I18nInstance } from "i18next";
 import { initReactI18next } from "react-i18next";
-import enCommon from "./locales/en";
-import trCommon from "./locales/tr";
+import enCommon from "@/i18n/locales/en";
+import trCommon from "@/i18n/locales/tr";
 import {
   DEFAULT_LANGUAGE,
-  I18N_LANGUAGE_COOKIE_NAME,
   SUPPORTED_LANGUAGES,
   SupportedLanguage,
-  isSupportedLanguage,
-} from "./locales";
+} from "@/i18n/locales";
+import { getClientLanguage, setClientLanguage } from "@/i18n/languageState";
 
-export * from "./locales";
+export * from "@/i18n/locales";
 const resources = {
   en: { common: enCommon },
   tr: { common: trCommon },
@@ -30,17 +29,7 @@ const sharedInitOptions = {
 };
 
 function getInitialClientLanguage(): SupportedLanguage {
-  if (typeof document !== "undefined") {
-    const match = document.cookie.match(
-      new RegExp(`(?:^|; )${I18N_LANGUAGE_COOKIE_NAME}=([^;]*)`)
-    );
-    const cookieLocale =
-      match && match[1] ? decodeURIComponent(match[1]) : null;
-    if (isSupportedLanguage(cookieLocale)) {
-      return cookieLocale;
-    }
-  }
-  return DEFAULT_LANGUAGE;
+  return getClientLanguage();
 }
 
 /**
@@ -79,8 +68,11 @@ i18n.use(initReactI18next).init({
   ...sharedInitOptions,
   lng: getInitialClientLanguage(),
 });
+i18n.on("languageChanged", setClientLanguage);
+setClientLanguage(i18n.language);
 
 export function syncDefaultInstanceLanguage(language: SupportedLanguage) {
+  setClientLanguage(language);
   void i18n.changeLanguage(language);
 }
 

@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 import pytest
 from langchain_core.messages import AIMessage
 
-from agents.lazy_agent import LazyLoadingAgent
+from agents.primitives.base import LazyLoadingAgent
 
 
 class TestLazyLoadingAgent(LazyLoadingAgent):
@@ -156,7 +156,7 @@ class TestLazyLoadingAgentBase:
         store = object()
 
         with patch(
-            "service.LangGraphStoreService.get_langgraph_store",
+            "infrastructure.runtime.langgraph_store.get_langgraph_store",
             return_value=store,
         ):
             assert agent._get_langgraph_store() is store
@@ -170,7 +170,8 @@ class TestLazyLoadingAgentBase:
 
         with patch.object(agent, "_get_langgraph_store", return_value=object()):
             with patch(
-                "agents.lazy_agent.recall_memories", return_value={"user_facts": ["User likes tea"]}
+                "memory.long_term.recall_context_for_turn",
+                return_value=({"user_facts": ["User likes tea"]}, "<user_memory>...</user_memory>"),
             ):
                 events = [
                     item

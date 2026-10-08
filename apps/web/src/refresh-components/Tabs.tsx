@@ -23,7 +23,7 @@ import { Button } from "@opal/components";
    ============================================================================= */
 
 interface TabsContextValue {
-  variant: "contained" | "pill";
+  variant: "contained" | "pill" | "underline";
 }
 
 const TabsContext = React.createContext<TabsContextValue | undefined>(
@@ -53,6 +53,11 @@ const useTabsContext = () => {
  * ─────────────╨═════╨─────────────────────────────
  *              ↑ sliding indicator under active tab
  *
+ * Underline:
+ *    Tab 1      Tab 2      Tab 3
+ *    ━━━━━━┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+ *          ↑ 2px primary underline under the active tab
+ *
  * @example
  * <Tabs defaultValue="tab1">
  *   <Tabs.List variant="pill">
@@ -73,18 +78,22 @@ const useTabsContext = () => {
 const listVariants = {
   contained: "grid w-full rounded-08 bg-background-tint-03",
   pill: "relative flex w-full items-center pb-[5px] bg-background-tint-00 overflow-hidden",
+  underline:
+    "relative flex w-full items-center gap-1 border-b border-border-01 shrink-0",
 } as const;
 
 /** Base style classes for TabsTrigger variants */
 const triggerBaseStyles = {
   contained: "p-2 gap-2 transition-all duration-200 ease-out",
   pill: "p-1 font-secondary-action transition-all duration-200 ease-out",
+  underline: "px-4 py-2 text-sm font-medium transition-colors",
 } as const;
 
 /** Icon style classes for TabsTrigger variants */
 const iconVariants = {
   contained: "stroke-text-03",
   pill: "stroke-current",
+  underline: "stroke-current",
 } as const;
 
 /* =============================================================================
@@ -360,8 +369,10 @@ interface TabsListProps
    *
    * - `pill`: Transparent background with a sliding underline indicator.
    *   Best for secondary navigation or filter-style tabs with flexible widths.
+   * - `underline`: No track; the active tab paints a 2px `blue-500` underline on a
+   *   hairline row. The connector-management dialog's tab bar, as a variant.
    */
-  variant?: "contained" | "pill";
+  variant?: "contained" | "pill" | "underline";
 
   /**
    * Content to render on the right side of the tab list.
@@ -559,8 +570,9 @@ interface TabsTriggerProps
    *
    * - `contained` (default): White background with shadow when active
    * - `pill`: Dark pill background when active, transparent when inactive
+   * - `underline`: 2px `blue-500` underline and `text-05` when active, `text-03` otherwise
    */
-  variant?: "contained" | "pill";
+  variant?: "contained" | "pill" | "underline";
 
   /** Optional tooltip text to display on hover */
   tooltip?: string;
@@ -639,7 +651,8 @@ const TabsTrigger = React.forwardRef<
         ref={ref}
         disabled={disabled}
         className={cn(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-08",
+          "inline-flex items-center justify-center whitespace-nowrap",
+          variant !== "underline" && "rounded-08",
           triggerBaseStyles[variant],
           variant === "contained" && [
             "data-[state=active]:bg-background-neutral-00",
@@ -660,6 +673,15 @@ const TabsTrigger = React.forwardRef<
           ],
           variant === "pill" && [
             "data-[state=inactive]:bg-background-tint-00",
+            "data-[state=inactive]:text-text-03",
+          ],
+          variant === "underline" && [
+            // The transparent border keeps every label on one baseline; only the
+            // active tab paints it.
+            "border-b-2 border-transparent",
+            "hover:text-text-05",
+            "data-[state=active]:border-blue-500",
+            "data-[state=active]:text-text-05",
             "data-[state=inactive]:text-text-03",
           ],
           "data-[disabled]:opacity-40 data-[disabled]:cursor-not-allowed"

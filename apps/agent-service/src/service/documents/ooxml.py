@@ -43,23 +43,21 @@ def add_hyperlink_run(paragraph: Paragraph, text: str, url: str, color: str = "0
 
     hyperlink = _build_hyperlink_run(text, color)
     hyperlink.set(qn("r:id"), r_id)
-    paragraph._p.append(hyperlink)  # noqa: SLF001
+    paragraph._p.append(hyperlink)
 
 
-def add_internal_hyperlink_run(
-    paragraph: Paragraph, text: str, anchor: str, color: str = "0563C1"
-) -> None:
+def add_internal_hyperlink_run(paragraph: Paragraph, text: str, anchor: str, color: str = "0563C1") -> None:
     """A hyperlink to a bookmark elsewhere in the same document (`add_bookmark`)
     rather than an external URL — used for clickable table-of-contents entries."""
     hyperlink = _build_hyperlink_run(text, color)
     hyperlink.set(qn("w:anchor"), anchor)
-    paragraph._p.append(hyperlink)  # noqa: SLF001
+    paragraph._p.append(hyperlink)
 
 
 def add_bookmark(paragraph: Paragraph, name: str, bookmark_id: int) -> None:
     """Wrap `paragraph` in a named bookmark so `add_internal_hyperlink_run`
     elsewhere in the document can link straight to it."""
-    p_pr = paragraph._p.get_or_add_pPr()  # noqa: SLF001
+    p_pr = paragraph._p.get_or_add_pPr()
     start = OxmlElement("w:bookmarkStart")
     start.set(qn("w:id"), str(bookmark_id))
     start.set(qn("w:name"), name)
@@ -67,11 +65,11 @@ def add_bookmark(paragraph: Paragraph, name: str, bookmark_id: int) -> None:
 
     end = OxmlElement("w:bookmarkEnd")
     end.set(qn("w:id"), str(bookmark_id))
-    paragraph._p.append(end)  # noqa: SLF001
+    paragraph._p.append(end)
 
 
 def add_paragraph_border(paragraph: Paragraph, side: str = "bottom", color: str = "999999") -> None:
-    paragraph_properties = paragraph._p.get_or_add_pPr()  # noqa: SLF001
+    paragraph_properties = paragraph._p.get_or_add_pPr()
     border = OxmlElement("w:pBdr")
     edge = OxmlElement(f"w:{side}")
     edge.set(qn("w:val"), "single")
@@ -101,22 +99,22 @@ def enable_update_fields(document: Any) -> None:
 def add_field_begin(paragraph: Paragraph, instruction: str) -> None:
     begin = OxmlElement("w:fldChar")
     begin.set(qn("w:fldCharType"), "begin")
-    paragraph.add_run()._r.append(begin)  # noqa: SLF001
+    paragraph.add_run()._r.append(begin)
 
     instr = OxmlElement("w:instrText")
     instr.set(qn("xml:space"), "preserve")
     instr.text = f" {instruction} "
-    paragraph.add_run()._r.append(instr)  # noqa: SLF001
+    paragraph.add_run()._r.append(instr)
 
     separate = OxmlElement("w:fldChar")
     separate.set(qn("w:fldCharType"), "separate")
-    paragraph.add_run()._r.append(separate)  # noqa: SLF001
+    paragraph.add_run()._r.append(separate)
 
 
 def add_field_end(paragraph: Paragraph) -> None:
     end = OxmlElement("w:fldChar")
     end.set(qn("w:fldCharType"), "end")
-    paragraph.add_run()._r.append(end)  # noqa: SLF001
+    paragraph.add_run()._r.append(end)
 
 
 def add_field_run(paragraph: Paragraph, field_code: str, cached_value: str = "1") -> None:
@@ -124,22 +122,22 @@ def add_field_run(paragraph: Paragraph, field_code: str, cached_value: str = "1"
     cached-value/end runs — the same structure Word itself writes."""
     begin = OxmlElement("w:fldChar")
     begin.set(qn("w:fldCharType"), "begin")
-    paragraph.add_run()._r.append(begin)  # noqa: SLF001
+    paragraph.add_run()._r.append(begin)
 
     instr = OxmlElement("w:instrText")
     instr.set(qn("xml:space"), "preserve")
     instr.text = f" {field_code} "
-    paragraph.add_run()._r.append(instr)  # noqa: SLF001
+    paragraph.add_run()._r.append(instr)
 
     separate = OxmlElement("w:fldChar")
     separate.set(qn("w:fldCharType"), "separate")
-    paragraph.add_run()._r.append(separate)  # noqa: SLF001
+    paragraph.add_run()._r.append(separate)
 
     paragraph.add_run(cached_value)
 
     end = OxmlElement("w:fldChar")
     end.set(qn("w:fldCharType"), "end")
-    paragraph.add_run()._r.append(end)  # noqa: SLF001
+    paragraph.add_run()._r.append(end)
 
 
 def _shading_element(color: str) -> Any:
@@ -151,18 +149,18 @@ def _shading_element(color: str) -> Any:
 
 
 def shade_cell(cell: _Cell, color: str) -> None:
-    cell._tc.get_or_add_tcPr().append(_shading_element(color))  # noqa: SLF001
+    cell._tc.get_or_add_tcPr().append(_shading_element(color))
 
 
 def shade_paragraph(paragraph: Paragraph, color: str) -> None:
-    paragraph._p.get_or_add_pPr().append(_shading_element(color))  # noqa: SLF001
+    paragraph._p.get_or_add_pPr().append(_shading_element(color))
 
 
 def add_table_border(table: Table, side: str, color: str = "999999") -> None:
-    borders = table._tbl.tblPr.find(qn("w:tblBorders"))  # noqa: SLF001
+    borders = table._tbl.tblPr.find(qn("w:tblBorders"))
     if borders is None:
         borders = OxmlElement("w:tblBorders")
-        table._tbl.tblPr.append(borders)  # noqa: SLF001
+        table._tbl.tblPr.append(borders)
     edge = OxmlElement(f"w:{side}")
     edge.set(qn("w:val"), "single")
     edge.set(qn("w:sz"), "6")

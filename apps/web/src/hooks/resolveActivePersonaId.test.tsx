@@ -1,5 +1,5 @@
 import { resolveActivePersonaId } from "@/hooks/useChatController";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 
 function makeAgent(
   overrides: Partial<MinimalPersonaSnapshot> = {}

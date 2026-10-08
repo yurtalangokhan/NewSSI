@@ -1,11 +1,11 @@
-import { FetchToolPacket } from "@/app/app/services/streamingModels";
+import { FetchToolPacket } from "@/lib/api/domains/chat/streaming-types";
 import {
   MessageRenderer,
   RenderType,
 } from "@/app/app/message/messageComponents/interfaces";
 import { useTranslation } from "react-i18next";
 import { BlinkingBar } from "@/app/app/message/BlinkingBar";
-import { OnyxDocument } from "@/lib/search/interfaces";
+import { AtlasDocument } from "@/lib/search/interfaces";
 import { ValidSources } from "@/lib/types";
 import { SearchChipList, SourceInfo } from "../search/SearchChipList";
 import { getMetadataTags } from "../search/searchStateUtils";
@@ -24,7 +24,7 @@ const urlToSourceInfo = (url: string, index: number): SourceInfo => ({
   sourceUrl: url,
 });
 
-const documentToSourceInfo = (doc: OnyxDocument): SourceInfo => ({
+const documentToSourceInfo = (doc: AtlasDocument): SourceInfo => ({
   id: doc.document_id,
   title: doc.semantic_identifier || doc.link || "",
   sourceType: doc.source_type || ValidSources.Web,
@@ -101,9 +101,9 @@ export const FetchToolRenderer: MessageRenderer<FetchToolPacket, {}> = ({
                 items={documents}
                 initialCount={INITIAL_URLS_TO_SHOW}
                 expansionCount={URLS_PER_EXPANSION}
-                getKey={(doc: OnyxDocument) => doc.document_id}
-                toSourceInfo={(doc: OnyxDocument) => documentToSourceInfo(doc)}
-                onClick={(doc: OnyxDocument) => {
+                getKey={(doc: AtlasDocument) => doc.document_id}
+                toSourceInfo={(doc: AtlasDocument) => documentToSourceInfo(doc)}
+                onClick={(doc: AtlasDocument) => {
                   if (doc.link) window.open(doc.link, "_blank");
                 }}
                 emptyState={!stopPacketSeen ? <BlinkingBar /> : undefined}
@@ -164,9 +164,9 @@ export const FetchToolRenderer: MessageRenderer<FetchToolPacket, {}> = ({
               items={documents}
               initialCount={INITIAL_URLS_TO_SHOW}
               expansionCount={URLS_PER_EXPANSION}
-              getKey={(doc: OnyxDocument) => doc.document_id}
-              toSourceInfo={(doc: OnyxDocument) => documentToSourceInfo(doc)}
-              onClick={(doc: OnyxDocument) => {
+              getKey={(doc: AtlasDocument) => doc.document_id}
+              toSourceInfo={(doc: AtlasDocument) => documentToSourceInfo(doc)}
+              onClick={(doc: AtlasDocument) => {
                 if (doc.link) window.open(doc.link, "_blank");
               }}
               emptyState={!stopPacketSeen ? <BlinkingBar /> : undefined}

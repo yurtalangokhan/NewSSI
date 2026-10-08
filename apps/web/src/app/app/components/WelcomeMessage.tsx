@@ -1,10 +1,10 @@
 "use client";
 
 import Logo from "@/refresh-components/Logo";
-import { GREETING_MESSAGES } from "@/lib/chat/greetingMessages";
+import { GREETING_KEYS } from "@/lib/chat/greetingMessages";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
 import Text from "@/refresh-components/texts/Text";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import { useState, useEffect } from "react";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import FrostedDiv from "@/refresh-components/FrostedDiv";
@@ -23,24 +23,27 @@ export default function WelcomeMessage({
   const settings = useSettingsContext();
   const enterpriseSettings = settings?.enterpriseSettings;
 
-  // Keep the first render identical on the server and client.
-  // Localized or randomized greetings are applied only after hydration.
-  const [greeting, setGreeting] = useState(GREETING_MESSAGES[0]);
+  // Keep initial render deterministic in the active locale.
+  // Randomized greeting is selected after hydration on client.
+  const [greeting, setGreeting] = useState(() =>
+    t("app.greetings." + GREETING_KEYS[0])
+  );
 
   useEffect(() => {
     if (enterpriseSettings?.custom_greeting_message) {
       setGreeting(enterpriseSettings.custom_greeting_message);
     } else {
-      const localizedGreetings = [
-        t("app.greetings.howCanIHelp"),
-        t("app.greetings.letsGetStarted"),
-      ];
+      const localizedGreetings = GREETING_KEYS.map((key) =>
+        t("app.greetings." + key)
+      );
 
-      setGreeting(
+      const randomGreeting =
         localizedGreetings[
           Math.floor(Math.random() * localizedGreetings.length)
-        ]
-      );
+        ];
+      if (randomGreeting) {
+        setGreeting(randomGreeting);
+      }
     }
   }, [enterpriseSettings?.custom_greeting_message, t]);
 
@@ -48,7 +51,10 @@ export default function WelcomeMessage({
 
   if (isDefaultAgent) {
     content = (
-      <div data-testid="onyx-logo" className="flex flex-row items-center gap-4">
+      <div
+        data-testid="atlas-logo"
+        className="flex flex-row items-center gap-4"
+      >
         <Logo folded size={32} />
         <Text as="p" headingH2>
           {greeting}

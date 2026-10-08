@@ -14,16 +14,16 @@ Key findings characterized here (see current-state-analysis.md):
   transition contract.
 """
 
+import asyncio
 from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
 from langchain_core.messages import AIMessage
 
-from agents.dynamic_agent import DynamicAgent
-from agents.graphs.builder import GraphBuilder
-from agents.graphs.schemas import GraphSchemaType
-from agents.lazy_agent import LazyLoadingAgent
+from agents.implementations.dynamic_agent import DynamicAgent
+from agents.primitives.base import LazyLoadingAgent
+from schemas.agent_graphs import GraphSchemaType
 
 
 def _fake_builder(monkeypatch):
@@ -40,8 +40,10 @@ def _fake_builder(monkeypatch):
         async def build_async(self, *_a, **_k):
             return None
 
-    monkeypatch.setattr("agents.dynamic_agent.GraphBuilder", FakeBuilder)
-    monkeypatch.setattr("agents.dynamic_agent.get_model_from_config", lambda *_a: object())
+    monkeypatch.setattr("agents.implementations.dynamic_agent.GraphBuilder", FakeBuilder)
+    monkeypatch.setattr(
+        "agents.implementations.dynamic_agent.get_model_from_config", lambda *_a: object()
+    )
     return calls
 
 
@@ -72,14 +74,18 @@ def test_brain_type_is_not_read_by_dynamic_runtime(monkeypatch):
     """DynamicAgent omits brain_type from the current builder contract."""
     model = object()
     calls_guard = _fake_builder(monkeypatch)
-    monkeypatch.setattr("agents.dynamic_agent.get_model_from_config", lambda *_a: model)
+    monkeypatch.setattr(
+        "agents.implementations.dynamic_agent.get_model_from_config", lambda *_a: model
+    )
     DynamicAgent(
         {"name": "a", "graph_schema": "zero_shot", "memory_type": "none", "brain_type": "guard"}
     )._prepare_graph_build()
     guard_kwargs = calls_guard["builder_kwargs"]
 
     calls_llm = _fake_builder(monkeypatch)
-    monkeypatch.setattr("agents.dynamic_agent.get_model_from_config", lambda *_a: model)
+    monkeypatch.setattr(
+        "agents.implementations.dynamic_agent.get_model_from_config", lambda *_a: model
+    )
     DynamicAgent(
         {"name": "a", "graph_schema": "zero_shot", "memory_type": "none", "brain_type": "llm"}
     )._prepare_graph_build()
@@ -139,18 +145,20 @@ def test_pipeline_graph_exposes_deterministic_stage_transitions(monkeypatch):
 
     monkeypatch.setattr(langgraph_supervisor, "create_supervisor", fake_create_supervisor)
 
-    builder = GraphBuilder(model=object())
-    monkeypatch.setattr(
-        builder,
-        "_build_sub_agent_graph",
-        lambda config: {"name": config["name"]},
-    )
+    from agents.graphs.strategies.pipeline import PipelineGraphStrategy
 
-    graph = builder._build_pipeline(
-        {
-            "name": "ordered-pipeline",
-            "stages": [{"name": "intake"}, {"name": "verify"}, {"name": "publish"}],
-        }
+    async def fake_build_sub_agent_graph(_self, config):
+        return {"name": config["name"]}
+
+    monkeypatch.setattr(PipelineGraphStrategy, "_build_sub_agent_graph", fake_build_sub_agent_graph)
+
+    graph = asyncio.run(
+        PipelineGraphStrategy(model=object()).build(
+            {
+                "name": "ordered-pipeline",
+                "stages": [{"name": "intake"}, {"name": "verify"}, {"name": "publish"}],
+            }
+        )
     )
 
     assert captured["stage_transitions"] == [
@@ -202,7 +210,7 @@ async def test_lazy_runtime_delegates_invoke_stream_events_and_checkpoint_state(
 @pytest.mark.asyncio
 async def test_uuid_resolution_returns_dynamic_runtime_for_agent_definition(monkeypatch):
     """A UUID definition resolves through the dynamic runtime path."""
-    from service.AssistantAgentService import AssistantAgentService
+    from service.orchestration.assistant_agent_service import AssistantAgentService
 
     definition_id = UUID("00000000-0000-0000-0000-0000000000a0")
     definition = SimpleNamespace(id=definition_id, name="dynamic-definition")
@@ -231,7 +239,7 @@ async def test_uuid_resolution_returns_dynamic_runtime_for_agent_definition(monk
 @pytest.mark.asyncio
 async def test_resolver_cache_reuses_loaded_dynamic_agent(monkeypatch):
     """AssistantAgentService reuses a loaded definition runtime by UUID."""
-    from service.AssistantAgentService import AssistantAgentService
+    from service.orchestration.assistant_agent_service import AssistantAgentService
 
     definition_id = UUID("00000000-0000-0000-0000-0000000000a1")
     definition = SimpleNamespace(
@@ -252,15 +260,23 @@ async def test_resolver_cache_reuses_loaded_dynamic_agent(monkeypatch):
         def get_graph(self):
             return SimpleNamespace(checkpointer=None)
 
-    monkeypatch.setattr("agents.dynamic_agent.DynamicAgent", FakeDynamicAgent)
-    monkeypatch.setattr("service.CheckpointerService.get_checkpointer", lambda: None)
+    async def fake_create_for_definition(defn, **_kwargs):
+        nonlocal load_count
+        load_count += 1
+        return FakeDynamicAgent(defn.to_config())
+
+    monkeypatch.setattr(
+        "agents.registry.agent_factory.create_agent_for_definition", fake_create_for_definition
+    )
+    monkeypatch.setattr("agents.implementations.dynamic_agent.DynamicAgent", FakeDynamicAgent)
+    monkeypatch.setattr("infrastructure.runtime.checkpointer.get_checkpointer", lambda: None)
 
     service = object.__new__(AssistantAgentService)
     try:
         first = await service._get_or_create_dynamic_agent(definition)
         second = await service._get_or_create_dynamic_agent(definition)
     finally:
-        from agents.dynamic_agent import invalidate_agent_cache
+        from agents.implementations.dynamic_agent import invalidate_agent_cache
 
         invalidate_agent_cache(str(definition_id))
 
@@ -270,29 +286,34 @@ async def test_resolver_cache_reuses_loaded_dynamic_agent(monkeypatch):
 
 def test_nested_definition_preserves_manager_schema_for_composition(monkeypatch):
     """Nested supervisor definitions stay nested instead of becoming ReAct agents."""
+    from agents.graphs.strategies.supervisor import SupervisorGraphStrategy
+
     calls = {}
 
-    def fake_build(_self, schema_type, config):
-        calls["schema_type"] = schema_type
+    async def fake_build(self, config):
+        calls["schema_type"] = self.schema_type
         calls["config"] = config
-        return {"schema": schema_type}
+        return {"schema": self.schema_type}
 
-    monkeypatch.setattr(GraphBuilder, "build", fake_build)
-    graph = GraphBuilder(model=object())._build_sub_agent_graph(
-        {
-            "name": "nested-supervisor",
-            "graph_schema": "supervisor",
-            "sub_agents": [{"name": "leaf"}],
-        }
+    monkeypatch.setattr(SupervisorGraphStrategy, "build", fake_build)
+    graph = asyncio.run(
+        SupervisorGraphStrategy(model=object())._build_sub_agent_graph(
+            {
+                "name": "nested-supervisor",
+                "graph_schema": "supervisor",
+                "sub_agents": [{"name": "leaf"}],
+            }
+        )
     )
 
     assert graph == {"schema": GraphSchemaType.SUPERVISOR}
     assert calls["config"]["name"] == "nested-supervisor"
 
 
-def test_dynamic_agent_cache_reuses_and_invalidates_definition_runtime():
+@pytest.mark.asyncio
+async def test_dynamic_agent_cache_reuses_and_invalidates_definition_runtime():
     """The current definition cache is keyed by definition ID and invalidatable."""
-    from agents.dynamic_agent import (
+    from agents.implementations.dynamic_agent import (
         _agent_cache,
         cache_agent,
         get_cached_agent,
@@ -302,7 +323,7 @@ def test_dynamic_agent_cache_reuses_and_invalidates_definition_runtime():
     definition_id = "asc0-cache-characterization"
     agent = DynamicAgent({"name": "cached"})
     try:
-        cache_agent(definition_id, agent)
+        await cache_agent(definition_id, agent)
         assert get_cached_agent(definition_id) is agent
     finally:
         invalidate_agent_cache(definition_id)

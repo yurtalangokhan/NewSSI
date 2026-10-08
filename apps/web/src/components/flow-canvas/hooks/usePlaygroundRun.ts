@@ -1,8 +1,11 @@
+import { agentsEndpoints } from "@/lib/api/domains/agents/endpoints";
+import { streamFlowPlaygroundRun } from "@/lib/api/domains/agents/api";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { StoreApi } from "zustand";
-import { fileToBase64 } from "@/lib/multimodal-utils";
-import { flowApi } from "@/components/flow-canvas/api/flowApi";
+import { fileToBase64 } from "@/lib/api/domains/chat/files";
+
 import type { FlowStore } from "../stores/flowStore";
 import { toFlowSpec } from "../utils/compile";
 
@@ -97,6 +100,16 @@ export function usePlaygroundRun(
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random()}`;
   }
+  // Nothing previously cancelled the in-flight fetch/SSE read when this
+  // hook unmounted (e.g. the user navigated away mid-run) — the stream
+  // kept being read and its parsed events kept calling setState on an
+  // unmounted component for as long as the backend kept sending.
+  const abortControllerRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     if (activeDefIdRef.current !== definitionId) {
@@ -155,7 +168,9 @@ export function usePlaygroundRun(
               )
             : [];
 
-        const url = flowApi.playgroundStream(definitionId ?? undefined);
+        const url = agentsEndpoints.flowPlaygroundStream(
+          definitionId ?? undefined
+        ).browserPath;
         const messagePayload =
           fileBlocks.length > 0
             ? {
@@ -182,11 +197,11 @@ export function usePlaygroundRun(
               }
             : messagePayload;
 
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
+        const response = await streamFlowPlaygroundRun(
+          definitionId ?? undefined,
+          body,
+          abortControllerRef.current?.signal
+        );
 
         if (!response.ok) {
           let errDetail = t(
@@ -239,6 +254,7 @@ export function usePlaygroundRun(
         let accumulatedReasoning = "";
 
         while (true) {
+          if (abortControllerRef.current?.signal.aborted) break;
           const { value, done } = await reader.read();
           if (done) break;
 
@@ -409,6 +425,9 @@ export function usePlaygroundRun(
           }
         }
       } catch (err: unknown) {
+        // A deliberate abort (unmount) is not a run failure to report —
+        // whoever cared about this run already navigated away.
+        if (err instanceof Error && err.name === "AbortError") return;
         const msg =
           err instanceof Error
             ? err.message
@@ -433,7 +452,9 @@ export function usePlaygroundRun(
           return updated;
         });
       } finally {
-        setIsRunning(false);
+        if (!abortControllerRef.current?.signal.aborted) {
+          setIsRunning(false);
+        }
       }
     },
     [definitionId, patchAssistant, store, t]

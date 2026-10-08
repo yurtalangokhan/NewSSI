@@ -170,7 +170,9 @@ describe("ResourceAssignmentPanel", () => {
       />
     );
 
-    expect(screen.getByText("Loading collections…")).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: "Loading collections…" })
+    ).toBeInTheDocument();
 
     rerender(
       <ResourceAssignmentPanel
@@ -203,3 +205,28 @@ describe("ResourceAssignmentPanel", () => {
     expect(screen.getByText("View only")).toBeInTheDocument();
   });
 });
+
+test.each(["Agents", "Collections"])(
+  "uses blue loading dots instead of a message for %s",
+  (title) => {
+    render(
+      <ResourceAssignmentPanel
+        title={title}
+        resources={[]}
+        permissions={[]}
+        editable
+        isLoading
+        onSave={jest.fn()}
+      />
+    );
+    const status = screen.getByRole("status", {
+      name: `Loading ${title.toLowerCase()}…`,
+    });
+    expect(
+      status.querySelectorAll(".bg-theme-primary-04.animate-pulse")
+    ).toHaveLength(3);
+    expect(
+      screen.queryByText(`Loading ${title.toLowerCase()}…`)
+    ).not.toBeInTheDocument();
+  }
+);

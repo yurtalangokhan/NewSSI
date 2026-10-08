@@ -49,9 +49,7 @@ def resolve_agent_path(runtime: Any, fallback: str | None = None) -> list[str]:
         return [fallback] if fallback else []
 
     names = [
-        segment.split(_NAME_SEPARATOR, 1)[0].strip()
-        for segment in str(ns).split(_NS_SEPARATOR)
-        if segment.strip()
+        segment.split(_NAME_SEPARATOR, 1)[0].strip() for segment in str(ns).split(_NS_SEPARATOR) if segment.strip()
     ]
     names = [n.replace("_", " ").strip() for n in names if n and not _is_infrastructure(n)]
     return names or ([fallback] if fallback else [])

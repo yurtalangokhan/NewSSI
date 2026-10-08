@@ -6,7 +6,7 @@ import Text from "@/refresh-components/texts/Text";
 import {
   type PaginatedCounts,
   type PaginatedCountItem,
-} from "@/lib/langconnect";
+} from "@/lib/api/domains/knowledge/types";
 import { cn } from "@/lib/utils";
 import { snakeToHumanReadable } from "@/app/admin/kg/utils";
 import { useTranslation } from "react-i18next";

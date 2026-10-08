@@ -7,7 +7,7 @@ import { AdminPageTitle } from "@/components/admin/Title";
 import { getSourceMetadata, isValidSource } from "@/lib/sources";
 import { ValidSources } from "@/lib/types";
 import CardSection from "@/components/admin/CardSection";
-import { handleOAuthAuthorizationResponse } from "@/lib/oauth_utils";
+import { handleOAuthAuthorizationResponse } from "@/lib/api/domains/integrations/api";
 import { SvgKey } from "@opal/icons";
 import Text from "@/refresh-components/texts/Text";
 export default function OAuthCallbackPage() {

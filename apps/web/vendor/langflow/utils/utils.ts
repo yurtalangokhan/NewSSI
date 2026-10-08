@@ -570,7 +570,7 @@ export function FormatColumns(columns: ColumnField[]): ColDef[] {
             );
           } catch (error) {
             useAlertStore.getState().setErrorData({
-              title: i18n.t("errors.errorParsingString"),
+              title: localization.t("errors.errorParsingString"),
               list: [String(error instanceof Error ? error.message : error)],
             });
             return oldValue;

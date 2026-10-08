@@ -240,15 +240,15 @@
 
 /* Brand Colors */
 :root {
-  /* Onyx / Ink */
-  --onyx-ink-100: #000000;
-  --onyx-ink-95: #1c1c1c;
-  --onyx-ink-90: #333333;
+  /* Atlas / Ink */
+  --atlas-ink-100: #000000;
+  --atlas-ink-95: #1c1c1c;
+  --atlas-ink-90: #333333;
 
-  /* Onyx / Chrome */
-  --onyx-chrome-20: #cacaca;
-  --onyx-chrome-10: #e9e9e9;
-  --onyx-chrome-00: #ffffff;
+  /* Atlas / Chrome */
+  --atlas-chrome-20: #cacaca;
+  --atlas-chrome-10: #e9e9e9;
+  --atlas-chrome-00: #ffffff;
 
   /* Tint (referencing Stone variables) */
   --tint-98: var(--stone-98);
@@ -265,8 +265,14 @@
   --tint-02: var(--stone-02);
 }
 
-/* Light Colors */
-:root {
+/* Light Colors
+
+   `:root` is the app-wide light theme. `.theme-light` re-applies the same set
+   to a single subtree, so a surface can render as a light sheet (the document
+   panel's white page) while the app stays in dark mode. A declaration on the
+   element always wins over the values inherited from the dark `.dark` root. */
+:root,
+.theme-light {
   /* Shimmer colors for loading animations */
   --shimmer-base: #a3a3a3;
   --shimmer-highlight: #000000;
@@ -329,9 +335,9 @@
   --border-inverted-01: var(--grey-80);
 
   /* Theme */
-  --theme-primary-06: var(--onyx-ink-100);
-  --theme-primary-05: var(--onyx-ink-95);
-  --theme-primary-04: var(--onyx-ink-90);
+  --theme-primary-06: var(--atlas-ink-100);
+  --theme-primary-05: var(--atlas-ink-95);
+  --theme-primary-04: var(--atlas-ink-90);
 
   /* Theme / Gradient */
   --theme-gradient-05: var(--tint-50);
@@ -569,9 +575,9 @@
   --border-inverted-01: var(--grey-10);
 
   /* Theme */
-  --theme-primary-06: var(--onyx-chrome-00);
-  --theme-primary-05: var(--onyx-chrome-10);
-  --theme-primary-04: var(--onyx-chrome-20);
+  --theme-primary-06: var(--atlas-chrome-00);
+  --theme-primary-05: var(--atlas-chrome-10);
+  --theme-primary-04: var(--atlas-chrome-20);
 
   /* Theme / Gradient */
   --theme-gradient-05: var(--grey-100);

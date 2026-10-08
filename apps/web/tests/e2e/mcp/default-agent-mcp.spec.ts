@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { loginAs, apiLogin } from "@tests/e2e/utils/auth";
-import { OnyxApiClient } from "@tests/e2e/utils/onyxApiClient";
+import { AtlasApiClient } from "@tests/e2e/utils/atlasApiClient";
 import {
   startMcpApiKeyServer,
   McpServerProcess,
@@ -122,7 +122,7 @@ test.describe("Default Agent MCP Integration", () => {
       storageState: "admin_auth.json",
     });
     const adminPage = await adminContext.newPage();
-    const adminClient = new OnyxApiClient(adminPage.request);
+    const adminClient = new AtlasApiClient(adminPage.request);
 
     // Ensure a public LLM provider exists
     createdProviderId = await adminClient.ensurePublicProvider();
@@ -152,7 +152,7 @@ test.describe("Default Agent MCP Integration", () => {
       storageState: "admin_auth.json",
     });
     const adminPage = await adminContext.newPage();
-    const adminClient = new OnyxApiClient(adminPage.request);
+    const adminClient = new AtlasApiClient(adminPage.request);
 
     if (createdProviderId !== null) {
       await adminClient.deleteProvider(createdProviderId);
@@ -535,7 +535,7 @@ test.describe("Default Agent MCP Integration", () => {
     const agentId = agentIdMatch ? agentIdMatch[1] : null;
     expect(agentId).not.toBeNull();
 
-    const client = new OnyxApiClient(page.request);
+    const client = new AtlasApiClient(page.request);
     const assistant = await client.getAssistant(Number(agentId));
     const hasMcpTool = assistant.tools.some(
       (tool) => tool.mcp_server_id === serverId

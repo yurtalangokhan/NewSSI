@@ -1,3 +1,4 @@
+import { agentsEndpoints } from "@/lib/api/domains/agents/endpoints";
 /**
  * Fetches the component registry (P1 Task 6's GET /flow-components),
  * already grouped by category server-side. Uses `useSWR` per STANDARDS
@@ -16,16 +17,16 @@
 
 import useSWR from "swr";
 import { useTranslation } from "react-i18next";
-import { languageKeyedFetcher } from "@/lib/fetcher";
-import { flowApi } from "@/components/flow-canvas/api/flowApi";
+import { fetchComponentTemplates } from "@/lib/api/domains/agents/api";
+
 import type { GroupedComponentTemplates } from "../types/componentTemplate";
 
-const FLOW_COMPONENTS_URL = flowApi.components();
+const FLOW_COMPONENTS_URL = agentsEndpoints.flowComponents().browserPath;
 
 export function useComponentTemplates() {
   const { i18n } = useTranslation();
   return useSWR<GroupedComponentTemplates>(
     [FLOW_COMPONENTS_URL, i18n.language || "en"],
-    languageKeyedFetcher
+    () => fetchComponentTemplates<GroupedComponentTemplates>()
   );
 }

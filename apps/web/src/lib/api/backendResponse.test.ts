@@ -1,6 +1,30 @@
 import { forwardBackendResponse } from "@/lib/api/backendResponse";
 
 describe("forwardBackendResponse", () => {
+  it("preserves localized error and retry metadata", async () => {
+    const result = await forwardBackendResponse(
+      new Response(
+        JSON.stringify({
+          error: {
+            code: "dependency.rate_limited",
+            message: "Lütfen daha sonra deneyin.",
+          },
+        }),
+        {
+          status: 503,
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Language": "tr",
+            "Retry-After": "30",
+            "X-Request-ID": "req-123",
+          },
+        }
+      )
+    );
+    expect(result.headers.get("Content-Language")).toBe("tr");
+    expect(result.headers.get("Retry-After")).toBe("30");
+    expect(result.headers.get("X-Request-ID")).toBe("req-123");
+  });
   it("preserves the backend status code", async () => {
     const response = new Response(JSON.stringify({ ok: true }), {
       status: 201,

@@ -17,10 +17,10 @@ import { DocumentSetSummary } from "@/lib/types";
 import { getErrorMsg } from "@/lib/fetchUtils";
 import { useState } from "react";
 import { useDocumentSets } from "./hooks";
-import { deleteDocumentSet } from "./lib";
+import { deleteDocumentSet } from "@/lib/api/domains/knowledge/api";
 import { toast } from "@/hooks/useToast";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import {
   FiAlertTriangle,
   FiCheckCircle,

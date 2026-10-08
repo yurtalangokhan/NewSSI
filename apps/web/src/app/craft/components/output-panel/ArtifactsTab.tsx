@@ -1,4 +1,5 @@
 "use client";
+import { craftEndpoints } from "@/lib/api/domains/craft/endpoints";
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -20,8 +21,8 @@ import {
   fetchDirectoryListing,
   downloadArtifactFile,
   downloadDirectory,
-} from "@/app/craft/services/apiServices";
-import { FileSystemEntry } from "@/app/craft/types/streamingTypes";
+} from "@/lib/api/domains/craft/api";
+import { FileSystemEntry } from "@/lib/api/domains/craft/streaming-types";
 import { getFileIcon } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +46,7 @@ export default function ArtifactsTab({
   const { data: outputsListing } = useSWR(
     sessionId
       ? [
-          `/api/build/sessions/${sessionId}/files?path=outputs`,
+          craftEndpoints.craftOutputFilesKey(sessionId).browserPath,
           filesNeedsRefresh,
         ]
       : null,
@@ -101,7 +102,7 @@ export default function ArtifactsTab({
   const handleWebappDownload = () => {
     if (!sessionId) return;
     const link = document.createElement("a");
-    link.href = `/api/build/sessions/${sessionId}/webapp/download`;
+    link.href = craftEndpoints.craftWebappDownload(sessionId).browserPath;
     link.download = "";
     document.body.appendChild(link);
     link.click();

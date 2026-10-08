@@ -1,9 +1,12 @@
 import Page from "@/app/page";
 import { AuthType } from "@/lib/constants";
-import { getAuthTypeMetadataSS, getCurrentUserSS } from "@/lib/userSS";
+import {
+  getAuthTypeMetadataSS,
+  getCurrentUserSS,
+} from "@/lib/api/domains/session/server";
 import { redirect } from "next/navigation";
 
-jest.mock("@/lib/userSS", () => ({
+jest.mock("@/lib/api/domains/session/server", () => ({
   getAuthTypeMetadataSS: jest.fn(),
   getCurrentUserSS: jest.fn(),
 }));

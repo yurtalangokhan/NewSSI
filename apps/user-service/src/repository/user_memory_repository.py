@@ -1,8 +1,11 @@
-import uuid
 from datetime import UTC, datetime
 from typing import Any
+import uuid
 
-from sqlalchemy import delete, func, select, text, update
+from error_contract import ConflictError
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import IntegrityError
 
 from src.core.database.models import UserMemoryModel
 
@@ -15,6 +18,7 @@ class UserMemoryRepository(BaseRepository):
         user_id: uuid.UUID,
         limit: int | None = None,
         source: str | None = None,
+        offset: int = 0,
     ) -> list[UserMemoryModel]:
         async with self._session() as session:
             stmt = (
@@ -24,6 +28,8 @@ class UserMemoryRepository(BaseRepository):
             )
             if source:
                 stmt = stmt.where(UserMemoryModel.source == source)
+            if offset:
+                stmt = stmt.offset(offset)
             if limit is not None:
                 stmt = stmt.limit(limit)
             result = await session.execute(stmt)
@@ -38,9 +44,7 @@ class UserMemoryRepository(BaseRepository):
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
 
-    async def create(
-        self, user_id: uuid.UUID, content: str, source: str = "manual"
-    ) -> UserMemoryModel:
+    async def create(self, user_id: uuid.UUID, content: str, source: str = "manual") -> UserMemoryModel:
         async with self._session() as session:
             row = UserMemoryModel(
                 id=uuid.uuid4(),
@@ -51,46 +55,49 @@ class UserMemoryRepository(BaseRepository):
                 time_updated=datetime.now(UTC),
             )
             session.add(row)
-            await session.flush()
+            try:
+                await session.flush()
+            except IntegrityError as exc:
+                raise ConflictError(
+                    code="memory.already_exists",
+                    message="Memory already exists.",
+                    message_key="errors.user_service.memory.already_exists",
+                ) from exc
             await session.refresh(row)
             return row
 
-    async def bulk_create(
-        self, user_id: uuid.UUID, items: list[tuple[str, str]]
-    ) -> list[UserMemoryModel]:
+    async def bulk_create(self, user_id: uuid.UUID, items: list[tuple[str, str, str | None]]) -> list[UserMemoryModel]:
+        """Insert facts as ``(content, source, language)`` triples.
+
+        ``language`` is the BCP-47 tag the extractor's model declared, or
+        ``None`` when it declared none.
+        """
         if not items:
             return []
         async with self._session() as session:
-            created: list[UserMemoryModel] = []
-            for content, source in items:
-                stmt = text(
-                    "INSERT INTO user_memory (id, user_id, content, source, time_created, time_updated) "
-                    "VALUES (:id, :user_id, :content, :source, now(), now()) "
-                    "ON CONFLICT (user_id, lower(content)) DO NOTHING "
-                    "RETURNING id, user_id, content, source, time_created, time_updated"
-                )
-                result = await session.execute(
-                    stmt,
-                    {
-                        "id": str(uuid.uuid4()),
-                        "user_id": str(user_id),
-                        "content": content,
-                        "source": source,
-                    },
-                )
-                row_data = result.fetchone()
-                if row_data:
-                    fetch = await session.execute(
-                        select(UserMemoryModel).where(UserMemoryModel.id == row_data[0])
-                    )
-                    orm_row = fetch.scalar_one_or_none()
-                    if orm_row:
-                        created.append(orm_row)
-            return created
+            now = datetime.now(UTC)
+            values = [
+                {
+                    "id": uuid.uuid4(),
+                    "user_id": user_id,
+                    "content": content,
+                    "source": source,
+                    "language": language,
+                    "time_created": now,
+                    "time_updated": now,
+                }
+                for content, source, language in items
+            ]
+            stmt = (
+                pg_insert(UserMemoryModel)
+                .values(values)
+                .on_conflict_do_nothing(index_elements=[UserMemoryModel.user_id, func.lower(UserMemoryModel.content)])
+                .returning(UserMemoryModel)
+            )
+            result = await session.execute(stmt)
+            return list(result.scalars().all())
 
-    async def update(
-        self, memory_id: uuid.UUID, user_id: uuid.UUID, content: str
-    ) -> UserMemoryModel | None:
+    async def update(self, memory_id: uuid.UUID, user_id: uuid.UUID, content: str) -> UserMemoryModel | None:
         async with self._session() as session:
             stmt = (
                 update(UserMemoryModel)
@@ -127,12 +134,34 @@ class UserMemoryRepository(BaseRepository):
             result = await session.execute(stmt)
             return result.scalar_one()
 
+    async def delete_oldest_excess(self, user_id: uuid.UUID, keep: int) -> int:
+        """Delete every fact for this user beyond the `keep` most recent.
+
+        Without this, only recall was bounded (list_for_recall's LIMIT);
+        storage itself grew forever, and nothing ever removed old or
+        stale facts that had already scrolled out of the recall window.
+        """
+        async with self._session() as session:
+            keep_ids = (
+                select(UserMemoryModel.id)
+                .where(UserMemoryModel.user_id == user_id)
+                .order_by(UserMemoryModel.time_created.desc(), UserMemoryModel.id.desc())
+                .limit(keep)
+            )
+            stmt = delete(UserMemoryModel).where(
+                UserMemoryModel.user_id == user_id,
+                UserMemoryModel.id.notin_(keep_ids),
+            )
+            result = await session.execute(stmt)
+            return result.rowcount
+
     def _to_dict(self, row: UserMemoryModel) -> dict[str, Any]:
         return {
             "id": str(row.id),
             "user_id": str(row.user_id),
             "content": row.content,
             "source": row.source,
+            "language": row.language,
             "time_created": row.time_created.isoformat() if row.time_created else None,
             "time_updated": row.time_updated.isoformat() if row.time_updated else None,
         }

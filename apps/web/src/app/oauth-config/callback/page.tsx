@@ -2,6 +2,7 @@
 
 import OAuthCallbackPage from "@/components/oauth/OAuthCallbackPage";
 import { useTranslation } from "react-i18next";
+import { completeOAuthConfigCallback } from "@/lib/api/domains/integrations/api";
 
 export default function OAuthConfigCallbackPage() {
   const { t } = useTranslation("common", { keyPrefix: "auth" });
@@ -9,7 +10,7 @@ export default function OAuthConfigCallbackPage() {
   return (
     <OAuthCallbackPage
       config={{
-        callbackApiUrl: "/api/oauth-config/callback",
+        callback: completeOAuthConfigCallback,
         defaultRedirectPath: "/app",
         processingMessage: t("oauthCallback.oauthConfigProcessing"),
         processingDetails: t("oauthCallback.oauthConfigProcessingDetails"),

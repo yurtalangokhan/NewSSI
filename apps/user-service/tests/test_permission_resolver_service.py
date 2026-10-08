@@ -1,147 +1,78 @@
+"""Effective access is expanded from Keycloak role composites, never from local data."""
+
 import uuid
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
+from src.repository.keycloak_role_client import catalog_cache
 from src.service.permission_resolver_service import PermissionResolverService
+from tests.fakes.keycloak_roles import FakeKeycloakRoles
 
 
-@pytest.mark.asyncio
-async def test_resolver_unions_permissions_across_multiple_user_roles(monkeypatch):
-    import src.service.permission_resolver_service as resolver_module
-
-    user_id = uuid.uuid4()
-    resolver = PermissionResolverService(cache_ttl_seconds=0)
-    resolver.user_role_repo = SimpleNamespace(
-        list_user_roles=AsyncMock(
-            return_value=[
-                {"name": "auditor", "is_primary": True},
-                {"name": "operator", "is_primary": False},
-            ]
-        )
+@pytest.fixture
+def keycloak():
+    catalog_cache.clear()
+    fake = FakeKeycloakRoles()
+    agent = fake.add_client("agent-service")
+    workspace = fake.add_client_role(
+        agent, "workspace", {"agentic.permissions": ["agent:read", "thread:read"]}
     )
+    auditor = fake.add_realm_role("auditor", {"agentic.permissions": ["user:list"]})
+    operator = fake.add_realm_role("operator", {"agentic.permissions": ["project:read"]})
+    fake.add_realm_role("system-admin")
+    fake.link(operator, workspace)
+    fake.ids = {"auditor": auditor, "operator": operator}
+    yield fake
+    catalog_cache.clear()
+
+
+def _resolver(keycloak, role_names, client_permissions=()):
+    resolver = PermissionResolverService(cache_ttl_seconds=0)
+    resolver.role_repo.client = keycloak
     resolver.user_repo = SimpleNamespace(get_by_id=AsyncMock())
-    resolver.role_repo = SimpleNamespace(
-        get_by_names=AsyncMock(
-            return_value=[
-                SimpleNamespace(name="auditor", permissions=["user:list"], role_ids=[]),
-                SimpleNamespace(
-                    name="operator",
-                    permissions=["project:read"],
-                    role_ids=["agent-workspace-user"],
-                ),
-            ]
-        )
-    )
-    coarse_service = SimpleNamespace(
-        get_aggregated_permissions=AsyncMock(return_value=["agent:read", "thread:read"])
-    )
-    monkeypatch.setattr(resolver_module, "get_role_service", lambda: coarse_service)
-
-    permissions = await resolver.resolve_effective_permissions(user_id)
-
-    assert permissions == ["agent:read", "project:read", "thread:read", "user:list"]
-    resolver.role_repo.get_by_names.assert_awaited_once_with(["auditor", "operator"])
-    coarse_service.get_aggregated_permissions.assert_awaited_once_with(["agent-workspace-user"])
-
-
-@pytest.mark.asyncio
-async def test_resolver_reads_normalized_role_access_without_legacy_jsonb_columns(monkeypatch):
-    import src.service.permission_resolver_service as resolver_module
-
-    user_id = uuid.uuid4()
-    resolver = PermissionResolverService(cache_ttl_seconds=0)
     resolver.user_role_repo = SimpleNamespace(
-        list_user_roles=AsyncMock(return_value=[{"name": "enduser", "is_primary": True}])
+        list_user_roles=AsyncMock(return_value=[{"name": name} for name in role_names]),
+        effective_client_permissions=AsyncMock(return_value=list(client_permissions)),
     )
-    resolver.user_repo = SimpleNamespace(get_by_id=AsyncMock())
-    resolver.role_repo = SimpleNamespace(
-        get_access_by_names=AsyncMock(
-            return_value={
-                "enduser": {
-                    "permissions": [],
-                    "role_ids": ["agent-workspace-user"],
-                }
-            }
-        )
-    )
-    coarse_service = SimpleNamespace(
-        get_aggregated_permissions=AsyncMock(return_value=["agent:list", "project:read"])
-    )
-    monkeypatch.setattr(resolver_module, "get_role_service", lambda: coarse_service)
-
-    permissions = await resolver.resolve_effective_permissions(user_id)
-
-    assert permissions == ["agent:list", "project:read"]
-    resolver.role_repo.get_access_by_names.assert_awaited_once_with(["enduser"])
-    coarse_service.get_aggregated_permissions.assert_awaited_once_with(["agent-workspace-user"])
+    return resolver
 
 
 @pytest.mark.asyncio
-async def test_resolver_falls_back_to_users_role_until_user_roles_are_backfilled():
-    user_id = uuid.uuid4()
-    resolver = PermissionResolverService(cache_ttl_seconds=0)
-    resolver.user_role_repo = SimpleNamespace(list_user_roles=AsyncMock(return_value=[]))
-    resolver.user_repo = SimpleNamespace(
-        get_by_id=AsyncMock(return_value=SimpleNamespace(role="enduser"))
-    )
-    resolver.role_repo = SimpleNamespace(
-        get_by_names=AsyncMock(
-            return_value=[
-                SimpleNamespace(name="enduser", permissions=["chat:read"], role_ids=[]),
-            ]
-        )
-    )
+async def test_permissions_union_direct_and_bundled_grants_across_roles(keycloak):
+    resolver = _resolver(keycloak, ["auditor", "operator"])
 
-    permissions = await resolver.resolve_effective_permissions(user_id)
-
-    assert permissions == ["chat:read"]
-    resolver.user_repo.get_by_id.assert_awaited_once_with(user_id)
+    assert await resolver.resolve_effective_access(uuid.uuid4()) == (
+        ["agent:read", "project:read", "thread:read", "user:list"],
+        False,
+    )
 
 
 @pytest.mark.asyncio
-async def test_resolver_preserves_wildcard_access():
-    user_id = uuid.uuid4()
-    resolver = PermissionResolverService(cache_ttl_seconds=0)
-    resolver.user_role_repo = SimpleNamespace(
-        list_user_roles=AsyncMock(return_value=[{"name": "system-admin", "is_primary": True}])
-    )
-    resolver.user_repo = SimpleNamespace(get_by_id=AsyncMock())
-    resolver.role_repo = SimpleNamespace(
-        get_by_names=AsyncMock(
-            return_value=[
-                SimpleNamespace(name="system-admin", permissions=["*"], role_ids=[]),
-            ]
-        )
-    )
+async def test_direct_client_role_grants_apply_without_realm_roles(keycloak):
+    resolver = _resolver(keycloak, [], client_permissions=["tool:read"])
 
-    assert await resolver.resolve_effective_permissions(user_id) == ["*"]
+    assert await resolver.resolve_effective_access(uuid.uuid4()) == (["tool:read"], False)
 
 
 @pytest.mark.asyncio
-async def test_system_admin_without_explicit_wildcard_uses_bundle_permissions():
-    user_id = uuid.uuid4()
-    resolver = PermissionResolverService(cache_ttl_seconds=0)
-    resolver.user_role_repo = SimpleNamespace(
-        list_user_roles=AsyncMock(return_value=[{"name": "system-admin", "is_primary": True}])
-    )
-    resolver.user_repo = SimpleNamespace(get_by_id=AsyncMock())
-    resolver.role_repo = SimpleNamespace(
-        get_access_by_names=AsyncMock(
-            return_value={
-                "system-admin": {
-                    "permissions": [],
-                    "role_ids": ["access-admin"],
-                }
-            }
-        )
-    )
+async def test_no_assignment_grants_nothing_and_never_reads_the_user(keycloak):
+    resolver = _resolver(keycloak, [])
 
-    with patch("src.service.permission_resolver_service.get_role_service") as get_role_service:
-        get_role_service.return_value.get_aggregated_permissions = AsyncMock(
-            return_value=["system.settings:read", "user:list"]
-        )
-        permissions = await resolver.resolve_effective_permissions(user_id)
+    assert await resolver.resolve_effective_access(uuid.uuid4()) == ([], False)
+    resolver.user_repo.get_by_id.assert_not_called()
 
-    assert permissions == ["system.settings:read", "user:list"]
+
+@pytest.mark.asyncio
+async def test_system_admin_holds_the_wildcard_and_the_admin_flag(keycloak):
+    resolver = _resolver(keycloak, ["system-admin", "auditor"])
+
+    assert await resolver.resolve_effective_access(uuid.uuid4()) == (["*"], True)
+
+
+@pytest.mark.asyncio
+async def test_unknown_token_roles_are_ignored(keycloak):
+    resolver = _resolver(keycloak, ["ghost", "auditor"])
+
+    assert await resolver.resolve_effective_permissions(uuid.uuid4()) == ["user:list"]

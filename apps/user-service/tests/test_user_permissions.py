@@ -3,11 +3,10 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.api import dependencies
-from src.api.dependencies import require_admin, require_auth, require_auth_or_internal_service_token
+from src.api.dependencies import require_auth, require_auth_or_internal_service_token
 from src.api.routes import user_route
 from src.service.user_service import UserService
 
@@ -121,32 +120,8 @@ def test_me_permissions_endpoint_returns_current_user_permissions(monkeypatch):
     response = TestClient(app).get("/users/me/permissions")
 
     assert response.status_code == 200
-    assert response.json() == {"permissions": ["role:list"]}
+    assert response.json()["data"] == {"permissions": ["role:list"]}
     controller.get_user_permissions.assert_awaited_once_with(user_id)
-
-
-@pytest.mark.asyncio
-async def test_require_admin_denial_uses_admin_required_translation(monkeypatch):
-    user_id = uuid.uuid4()
-
-    class Repo:
-        async def get_by_id(self, requested_user_id):
-            assert requested_user_id == user_id
-            return SimpleNamespace(id=user_id)
-
-    resolver = SimpleNamespace(resolve_effective_permissions=AsyncMock(return_value=[]))
-    monkeypatch.setattr(dependencies, "UserRepository", Repo)
-    monkeypatch.setattr(
-        dependencies,
-        "get_permission_resolver_service",
-        lambda: resolver,
-    )
-
-    with pytest.raises(HTTPException) as exc:
-        await require_admin(SimpleNamespace(), str(user_id))
-
-    assert exc.value.status_code == 403
-    assert exc.value.detail == "Admin access required"
 
 
 def test_internal_permissions_endpoint_resolves_target_user(monkeypatch):
@@ -164,7 +139,7 @@ def test_internal_permissions_endpoint_resolves_target_user(monkeypatch):
     response = TestClient(app).get(f"/internal/users/{target_id}/permissions")
 
     assert response.status_code == 200
-    assert response.json() == {"permissions": ["document:read"]}
+    assert response.json()["data"] == {"permissions": ["document:read"]}
     controller.authorize_target_user_id.assert_awaited_once_with(
         str(target_id),
         "internal-service",
@@ -192,7 +167,7 @@ def test_internal_authorize_endpoint_resolves_target_user(monkeypatch):
     )
 
     assert response.status_code == 200
-    assert response.json() == {"allowed": True, "permission": "document:read"}
+    assert response.json()["data"] == {"allowed": True, "permission": "document:read"}
     controller.authorize_target_user_id.assert_awaited_once_with(
         str(target_id),
         "internal-service",
@@ -208,9 +183,11 @@ async def test_set_user_role_invalidates_active_keycloak_sessions():
     user_id = uuid.uuid4()
     updated_user = _user(id=user_id, role="system-admin")
     service = UserService()
-    service.role_repo = SimpleNamespace(exists=AsyncMock(return_value=True))
+    service.role_repo = SimpleNamespace(
+        get_by_name=AsyncMock(return_value=SimpleNamespace(name="system-admin"))
+    )
     service.user_repo = SimpleNamespace(
-        get_by_id=AsyncMock(return_value=_user(id=user_id, role="enduser")),
+        get_by_id=AsyncMock(side_effect=[_user(id=user_id, role="enduser"), updated_user]),
         update=AsyncMock(return_value=updated_user),
     )
     service.user_role_repo = SimpleNamespace(replace_roles=AsyncMock(return_value=0))
@@ -220,12 +197,16 @@ async def test_set_user_role_invalidates_active_keycloak_sessions():
         set_realm_role=AsyncMock(return_value=True),
         logout_user_sessions=AsyncMock(return_value=True),
     )
-    service._resolve_role_from_keycloak = AsyncMock(return_value="system-admin")
 
     result = await service.set_user_role(user_id, "system-admin")
 
     assert result["role"] == "system-admin"
-    service.keycloak.set_realm_role.assert_awaited_once_with("kc-user-id", "system-admin")
+    service.user_role_repo.replace_roles.assert_awaited_once_with(
+        user_id, ["system-admin"], primary_role="system-admin"
+    )
+    service.user_repo.update.assert_not_called()
+    service.keycloak.set_realm_role.assert_not_called()
+    service.permission_resolver.invalidate_user.assert_awaited_once_with(user_id)
     service.keycloak.logout_user_sessions.assert_awaited_once_with("kc-user-id")
 
 
@@ -239,7 +220,6 @@ async def test_get_current_user_preserves_db_role_when_keycloak_has_no_valid_rol
         update=AsyncMock(),
     )
     service.keycloak = SimpleNamespace(is_enabled=lambda: True)
-    service._resolve_role_from_keycloak = AsyncMock(return_value=None)
     service.settings_repo = SimpleNamespace(ensure_defaults=AsyncMock())
 
     result = await service.get_current_user(str(user_id))
@@ -254,7 +234,7 @@ async def test_upsert_external_keycloak_user_preserves_existing_composite_role()
     service = UserService()
     service._is_external_keycloak_user = AsyncMock(return_value=True)
     service.user_repo = SimpleNamespace(
-        get_by_keycloak_id=AsyncMock(return_value=existing_user),
+        get_by_id=AsyncMock(return_value=existing_user),
         upsert_by_keycloak_id=AsyncMock(return_value=existing_user),
     )
     service.settings_repo = SimpleNamespace(ensure_defaults=AsyncMock())
@@ -276,7 +256,7 @@ async def test_upsert_new_external_keycloak_user_gets_default_composite_role():
     service = UserService()
     service._is_external_keycloak_user = AsyncMock(return_value=True)
     service.user_repo = SimpleNamespace(
-        get_by_keycloak_id=AsyncMock(return_value=None),
+        get_by_id=AsyncMock(return_value=None),
         upsert_by_keycloak_id=AsyncMock(return_value=created_user),
     )
     service.settings_repo = SimpleNamespace(ensure_defaults=AsyncMock())
@@ -290,23 +270,6 @@ async def test_upsert_new_external_keycloak_user_gets_default_composite_role():
     assert result["role"] == "enduser"
     service.user_repo.upsert_by_keycloak_id.assert_awaited_once()
     assert service.user_repo.upsert_by_keycloak_id.await_args.kwargs["role"] == "enduser"
-
-
-@pytest.mark.asyncio
-async def test_resolve_role_from_roles_returns_none_for_only_legacy_keycloak_roles():
-    service = UserService()
-    service.role_repo = SimpleNamespace(
-        get_all=AsyncMock(
-            return_value=[
-                SimpleNamespace(name="system-admin"),
-                SimpleNamespace(name="enduser"),
-            ]
-        )
-    )
-
-    resolved = await service._resolve_role_from_roles([{"name": "admin"}])
-
-    assert resolved is None
 
 
 @pytest.mark.asyncio
@@ -340,14 +303,20 @@ async def test_set_user_role_revokes_previously_assigned_roles():
     """
     user_id = uuid.uuid4()
     service = UserService()
-    service.role_repo = SimpleNamespace(exists=AsyncMock(return_value=True))
+    service.role_repo = SimpleNamespace(
+        get_by_name=AsyncMock(return_value=SimpleNamespace(name="enduser"))
+    )
     service.user_repo = SimpleNamespace(
-        get_by_id=AsyncMock(return_value=_user(id=user_id, role="system-admin")),
+        get_by_id=AsyncMock(
+            side_effect=[_user(id=user_id, role="system-admin"), _user(id=user_id, role="enduser")]
+        ),
         update=AsyncMock(return_value=_user(id=user_id, role="enduser")),
     )
     service.user_role_repo = SimpleNamespace(replace_roles=AsyncMock(return_value=1))
     service.permission_resolver = SimpleNamespace(invalidate_user=AsyncMock())
-    service.keycloak = SimpleNamespace(is_enabled=lambda: False)
+    service.keycloak = SimpleNamespace(
+        is_enabled=lambda: True, logout_user_sessions=AsyncMock(return_value=True)
+    )
 
     result = await service.set_user_role(user_id, "enduser")
 
@@ -356,3 +325,5 @@ async def test_set_user_role_revokes_previously_assigned_roles():
         user_id, ["enduser"], primary_role="enduser"
     )
     service.permission_resolver.invalidate_user.assert_awaited_once_with(user_id)
+    service.user_repo.update.assert_not_called()
+    service.keycloak.logout_user_sessions.assert_awaited_once_with("kc-user-id")

@@ -2,6 +2,7 @@
 
 import OAuthCallbackPage from "@/components/oauth/OAuthCallbackPage";
 import { useTranslation } from "react-i18next";
+import { completeFederatedOAuthCallback } from "@/lib/api/domains/integrations/api";
 
 export default function FederatedOAuthCallbackPage() {
   const { t } = useTranslation("common", { keyPrefix: "auth" });
@@ -15,7 +16,7 @@ export default function FederatedOAuthCallbackPage() {
     redirectingMessage: t("oauthCallback.federatedRedirecting"),
     autoRedirectDelay: 2000,
     defaultRedirectPath: "/app",
-    callbackApiUrl: "/api/federated/callback",
+    callback: completeFederatedOAuthCallback,
     errorMessageMap: {
       "validation errors": t("oauthCallback.federatedErrorValidation"),
       client_secret: t("oauthCallback.federatedErrorClientSecret"),

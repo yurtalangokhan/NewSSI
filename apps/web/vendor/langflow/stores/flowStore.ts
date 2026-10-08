@@ -187,7 +187,7 @@ const useFlowStore = create<FlowStoreType>((set, get) => ({
     set({ isBuilding: false });
     get().revertBuiltStatusFromBuilding();
     useAlertStore.getState().setErrorData({
-      title: i18n.t("alerts.buildStopped"),
+      title: localization.t("alerts.buildStopped"),
     });
   },
   isPending: true,
@@ -326,7 +326,7 @@ const useFlowStore = create<FlowStoreType>((set, get) => ({
 
     if (brokenEdges.length > 0) {
       useAlertStore.getState().setErrorData({
-        title: i18n.t("flow.brokenEdgesWarning"),
+        title: localization.t("flow.brokenEdgesWarning"),
         list: brokenEdges.map((edge) => brokenEdgeMessage(edge)),
       });
     }
@@ -473,7 +473,7 @@ const useFlowStore = create<FlowStoreType>((set, get) => ({
     // with a wired branch) strands the downstream node; surface it like resetFlow does.
     if (brokenEdges.length > 0) {
       useAlertStore.getState().setErrorData({
-        title: i18n.t("flow.brokenEdgesWarning"),
+        title: localization.t("flow.brokenEdgesWarning"),
         list: brokenEdges.map((edge) => brokenEdgeMessage(edge)),
       });
     }
@@ -573,10 +573,10 @@ const useFlowStore = create<FlowStoreType>((set, get) => ({
     if (placeable.violations.length > 0) {
       const messages: string[] = [];
       if (placeable.violations.some((v) => v.reason === "singleton")) {
-        messages.push(i18n.t("flow.duplicateComponentsNotPasted"));
+        messages.push(localization.t("flow.duplicateComponentsNotPasted"));
       }
       if (placeable.violations.some((v) => v.reason === "exclusivity")) {
-        messages.push(i18n.t("flow.exclusiveComponentsNotPasted"));
+        messages.push(localization.t("flow.exclusiveComponentsNotPasted"));
       }
       useAlertStore.getState().setNoticeData({ title: messages.join(" ") });
     }
@@ -855,7 +855,7 @@ const useFlowStore = create<FlowStoreType>((set, get) => ({
     errors = errors.concat(errorsObjs.flatMap((obj) => obj.errors));
     if (errors.length > 0) {
       setErrorData({
-        title: i18n.t("errors.missedFields"),
+        title: localization.t("errors.missedFields"),
         list: errors,
       });
       const ids = errorsObjs.flatMap((obj) => obj.id);

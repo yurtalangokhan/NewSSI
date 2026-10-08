@@ -1,17 +1,21 @@
 import { NextRequest } from "next/server";
 
+jest.mock("@/lib/settings", () => ({
+  appSettings: {
+    ...jest.requireActual("@/lib/settings").appSettings,
+    AGENT_SERVICE_URL: "http://apisix:8000",
+  },
+}));
+
 describe("/api/admin/ollama/pull route", () => {
   let fetchSpy: jest.SpyInstance;
-  const previousInternalUrl = process.env.INTERNAL_URL;
 
   beforeEach(() => {
-    process.env.INTERNAL_URL = "http://kong:8000";
     fetchSpy = jest.spyOn(global, "fetch");
   });
 
   afterEach(() => {
     fetchSpy.mockRestore();
-    process.env.INTERNAL_URL = previousInternalUrl;
     jest.resetModules();
   });
 
@@ -39,12 +43,12 @@ describe("/api/admin/ollama/pull route", () => {
 
     expect(response.status).toBe(200);
     expect(fetchSpy).toHaveBeenCalledWith(
-      "http://kong:8000/agent-service/api/v1/admin/ollama/pull",
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          "Idempotency-Key": "ollama-pull-key",
-        }),
-      })
+      "http://apisix:8000/agent-service/api/v1/admin/ollama/pull",
+      expect.any(Object)
+    );
+    const [, init] = fetchSpy.mock.calls[0]!;
+    expect(new Headers(init.headers).get("Idempotency-Key")).toBe(
+      "ollama-pull-key"
     );
   });
 });

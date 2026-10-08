@@ -1,10 +1,14 @@
 "use client";
+import { SvgLink } from "@opal/icons";
 
-import { authenticatedFetch } from "@/lib/fetcher";
+import { setChatSessionSharing } from "@/lib/api/domains/chat/api";
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ChatSession, ChatSessionSharedStatus } from "@/app/app/interfaces";
+import {
+  ChatSession,
+  ChatSessionSharedStatus,
+} from "@/lib/api/domains/chat/types";
 import { toast } from "@/hooks/useToast";
 import { useChatSessionStore } from "@/app/app/stores/useChatSessionStore";
 import { copyAll } from "@/app/app/message/copyingUtils";
@@ -14,12 +18,12 @@ import Button from "@/refresh-components/buttons/Button";
 import CopyIconButton from "@/refresh-components/buttons/CopyIconButton";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
-import { SvgLink, SvgShare, SvgUsers } from "@opal/icons";
+import { SvgShare, SvgUsers } from "@opal/icons";
 import SvgCheck from "@opal/icons/check";
 import SvgLock from "@opal/icons/lock";
 
 import type { IconProps } from "@opal/types";
-import useChatSessions from "@/hooks/useChatSessions";
+import { useChatSessions } from "@/lib/api/domains/chat/hooks";
 import { useTranslation } from "react-i18next";
 
 function buildShareLink(chatSessionId: string) {
@@ -28,14 +32,9 @@ function buildShareLink(chatSessionId: string) {
 }
 
 async function generateShareLink(chatSessionId: string) {
-  const response = await authenticatedFetch(
-    `/api/chat/chat-session/${chatSessionId}`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sharing_status: "public" }),
-    }
-  );
+  const response = await setChatSessionSharing(chatSessionId, {
+    sharing_status: "public",
+  });
 
   if (response.ok) {
     return buildShareLink(chatSessionId);
@@ -44,14 +43,9 @@ async function generateShareLink(chatSessionId: string) {
 }
 
 async function deleteShareLink(chatSessionId: string) {
-  const response = await authenticatedFetch(
-    `/api/chat/chat-session/${chatSessionId}`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sharing_status: "private" }),
-    }
-  );
+  const response = await setChatSessionSharing(chatSessionId, {
+    sharing_status: "private",
+  });
 
   return response.ok;
 }

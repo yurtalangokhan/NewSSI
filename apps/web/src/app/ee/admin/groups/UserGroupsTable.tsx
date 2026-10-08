@@ -10,7 +10,7 @@ import {
 import { toast } from "@/hooks/useToast";
 import { getErrorMsg } from "@/lib/fetchUtils";
 import { ConnectorTitle } from "@/components/admin/connectors/ConnectorTitle";
-import { deleteUserGroup } from "./lib";
+import { deleteUserGroup } from "@/lib/api/domains/access/api";
 import { useRouter } from "next/navigation";
 import { FiUser } from "react-icons/fi";
 import { User, UserGroup } from "@/lib/types";

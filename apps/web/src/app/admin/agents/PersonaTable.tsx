@@ -1,20 +1,21 @@
 "use client";
+import { updatePersonaDisplayPriorities } from "@/lib/api/domains/agents/api";
 
 import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
-import { Persona } from "./interfaces";
+import { Persona } from "@/lib/api/domains/agents/types";
 import { useRouter } from "next/navigation";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import { toast } from "@/hooks/useToast";
 import { useState, useMemo, useEffect } from "react";
 import { UniqueIdentifier } from "@dnd-kit/core";
 import { DraggableTable } from "@/components/table/DraggableTable";
+import { personaComparator } from "@/lib/api/domains/agents/selectors";
+import { deletePersona } from "@/lib/api/domains/agents/api";
 import {
-  deletePersona,
-  personaComparator,
   togglePersonaFeatured,
   togglePersonaVisibility,
-} from "./lib";
+} from "@/lib/api/domains/agents/api";
 import { FiEdit2 } from "react-icons/fi";
 import { useUser } from "@/providers/UserProvider";
 import { Button as OpalButton } from "@opal/components";
@@ -22,7 +23,6 @@ import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationMo
 import Button from "@/refresh-components/buttons/Button";
 import { SvgAlertCircle, SvgTrash } from "@opal/icons";
 import type { Route } from "next";
-import { authenticatedFetch } from "@/lib/fetcher";
 
 function PersonaTypeDisplay({ persona }: { persona: Persona }) {
   const { t } = useTranslation();
@@ -105,18 +105,9 @@ export function PersonasTable({
       displayPriorityMap.set(personaId, pageStartIndex + ind);
     });
 
-    const response = await authenticatedFetch(
-      "/api/admin/agents/display-priorities",
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          display_priority_map: Object.fromEntries(displayPriorityMap),
-        }),
-      }
-    );
+    const response = await updatePersonaDisplayPriorities({
+      display_priority_map: Object.fromEntries(displayPriorityMap),
+    });
 
     if (!response.ok) {
       toast.error(

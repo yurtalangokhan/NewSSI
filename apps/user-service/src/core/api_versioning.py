@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
-import os
-import tomllib
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+import tomllib
 from typing import Any
+
+from config_manager import env
 
 DEFAULT_BASE_PATH = "/api"
 DEFAULT_VERSION = "v1"
 DEFAULT_SUPPORTED_VERSIONS = (DEFAULT_VERSION,)
 DEFAULT_DEPRECATED_VERSIONS: tuple[str, ...] = ()
-CONFIG_ENV_VAR = "API_VERSIONING_CONFIG"
 
 
 @dataclass(frozen=True)
@@ -39,7 +39,7 @@ class ApiVersioningConfig:
 
 def find_api_versioning_config(start: Path | None = None) -> Path | None:
     """Find the nearest repository-level API versioning config."""
-    configured = os.getenv(CONFIG_ENV_VAR)
+    configured = env.API_VERSIONING_CONFIG
     if configured:
         return Path(configured)
 
@@ -75,9 +75,7 @@ def load_api_versioning_config(
     service_config = _as_mapping(_as_mapping(raw_config.get("services")).get(service_name))
 
     base_path = _normalize_base_path(
-        _as_str(service_config.get("base_path"))
-        or _as_str(api_config.get("base_path"))
-        or DEFAULT_BASE_PATH
+        _as_str(service_config.get("base_path")) or _as_str(api_config.get("base_path")) or DEFAULT_BASE_PATH
     )
     supported_versions = _as_str_tuple(
         service_config.get("supported_versions"),
@@ -87,9 +85,7 @@ def load_api_versioning_config(
         ),
     )
     default_version = (
-        _as_str(service_config.get("default_version"))
-        or _as_str(api_config.get("default_version"))
-        or DEFAULT_VERSION
+        _as_str(service_config.get("default_version")) or _as_str(api_config.get("default_version")) or DEFAULT_VERSION
     )
     deprecated_versions = _as_str_tuple(
         service_config.get("deprecated_versions"),

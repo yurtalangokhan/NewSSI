@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUser } from "@/providers/UserProvider";
-import type { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
-import { UNKNOWN_AGENT_OWNER_EMAIL } from "@/lib/agents";
+import type { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
+import { UNKNOWN_AGENT_OWNER_EMAIL } from "@/lib/api/domains/agents/selectors";
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
 import FilterButton from "@/refresh-components/buttons/FilterButton";
 import LineItem from "@/refresh-components/buttons/LineItem";

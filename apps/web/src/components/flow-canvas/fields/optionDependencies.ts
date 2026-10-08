@@ -1,3 +1,4 @@
+import { agentsEndpoints } from "@/lib/api/domains/agents/endpoints";
 /**
  * Carries a field's `depends_on` siblings to the options endpoint.
  *
@@ -11,7 +12,6 @@
  * fell back to every provider's models.
  */
 
-import { flowApi } from "../api/flowApi";
 import type { InputField } from "../types/componentTemplate";
 
 /** The values of the siblings `field` declares, skipping the unset ones. */
@@ -40,11 +40,5 @@ export function optionsRequestKey(
   source: string,
   depends: Record<string, string>
 ): string {
-  const names = Object.keys(depends).sort();
-  const base = flowApi.componentOptions(source);
-  if (names.length === 0) return base;
-  const query = names
-    .map((name) => `dep=${encodeURIComponent(`${name}:${depends[name]}`)}`)
-    .join("&");
-  return `${base}?${query}`;
+  return agentsEndpoints.resolvedOptions(source, depends).browserPath;
 }

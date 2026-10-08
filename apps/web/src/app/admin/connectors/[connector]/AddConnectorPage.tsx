@@ -1,18 +1,25 @@
 "use client";
+import { datasourcesEndpoints } from "@/lib/api/domains/datasources/endpoints";
 
 import { useTranslation } from "react-i18next";
-import i18n from "@/i18n/config";
-import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 import useSWR, { mutate } from "swr";
 import { AdminPageTitle } from "@/components/admin/Title";
-import { buildSimilarCredentialInfoURL } from "@/app/admin/connector/[ccPairId]/lib";
+
 import { toast } from "@/hooks/useToast";
 import { useFormContext } from "@/components/context/FormContext";
 import { getSourceDisplayName, getSourceMetadata } from "@/lib/sources";
 import { SourceIcon } from "@/components/SourceIcon";
 import { useEffect, useRef, useState } from "react";
-import { deleteCredential, linkCredential } from "@/lib/credential";
-import { submitFiles } from "@/app/admin/connectors/[connector]/pages/utils/files";
+import {
+  createConnectorResponse,
+  createConnectorWithMockCredential,
+  deleteCredential,
+  fetchSimilarCredentials,
+  linkCredential,
+  updateConnectorResponse,
+  updateConnectorWithMockCredential,
+} from "@/lib/api/domains/datasources/api";
+import { submitFiles } from "@/lib/api/domains/datasources/hooks";
 import { submitGoogleSite } from "@/app/admin/connectors/[connector]/pages/utils/google_site";
 import AdvancedFormPage from "@/app/admin/connectors/[connector]/pages/Advanced";
 import DynamicConnectionForm from "@/app/admin/connectors/[connector]/pages/DynamicConnectorCreationForm";
@@ -45,12 +52,7 @@ import { Formik } from "formik";
 import NavigationRow from "@/app/admin/connectors/[connector]/NavigationRow";
 import { useRouter } from "next/navigation";
 import CardSection from "@/components/admin/CardSection";
-import { prepareOAuthAuthorizationRequest } from "@/lib/oauth_utils";
-import {
-  EE_ENABLED,
-  NEXT_PUBLIC_CLOUD_ENABLED,
-  NEXT_PUBLIC_TEST_ENV,
-} from "@/lib/constants";
+import { prepareOAuthAuthorizationRequest } from "@/lib/api/domains/integrations/api";
 import {
   getConnectorOauthRedirectUrl,
   useOAuthDetails,
@@ -58,12 +60,13 @@ import {
 import { CreateStdOAuthCredential } from "@/components/credentials/actions/CreateStdOAuthCredential";
 import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import Button from "@/refresh-components/buttons/Button";
-import { deleteConnector } from "@/lib/connector";
+import { deleteConnector } from "@/lib/api/domains/datasources/api";
 import ConnectorDocsLink from "@/components/admin/connectors/ConnectorDocsLink";
 import Text from "@/refresh-components/texts/Text";
 import { SvgKey, SvgAlertCircle } from "@opal/icons";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import Link from "next/link";
+import i18n from "@/i18n/config";
 
 export interface AdvancedConfig {
   refreshFreq: number;
@@ -71,7 +74,6 @@ export interface AdvancedConfig {
   indexingStart: string;
 }
 
-const BASE_CONNECTOR_URL = "/api/manage/admin/connector";
 const CONNECTOR_CREATION_TIMEOUT_MS = 10000; // ~10 seconds is reasonable for longer connector validation
 
 export async function submitConnector<T>(
@@ -86,16 +88,9 @@ export async function submitConnector<T>(
 
   try {
     if (fakeCredential) {
-      const response = await authenticatedFetch(
-        "/api/manage/admin/connector-with-mock-credential",
-        {
-          method: isUpdate ? "PATCH" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ ...connector }),
-        }
-      );
+      const response = isUpdate
+        ? await updateConnectorWithMockCredential({ ...connector })
+        : await createConnectorWithMockCredential({ ...connector });
       if (response.ok) {
         const responseJson = await response.json();
         return {
@@ -113,16 +108,9 @@ export async function submitConnector<T>(
         };
       }
     } else {
-      const response = await authenticatedFetch(
-        BASE_CONNECTOR_URL + (isUpdate ? `/${connectorId}` : ""),
-        {
-          method: isUpdate ? "PATCH" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(connector),
-        }
-      );
+      const response = isUpdate
+        ? await updateConnectorResponse(connectorId, connector)
+        : await createConnectorResponse(connector);
 
       if (response.ok) {
         const responseJson = await response.json();
@@ -168,11 +156,9 @@ export default function AddConnector({
       setCurrentPageUrl(window.location.href);
     }
 
-    if (EE_ENABLED && (NEXT_PUBLIC_CLOUD_ENABLED || NEXT_PUBLIC_TEST_ENV)) {
-      const sourceMetadata = getSourceMetadata(connector);
-      if (sourceMetadata?.oauthSupported == true) {
-        setIsAuthorizeVisible(true);
-      }
+    const sourceMetadata = getSourceMetadata(connector);
+    if (sourceMetadata?.oauthSupported == true) {
+      setIsAuthorizeVisible(true);
     }
   }, []);
 
@@ -186,14 +172,14 @@ export default function AddConnector({
 
   // Fetch credentials data
   const { data: credentials } = useSWR<Credential<any>[]>(
-    buildSimilarCredentialInfoURL(connector),
-    errorHandlingFetcher,
+    datasourcesEndpoints.similarCredentialInfo(connector).browserPath,
+    () => fetchSimilarCredentials<Credential<any>[]>(connector),
     { refreshInterval: 5000 }
   );
 
   const { data: editableCredentials } = useSWR<Credential<any>[]>(
-    buildSimilarCredentialInfoURL(connector, true),
-    errorHandlingFetcher,
+    datasourcesEndpoints.similarCredentialInfo(connector, true).browserPath,
+    () => fetchSimilarCredentials<Credential<any>[]>(connector, true),
     { refreshInterval: 5000 }
   );
 
@@ -258,7 +244,7 @@ export default function AddConnector({
 
   // Credential handler functions
   const refresh = () => {
-    mutate(buildSimilarCredentialInfoURL(connector));
+    mutate(datasourcesEndpoints.similarCredentialInfo(connector).browserPath);
   };
 
   const onDeleteCredential = async (credential: Credential<any | null>) => {
@@ -599,21 +585,20 @@ export default function AddConnector({
                         {t("createNewButton")}
                       </Button>
                       {/* Button to sign in via OAuth */}
-                      {oauthSupportedSources.includes(connector) &&
-                        (NEXT_PUBLIC_CLOUD_ENABLED || NEXT_PUBLIC_TEST_ENV) && (
-                          <Button
-                            action
-                            onClick={handleAuthorize}
-                            disabled={isAuthorizing}
-                            hidden={!isAuthorizeVisible}
-                          >
-                            {isAuthorizing
-                              ? t("authorizingButton")
-                              : t("authorizeWithButton", {
-                                  source: getSourceDisplayName(connector),
-                                })}
-                          </Button>
-                        )}
+                      {oauthSupportedSources.includes(connector) && (
+                        <Button
+                          action
+                          onClick={handleAuthorize}
+                          disabled={isAuthorizing}
+                          hidden={!isAuthorizeVisible}
+                        >
+                          {isAuthorizing
+                            ? t("authorizingButton")
+                            : t("authorizeWithButton", {
+                                source: getSourceDisplayName(connector),
+                              })}
+                        </Button>
+                      )}
                     </div>
                   )}
 

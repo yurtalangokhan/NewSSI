@@ -11,8 +11,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from langchain_core.messages import HumanMessage
 
-from agents.graphs.flow_builder import FlowGraphBuilder
-from models.flows import FlowSpec
+from agents.graphs.flow import FlowGraphBuilder
+from schemas.flows import FlowSpec
 
 
 @pytest.mark.asyncio
@@ -51,7 +51,7 @@ async def test_graph_search_execution_node():
     mock_data = [{"entity": "Alice", "relation": "WORKS_AT", "target": "Acme Corp"}]
 
     with patch(
-        "agents.graphs.flow_builder._execute_graph_search", new_callable=AsyncMock
+        "agents.graphs.flow.nodes.retrieval._execute_graph_search", new_callable=AsyncMock
     ) as mock_exec:
         mock_exec.return_value = mock_data
         builder = FlowGraphBuilder()
@@ -98,7 +98,7 @@ async def test_graph_entity_search_execution_node():
     mock_entities = [{"id": "e-1", "name": "Alice", "type": "Person"}]
 
     with patch(
-        "agents.graphs.flow_builder._execute_graph_entity_search", new_callable=AsyncMock
+        "agents.graphs.flow.nodes.retrieval._execute_graph_entity_search", new_callable=AsyncMock
     ) as mock_exec:
         mock_exec.return_value = mock_entities
         builder = FlowGraphBuilder()
@@ -148,7 +148,7 @@ async def test_graph_neighborhood_execution_node():
     }
 
     with patch(
-        "agents.graphs.flow_builder._execute_graph_neighborhood", new_callable=AsyncMock
+        "agents.graphs.flow.nodes.retrieval._execute_graph_neighborhood", new_callable=AsyncMock
     ) as mock_exec:
         mock_exec.return_value = mock_subgraph
         builder = FlowGraphBuilder()
@@ -191,7 +191,7 @@ async def test_graph_stats_execution_node():
     mock_stats = {"node_count": 150, "edge_count": 420, "density": 0.037}
 
     with patch(
-        "agents.graphs.flow_builder._execute_graph_stats", new_callable=AsyncMock
+        "agents.graphs.flow.nodes.retrieval._execute_graph_stats", new_callable=AsyncMock
     ) as mock_exec:
         mock_exec.return_value = mock_stats
         builder = FlowGraphBuilder()

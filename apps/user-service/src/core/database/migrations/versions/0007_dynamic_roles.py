@@ -8,8 +8,8 @@ Create Date: 2026-06-23
 
 from collections.abc import Sequence
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
 from sqlalchemy import inspect
 
 revision: str = "0007"
@@ -27,9 +27,7 @@ def upgrade() -> None:
         )
 
     # Mark system-admin and enterprise-admin as admin roles
-    op.execute(
-        "UPDATE roles SET is_admin = true WHERE name IN ('system-admin', 'enterprise-admin')"
-    )
+    op.execute("UPDATE roles SET is_admin = true WHERE name IN ('system-admin', 'enterprise-admin')")
 
     # Migrate existing admin users to system-admin
     op.execute("UPDATE users SET role = 'system-admin' WHERE role = 'admin'")

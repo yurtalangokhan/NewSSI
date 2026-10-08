@@ -1,4 +1,3 @@
-import { authenticatedFetch } from "@/lib/fetcher";
 export interface CreateSessionRequest {
   task: string;
   available_sources?: string[];
@@ -89,7 +88,7 @@ export interface ACPErrorEvent {
   message: string;
 }
 
-/** File write event (custom Onyx extension) */
+/** File write event (custom Atlas extension) */
 export interface FileWriteEvent {
   path: string;
   size_bytes?: number;
@@ -154,175 +153,13 @@ export type ACPEvent =
 /** Legacy BuildEvent type - alias for ACPEvent */
 export type BuildEvent = ACPEvent;
 
-export async function createSession(
-  request: CreateSessionRequest
-): Promise<CreateSessionResponse> {
-  const response = await authenticatedFetch("/api/build/sessions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-  });
-  if (!response.ok) {
-    throw new Error(`Failed to create session: ${response.statusText}`);
-  }
-  return response.json();
-}
-
-export async function deleteSession(sessionId: string): Promise<void> {
-  const response = await authenticatedFetch(
-    `/api/build/sessions/${sessionId}`,
-    {
-      method: "DELETE",
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`Failed to delete session: ${response.statusText}`);
-  }
-}
-
-export async function executeTask(
-  sessionId: string,
-  task: string,
-  context: string | undefined,
-  onEvent: (event: BuildEvent) => void,
-  onError: (error: Error) => void,
-  onComplete: () => void
-): Promise<void> {
-  try {
-    const response = await authenticatedFetch(
-      `/api/build/sessions/${sessionId}/execute`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "text/event-stream",
-        },
-        body: JSON.stringify({ task, context }),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error("No response body");
-    }
-
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
-      let currentEventType = "output";
-      for (const line of lines) {
-        if (line.startsWith("event:")) {
-          currentEventType = line.slice(6).trim();
-        } else if (line.startsWith("data:")) {
-          const data = line.slice(5).trim();
-          if (data) {
-            try {
-              const parsed = JSON.parse(data);
-              onEvent({ type: currentEventType, data: parsed } as BuildEvent);
-            } catch {
-              // Skip malformed JSON
-            }
-          }
-        }
-      }
-    }
-
-    onComplete();
-  } catch (error) {
-    onError(error instanceof Error ? error : new Error(String(error)));
-  }
-}
-
 /**
  * Send a message to the build session using the new messages API endpoint.
  * This endpoint streams SSE events with message-prefixed packet types.
  */
-export async function sendMessage(
-  sessionId: string,
-  message: string,
-  onEvent: (event: BuildEvent) => void,
-  onError: (error: Error) => void,
-  onComplete: () => void
-): Promise<void> {
-  try {
-    const response = await authenticatedFetch(
-      `/api/build/sessions/${sessionId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "text/event-stream",
-        },
-        body: JSON.stringify({ content: message }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `HTTP ${response.status}: ${errorText || response.statusText}`
-      );
-    }
-
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error("No response body");
-    }
-
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
-      for (const line of lines) {
-        if (line.startsWith("event:")) {
-          // Skip event type line (all events are "message")
-          continue;
-        } else if (line.startsWith("data:")) {
-          const data = line.slice(5).trim();
-          if (data) {
-            try {
-              const parsed = JSON.parse(data);
-              // Map frontend packet types to BuildEvent types
-              const eventType = mapMessagePacketToEventType(parsed.type);
-              if (eventType) {
-                onEvent({ type: eventType, data: parsed } as BuildEvent);
-              }
-            } catch (err) {
-              console.error("Failed to parse SSE data:", err);
-            }
-          }
-        }
-      }
-    }
-
-    onComplete();
-  } catch (error) {
-    onError(error instanceof Error ? error : new Error(String(error)));
-  }
-}
-
 /**
  * Map message API packet types to BuildEvent types.
- * Uses direct ACP event names from the backend, plus custom Onyx packet types.
+ * Uses direct ACP event names from the backend, plus custom Atlas packet types.
  */
 function mapMessagePacketToEventType(packetType: string): string | null {
   const mapping: Record<string, string> = {
@@ -335,41 +172,9 @@ function mapMessagePacketToEventType(packetType: string): string | null {
     current_mode_update: "current_mode_update",
     prompt_response: "prompt_response",
     error: "error",
-    // Custom Onyx packet types (extensions to ACP)
+    // Custom Atlas packet types (extensions to ACP)
     artifact_created: "artifact",
     file_write: "file_write",
   };
   return mapping[packetType] || null;
-}
-
-export async function listArtifacts(
-  sessionId: string
-): Promise<ArtifactInfo[]> {
-  const response = await fetch(`/api/build/sessions/${sessionId}/artifacts`);
-  if (!response.ok) {
-    throw new Error(`Failed to list artifacts: ${response.statusText}`);
-  }
-  return response.json();
-}
-
-export function getArtifactUrl(sessionId: string, path: string): string {
-  return `/api/build/sessions/${sessionId}/artifacts/${path}`;
-}
-
-export async function listDirectory(
-  sessionId: string,
-  path: string = ""
-): Promise<DirectoryListing> {
-  const url = path
-    ? `/api/build/sessions/${sessionId}/files?path=${encodeURIComponent(path)}`
-    : `/api/build/sessions/${sessionId}/files`;
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to list directory: ${response.statusText}`);
-  }
-  return response.json();
-}
-
-export function getWebappUrl(sessionId: string, path: string = ""): string {
-  return `/api/build/sessions/${sessionId}/webapp${path ? `/${path}` : ""}`;
 }

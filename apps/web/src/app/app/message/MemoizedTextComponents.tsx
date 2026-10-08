@@ -1,8 +1,10 @@
+import { chatEndpoints } from "@/lib/api/domains/chat/endpoints";
+
 import {
   QuestionCardProps,
   DocumentCardProps,
 } from "@/components/search/results/Citation";
-import { MinimalOnyxDocument, OnyxDocument } from "@/lib/search/interfaces";
+import { MinimalAtlasDocument, AtlasDocument } from "@/lib/search/interfaces";
 import React, {
   memo,
   JSX,
@@ -12,9 +14,9 @@ import React, {
 } from "react";
 import { SourceIcon } from "@/components/SourceIcon";
 import { WebResultIcon } from "@/components/WebResultIcon";
-import { SubQuestionDetail, CitationMap } from "../interfaces";
+import { SubQuestionDetail, CitationMap } from "@/lib/api/domains/chat/types";
 import { ValidSources } from "@/lib/types";
-import { ProjectFile } from "../projects/projectsService";
+import { ProjectFile } from "@/lib/api/domains/projects/types";
 import { BlinkingBar } from "./BlinkingBar";
 import Text from "@/refresh-components/texts/Text";
 import SourceTag from "@/refresh-components/buttons/source-tag/SourceTag";
@@ -39,10 +41,10 @@ export const MemoizedAnchor = memo(
   }: {
     subQuestions?: SubQuestionDetail[];
     openQuestion?: (question: SubQuestionDetail) => void;
-    docs?: OnyxDocument[] | null;
+    docs?: AtlasDocument[] | null;
     userFiles?: ProjectFile[] | null;
     citations?: CitationMap;
-    updatePresentingDocument: (doc: MinimalOnyxDocument) => void;
+    updatePresentingDocument: (doc: MinimalAtlasDocument) => void;
     href?: string;
     children: React.ReactNode;
   }): JSX.Element => {
@@ -61,7 +63,7 @@ export const MemoizedAnchor = memo(
           // Use citation map to find the correct document
           // Citations map format: {citation_num: document_id}
           // e.g., {1: "doc_abc", 2: "doc_xyz", 3: "doc_123"}
-          let associatedDoc: OnyxDocument | null = null;
+          let associatedDoc: AtlasDocument | null = null;
           if (isDocument && docs && citations) {
             const document_id = citations[citation_num];
             if (document_id) {
@@ -140,7 +142,7 @@ export const MemoizedLink = memo(
     // Convert document to SourceInfo for SourceTag
     const documentSourceInfo = useMemo(() => {
       if (!document) return null;
-      return documentToSourceInfo(document as OnyxDocument);
+      return documentToSourceInfo(document as AtlasDocument);
     }, [document]);
 
     // Convert question to SourceInfo for SourceTag
@@ -152,7 +154,7 @@ export const MemoizedLink = memo(
     // Handle click on SourceTag
     const handleSourceClick = useCallback(() => {
       if (document && updatePresentingDocument) {
-        openDocument(document as OnyxDocument, updatePresentingDocument);
+        openDocument(document as AtlasDocument, updatePresentingDocument);
       } else if (question && openQuestion) {
         openQuestion(question);
       }
@@ -174,7 +176,7 @@ export const MemoizedLink = memo(
       }
 
       const displayName = document
-        ? getDisplayNameForSource(document as OnyxDocument)
+        ? getDisplayNameForSource(document as AtlasDocument)
         : question?.question || "Question";
 
       return (
@@ -192,9 +194,14 @@ export const MemoizedLink = memo(
     const url = ensureHrefProtocol(href);
 
     // Check if the link is to a file on the backend
-    const isChatFile = url?.includes("/api/chat/file/");
+    const isChatFile = url?.includes(
+      chatEndpoints.chatFileRoutePrefix.browserPath
+    );
     if (isChatFile && updatePresentingDocument) {
-      const fileId = url!.split("/api/chat/file/")[1]?.split(/[?#]/)[0] || "";
+      const fileId =
+        url!
+          .split(chatEndpoints.chatFileRoutePrefix.browserPath)[1]
+          ?.split(/[?#]/)[0] || "";
       const filename = value?.toString() || "download";
       return (
         <a

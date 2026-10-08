@@ -1,4 +1,5 @@
 "use client";
+import { modelProvidersEndpoints } from "@/lib/api/domains/model-providers/endpoints";
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -21,7 +22,7 @@ import {
   useBuiltinOllamaModels,
   useBuiltinOllamaStatus,
   useDeleteBuiltinOllamaModel,
-} from "@/hooks/useProviders";
+} from "@/lib/api/domains/model-providers/hooks";
 import { BuiltinOllamaStatus, OllamaModelResponse } from "@/interfaces/llm";
 import { getProviderIcon } from "@/lib/llmConfig/providers";
 
@@ -269,8 +270,8 @@ export function BuiltinOllamaPanel({ onDownload }: Props) {
       await Promise.all([
         status.mutate(),
         models.mutate(),
-        mutate("/api/admin/providers"),
-        mutate("/api/admin/providers/available-models"),
+        mutate(modelProvidersEndpoints.listProviders.browserPath),
+        mutate(modelProvidersEndpoints.listAvailableModels.browserPath),
       ]);
       toast({ message: t("deletedToast", { model: modelName }) });
       setModelToDelete(null);

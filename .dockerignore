@@ -21,6 +21,3 @@
 .env*
 apps/*/.env*
 configs/.env*
-
-airbyte-destination-embedding/
-docker-bin/

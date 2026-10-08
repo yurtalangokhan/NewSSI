@@ -1,6 +1,6 @@
 import Skeleton from "@/refresh-components/skeletons/Skeleton";
 import { FC } from "react";
-import { StandardAnswerCategoryResponse } from "./getStandardAnswerCategoriesIfEE";
+import type { StandardAnswerCategoryResponse } from "./getStandardAnswerCategoriesIfEE";
 import { Label } from "@/components/Field";
 import MultiSelectDropdown from "../MultiSelectDropdown";
 import { StandardAnswerCategory } from "@/lib/types";

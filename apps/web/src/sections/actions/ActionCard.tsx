@@ -40,6 +40,7 @@ export interface ActionCardProps {
   enableSearch?: boolean;
   searchQuery?: string;
   onSearchQueryChange?: (query: string) => void;
+  isSearchDisabled?: boolean;
 
   // Tools section actions
   onFold?: () => void;
@@ -69,6 +70,7 @@ export default function ActionCard({
   enableSearch = false,
   searchQuery = "",
   onSearchQueryChange,
+  isSearchDisabled = false,
   onFold,
   children,
   ariaLabel,
@@ -150,6 +152,7 @@ export default function ActionCard({
               onFold={onFold}
               searchQuery={searchQuery}
               onSearchQueryChange={onSearchQueryChange || (() => {})}
+              isSearchDisabled={isSearchDisabled}
             />
           )}
         </div>

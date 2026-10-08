@@ -1,12 +1,12 @@
+import { agentsEndpoints } from "@/lib/api/domains/agents/endpoints";
 import { useEffect, useMemo } from "react";
 import useSWR from "swr";
 import type { StoreApi } from "zustand";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { fetchFlowSource } from "@/lib/api/domains/agents/api";
 import { fromFlowSpec } from "../utils/compile";
 import type { WireFlowSpec } from "../types/flow";
 import type { CanvasEdge, CanvasNode } from "../types/flow";
 import type { FlowStore } from "../stores/flowStore";
-import { flowApi } from "@/components/flow-canvas/api/flowApi";
 
 export type FlowSource = "draft" | "published";
 
@@ -56,16 +56,18 @@ export function useLoadFlowIntoStore(
   const pinned = isPinnedVersion(source);
   const url = definitionId
     ? pinned
-      ? flowApi.version(definitionId, source.versionNo)
-      : flowApi.bySource(definitionId, source)
+      ? agentsEndpoints.flowVersion(definitionId, source.versionNo).browserPath
+      : agentsEndpoints.flowBySource(definitionId, source).browserPath
     : null;
   const {
     data: raw,
     isLoading,
     error,
-  } = useSWR<WireFlowSpec | { flow_spec: WireFlowSpec }>(
-    url,
-    errorHandlingFetcher
+  } = useSWR<WireFlowSpec | { flow_spec: WireFlowSpec }>(url, () =>
+    fetchFlowSource<WireFlowSpec | { flow_spec: WireFlowSpec }>(
+      definitionId!,
+      pinned ? source.versionNo : source
+    )
   );
 
   // A pinned version that fails to load (e.g. the version endpoint is
@@ -73,10 +75,17 @@ export function useLoadFlowIntoStore(
   // consumer with an empty graph — fall back to the published spec so the
   // stage strip still renders something sensible.
   const fallbackUrl =
-    pinned && error && definitionId ? flowApi.published(definitionId) : null;
+    pinned && error && definitionId
+      ? agentsEndpoints.flowPublished(definitionId).browserPath
+      : null;
   const { data: fallbackRaw } = useSWR<
     WireFlowSpec | { flow_spec: WireFlowSpec }
-  >(fallbackUrl, errorHandlingFetcher);
+  >(fallbackUrl, () =>
+    fetchFlowSource<WireFlowSpec | { flow_spec: WireFlowSpec }>(
+      definitionId!,
+      "published"
+    )
+  );
 
   const spec: WireFlowSpec | undefined = useMemo(() => {
     const src = raw ?? fallbackRaw;

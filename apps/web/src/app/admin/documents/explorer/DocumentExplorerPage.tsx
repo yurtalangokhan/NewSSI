@@ -1,7 +1,7 @@
 "use client";
 
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { Explorer } from "./Explorer";
 import { Connector } from "@/lib/connectors/connectors";
 import { DocumentSetSummary } from "@/lib/types";

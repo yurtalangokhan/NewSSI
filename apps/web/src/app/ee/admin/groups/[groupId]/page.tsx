@@ -4,9 +4,9 @@ import { use } from "react";
 import { GroupDisplay } from "./GroupDisplay";
 import { useSpecificUserGroup } from "./hook";
 import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
-import { useConnectorStatus } from "@/lib/hooks";
-import useUsers from "@/hooks/useUsers";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { useConnectorStatus } from "@/lib/api/domains/datasources/hooks";
+import { useUsers } from "@/lib/api/domains/access/hooks";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { useTranslation } from "react-i18next";
 

@@ -1,18 +1,17 @@
 import { screen } from "@testing-library/react";
 
 import MailConfigsPage from "@/app/admin/configuration/mail-configs/page";
-import {
-  deleteMailConfig,
-  testMailConfig,
-  useMailConfigs,
-} from "@/lib/mailConfigs";
+import { deleteMailConfig, testMailConfig } from "@/lib/api/domains/system/api";
+import { useMailConfigs } from "@/lib/api/domains/system/hooks";
 import { render, setupUser } from "@tests/setup/test-utils";
 
-jest.mock("@/lib/mailConfigs", () => ({
+jest.mock("@/lib/api/domains/system/api", () => ({
   createMailConfig: jest.fn(),
   deleteMailConfig: jest.fn(),
   testMailConfig: jest.fn(),
   updateMailConfig: jest.fn(),
+}));
+jest.mock("@/lib/api/domains/system/hooks", () => ({
   useMailConfigs: jest.fn(),
 }));
 

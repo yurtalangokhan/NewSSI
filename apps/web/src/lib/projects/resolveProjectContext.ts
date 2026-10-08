@@ -1,4 +1,4 @@
-import type { Project } from "@/app/app/projects/projectsService";
+import type { Project } from "@/lib/api/domains/projects/types";
 
 interface ResolveCurrentProjectIdParams {
   projectIdParam: string | null;

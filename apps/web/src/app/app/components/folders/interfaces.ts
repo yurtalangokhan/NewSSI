@@ -1,4 +1,4 @@
-import { ChatSession } from "@/app/app/interfaces";
+import { ChatSession } from "@/lib/api/domains/chat/types";
 
 export interface Folder {
   folder_id?: number;

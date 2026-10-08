@@ -1,6 +1,6 @@
 import { render, screen } from "@tests/setup/test-utils";
 import ProjectChatSessionList from "@/app/app/components/projects/ProjectChatSessionList";
-import { ChatSessionSharedStatus } from "@/app/app/interfaces";
+import { ChatSessionSharedStatus } from "@/lib/api/domains/chat/types";
 
 jest.mock("@/providers/ProjectsContext", () => ({
   useProjectsContext: () => ({
@@ -50,7 +50,7 @@ jest.mock("@/providers/ProjectsContext", () => ({
   }),
 }));
 
-jest.mock("@/hooks/useAgents", () => ({
+jest.mock("@/lib/api/domains/agents/hooks", () => ({
   useAgents: () => ({ agents: [] }),
 }));
 

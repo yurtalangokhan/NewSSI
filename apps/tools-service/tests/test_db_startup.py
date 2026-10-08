@@ -11,7 +11,7 @@ async def test_pool_creation_ensures_database_first(monkeypatch):
 
     class FakeSettings:
         @property
-        def postgres_config(self):
+        def tool_postgres_config(self):
             return {
                 "user": "postgres",
                 "password": "secret",
@@ -21,7 +21,8 @@ async def test_pool_creation_ensures_database_first(monkeypatch):
             }
 
     class FakePool:
-        pass
+        async def close(self):
+            return None
 
     class FakeAsyncpg:
         async def create_pool(self, **kwargs):
@@ -30,7 +31,7 @@ async def test_pool_creation_ensures_database_first(monkeypatch):
 
     manager = DatabaseManager()
     manager._pool = None
-    monkeypatch.setattr("src.core.database.get_settings", lambda: FakeSettings())
+    monkeypatch.setattr("src.core.database.env", FakeSettings())
     monkeypatch.setattr("src.core.database.asyncpg", FakeAsyncpg())
     monkeypatch.setattr(
         "src.core.database.ensure_database_exists",
@@ -50,7 +51,7 @@ async def test_pool_creation_wraps_startup_connections_with_retry(monkeypatch):
 
     class FakeSettings:
         @property
-        def postgres_config(self):
+        def tool_postgres_config(self):
             return {
                 "user": "postgres",
                 "password": "secret",
@@ -60,7 +61,8 @@ async def test_pool_creation_wraps_startup_connections_with_retry(monkeypatch):
             }
 
     class FakePool:
-        pass
+        async def close(self):
+            return None
 
     class FakeAsyncpg:
         async def create_pool(self, **kwargs):
@@ -76,7 +78,7 @@ async def test_pool_creation_wraps_startup_connections_with_retry(monkeypatch):
 
     manager = DatabaseManager()
     manager._pool = None
-    monkeypatch.setattr("src.core.database.get_settings", lambda: FakeSettings())
+    monkeypatch.setattr("src.core.database.env", FakeSettings())
     monkeypatch.setattr("src.core.database.asyncpg", FakeAsyncpg())
     monkeypatch.setattr(
         "src.core.database.ensure_database_exists",

@@ -1,24 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Idempotent Keycloak bootstrap for agenticai realm.
+# Keycloak bootstrap for the agenticai-v1 realm.
 # Creates:
-#   - agenticai-web  (public client — frontend login)
-#   - user-service   (confidential, service account)
-#   - agent-service  (confidential, service account)
-#   - rag-service    (confidential, service account)
-#   - tools-service  (confidential, service account)
+#   - web-client  (public client — frontend login)
+#   - user-service-client   (confidential, service account)
+#   - agent-service-client  (confidential, service account)
+#   - rag-service-client    (confidential, service account)
+#   - tools-service-client  (confidential, service account)
 #   - Initial realm roles: system-admin, enterprise-admin, enduser
-#   - Protocol mappers on agenticai-web for permissions claim
+#   - Token contents of the login client (gateway audience, groups and primary_role claims, realm
+#     scope mappings instead of "Full scope allowed") and the gateway authorization objects:
+#     bootstrap_gateway_authorization.py, run at the end
 
 KEYCLOAK_BASE_URL="${KEYCLOAK_BASE_URL:-http://10.101.90.13:8085}"
 KEYCLOAK_ADMIN_REALM="${KEYCLOAK_ADMIN_REALM:-master}"
 KEYCLOAK_ADMIN="${KEYCLOAK_ADMIN:-admin}"
 KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin123}"
-KEYCLOAK_REALM="${KEYCLOAK_REALM:-agenticai}"
+KEYCLOAK_REALM="${KEYCLOAK_REALM:?KEYCLOAK_REALM must be set from configs/.env}"
 
 # Frontend client (public)
-KEYCLOAK_CLIENT_ID="${KEYCLOAK_CLIENT_ID:-agenticai-web}"
+KEYCLOAK_CLIENT_ID="${KEYCLOAK_CLIENT_ID:?KEYCLOAK_CLIENT_ID must be set from configs/.env}"
 KEYCLOAK_CLIENT_SECRET="${KEYCLOAK_CLIENT_SECRET:-}"
 KEYCLOAK_REDIRECT_URI="${KEYCLOAK_REDIRECT_URI:-*}"
 KEYCLOAK_WEB_ORIGIN="${KEYCLOAK_WEB_ORIGIN:-*}"
@@ -26,11 +28,20 @@ KEYCLOAK_REDIRECT_URIS="${KEYCLOAK_REDIRECT_URIS:-$KEYCLOAK_REDIRECT_URI}"
 KEYCLOAK_WEB_ORIGINS="${KEYCLOAK_WEB_ORIGINS:-$KEYCLOAK_WEB_ORIGIN}"
 KEYCLOAK_POST_LOGOUT_REDIRECT_URIS="${KEYCLOAK_POST_LOGOUT_REDIRECT_URIS:-+}"
 
-# Backend service clients (confidential, service-account enabled)
-BACKEND_CLIENTS=("user-service" "agent-service" "rag-service" "tools-service")
 
-# Env file directory (used to write generated secrets)
-ENV_DIR="${ENV_DIR:-/home/nuhyurduseven/codes/agenticai/apps}"
+# Backend service clients (confidential, service-account enabled)
+BACKEND_CLIENTS=(
+  "${KEYCLOAK_USER_SERVICE_CLIENT_ID:?KEYCLOAK_USER_SERVICE_CLIENT_ID is required}"
+  "${KEYCLOAK_AGENT_SERVICE_CLIENT_ID:?KEYCLOAK_AGENT_SERVICE_CLIENT_ID is required}"
+  "${KEYCLOAK_RAG_SERVICE_CLIENT_ID:?KEYCLOAK_RAG_SERVICE_CLIENT_ID is required}"
+  "${KEYCLOAK_TOOLS_SERVICE_CLIENT_ID:?KEYCLOAK_TOOLS_SERVICE_CLIENT_ID is required}"
+)
+
+# Env file directory (used to write generated secrets).
+# Defaults to <repo>/apps, resolved from this script's own location so it works
+# for any checkout; override with ENV_DIR when the apps tree lives elsewhere.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_DIR="${ENV_DIR:-$(cd "$SCRIPT_DIR/../apps" 2>/dev/null && pwd || echo "$SCRIPT_DIR/../apps")}"
 
 # Users
 KEYCLOAK_TEST_USER="${KEYCLOAK_TEST_USER:-devuser}"
@@ -138,7 +149,7 @@ post_logout_json_array() {
 }
 
 # ---------------------------------------------------------------------------
-# 2. Frontend client: agenticai-web (public)
+# 2. Frontend client: web-client (public)
 # ---------------------------------------------------------------------------
 echo "[info] ensuring frontend client: $KEYCLOAK_CLIENT_ID"
 FE_UUID="$(ensure_client "$KEYCLOAK_CLIENT_ID" "$(jq -n \
@@ -187,9 +198,17 @@ if [[ -n "$KEYCLOAK_CLIENT_SECRET" ]]; then
   http_code PUT "$BASE/admin/realms/$KEYCLOAK_REALM/clients/$FE_UUID/client-secret" "{\"value\":\"$KEYCLOAK_CLIENT_SECRET\"}" > /dev/null
 fi
 
+
 # ---------------------------------------------------------------------------
-# 3. Backend service clients (confidential, service-account enabled)
+# 4. Backend service clients (confidential, service-account enabled)
 # ---------------------------------------------------------------------------
+# A client update replaces the whole representation: send the current one plus the
+# settings the bootstrap enforces. A PUT without authorizationServicesEnabled makes
+# Keycloak disable authorization services and delete the client's resources and policies.
+BACKEND_CLIENT_UPDATE='$current + {
+  clientId: $clientId, enabled: true, protocol: "openid-connect", publicClient: false,
+  standardFlowEnabled: false, directAccessGrantsEnabled: false, serviceAccountsEnabled: true
+}'
 declare -A SECRETS
 for CLIENT in "${BACKEND_CLIENTS[@]}"; do
   echo "[info] ensuring backend client: $CLIENT"
@@ -208,8 +227,8 @@ for CLIENT in "${BACKEND_CLIENTS[@]}"; do
     )"
   else
     echo "[info]   updating existing client: $CLIENT"
-    # Update existing client to ensure serviceAccountsEnabled etc.
-    update_payload="$(jq -n --arg clientId "$CLIENT" '{clientId: $clientId, enabled: true, protocol: "openid-connect", publicClient: false, standardFlowEnabled: false, directAccessGrantsEnabled: false, serviceAccountsEnabled: true}')"
+    current="$(curl -fsS "$BASE/admin/realms/$KEYCLOAK_REALM/clients/$UUID" -H "$(auth_header)")"
+    update_payload="$(jq -n --argjson current "$current" --arg clientId "$CLIENT" "$BACKEND_CLIENT_UPDATE")"
     http_code PUT "$BASE/admin/realms/$KEYCLOAK_REALM/clients/$UUID" "$update_payload" > /dev/null
   fi
   # Generate and set secret
@@ -220,7 +239,7 @@ for CLIENT in "${BACKEND_CLIENTS[@]}"; do
 done
 
 # ---------------------------------------------------------------------------
-# 4. Realm roles (system-admin, enterprise-admin, enduser)
+# 5. Realm roles (system-admin, enterprise-admin, enduser)
 # ---------------------------------------------------------------------------
 for ROLE in "${REALM_ROLES[@]}"; do
   code="$(http_code GET "$BASE/admin/realms/$KEYCLOAK_REALM/roles/$ROLE")"
@@ -232,33 +251,47 @@ for ROLE in "${REALM_ROLES[@]}"; do
   fi
 done
 
-# 5. Protocol mappers — NOT created.
-#    Fine-grained permissions no longer appear in the JWT.
-#    Only Keycloak's default resource_access with coarse roles is used.
+# 6 Protocol mappers and token scope: bootstrap_gateway_authorization.py (step 9).
+#    Fine-grained permissions never appear in the JWT; the token carries only the platform
+#    realm roles above (realm scope mappings, no "Full scope allowed").
 
 # ---------------------------------------------------------------------------
-# 6. Test user
+# 7. Test user
 # ---------------------------------------------------------------------------
+# The realm's user profile requires a first and a last name: a user without them cannot
+# log in ("Account is not fully set up") until the profile is completed.
+TEST_USER_UPDATE='$current + {
+  firstName: (if ($current.firstName // "") == "" then "Test" else $current.firstName end),
+  lastName: (if ($current.lastName // "") == "" then "User" else $current.lastName end)
+}'
 USER_UUID="$(
   curl -fsS "$BASE/admin/realms/$KEYCLOAK_REALM/users?username=$KEYCLOAK_TEST_USER&exact=true" -H "$(auth_header)" \
   | jq -r '.[0].id // empty'
 )"
 if [[ -z "$USER_UUID" ]]; then
   echo "[info] creating test user: $KEYCLOAK_TEST_USER"
-  http_code POST "$BASE/admin/realms/$KEYCLOAK_REALM/users" "$(jq -n \
-    --arg username "$KEYCLOAK_TEST_USER" --arg email "$KEYCLOAK_TEST_EMAIL" \
-    '{username: $username, email: $email, enabled: true, emailVerified: true}')" > /dev/null
+  new_user="$(jq -n --arg username "$KEYCLOAK_TEST_USER" --arg email "$KEYCLOAK_TEST_EMAIL" \
+    '{username: $username, email: $email, enabled: true, emailVerified: true}')"
+  http_code POST "$BASE/admin/realms/$KEYCLOAK_REALM/users" \
+    "$(jq -n --argjson current "$new_user" "$TEST_USER_UPDATE")" > /dev/null
   USER_UUID="$(
     curl -fsS "$BASE/admin/realms/$KEYCLOAK_REALM/users?username=$KEYCLOAK_TEST_USER&exact=true" -H "$(auth_header)" \
     | jq -r '.[0].id // empty'
   )"
+else
+  current="$(curl -fsS "$BASE/admin/realms/$KEYCLOAK_REALM/users/$USER_UUID" -H "$(auth_header)")"
+  if [[ "$(jq -r '(.firstName // "") == "" or (.lastName // "") == ""' <<<"$current")" == "true" ]]; then
+    echo "[info] completing the profile of $KEYCLOAK_TEST_USER (first and last name)"
+    http_code PUT "$BASE/admin/realms/$KEYCLOAK_REALM/users/$USER_UUID" \
+      "$(jq -n --argjson current "$current" "$TEST_USER_UPDATE")" > /dev/null
+  fi
 fi
 echo "[info] setting password for $KEYCLOAK_TEST_USER"
 http_code PUT "$BASE/admin/realms/$KEYCLOAK_REALM/users/$USER_UUID/reset-password" \
   "$(jq -n --arg password "$KEYCLOAK_TEST_PASSWORD" '{type:"password", temporary:false, value:$password}')" > /dev/null
 
 # ---------------------------------------------------------------------------
-# 7. Default admin user
+# 8. Default admin user
 # ---------------------------------------------------------------------------
 ADMIN_UUID="$(
   curl -fsS "$BASE/admin/realms/$KEYCLOAK_REALM/users?username=$KEYCLOAK_DEFAULT_ADMIN_USER&exact=true" -H "$(auth_header)" \
@@ -293,8 +326,18 @@ ROLE_REPR="$(
 http_code POST "$BASE/admin/realms/$KEYCLOAK_REALM/users/$ADMIN_UUID/role-mappings/realm" "[$ROLE_REPR]" > /dev/null
 
 # ---------------------------------------------------------------------------
-# 8. Print summary + secrets for .env files
+# 9. Print summary + secrets for .env files
 # ---------------------------------------------------------------------------
+echo "[info] reconciling gateway authorization resources and policies"
+KEYCLOAK_BASE_URL="$KEYCLOAK_BASE_URL" \
+KEYCLOAK_REALM="$KEYCLOAK_REALM" \
+KEYCLOAK_CLIENT_ID="$KEYCLOAK_CLIENT_ID" \
+KEYCLOAK_BOOTSTRAP_ADMIN_TOKEN="$ADMIN_TOKEN" \
+KEYCLOAK_ADMIN_REALM="$KEYCLOAK_ADMIN_REALM" \
+KEYCLOAK_ADMIN="$KEYCLOAK_ADMIN" \
+KEYCLOAK_ADMIN_PASSWORD="$KEYCLOAK_ADMIN_PASSWORD" \
+  python3 "$(dirname "${BASH_SOURCE[0]}")/bootstrap_gateway_authorization.py"
+
 echo ""
 echo "[ok] ===== Keycloak bootstrap complete ====="
 echo "[ok] realm:            $KEYCLOAK_REALM"
@@ -306,8 +349,7 @@ for CLIENT in "${BACKEND_CLIENTS[@]}"; do
 done
 
 echo ""
-echo "[ok] Realm roles: ${REALM_ROLES[*]}"
-echo "[ok] Protocol mappers: permissions-{user-service,agent-service,rag-service,tools-service} -> permissions claim"
+echo "[ok] Realm roles: ${REALM_ROLES[*]} (the only roles mapped into $KEYCLOAK_CLIENT_ID tokens)"
 echo ""
 echo "============================================"
 echo "  BACKEND SERVICE CLIENT SECRETS"
@@ -351,10 +393,27 @@ write_env() {
   fi
 }
 
-write_env "user-service"   "user-service"   "${SECRETS[user-service]}"
-write_env "agent-service"  "agent-service"  "${SECRETS[agent-service]}"
-write_env "rag-service"    "rag-service"    "${SECRETS[rag-service]}"
-write_env "tools-service"  "tools-service"  "${SECRETS[tools-service]}"
+write_env "user-service"   "$KEYCLOAK_USER_SERVICE_CLIENT_ID"   "${SECRETS[$KEYCLOAK_USER_SERVICE_CLIENT_ID]}"
+write_env "agent-service"  "$KEYCLOAK_AGENT_SERVICE_CLIENT_ID"  "${SECRETS[$KEYCLOAK_AGENT_SERVICE_CLIENT_ID]}"
+write_env "rag-service"    "$KEYCLOAK_RAG_SERVICE_CLIENT_ID"    "${SECRETS[$KEYCLOAK_RAG_SERVICE_CLIENT_ID]}"
+write_env "tools-service"  "$KEYCLOAK_TOOLS_SERVICE_CLIENT_ID"  "${SECRETS[$KEYCLOAK_TOOLS_SERVICE_CLIENT_ID]}"
 
 echo ""
 echo "[ok] Bootstrap finished successfully"
+
+
+# =============================================================================
+# Apache APISIX authorization bootstrap
+# =============================================================================
+
+echo
+echo "[info] configuring Apache APISIX authorization scopes and audience"
+
+SCRIPT_DIR="$(
+  cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1
+  pwd
+)"
+
+bash "${SCRIPT_DIR}/bootstrap_apisix_security.sh"
+
+echo "[info] Apache APISIX authorization bootstrap completed"

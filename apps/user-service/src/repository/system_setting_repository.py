@@ -12,9 +12,7 @@ class SystemSettingRepository(BaseRepository):
     async def get_value(self, key: str) -> dict[str, Any]:
         try:
             async with self._session() as session:
-                result = await session.execute(
-                    select(SystemSettingModel).where(SystemSettingModel.key == key)
-                )
+                result = await session.execute(select(SystemSettingModel).where(SystemSettingModel.key == key))
                 setting = result.scalar_one_or_none()
                 return dict(setting.value) if setting else {}
         except (ProgrammingError, DBAPIError) as exc:
@@ -24,9 +22,7 @@ class SystemSettingRepository(BaseRepository):
 
     async def set_value(self, key: str, value: dict[str, Any]) -> dict[str, Any]:
         async with self._session() as session:
-            result = await session.execute(
-                select(SystemSettingModel).where(SystemSettingModel.key == key)
-            )
+            result = await session.execute(select(SystemSettingModel).where(SystemSettingModel.key == key))
             setting = result.scalar_one_or_none()
             if setting:
                 setting.value = value

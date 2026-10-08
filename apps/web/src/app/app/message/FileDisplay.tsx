@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChatFileType, FileDescriptor } from "@/app/app/interfaces";
+import { ChatFileType, FileDescriptor } from "@/lib/api/domains/chat/types";
 import Attachment from "@/refresh-components/Attachment";
 import { InMessageImage } from "@/app/app/components/files/images/InMessageImage";
 import CsvContent from "@/components/tools/CSVContent";
 import TextViewModal from "@/sections/modals/TextViewModal";
-import { MinimalOnyxDocument } from "@/lib/search/interfaces";
+import { MinimalAtlasDocument } from "@/lib/search/interfaces";
 import { cn } from "@/lib/utils";
 import ExpandableContentWrapper from "@/components/tools/ExpandableContentWrapper";
 
@@ -46,7 +46,7 @@ export default function FileDisplay({ files, alignBubble }: FileDisplayProps) {
     [previewingFile?.data, previewingFile?.mime_type]
   );
 
-  const presentingDocument: MinimalOnyxDocument = useMemo(
+  const presentingDocument: MinimalAtlasDocument = useMemo(
     () => ({
       document_id: previewingFile?.id ?? "",
       semantic_identifier: previewingFile?.name ?? "",
@@ -72,7 +72,7 @@ export default function FileDisplay({ files, alignBubble }: FileDisplayProps) {
 
       {textFiles.length > 0 && (
         <div
-          id="onyx-file"
+          id="atlas-file"
           className={cn("m-2 auto", alignBubble && "ml-auto")}
         >
           <div className="flex flex-col items-end gap-2">
@@ -89,7 +89,7 @@ export default function FileDisplay({ files, alignBubble }: FileDisplayProps) {
 
       {imageFiles.length > 0 && (
         <div
-          id="onyx-image"
+          id="atlas-image"
           className={cn("m-2 auto", alignBubble && "ml-auto")}
         >
           <div className="flex flex-col items-end gap-2">

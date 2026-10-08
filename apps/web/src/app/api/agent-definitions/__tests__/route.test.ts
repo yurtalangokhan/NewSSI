@@ -38,10 +38,10 @@ describe("agent-definitions catch-all — 28.1, every P3 flow endpoint reaches t
       request("http://x/api/agent-definitions/x"),
       paramsFor([DEFINITION_ID, "flow", "draft"])
     );
-    expect(mockProxyToBackend).toHaveBeenCalledWith(
-      expect.anything(),
-      `/agent-definitions/${DEFINITION_ID}/flow/draft`
-    );
+    expect(mockProxyToBackend).toHaveBeenCalledWith(expect.anything(), {
+      service: "agent",
+      path: `/api/v1/agent-definitions/${DEFINITION_ID}/flow/draft`,
+    });
   });
 
   it("PUT .../flow/draft", async () => {
@@ -51,7 +51,10 @@ describe("agent-definitions catch-all — 28.1, every P3 flow endpoint reaches t
     );
     expect(mockProxyToBackend).toHaveBeenCalledWith(
       expect.anything(),
-      `/agent-definitions/${DEFINITION_ID}/flow/draft`,
+      {
+        service: "agent",
+        path: `/api/v1/agent-definitions/${DEFINITION_ID}/flow/draft`,
+      },
       { method: "PUT" }
     );
   });
@@ -61,10 +64,10 @@ describe("agent-definitions catch-all — 28.1, every P3 flow endpoint reaches t
       request("http://x/api/agent-definitions/x"),
       paramsFor([DEFINITION_ID, "flow", "versions"])
     );
-    expect(mockProxyToBackend).toHaveBeenCalledWith(
-      expect.anything(),
-      `/agent-definitions/${DEFINITION_ID}/flow/versions`
-    );
+    expect(mockProxyToBackend).toHaveBeenCalledWith(expect.anything(), {
+      service: "agent",
+      path: `/api/v1/agent-definitions/${DEFINITION_ID}/flow/versions`,
+    });
   });
 
   it("POST .../flow/publish", async () => {
@@ -74,7 +77,10 @@ describe("agent-definitions catch-all — 28.1, every P3 flow endpoint reaches t
     );
     expect(mockProxyToBackend).toHaveBeenCalledWith(
       expect.anything(),
-      `/agent-definitions/${DEFINITION_ID}/flow/publish`,
+      {
+        service: "agent",
+        path: `/api/v1/agent-definitions/${DEFINITION_ID}/flow/publish`,
+      },
       { method: "POST" }
     );
   });
@@ -86,7 +92,10 @@ describe("agent-definitions catch-all — 28.1, every P3 flow endpoint reaches t
     );
     expect(mockProxyToBackend).toHaveBeenCalledWith(
       expect.anything(),
-      `/agent-definitions/${DEFINITION_ID}/flow/rollback`,
+      {
+        service: "agent",
+        path: `/api/v1/agent-definitions/${DEFINITION_ID}/flow/rollback`,
+      },
       { method: "POST" }
     );
   });
@@ -98,7 +107,7 @@ describe("agent-definitions catch-all — 28.1, every P3 flow endpoint reaches t
     );
     expect(mockProxyToBackend).toHaveBeenCalledWith(
       expect.anything(),
-      "/agent-definitions/validate-flow",
+      { service: "agent", path: "/api/v1/agent-definitions/validate-flow" },
       { method: "POST" }
     );
   });

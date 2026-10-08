@@ -8,18 +8,19 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { isMcpAgent } from "@/lib/api/domains/agents/agentTools";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import LLMPopover from "@/refresh-components/popovers/LLMPopover";
-import { InputPrompt } from "@/app/app/interfaces";
-import { FilterManager, LlmManager, useFederatedConnectors } from "@/lib/hooks";
-import usePromptShortcuts from "@/hooks/usePromptShortcuts";
+import { InputPrompt } from "@/lib/api/domains/chat/types";
+import { FilterManager } from "@/lib/api/domains/knowledge/hooks";
+import { LlmManager } from "@/lib/api/domains/model-providers/hooks";
+import { useFederatedConnectors } from "@/lib/api/domains/integrations/hooks";
+import { usePromptShortcuts } from "@/lib/api/domains/preferences/hooks";
 import useFilter from "@/hooks/useFilter";
-import useCCPairs from "@/hooks/useCCPairs";
-import { OnyxDocument, MinimalOnyxDocument } from "@/lib/search/interfaces";
-import { ChatState } from "@/app/app/interfaces";
+import { useCCPairs } from "@/lib/api/domains/datasources/hooks";
+import { AtlasDocument, MinimalAtlasDocument } from "@/lib/search/interfaces";
+import { ChatState } from "@/lib/api/domains/chat/types";
 import { useForcedTools } from "@/lib/hooks/useForcedTools";
-import { useAppMode } from "@/providers/AppModeProvider";
-import useAppFocus from "@/hooks/useAppFocus";
 import { getFormattedDateRangeString } from "@/lib/dateUtils";
 import { truncateString, cn, isImageFile } from "@/lib/utils";
 import { Disabled } from "@/refresh-components/Disabled";
@@ -27,12 +28,10 @@ import { useUser } from "@/providers/UserProvider";
 import { SettingsContext } from "@/providers/SettingsProvider";
 import { useProjectsContext } from "@/providers/ProjectsContext";
 import { FileCard } from "@/sections/cards/FileCard";
-import {
-  ProjectFile,
-  UserFileStatus,
-} from "@/app/app/projects/projectsService";
+import { ProjectFile, UserFileStatus } from "@/lib/api/domains/projects/types";
 import FilePickerPopover from "@/refresh-components/popovers/FilePickerPopover";
 import ActionsPopover from "@/refresh-components/popovers/ActionsPopover";
+import McpToolsPopover from "@/refresh-components/popovers/McpToolsPopover";
 import {
   getIconForAction,
   hasSearchToolsAvailable,
@@ -46,19 +45,15 @@ import {
   SvgHourglass,
   SvgPlus,
   SvgPlusCircle,
-  SvgSearch,
   SvgStop,
   SvgX,
 } from "@opal/icons";
 import { Button } from "@opal/components";
-import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
-import { useQueryController } from "@/providers/QueryControllerProvider";
-import { Section } from "@/layouts/general-layouts";
-import Spacer from "@/refresh-components/Spacer";
 import { useTranslation } from "react-i18next";
 import Popover from "@/refresh-components/Popover";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import { useAppBackground } from "@/providers/AppBackgroundProvider";
+import { DocumentContextChip } from "@/sections/input/DocumentContextChip";
 
 const LINE_HEIGHT = 24;
 const MIN_INPUT_HEIGHT = 44;
@@ -119,12 +114,14 @@ export function SourceChip({
 
 export interface AppInputBarHandle {
   reset: () => void;
+  // Puts a message back unless the user already typed a new one.
+  restore: (message: string) => void;
   focus: () => void;
 }
 
 export interface AppInputBarProps {
   removeDocs: () => void;
-  selectedDocuments: OnyxDocument[];
+  selectedDocuments: AtlasDocument[];
   initialMessage?: string;
   stopGenerating: () => void;
   onSubmit: (message: string) => void;
@@ -143,7 +140,7 @@ export interface AppInputBarProps {
   filterManager: FilterManager;
   retrievalEnabled: boolean;
   deepResearchEnabled: boolean;
-  setPresentingDocument?: (document: MinimalOnyxDocument) => void;
+  setPresentingDocument?: (document: MinimalAtlasDocument) => void;
   toggleDeepResearch: () => void;
   disabled: boolean;
   ref?: React.Ref<AppInputBarHandle>;
@@ -189,7 +186,6 @@ const AppInputBar = React.memo(
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const { user } = useUser();
-    const { isClassifying, classification } = useQueryController();
     const { t } = useTranslation();
 
     // Expose reset and focus methods to parent via ref
@@ -197,15 +193,13 @@ const AppInputBar = React.memo(
       reset: () => {
         setMessage("");
       },
+      restore: (text: string) => {
+        setMessage((current) => current || text);
+      },
       focus: () => {
         textAreaRef.current?.focus();
       },
     }));
-    const { appMode } = useAppMode();
-    const appFocus = useAppFocus();
-    const isSearchMode =
-      (appFocus.isNewSession() && appMode === "search") ||
-      classification === "search";
 
     const { forcedToolIds, setForcedToolIds } = useForcedTools();
     const {
@@ -226,7 +220,7 @@ const AppInputBar = React.memo(
       );
     }, [currentMessageFiles]);
 
-    // Convert ProjectFile to MinimalOnyxDocument format for viewing
+    // Convert ProjectFile to MinimalAtlasDocument format for viewing
     const handleFileClick = useCallback(
       (file: ProjectFile) => {
         if (!setPresentingDocument) return;
@@ -241,7 +235,7 @@ const AppInputBar = React.memo(
             ? `data:${fileWithData._mime_type};base64,${fileWithData._inline_data}`
             : undefined;
 
-        const documentForViewer: MinimalOnyxDocument = {
+        const documentForViewer: MinimalAtlasDocument = {
           document_id: `project_file__${file.file_id}`,
           semantic_identifier: file.name,
           preview_url: previewUrl,
@@ -274,7 +268,6 @@ const AppInputBar = React.memo(
 
     // Auto-resize textarea based on content
     useEffect(() => {
-      if (isSearchMode) return;
       const textarea = textAreaRef.current;
       if (textarea) {
         const prevLineCount = (prevMessageRef.current.match(/\n/g) || [])
@@ -302,7 +295,7 @@ const AppInputBar = React.memo(
           )}px`;
         }
       }
-    }, [message, isSearchMode]);
+    }, [message]);
 
     useEffect(() => {
       if (initialMessage) {
@@ -501,7 +494,7 @@ const AppInputBar = React.memo(
       <Disabled disabled={disabled} allowClick>
         <div
           ref={containerRef}
-          id="onyx-chat-input"
+          id="atlas-chat-input"
           className={cn(
             "w-full flex flex-col shadow-01 rounded-16",
             hasBackground
@@ -536,12 +529,7 @@ const AppInputBar = React.memo(
           )}
 
           {/* Input area */}
-          <div
-            className={cn(
-              "flex flex-row items-center w-full",
-              isSearchMode && "p-1"
-            )}
-          >
+          <div className="flex flex-row items-center w-full">
             <Popover
               open={user?.preferences?.shortcut_enabled && showPrompts}
               onOpenChange={setShowPrompts}
@@ -552,7 +540,7 @@ const AppInputBar = React.memo(
                   onKeyDownCapture={handleKeyDown}
                   onChange={handleInputChange}
                   ref={textAreaRef}
-                  id="onyx-chat-input-textarea"
+                  id="atlas-chat-input-textarea"
                   className={cn(
                     "w-full",
                     "outline-none",
@@ -565,14 +553,10 @@ const AppInputBar = React.memo(
                     "break-word",
                     "overscroll-contain",
                     "px-3",
-                    isSearchMode
-                      ? "h-[40px] py-2.5 overflow-hidden"
-                      : [
-                          "h-[44px]", // Fixed initial height to prevent flash - useEffect will adjust as needed
-                          "overflow-y-auto",
-                          "pb-2",
-                          "pt-3",
-                        ]
+                    "h-[44px]", // Fixed initial height to prevent flash - useEffect will adjust as needed
+                    "overflow-y-auto",
+                    "pb-2",
+                    "pt-3"
                   )}
                   autoFocus
                   style={{
@@ -582,11 +566,7 @@ const AppInputBar = React.memo(
                   }}
                   role="textarea"
                   aria-multiline
-                  placeholder={
-                    isSearchMode
-                      ? t("inputBar.searchModePlaceholder")
-                      : t("inputBar.chatModePlaceholder")
-                  }
+                  placeholder={t("inputBar.chatModePlaceholder")}
                   value={message}
                   onKeyDown={(event) => {
                     if (
@@ -596,12 +576,7 @@ const AppInputBar = React.memo(
                       !(event.nativeEvent as any).isComposing
                     ) {
                       event.preventDefault();
-                      if (
-                        message &&
-                        !disabled &&
-                        !isClassifying &&
-                        !hasUploadingFiles
-                      ) {
+                      if (message && !disabled && !hasUploadingFiles) {
                         onSubmit(message);
                       }
                     }
@@ -648,32 +623,10 @@ const AppInputBar = React.memo(
                 </Popover.Menu>
               </Popover.Content>
             </Popover>
-
-            {isSearchMode && (
-              <Section flexDirection="row" width="fit" gap={0}>
-                <Button
-                  icon={SvgX}
-                  disabled={!message || isClassifying}
-                  onClick={() => setMessage("")}
-                  prominence="tertiary"
-                />
-                <Button
-                  id="onyx-chat-input-send-button"
-                  icon={isClassifying ? SimpleLoader : SvgSearch}
-                  disabled={!message || isClassifying || hasUploadingFiles}
-                  onClick={() => {
-                    if (canStopGenerating) {
-                      stopGenerating();
-                    } else if (message) {
-                      onSubmit(message);
-                    }
-                  }}
-                  prominence="tertiary"
-                />
-                <Spacer horizontal rem={0.25} />
-              </Section>
-            )}
           </div>
+
+          {/* Document context: the draft the panel is showing, if any. */}
+          <DocumentContextChip />
 
           {/* Source chips */}
           {(selectedDocuments.length > 0 ||
@@ -725,170 +678,165 @@ const AppInputBar = React.memo(
             </div>
           )}
 
-          {!isSearchMode && (
-            <div className="flex justify-between items-center w-full p-1 min-h-[40px]">
-              {/* Bottom left controls */}
-              <div className="flex flex-row items-center">
-                {/* (+) button - always visible */}
-                <FilePickerPopover
-                  onFileClick={handleFileClick}
-                  onPickRecent={(file: ProjectFile) => {
-                    // Check if file with same ID already exists
-                    if (
-                      !currentMessageFiles.some(
-                        (existingFile) => existingFile.file_id === file.file_id
-                      )
-                    ) {
-                      setCurrentMessageFiles((prev) => [...prev, file]);
-                    }
-                  }}
-                  onUnpickRecent={(file: ProjectFile) => {
-                    setCurrentMessageFiles((prev) =>
-                      prev.filter(
-                        (existingFile) => existingFile.file_id !== file.file_id
-                      )
-                    );
-                  }}
-                  handleUploadChange={handleUploadChange}
-                  trigger={(open) => (
-                    <Button
-                      icon={SvgPlusCircle}
-                      tooltip={t("inputBar.attachFilesTooltip")}
-                      transient={open}
-                      disabled={disabled}
-                      prominence="tertiary"
-                    />
-                  )}
-                  selectedFileIds={currentMessageFiles.map((f) => f.id)}
-                  projectFiles={allCurrentProjectFiles}
-                />
+          <div className="flex justify-between items-center w-full p-1 min-h-[40px]">
+            {/* Bottom left controls */}
+            <div className="flex flex-row items-center">
+              {/* (+) button - always visible */}
+              <FilePickerPopover
+                onFileClick={handleFileClick}
+                onPickRecent={(file: ProjectFile) => {
+                  // Check if file with same ID already exists
+                  if (
+                    !currentMessageFiles.some(
+                      (existingFile) => existingFile.file_id === file.file_id
+                    )
+                  ) {
+                    setCurrentMessageFiles((prev) => [...prev, file]);
+                  }
+                }}
+                onUnpickRecent={(file: ProjectFile) => {
+                  setCurrentMessageFiles((prev) =>
+                    prev.filter(
+                      (existingFile) => existingFile.file_id !== file.file_id
+                    )
+                  );
+                }}
+                handleUploadChange={handleUploadChange}
+                trigger={(open) => (
+                  <Button
+                    icon={SvgPlusCircle}
+                    tooltip={t("inputBar.attachFilesTooltip")}
+                    transient={open}
+                    disabled={disabled}
+                    prominence="tertiary"
+                  />
+                )}
+                selectedFileIds={currentMessageFiles.map((f) => f.id)}
+                projectFiles={allCurrentProjectFiles}
+              />
 
-                {/* Controls that load in when data is ready */}
-                <div
-                  data-testid="actions-container"
-                  className={cn(
-                    "flex flex-row items-center",
-                    controlsLoading && "invisible"
-                  )}
-                >
-                  {selectedAgent && selectedAgentHasActions && (
-                    <ActionsPopover
-                      selectedAgent={selectedAgent}
-                      filterManager={filterManager}
-                      availableSources={memoizedAvailableSources}
-                      disabled={disabled}
-                    />
-                  )}
-                  {onToggleTabReading ? (
+              {/* Controls that load in when data is ready */}
+              <div
+                data-testid="actions-container"
+                className={cn(
+                  "flex flex-row items-center",
+                  controlsLoading && "invisible"
+                )}
+              >
+                {selectedAgent && selectedAgentHasActions && (
+                  <ActionsPopover
+                    selectedAgent={selectedAgent}
+                    filterManager={filterManager}
+                    availableSources={memoizedAvailableSources}
+                    disabled={disabled}
+                  />
+                )}
+                {onToggleTabReading ? (
+                  <Button
+                    icon={SvgGlobe}
+                    onClick={onToggleTabReading}
+                    variant="select"
+                    selected={tabReadingEnabled}
+                    foldable={!tabReadingEnabled}
+                    disabled={disabled}
+                  >
+                    {tabReadingEnabled
+                      ? currentTabUrl
+                        ? (() => {
+                            try {
+                              return new URL(currentTabUrl).hostname;
+                            } catch {
+                              return currentTabUrl;
+                            }
+                          })()
+                        : t("inputBar.readingTabText")
+                      : t("inputBar.readThisTabButton")}
+                  </Button>
+                ) : isMcpAgent(selectedAgent) ? (
+                  <McpToolsPopover
+                    selectedAgent={selectedAgent}
+                    disabled={disabled}
+                  />
+                ) : (
+                  showDeepResearch && (
                     <Button
-                      icon={SvgGlobe}
-                      onClick={onToggleTabReading}
+                      icon={SvgHourglass}
+                      onClick={toggleDeepResearch}
                       variant="select"
-                      selected={tabReadingEnabled}
-                      foldable={!tabReadingEnabled}
+                      selected={deepResearchEnabled}
+                      foldable={!deepResearchEnabled}
                       disabled={disabled}
                     >
-                      {tabReadingEnabled
-                        ? currentTabUrl
-                          ? (() => {
-                              try {
-                                return new URL(currentTabUrl).hostname;
-                              } catch {
-                                return currentTabUrl;
-                              }
-                            })()
-                          : t("inputBar.readingTabText")
-                        : t("inputBar.readThisTabButton")}
+                      {t("inputBar.deepResearchButton")}
                     </Button>
-                  ) : (
-                    showDeepResearch && (
-                      <Button
-                        icon={SvgHourglass}
-                        onClick={toggleDeepResearch}
-                        variant="select"
-                        selected={deepResearchEnabled}
-                        foldable={!deepResearchEnabled}
-                        disabled={disabled}
-                      >
-                        {t("inputBar.deepResearchButton")}
-                      </Button>
-                    )
-                  )}
-
-                  {selectedAgent &&
-                    forcedToolIds.length > 0 &&
-                    forcedToolIds.map((toolId) => {
-                      const tool = selectedAgent.tools.find(
-                        (tool) => tool.id === toolId
-                      );
-                      if (!tool) {
-                        return null;
-                      }
-                      return (
-                        <Button
-                          key={toolId}
-                          icon={getIconForAction(tool)}
-                          onClick={() => {
-                            setForcedToolIds(
-                              forcedToolIds.filter((id) => id !== toolId)
-                            );
-                          }}
-                          variant="select"
-                          selected
-                          disabled={disabled}
-                        >
-                          {tool.display_name}
-                        </Button>
-                      );
-                    })}
-                </div>
-              </div>
-
-              {/* Bottom right controls */}
-              <div className="flex flex-row items-center gap-1">
-                {/* Unified selector for agents + models */}
-                {!hideLlmPicker && (
-                  <div
-                    data-testid="AppInputBar/llm-popover-trigger"
-                    className={cn(controlsLoading && "invisible")}
-                  >
-                    <LLMPopover
-                      llmManager={llmManager}
-                      selectedAgent={selectedAgent}
-                      agents={agents}
-                      onSwitchAgent={onSwitchAgent}
-                      requiresImageInput={hasImageFiles}
-                      disabled={disabled}
-                    />
-                  </div>
+                  )
                 )}
 
-                {/* Submit button */}
-                <Button
-                  id="onyx-chat-input-send-button"
-                  icon={
-                    isClassifying
-                      ? SimpleLoader
-                      : chatState === "input"
-                        ? SvgArrowUp
-                        : SvgStop
-                  }
-                  disabled={
-                    (chatState === "input" && !message) ||
-                    hasUploadingFiles ||
-                    isClassifying
-                  }
-                  onClick={() => {
-                    if (canStopGenerating) {
-                      stopGenerating();
-                    } else if (message) {
-                      onSubmit(message);
+                {selectedAgent &&
+                  forcedToolIds.length > 0 &&
+                  forcedToolIds.map((toolId) => {
+                    const tool = selectedAgent.tools.find(
+                      (tool) => tool.id === toolId
+                    );
+                    if (!tool) {
+                      return null;
                     }
-                  }}
-                />
+                    return (
+                      <Button
+                        key={toolId}
+                        icon={getIconForAction(tool)}
+                        onClick={() => {
+                          setForcedToolIds(
+                            forcedToolIds.filter((id) => id !== toolId)
+                          );
+                        }}
+                        variant="select"
+                        selected
+                        disabled={disabled}
+                      >
+                        {tool.display_name}
+                      </Button>
+                    );
+                  })}
               </div>
             </div>
-          )}
+
+            {/* Bottom right controls */}
+            <div className="flex flex-row items-center gap-1">
+              {/* Unified selector for agents + models */}
+              {!hideLlmPicker && (
+                <div
+                  data-testid="AppInputBar/llm-popover-trigger"
+                  className={cn(controlsLoading && "invisible")}
+                >
+                  <LLMPopover
+                    llmManager={llmManager}
+                    selectedAgent={selectedAgent}
+                    agents={agents}
+                    onSwitchAgent={onSwitchAgent}
+                    requiresImageInput={hasImageFiles}
+                    disabled={disabled}
+                  />
+                </div>
+              )}
+
+              {/* Submit button */}
+              <Button
+                id="atlas-chat-input-send-button"
+                icon={chatState === "input" ? SvgArrowUp : SvgStop}
+                disabled={
+                  (chatState === "input" && !message) || hasUploadingFiles
+                }
+                onClick={() => {
+                  if (canStopGenerating) {
+                    stopGenerating();
+                  } else if (message) {
+                    onSubmit(message);
+                  }
+                }}
+              />
+            </div>
+          </div>
         </div>
       </Disabled>
     );

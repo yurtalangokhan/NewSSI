@@ -1,7 +1,7 @@
-import uuid
 from typing import Any
+import uuid
 
-from i18n import t
+from localization import t
 
 from src.service import get_api_key_service
 
@@ -20,16 +20,8 @@ class ApiKeyController(BaseController):
         keys = await self.service.list_by_user(user_id)
         return {"api_keys": keys}
 
-    async def revoke_key(self, key_id: uuid.UUID) -> dict[str, str]:
-        success = await self.service.revoke(key_id)
-        if not success:
-            self._raise_not_found("api_key.not_found")
-        return {"message": t("api_key.revoked")}
-
-    async def delete_key(self, key_id: uuid.UUID) -> dict[str, str]:
-        success = await self.service.delete(key_id)
-        if not success:
-            self._raise_not_found("api_key.not_found")
+    async def delete_key(self, key_id: uuid.UUID, user_id: uuid.UUID) -> dict[str, str]:
+        await self.service.delete(key_id, user_id)
         return {"message": t("api_key.deleted")}
 
 

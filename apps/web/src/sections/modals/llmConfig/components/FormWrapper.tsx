@@ -1,4 +1,5 @@
 "use client";
+import { modelProvidersEndpoints } from "@/lib/api/domains/model-providers/endpoints";
 
 import { useState, ReactNode } from "react";
 import useSWR, { useSWRConfig, KeyedMutator } from "swr";
@@ -7,15 +8,15 @@ import {
   LLMProviderView,
   WellKnownLLMProviderDescriptor,
 } from "@/interfaces/llm";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { fetchWellKnownProvider } from "@/lib/api/domains/model-providers/api";
 import Modal from "@/refresh-components/Modal";
 import Text from "@/refresh-components/texts/Text";
 import Button from "@/refresh-components/buttons/Button";
 import { SvgSettings } from "@opal/icons";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { LLM_PROVIDERS_ADMIN_URL } from "@/lib/llmConfig/constants";
-import { setDefaultLlmModel } from "@/lib/llmConfig/svc";
+
+import { setDefaultLlmModel } from "@/lib/api/domains/model-providers/api";
 import { useTranslation } from "react-i18next";
 
 export interface ProviderFormContext {
@@ -67,13 +68,14 @@ export function ProviderFormEntrypointWrapper({
   // Suppress SWR when controlled + closed to avoid unnecessary API calls
   const swrKey =
     providerEndpoint && !(isControlled && !open)
-      ? `/api/admin/llm/built-in/options/${providerEndpoint}`
+      ? ["well-known-llm-provider", providerEndpoint]
       : null;
 
   // Fetch model configurations for this provider
   const { data: wellKnownLLMProvider } = useSWR<WellKnownLLMProviderDescriptor>(
     swrKey,
-    errorHandlingFetcher
+    () =>
+      fetchWellKnownProvider<WellKnownLLMProviderDescriptor>(providerEndpoint!)
   );
 
   const onClose = () => {
@@ -97,7 +99,7 @@ export function ProviderFormEntrypointWrapper({
 
     try {
       await setDefaultLlmModel(existingLlmProvider.id, firstVisibleModel.name);
-      await mutate(LLM_PROVIDERS_ADMIN_URL);
+      await mutate(modelProvidersEndpoints.getAdminProvider.browserPath);
       toast.success(t("llmConfig.setAsDefaultSuccess"));
     } catch (e) {
       const message =

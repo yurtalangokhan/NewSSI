@@ -122,6 +122,40 @@ describe("FlowEditorShell — fullscreen while nested in a modal", () => {
     expect(dialog.style.pointerEvents).toBe("");
   });
 
+  it("never applies a scale/zoom transform to the fullscreen entrance animation", () => {
+    // Regression test for: edges rendered detached from their node handles
+    // after entering fullscreen.
+    //
+    // Root cause: entering fullscreen remounts the whole ReactFlow subtree
+    // (portal vs. plain div are different fiber types at the same
+    // position), and that's exactly when xyflow's per-node ResizeObserver
+    // takes its one-time getBoundingClientRect() handle measurement. A
+    // `zoom-in-*` class puts a `scale3d(...)` transform on this ancestor
+    // during that same animation frame; xyflow only normalizes handle
+    // offsets by its own pan/zoom state, not external CSS transforms, so
+    // the scaled-down measurement gets baked in and is never re-measured
+    // once the animation settles. The container may fade in, but must
+    // never scale while doing it.
+    const store = createFlowStore();
+
+    render(
+      <FlowEditorShell store={store} className="wrapper">
+        <div>canvas content</div>
+      </FlowEditorShell>
+    );
+
+    act(() => {
+      store.getState().setFullscreen(true);
+    });
+
+    const fullscreenShell = document.querySelector(
+      '[data-fullscreen="true"]'
+    ) as HTMLElement;
+    expect(fullscreenShell).toBeInTheDocument();
+    expect(fullscreenShell.className).not.toMatch(/\bzoom-in-\d+\b/);
+    expect(fullscreenShell.className).not.toMatch(/\bzoom-out-\d+\b/);
+  });
+
   it("exits fullscreen on Escape when nested in a dialog without being blocked by parent dialog", () => {
     const store = createFlowStore();
 

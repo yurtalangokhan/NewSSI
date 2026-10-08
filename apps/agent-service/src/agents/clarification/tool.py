@@ -15,7 +15,7 @@ from langchain_core.tools import BaseTool, tool
 from langgraph.types import interrupt
 
 from agents.clarification.formatting import format_resume, normalise_resume
-from agents.clarification.schema import InvalidQuestions, validate_questions
+from agents.clarification.validation import InvalidQuestions, validate_questions
 from agents.interrupts.agent_path import resolve_agent_path
 from agents.interrupts.classify import USER_CLARIFICATION
 

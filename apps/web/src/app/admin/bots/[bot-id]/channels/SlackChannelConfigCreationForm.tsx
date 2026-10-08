@@ -9,16 +9,16 @@ import {
   SlackChannelConfig,
   SlackBotResponseType,
 } from "@/lib/types";
+import { isPersonaASlackBotPersona } from "../lib";
 import {
   createSlackChannelConfig,
-  isPersonaASlackBotPersona,
   updateSlackChannelConfig,
-} from "../lib";
+} from "@/lib/api/domains/integrations/api";
 import CardSection from "@/components/admin/CardSection";
 import { useRouter } from "next/navigation";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
-import { StandardAnswerCategoryResponse } from "@/components/standardAnswers/getStandardAnswerCategoriesIfEE";
-import { SEARCH_TOOL_ID } from "@/app/app/components/tools/constants";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
+import type { StandardAnswerCategoryResponse } from "@/components/standardAnswers/getStandardAnswerCategoriesIfEE";
+import { SEARCH_TOOL_ID } from "@/lib/api/domains/tools/constants";
 import { SlackChannelConfigFormFields } from "./SlackChannelConfigFormFields";
 
 export const SlackChannelConfigCreationForm = ({
@@ -221,7 +221,7 @@ export const SlackChannelConfigCreationForm = ({
             toast.error(
               `Error ${
                 isUpdate ? "updating" : "creating"
-              } OnyxBot config - ${errorMsg}`
+              } AtlasBot config - ${errorMsg}`
             );
           }
         }}

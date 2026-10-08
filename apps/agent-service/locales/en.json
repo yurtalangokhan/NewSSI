@@ -1,26 +1,124 @@
 {
   "agent": {
+    "feedback_received": "Feedback received.",
     "not_found": "Agent {agent_id} not found",
-    "group_not_found": "Agent group not found",
-    "unexpected_error": "Unexpected error",
     "graph_schema_required": "graph_schema is required",
     "invalid_uuid": "Invalid UUID: {id}",
     "sub_agent_ids_must_be_array": "sub_agent_ids must be an array",
     "definition_not_found": "Agent definition {definition_id} not found",
     "no_fields_to_update": "No fields to update",
     "reserved_keys_in_config": "agent_config contains reserved keys: {keys}",
-    "message_or_messages_required": "One of 'message' or 'messages' must be provided."
+    "message_or_messages_required": "One of 'message' or 'messages' must be provided.",
+    "tool_loop_incomplete": "I couldn't finish working on the document. Please try again, or ask for the content directly in the chat."
   },
-  "tool": {
-    "ids_required": "tool_ids required",
-    "binding_not_found": "Tool binding not found",
-    "not_found": "Tool {tool_id} not found"
+  "assistant": {
+    "not_found": "Assistant {assistant_id} not found",
+    "graph_not_found": "Graph {graph_id} not found",
+    "cannot_update_system_template": "Cannot update system templates",
+    "system_template_not_deleted": "System template not deleted"
   },
-  "provider": {
-    "not_found": "Provider not found or cannot be deleted"
+  "auth": {
+    "not_authenticated": "Not authenticated",
+    "keycloak_not_configured": "KEYCLOAK_ISSUER_URL is not configured",
+    "signing_key_resolution_failed": "Could not resolve the token signing key: {error}",
+    "token_validation_failed": "Token validation failed",
+    "missing_bearer_token": "Missing bearer token",
+    "missing_permission": "Missing required permission: {permission}"
   },
-  "thread": {
-    "not_found": "Thread not found"
+  "chat": {
+    "missing_session_id": "Missing session_id",
+    "session_not_found": "Session not found",
+    "chat_session_not_found": "Chat session not found",
+    "run_already_active": "A response is still being generated in this chat.",
+    "run_unavailable": "The chat service is temporarily unavailable. Please try again.",
+    "run_not_found": "This response is no longer available.",
+    "invalid_document_context": "Invalid document_context: {error}"
+  },
+  "common": {
+    "bad_request": "Bad request",
+    "not_found": "Resource not found",
+    "internal_error": "Internal server error",
+    "forbidden": "Forbidden"
+  },
+  "connectors": {
+    "access_denied": "Agent access denied.",
+    "assignment_denied": "Connector assignment is not permitted.",
+    "base_required": "Connectors require a configurable MCP agent.",
+    "credentials_unavailable": "Saved connector credentials are unavailable for live tools.",
+    "internal_required": "Trusted internal identity is required.",
+    "invalid_bindings": "Select at most 32 distinct connectors.",
+    "native_call_failed": "The model did not execute the requested connector tool. Please retry.",
+    "not_assigned": "Connector operation is not assigned to this agent.",
+    "source_unavailable": "The saved connector could not be resolved.",
+    "timeout": "Connector resolution timed out.",
+    "unavailable": "Selected connector is not available for live tools.",
+    "unsupported": "Live tools are not available for this connector."
+  },
+  "datasource": {
+    "duplicate_name": "A data source named '{name}' already exists. Please choose a different name.",
+    "unknown_connector": "Unknown connector: {connector_type}",
+    "create_source_failed": "Failed to configure the connector: {error}",
+    "store_config_failed": "Failed to store the connector configuration: {error}",
+    "create_connection_failed": "Failed to create connection: {error}",
+    "create_collection_failed": "Failed to create collection",
+    "not_found": "DataSource {datasource_id} not found",
+    "no_connection": "This datasource has no connector configuration. Save its configuration first.",
+    "config_missing": "The stored connector configuration is missing. Save the datasource configuration again.",
+    "invalid_sync_mode_combination": "Invalid sync mode combination: {sync_mode} | {dest_mode}. Valid combos: full_refresh|overwrite, full_refresh|append, incremental|append",
+    "update_source_failed": "Failed to update the connector configuration: {error}",
+    "update_streams_failed": "Failed to update connection streams: {error}",
+    "sync_error_hidden": "The sync did not complete. The reason is shown to users who can run syncs."
+  },
+  "document": {
+    "not_found": "Document not found.",
+    "revision_not_found": "Draft {revision_no} does not exist.",
+    "revision_conflict": "The document changed; the latest draft is {head_revision_no}.",
+    "edit_failed": "{count} edit(s) could not be applied.",
+    "diagram_invalid": "{count} diagram(s) are invalid.",
+    "no_change": "The change does not modify the document.",
+    "invalid_content": "Invalid document content: {reason}",
+    "attachment_invalid": "{count} attached image reference(s) cannot be used.",
+    "format_change_unsupported": "Cannot convert {from_format} to {to_format} with an edit."
+  },
+  "file": {
+    "not_found": "File not found.",
+    "text_extraction_unsupported": "Cannot extract text from this file type (images are not supported)."
+  },
+  "flow": {
+    "draft_spec_malformed": "Draft flow spec is malformed: {error}",
+    "draft_not_found_for_definition": "No draft flow found for definition {definition_id}",
+    "draft_not_found": "No draft exists for definition '{definition_id}'",
+    "published_not_found": "No published flow for definition '{definition_id}'",
+    "version_not_found": "No version {version_no} for definition '{definition_id}'",
+    "target_version_required": "target_version_no is required",
+    "structured_output_empty": "Structured output could not be parsed - returned an empty result",
+    "records_extracted": "{count} records extracted ({schema})",
+    "no_extractable_records": "No extractable records ({schema})",
+    "version_conflict": "The flow version conflicts with the current state",
+    "unknown_component": "Unknown component type: '{component_type}'",
+    "unknown_options_source": "Unknown options source: '{source}'"
+  },
+  "mailConfig": {
+    "smtpAuthFailedDetail": "SMTP authentication failed",
+    "smtpConnectionFailed": "SMTP server could not be reached",
+    "recipientsRejected": "SMTP server rejected one or more recipients.",
+    "messageRejected": "SMTP server rejected the message",
+    "emailSent": "Email sent.",
+    "testEmailSent": "Test email sent.",
+    "personalVerificationSubject": "Agentic AI SMTP Verification",
+    "personalVerificationBody": "This test email confirms that your personal SMTP credentials are valid and can send mail.",
+    "personalVerificationSent": "Test email sent successfully!",
+    "adminTestSubject": "Agentic AI SMTP test",
+    "adminTestBody": "This test email confirms that your SMTP configuration can send mail."
+  },
+  "mcp": {
+    "oauth_callback_invalid": "Invalid OAuth callback: missing code or state",
+    "oauth_failed": "oauth authentication failed"
+  },
+  "mcp_provider": {
+    "not_found": "Provider {provider_id} not found",
+    "invalid_status": "Invalid status: {status_value}",
+    "not_a_mcp_server": "The URL did not respond as an MCP server. Check the endpoint and path."
   },
   "persona": {
     "not_found": "Persona not found",
@@ -29,28 +127,13 @@
     "image_must_be_an_image": "The avatar must be an image file",
     "image_is_empty": "The uploaded image is empty"
   },
-  "file": {
-    "not_found": "File not found.",
-    "text_extraction_unsupported": "Cannot extract text from this file type (images are not supported)."
+  "project": {
+    "not_found": "Project not found",
+    "name_required": "Project name is required",
+    "invalid_temp_id_map": "Invalid temp_id_map",
+    "or_chat_session_not_found": "Project or chat session not found"
   },
-  "run": {
-    "assistant_id_required": "assistant_id is required",
-    "thread_and_run_id_required": "thread_id and run_id are required",
-    "thread_id_required": "thread_id is required"
-  },
-  "assistant": {
-    "not_found": "Assistant {assistant_id} not found",
-    "graph_not_found": "Graph {graph_id} not found",
-    "cannot_update_system_template": "Cannot update system templates",
-    "system_template_not_deleted": "System template not deleted",
-    "id_required": "assistant_id is required"
-  },
-  "mcp_provider": {
-    "not_found": "Provider {provider_id} not found"
-  },
-  "mcp": {
-    "tool_not_found": "Tool '{tool_name}' not found"
-  },
+  "provider": {},
   "rag_tool": {
     "database_search": {
       "name": "Database Search",
@@ -61,67 +144,16 @@
       "description": "Searches the knowledge graph connected to this agent."
     }
   },
-  "datasource": {
-    "duplicate_name": "A data source named '{name}' already exists. Please choose a different name.",
-    "unknown_connector": "Unknown connector: {connector_type}",
-    "create_source_failed": "Failed to create Airbyte source: {error}",
-    "setup_destination_failed": "Failed to setup destination: {error}",
-    "create_connection_failed": "Failed to create connection: {error}",
-    "create_collection_failed": "Failed to create collection",
-    "not_found": "DataSource {datasource_id} not found",
-    "no_airbyte_mapping": "No Airbyte mapping found for this datasource",
-    "invalid_sync_mode_combination": "Invalid sync mode combination: {sync_mode} | {dest_mode}. Valid combos: full_refresh|overwrite, full_refresh|append, incremental|append",
-    "update_source_failed": "Failed to update Airbyte source: {error}",
-    "update_source_name_failed": "Failed to update Airbyte source name: {error}",
-    "update_streams_failed": "Failed to update connection streams: {error}",
-    "update_connection_failed": "Failed to update Airbyte connection: {error}",
-    "id_required": "datasource_id is required"
+  "run": {
+    "assistant_id_required": "assistant_id is required"
   },
-  "web_search": {
-    "unsupported_provider_type": "Unsupported content provider type: {provider_type}",
-    "test_fetch_failed": "Failed to fetch test URL",
-    "url_required": "A non-empty 'url' field is required.",
-    "url_invalid_scheme": "URL must start with http:// or https://",
-    "no_crawler_result": "No result returned from crawler."
+  "thread": {
+    "not_found": "Thread not found"
   },
-  "chat": {
-    "missing_session_id": "Missing session_id",
-    "session_not_found": "Session not found"
+  "tool": {
+    "ids_required": "tool_ids required",
+    "binding_not_found": "Tool binding not found",
+    "not_found": "Tool {tool_id} not found"
   },
-  "auth": {
-    "not_authenticated": "Not authenticated",
-    "keycloak_not_configured": "KEYCLOAK_ISSUER_URL is not configured",
-    "signing_key_resolution_failed": "Unable to resolve token signing key: {error}",
-    "invalid_bearer_token_detail": "Invalid bearer token: {error}",
-    "token_validation_failed": "Token validation failed",
-    "missing_bearer_token": "Missing bearer token",
-    "invalid_bearer_token": "Invalid bearer token",
-    "missing_permission": "Missing required permission: {permission}",
-    "invalid_api_key": "Invalid API key"
-  },
-  "common": {
-    "bad_request": "Bad request",
-    "not_found": "Resource not found",
-    "internal_error": "Internal server error",
-    "forbidden": "Forbidden"
-  },
-  "mailConfig": {
-    "notFound": "Mail config not found",
-    "attachedToAgent": "Mail config is attached to an agent",
-    "smtpAuthFailedDetail": "SMTP authentication failed: {detail}",
-    "smtpConnectionFailed": "SMTP server could not be reached: {error}",
-    "recipientsRejected": "SMTP server rejected one or more recipients.",
-    "messageRejected": "SMTP server rejected the message: {error}",
-    "emailSent": "Email sent.",
-    "testEmailSent": "Test email sent.",
-    "emailFailed": "Email failed: {detail}",
-    "testEmailFailed": "Test email failed: {detail}",
-    "personalVerificationSubject": "Agentic AI SMTP Verification",
-    "personalVerificationBody": "This test email confirms that your personal SMTP credentials are valid and can send mail.",
-    "personalVerificationSent": "Test email sent successfully!",
-    "personalVerificationFailed": "Failed to send test email: {detail}",
-    "adminTestSubject": "Agentic AI SMTP test",
-    "adminTestBody": "This test email confirms that your SMTP configuration can send mail.",
-    "selectionUnavailable": "The selected mail configuration is unavailable. Select an active mail configuration in Settings > Email."
-  }
+  "web_search": {}
 }

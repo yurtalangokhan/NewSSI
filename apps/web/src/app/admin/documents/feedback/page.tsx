@@ -2,12 +2,12 @@
 
 import { notFound } from "next/navigation";
 import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
-import { useMostReactedToDocuments } from "@/lib/hooks";
+import { useMostReactedToDocuments } from "@/lib/api/domains/knowledge/hooks";
 import { DocumentFeedbackTable } from "./DocumentFeedbackTable";
 import { numPages, numToDisplay } from "./constants";
 import Title from "@/components/ui/title";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { useTranslation } from "react-i18next";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 

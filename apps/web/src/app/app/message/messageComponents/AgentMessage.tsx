@@ -5,19 +5,28 @@ import {
   Packet,
   PacketType,
   StopReason,
-} from "@/app/app/services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 import { FullChatState } from "@/app/app/message/messageComponents/interfaces";
-import { FeedbackType } from "@/app/app/interfaces";
+import { FeedbackType } from "@/lib/api/domains/chat/types";
 import { handleCopy } from "@/app/app/message/copyingUtils";
 import { useMessageSwitching } from "@/app/app/message/messageComponents/hooks/useMessageSwitching";
 import { RendererComponent } from "@/app/app/message/messageComponents/renderMessageComponent";
 import { usePacketProcessor } from "@/app/app/message/messageComponents/timeline/hooks/usePacketProcessor";
 import { withPinnedDocumentGroups } from "@/app/app/message/messageComponents/timeline/hooks/packetProcessor";
+import { AssistantReplySkeleton } from "@/refresh-components/skeletons/ChatMessagesSkeleton";
+import {
+  SKELETON_REVEAL_CLASS,
+  useSkeletonReveal,
+} from "@/hooks/useSkeletonReveal";
 import { usePacedTurnGroups } from "@/app/app/message/messageComponents/timeline/hooks/usePacedTurnGroups";
 import MessageToolbar from "@/app/app/message/messageComponents/MessageToolbar";
-import { LlmDescriptor, LlmManager } from "@/lib/hooks";
-import { AgentId } from "@/app/admin/agents/interfaces";
-import { Message } from "@/app/app/interfaces";
+import MessageTimestamp from "@/app/app/message/MessageTimestamp";
+import {
+  LlmDescriptor,
+  LlmManager,
+} from "@/lib/api/domains/model-providers/hooks";
+import { AgentId } from "@/lib/api/domains/agents/types";
+import { Message } from "@/lib/api/domains/chat/types";
 import Text from "@/refresh-components/texts/Text";
 import { AgentTimeline } from "@/app/app/message/messageComponents/timeline/AgentTimeline";
 import GraphStageStrip from "@/app/app/message/messageComponents/timeline/GraphStageStrip";
@@ -38,6 +47,9 @@ export type RegenerationFactory = (regenerationRequest: {
 export interface AgentMessageProps {
   rawPackets?: Packet[];
   packetCount?: number; // Tracked separately for React memo comparison (avoids reading from mutated array)
+  // An attached run whose replay has not reached the screen yet: show a
+  // skeleton while there is nothing else to render.
+  resuming?: boolean;
   chatState: FullChatState;
   nodeId: number;
   messageId?: number;
@@ -55,6 +67,8 @@ export interface AgentMessageProps {
   processingDurationSeconds?: number;
   // Final message text - used as fallback when packets are empty (for historical messages)
   finalMessageText?: string;
+  // When the answer was produced; absent for one the backend could not stamp.
+  timeSent?: string;
 }
 
 // TODO: Consider more robust comparisons:
@@ -72,6 +86,7 @@ function arePropsEqual(
     // Compare packetCount (primitive) instead of rawPackets.length
     // The array is mutated in place, so reading .length from prev and next would return same value
     prev.packetCount === next.packetCount &&
+    prev.resuming === next.resuming &&
     prev.chatState.agent?.id === next.chatState.agent?.id &&
     prev.chatState.docs === next.chatState.docs &&
     prev.chatState.citations === next.chatState.citations &&
@@ -84,7 +99,8 @@ function arePropsEqual(
     prev.llmManager?.isLoadingProviders ===
       next.llmManager?.isLoadingProviders &&
     prev.processingDurationSeconds === next.processingDurationSeconds &&
-    prev.finalMessageText === next.finalMessageText
+    prev.finalMessageText === next.finalMessageText &&
+    prev.timeSent === next.timeSent
     // Skip: chatState.regenerate, chatState.setPresentingDocument,
     //       most of llmManager, onMessageSelection (function/object props)
   );
@@ -104,7 +120,9 @@ const AgentMessage = React.memo(function AgentMessage({
   originalPersonaId,
   processingDurationSeconds,
   finalMessageText,
+  timeSent,
   packetCount,
+  resuming,
 }: AgentMessageProps) {
   const markdownRef = useRef<HTMLDivElement>(null);
   const finalAnswerRef = useRef<HTMLDivElement>(null);
@@ -159,7 +177,7 @@ const AgentMessage = React.memo(function AgentMessage({
       ),
     // effectivePackets is mutated in place (stable ref) — key on length/count
     // or a stage packet arriving after the first render is never noticed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [effectivePackets, effectivePackets.length, packetCount]
   );
 
@@ -236,7 +254,7 @@ const AgentMessage = React.memo(function AgentMessage({
   // update once some other packet (a tool step, `flow_stage_end`) forced it.
   const { sections: flowStageSections, inlineTurnGroups } = useMemo(
     () => buildStageGroups(pacedTurnGroups, timelinePackets),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [pacedTurnGroups, timelinePackets, packetCount, effectivePackets.length]
   );
 
@@ -303,13 +321,33 @@ const AgentMessage = React.memo(function AgentMessage({
     showLiveFinalAnswer ? preScan.liveFinalAnswerText + " [*]() " : "",
     effectiveChatState,
     "font-main-content-body",
-    foregroundTextStyle
+    foregroundTextStyle,
+    { isStreaming: showLiveFinalAnswer }
   );
+
+  // The reply of a run being re-attached is on its way but nothing has
+  // arrived yet: a skeleton reads better than an empty "thinking" header.
+  const showingResumeSkeleton =
+    Boolean(resuming) && effectivePackets.length === 0;
+  // What replaces that skeleton fades in instead of popping.
+  const revealedAfterSkeleton = useSkeletonReveal(showingResumeSkeleton, [
+    { nodeId },
+  ]);
+  if (showingResumeSkeleton) {
+    return (
+      <div className="group flex flex-col gap-3 rounded-12 py-1">
+        <AssistantReplySkeleton className="px-3 py-1" />
+      </div>
+    );
+  }
 
   return (
     <div
-      className="flex flex-col gap-3 rounded-12 py-1"
-      data-testid={isComplete ? "onyx-ai-message" : undefined}
+      className={cn(
+        "group flex flex-col gap-3 rounded-12 py-1",
+        revealedAfterSkeleton && SKELETON_REVEAL_CLASS
+      )}
+      data-testid={isComplete ? "atlas-ai-message" : undefined}
     >
       {/* graph_stage_start/end packets only ever exist in-memory for the
           turn that's actually streaming — a page refresh replays historical
@@ -427,26 +465,29 @@ const AgentMessage = React.memo(function AgentMessage({
 
       {/* Feedback buttons - only show when streaming and rendering complete */}
       {isComplete && (
-        <MessageToolbar
-          nodeId={nodeId}
-          messageId={messageId}
-          includeMessageSwitcher={includeMessageSwitcher}
-          currentMessageInd={currentMessageInd}
-          otherMessagesCanSwitchTo={otherMessagesCanSwitchTo}
-          getPreviousMessage={getPreviousMessage}
-          getNextMessage={getNextMessage}
-          onMessageSelection={onMessageSelection}
-          rawPackets={rawPackets}
-          finalAnswerRef={finalAnswerRef}
-          currentFeedback={currentFeedback}
-          onRegenerate={onRegenerate}
-          parentMessage={parentMessage}
-          llmManager={llmManager}
-          currentModelName={chatState.overriddenModel}
-          originalPersonaId={originalPersonaId}
-          citations={citations}
-          documentMap={documentMap}
-        />
+        <div className="flex w-full flex-row items-center gap-2">
+          <MessageToolbar
+            nodeId={nodeId}
+            messageId={messageId}
+            includeMessageSwitcher={includeMessageSwitcher}
+            currentMessageInd={currentMessageInd}
+            otherMessagesCanSwitchTo={otherMessagesCanSwitchTo}
+            getPreviousMessage={getPreviousMessage}
+            getNextMessage={getNextMessage}
+            onMessageSelection={onMessageSelection}
+            rawPackets={rawPackets}
+            finalAnswerRef={finalAnswerRef}
+            currentFeedback={currentFeedback}
+            onRegenerate={onRegenerate}
+            parentMessage={parentMessage}
+            llmManager={llmManager}
+            currentModelName={chatState.overriddenModel}
+            originalPersonaId={originalPersonaId}
+            citations={citations}
+            documentMap={documentMap}
+          />
+          <MessageTimestamp timeSent={timeSent} className="shrink-0" />
+        </div>
       )}
     </div>
   );

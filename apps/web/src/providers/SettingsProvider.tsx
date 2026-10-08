@@ -9,7 +9,6 @@ import {
   useMemo,
   JSX,
 } from "react";
-import useCCPairs from "@/hooks/useCCPairs";
 
 export function SettingsProvider({
   children,
@@ -21,8 +20,6 @@ export function SettingsProvider({
   enableSearchRuntimeStatus?: boolean;
 }) {
   const [isMobile, setIsMobile] = useState<boolean | undefined>();
-  const vectorDbEnabled = settings.settings.vector_db_enabled !== false;
-  const { ccPairs } = useCCPairs(vectorDbEnabled && enableSearchRuntimeStatus);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -35,25 +32,14 @@ export function SettingsProvider({
   }, []);
 
   /**
-   * NOTE (@raunakab):
-   * Whether search mode is actually available to users.
+   * Whether the knowledge search mode is offered in the app shell.
    *
-   * Prefer `isSearchModeAvailable` over `settings.search_ui_enabled`.
-   * The raw setting only captures the admin's *intent*. This derived value
-   * also checks runtime prerequisites (connectors must exist) so that
-   * consumers don't need to independently verify availability.
+   * Prefer `isSearchModeAvailable` over `settings.search_ui_enabled`: the raw
+   * setting is the admin's intent, and search only runs inside the app shell.
+   * The search page itself handles users without searchable collections.
    */
-  const isSearchModeAvailable = useMemo(
-    () =>
-      enableSearchRuntimeStatus &&
-      settings.settings.search_ui_enabled !== false &&
-      ccPairs.length > 0,
-    [
-      enableSearchRuntimeStatus,
-      settings.settings.search_ui_enabled,
-      ccPairs.length,
-    ]
-  );
+  const isSearchModeAvailable =
+    enableSearchRuntimeStatus && settings.settings.search_ui_enabled !== false;
 
   const contextValue = useMemo(
     () => ({ ...settings, isMobile, isSearchModeAvailable }),

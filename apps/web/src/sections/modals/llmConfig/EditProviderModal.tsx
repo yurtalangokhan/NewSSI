@@ -1,6 +1,9 @@
 "use client";
+import { modelProvidersEndpoints } from "@/lib/api/domains/model-providers/endpoints";
 
-import { authenticatedFetch } from "@/lib/fetcher";
+import { testEditedProviderConnection } from "@/lib/api/domains/model-providers/api";
+import { updateSharedUrlProvider } from "@/lib/api/domains/model-providers/api";
+import { updatePersonalUrlProvider } from "@/lib/api/domains/model-providers/api";
 
 import { useState } from "react";
 import { useSWRConfig } from "swr";
@@ -17,7 +20,7 @@ import {
   getProviderIcon,
   URL_PROVIDER_TYPES,
 } from "@/lib/llmConfig/providers";
-import { useWellKnownLangChainProviders } from "@/hooks/useProviders";
+import { useWellKnownLangChainProviders } from "@/lib/api/domains/model-providers/hooks";
 
 type Provider = UrlBasedProvider | ApiKeyProvider;
 
@@ -99,19 +102,12 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
     setTestStatus("testing");
     setTestError(null);
     try {
-      const res = await authenticatedFetch(
-        "/api/admin/providers/test-connection",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            provider_type: providerType,
-            base_url: effectiveBaseUrl || undefined,
-            api_key: effectiveApiKey,
-            provider_id: isUrlProvider ? provider.id : undefined,
-          }),
-        }
-      );
+      const res = await testEditedProviderConnection({
+        provider_type: providerType,
+        base_url: effectiveBaseUrl || undefined,
+        api_key: effectiveApiKey,
+        provider_id: isUrlProvider ? provider.id : undefined,
+      });
       const data = await res.json();
       setTestLatency(data.latency_ms ?? null);
       if (data.success) {
@@ -167,11 +163,7 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
           body.api_key = newApiKey.trim();
         }
 
-        res = await authenticatedFetch(`/api/admin/providers/${provider.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
+        res = await updateSharedUrlProvider(provider.id, body);
       } else {
         const body: Record<string, string | null> = {
           name: name.trim(),
@@ -181,14 +173,7 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
         };
         if (newApiKey.trim()) body.api_key = newApiKey.trim();
 
-        res = await authenticatedFetch(
-          `/api/admin/user-providers/${provider.id}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          }
-        );
+        res = await updatePersonalUrlProvider(provider.id, body);
       }
 
       if (!res.ok) {
@@ -197,7 +182,7 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
       }
 
       toast({ message: t("admin.llm.providerUpdated") });
-      await mutate("/api/admin/providers");
+      await mutate(modelProvidersEndpoints.listProviders.browserPath);
       onOpenChange(false);
     } catch (e: unknown) {
       toast({

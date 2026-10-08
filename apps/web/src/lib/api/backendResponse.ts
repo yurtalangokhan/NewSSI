@@ -19,6 +19,15 @@ export async function forwardBackendResponse(
   // Preserve the idempotency replay marker so the frontend can distinguish a
   // replayed response from a fresh one.
   const headers = new Headers();
+  for (const name of [
+    "Content-Language",
+    "Retry-After",
+    "WWW-Authenticate",
+    "X-Request-ID",
+  ]) {
+    const value = response.headers.get(name);
+    if (value) headers.set(name, value);
+  }
   const replayed = response.headers.get("Idempotency-Replayed");
   if (replayed) {
     headers.set("Idempotency-Replayed", replayed);

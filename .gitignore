@@ -1,9 +1,11 @@
 .vscode
 workspace
-*env
 .env.production
 .env.development
+.venv
 __pycache__
+.venv/
+venv/
 .next
 .turbo
 node_modules
@@ -12,7 +14,11 @@ agent-service-toolkit
 .tmp
 .ruff_cache
 .pytest_cache
+sbom-*.json
 .opencode/
 .codex/
 #.agents/
 .claude
+.superpowers
+*.swp
+*.swo

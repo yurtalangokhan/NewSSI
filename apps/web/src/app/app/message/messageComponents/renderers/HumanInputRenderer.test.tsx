@@ -6,7 +6,7 @@ import {
   HumanInputPacket,
   HumanInputRequest,
   PacketType,
-} from "@/app/app/services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 
 // Minimal i18next stand-in (same shape as GeneratedFileRenderer.test.tsx).
 jest.mock("react-i18next", () => ({

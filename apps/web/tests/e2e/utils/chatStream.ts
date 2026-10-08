@@ -112,9 +112,9 @@ export async function sendMessageAndCaptureStreamPackets(
     if (waitForAiMessage) {
       await sendMessage(page, message);
     } else {
-      await page.locator("#onyx-chat-input-textarea").click();
-      await page.locator("#onyx-chat-input-textarea").fill(message);
-      await page.locator("#onyx-chat-input-send-button").click();
+      await page.locator("#atlas-chat-input-textarea").click();
+      await page.locator("#atlas-chat-input-textarea").fill(message);
+      await page.locator("#atlas-chat-input-send-button").click();
       await page
         .waitForFunction(() => window.location.href.includes("chatId="), null, {
           timeout: 10000,

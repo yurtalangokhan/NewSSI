@@ -7,12 +7,12 @@ operators, and future agents debugging login issues.
 
 - Web app: `apps/web`
 - User service: `apps/user-service`
-- Gateway: Kong on `http://localhost:8000`
+- Gateway: APISIX on `http://localhost:8000`
 - Service-provider Keycloak: the platform realm, usually `agenticai`
 - External Keycloak IdP: optional upstream Keycloak connected to SP Keycloak as
   an identity provider alias, usually `external-keycloak`
 
-All external traffic should go through Kong. Local launch configs read
+All external traffic should go through the gateway. Local launch configs read
 `apps/*/.env`; infrastructure compose reads `configs/.env`.
 
 ## Login Page Selection
@@ -24,10 +24,9 @@ The web app calls `/api/auth/type`.
 
 The user-service response is controlled by:
 
-- `KEYCLOAK_ENABLED=true`
 - `EXTERNAL_KEYCLOAK=true`
 
-If `EXTERNAL_KEYCLOAK=false` is present in `apps/user-service/.env`, it
+If `EXTERNAL_KEYCLOAK=false` is present in `configs/.env`, it
 overrides runtime settings and `/api/auth/type` reports `externalKeycloak:false`.
 The external issuer, realm, client ID, and client secret settings are not
 required for login page selection. They are only required when user-service
@@ -46,8 +45,8 @@ provisions or updates the external IdP configuration in SP Keycloak.
    sets `access_token` and `refresh_token` cookies. `id_token` is only set as an
    optional logout hint when it fits within browser-safe cookie size.
 
-The web authorize and callback route handlers call user-service through Kong's
-service-scoped `/user-service/api/v1/auth/...` path. The frontend's
+The web authorize and callback route handlers call user-service through the
+gateway's service-scoped `/user-service/api/v1/auth/...` path. The frontend's
 server-side URL helpers normalize older `/api/auth/...` inputs to that
 canonical gateway path.
 

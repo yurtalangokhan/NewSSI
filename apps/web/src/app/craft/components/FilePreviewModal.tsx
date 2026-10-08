@@ -1,4 +1,5 @@
 "use client";
+import { fetchCraftFilePreview } from "@/lib/api/domains/craft/api";
 
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,7 +7,8 @@ import Modal from "@/refresh-components/Modal";
 import Text from "@/refresh-components/texts/Text";
 import Button from "@/refresh-components/buttons/Button";
 import { SvgFileText, SvgDownloadCloud, SvgImage } from "@opal/icons";
-import { getArtifactUrl, FileSystemEntry } from "@/lib/build/client";
+import { FileSystemEntry } from "@/lib/build/client";
+import { getArtifactUrl } from "@/lib/api/domains/craft/api";
 
 interface FilePreviewModalProps {
   sessionId: string;
@@ -39,7 +41,7 @@ export default function FilePreviewModal({
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch(downloadUrl);
+        const response = await fetchCraftFilePreview(sessionId, entry.path);
         if (!response.ok) {
           throw new Error(`Failed to fetch file: ${response.statusText}`);
         }

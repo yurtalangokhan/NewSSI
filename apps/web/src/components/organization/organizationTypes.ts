@@ -3,6 +3,7 @@ export interface OrganizationNode {
   name: string;
   path: string;
   parent_id: string | null;
+  is_scope_root?: boolean;
   description?: string;
   metadata?: Record<string, unknown>;
   children?: OrganizationNode[];
@@ -43,6 +44,7 @@ export interface OrganizationMember {
     first_name?: string;
     last_name?: string;
     username?: string;
+    role?: string | null;
   } | null;
 }
 

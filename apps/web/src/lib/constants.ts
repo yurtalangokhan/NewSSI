@@ -6,29 +6,16 @@ export enum AuthType {
   CLOUD = "cloud",
 }
 
-export const HOST_URL = process.env.WEB_DOMAIN || "http://localhost:3000";
-
-export const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
-export const USER_SERVICE_URL =
-  process.env.USER_SERVICE_URL || "http://localhost:8090";
+// Nothing environment-backed lives here. Every setting read from the
+// environment — service URLs, auth mode, branding, feature flags — is declared
+// in lib/env/schema.ts and consumed through lib/settings.ts. This module holds
+// only fixed constants.
 
 // Documentation URLs
-export const DOCS_BASE_URL = "https://docs.onyx.app";
+export const DOCS_BASE_URL = "https://docs.atlas.app";
 export const DOCS_ADMINS_PATH = `${DOCS_BASE_URL}/admins`;
 
-export const MCP_INTERNAL_URL =
-  process.env.MCP_INTERNAL_URL || "http://127.0.0.1:8090";
-
-// NOTE: this should ONLY be used on the server-side (including middleware).
-// The AUTH_TYPE environment variable is set in the backend and shared with Next.js
-export const SERVER_SIDE_ONLY__AUTH_TYPE = (process.env.AUTH_TYPE ||
-  AuthType.BASIC) as AuthType;
-
-export const NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED =
-  process.env.NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED?.toLowerCase() ===
-  "true";
-
-export const TENANT_ID_COOKIE_NAME = "onyx_tid";
+export const TENANT_ID_COOKIE_NAME = "atlas_tid";
 
 export const GMAIL_AUTH_IS_ADMIN_COOKIE_NAME = "gmail_auth_is_admin";
 
@@ -38,52 +25,7 @@ export const GOOGLE_DRIVE_AUTH_IS_ADMIN_COOKIE_NAME =
 export const SEARCH_TYPE_COOKIE_NAME = "search_type";
 export const AGENTIC_SEARCH_TYPE_COOKIE_NAME = "agentic_type";
 
-export const LOGOUT_DISABLED =
-  process.env.NEXT_PUBLIC_DISABLE_LOGOUT?.toLowerCase() === "true";
-
 export const TOGGLED_CONNECTORS_COOKIE_NAME = "toggled_connectors";
-
-/* Enterprise-only settings */
-export const NEXT_PUBLIC_CUSTOM_REFRESH_URL =
-  process.env.NEXT_PUBLIC_CUSTOM_REFRESH_URL;
-
-// NOTE: this should ONLY be used on the server-side. If used client side,
-// it will not be accurate (will always be false).
-export const SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED =
-  process.env.ENABLE_PAID_ENTERPRISE_EDITION_FEATURES?.toLowerCase() === "true";
-// NOTE: since this is a `NEXT_PUBLIC_` variable, it will be set at
-// build-time
-// TODO: consider moving this to an API call so that the api_server
-// can be the single source of truth
-export const EE_ENABLED =
-  process.env.NEXT_PUBLIC_ENABLE_PAID_EE_FEATURES?.toLowerCase() === "true";
-
-export const CUSTOM_ANALYTICS_ENABLED = process.env.CUSTOM_ANALYTICS_SECRET_KEY
-  ? true
-  : false;
-
-export const GTM_ENABLED =
-  process.env.NEXT_PUBLIC_GTM_ENABLED?.toLowerCase() === "true";
-
-export const NEXT_PUBLIC_CLOUD_ENABLED =
-  process.env.NEXT_PUBLIC_CLOUD_ENABLED?.toLowerCase() === "true";
-
-export const REGISTRATION_URL =
-  process.env.INTERNAL_URL || "http://127.0.0.1:3001";
-
-export const SERVER_SIDE_ONLY__CLOUD_ENABLED =
-  process.env.NEXT_PUBLIC_CLOUD_ENABLED?.toLowerCase() === "true";
-
-export const NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED =
-  process.env.NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED?.toLowerCase() === "true" &&
-  !NEXT_PUBLIC_CLOUD_ENABLED;
-
-export const NEXT_PUBLIC_TEST_ENV =
-  process.env.NEXT_PUBLIC_TEST_ENV?.toLowerCase() === "true";
-
-export const NEXT_PUBLIC_INCLUDE_ERROR_POPUP_SUPPORT_LINK =
-  process.env.NEXT_PUBLIC_INCLUDE_ERROR_POPUP_SUPPORT_LINK?.toLowerCase() ===
-  "true";
 
 // Restrict markdown links to safe protocols
 export const ALLOWED_URL_PROTOCOLS = ["http:", "https:", "mailto:"] as const;

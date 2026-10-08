@@ -9,6 +9,7 @@
  */
 
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { envelopeResponse } from "@tests/setup/responseModel";
 import { useFlowVersions, type FlowVersion } from "../hooks/useFlowVersions";
 
 // SWR keeps a module-level cache shared across every renderHook call in
@@ -43,8 +44,26 @@ function version(
   };
 }
 
-function jsonResponse(status: number, body: unknown) {
-  return { ok: status >= 200 && status < 300, status, json: async () => body };
+/** A ResponseModel reply, as agent-service answers every flow endpoint. */
+function jsonResponse(status: number, data: unknown) {
+  return envelopeResponse(data, { status });
+}
+
+function failureResponse(
+  status: number,
+  code: string,
+  message: string,
+  details: Record<string, unknown> = {}
+) {
+  return new Response(
+    JSON.stringify({
+      statusCode: status,
+      message,
+      data: null,
+      error: { code, message, details },
+    }),
+    { status, headers: { "Content-Type": "application/json" } }
+  );
 }
 
 beforeEach(() => {
@@ -81,12 +100,38 @@ describe("useFlowVersions — 28.11, no published version shows draft state", ()
 });
 
 describe("useFlowVersions — 28.6, publish 409 offers reload, preserves the draft", () => {
+  it("sends an idempotency key with the publish request", async () => {
+    const definitionId = nextDefinitionId();
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, version(definitionId)));
+
+    const { result } = renderHook(() => useFlowVersions(definitionId));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.publish();
+    });
+
+    const publishCall = (global.fetch as jest.Mock).mock.calls.find((call) =>
+      String(call[0]).endsWith("/flow/publish")
+    );
+    expect(publishCall).toBeDefined();
+    expect(
+      new Headers(publishCall?.[1]?.headers).get("Idempotency-Key")
+    ).toBeTruthy();
+  });
+
   it("returns a conflict result instead of throwing or silently retrying", async () => {
     const definitionId = nextDefinitionId();
     (global.fetch as jest.Mock)
       .mockResolvedValueOnce(jsonResponse(200, [])) // initial versions GET
       .mockResolvedValueOnce(
-        jsonResponse(409, { detail: "Version 4 was already published." })
+        failureResponse(
+          409,
+          "flow.version_conflict",
+          "Version 4 was already published."
+        )
       );
 
     const { result } = renderHook(() => useFlowVersions(definitionId));
@@ -118,17 +163,15 @@ describe("useFlowVersions — 28.7, publish 400 maps issues with their node_id",
     (global.fetch as jest.Mock)
       .mockResolvedValueOnce(jsonResponse(200, []))
       .mockResolvedValueOnce(
-        jsonResponse(400, {
-          detail: {
-            errors: [
-              {
-                code: "FLOW_UNKNOWN_COMPONENT",
-                message: "Unknown component",
-                node_id: "n1",
-                edge_id: null,
-              },
-            ],
-          },
+        failureResponse(400, "flow.validation_failed", "Flow is invalid", {
+          errors: [
+            {
+              code: "FLOW_UNKNOWN_COMPONENT",
+              message: "Unknown component",
+              node_id: "n1",
+              edge_id: null,
+            },
+          ],
         })
       );
 
@@ -157,6 +200,35 @@ describe("useFlowVersions — 28.7, publish 400 maps issues with their node_id",
 });
 
 describe("useFlowVersions — 28.10, rollback refreshes the version list", () => {
+  it("sends an idempotency key with the rollback request", async () => {
+    const definitionId = nextDefinitionId();
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(
+        jsonResponse(200, [version(definitionId, { status: "published" })])
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, version(definitionId, { status: "published" }))
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, [version(definitionId, { status: "published" })])
+      );
+
+    const { result } = renderHook(() => useFlowVersions(definitionId));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.rollback(1);
+    });
+
+    const rollbackCall = (global.fetch as jest.Mock).mock.calls.find((call) =>
+      String(call[0]).endsWith("/flow/rollback")
+    );
+    expect(rollbackCall).toBeDefined();
+    expect(
+      new Headers(rollbackCall?.[1]?.headers).get("Idempotency-Key")
+    ).toBeTruthy();
+  });
+
   it("re-fetches versions after a successful rollback", async () => {
     const definitionId = nextDefinitionId();
     (global.fetch as jest.Mock)

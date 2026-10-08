@@ -1,7 +1,7 @@
 """The three processing nodes: Data Operations, Split Text, Type Convert.
 
 The operation semantics themselves are covered by the pure tests in
-`tests/domain/flows/test_data_ops_*.py`. What is tested here is the plumbing:
+`tests/service/flows/test_data_ops_*.py`. What is tested here is the plumbing:
 which input a node reads, where the result lands, and what leaves as a
 message.
 """
@@ -12,13 +12,13 @@ import pandas as pd
 import pytest
 from langchain_core.messages import HumanMessage
 
-from agents.graphs.flow_builder import (
+from agents.graphs.flow import (
     _make_operations_node,
     _make_split_text_node,
     _make_type_converter_node,
 )
 from core.exceptions import FlowBuildError
-from models.flows import FlowNode
+from schemas.flows import FlowNode
 
 
 def _node(node_type, node_id="op-1", **values) -> FlowNode:

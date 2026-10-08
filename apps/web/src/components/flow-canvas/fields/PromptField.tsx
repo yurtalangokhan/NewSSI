@@ -6,6 +6,7 @@ import Button from "@/refresh-components/buttons/Button";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import InputTextArea from "@/refresh-components/inputs/InputTextArea";
 import { SvgFileText, SvgMaximize2 } from "@opal/icons";
+import { resolveFieldName } from "./fieldName";
 import type { FieldRendererProps } from "./types";
 import { useTranslation } from "react-i18next";
 
@@ -25,10 +26,12 @@ import { useTranslation } from "react-i18next";
  * no such dependency, so that's what's ported for the expand action.
  */
 export function PromptField({
+  fieldKey,
   value,
   onChange,
   disabled,
   field,
+  componentType,
 }: FieldRendererProps) {
   const { t } = useTranslation();
   const stringValue = typeof value === "string" ? value : "";
@@ -80,7 +83,7 @@ export function PromptField({
         <Modal.Content width="lg" height="full">
           <Modal.Header
             icon={SvgFileText}
-            title={field.display_name}
+            title={resolveFieldName(t, fieldKey, field, componentType)}
             onClose={() => setExpanded(false)}
           />
           {/* `InputTextArea` sizes itself off its `rows` prop, not its

@@ -17,27 +17,26 @@ def _resp(json_body, status: int = 200):
     return m
 
 
-def _client_ctx(client):
-    ctx = MagicMock()
-    ctx.__aenter__ = AsyncMock(return_value=client)
-    ctx.__aexit__ = AsyncMock(return_value=False)
-    return ctx
-
-
 @pytest.fixture(autouse=True)
-def _fernet_key(monkeypatch):
+def _scope_key(monkeypatch):
     from cryptography.fernet import Fernet
 
     import core.security.encryption as enc
 
-    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
-    enc._fernet = None
+    # config_manager reads the environment on every access; reset_ciphers below
+    # drops the cached cipher so the new key takes effect.
+    monkeypatch.setenv("MCP_OAUTH_ENCRYPTION_KEY", Fernet.generate_key().decode())
+    # Stated rather than defaulted: there is no safe value to guess for
+    # where an authorization server delivers codes, so the flow refuses to
+    # run without one. See test_mcp_oauth_redirect_base.py.
+    monkeypatch.setenv("MCP_OAUTH_REDIRECT_BASE", "https://agenticai.example.com")
+    enc.reset_ciphers()
     yield
-    enc._fernet = None
+    enc.reset_ciphers()
 
 
 def test_pkce_pair_challenge_is_s256_of_verifier():
-    from service.MCPOAuthService import MCPOAuthService
+    from service.mcp.mcp_oauth_service import MCPOAuthService
 
     verifier, challenge = MCPOAuthService()._pkce_pair()
     expected = (
@@ -48,8 +47,8 @@ def test_pkce_pair_challenge_is_s256_of_verifier():
 
 
 @pytest.mark.asyncio
-async def test_discover_reads_protected_resource_then_authorization_server():
-    from service.MCPOAuthService import MCPOAuthService
+async def test_discover_reads_protected_resource_then_authorization_server(patch_outbound_request):
+    from service.mcp.mcp_oauth_service import MCPOAuthService
 
     prm = {
         "authorization_servers": ["https://as.example"],
@@ -69,9 +68,7 @@ async def test_discover_reads_protected_resource_then_authorization_server():
             return _resp(asm)
         return _resp({}, status=404)
 
-    client = MagicMock()
-    client.get = AsyncMock(side_effect=fake_get)
-    with patch("service.MCPOAuthService.httpx.AsyncClient", return_value=_client_ctx(client)):
+    with patch_outbound_request(get=fake_get):
         md = await MCPOAuthService().discover("https://mcp.example/mcp")
 
     assert md["authorization_endpoint"] == "https://as.example/authorize"
@@ -81,12 +78,10 @@ async def test_discover_reads_protected_resource_then_authorization_server():
 
 
 @pytest.mark.asyncio
-async def test_discover_raises_mcpautherror_when_no_metadata():
-    from service.MCPOAuthService import MCPAuthError, MCPOAuthService
+async def test_discover_raises_mcpautherror_when_no_metadata(patch_outbound_request):
+    from service.mcp.mcp_oauth_service import MCPAuthError, MCPOAuthService
 
-    client = MagicMock()
-    client.get = AsyncMock(return_value=_resp({}, status=404))
-    with patch("service.MCPOAuthService.httpx.AsyncClient", return_value=_client_ctx(client)):
+    with patch_outbound_request(get=AsyncMock(return_value=_resp({}, status=404))):
         with pytest.raises(MCPAuthError) as ei:
             await MCPOAuthService().discover("https://mcp.example/mcp")
     assert "discovery failed" in str(ei.value)
@@ -94,9 +89,9 @@ async def test_discover_raises_mcpautherror_when_no_metadata():
 
 @pytest.mark.asyncio
 async def test_ensure_client_uses_supplied_credentials_without_dcr():
-    from service.MCPOAuthService import MCPOAuthService
+    from service.mcp.mcp_oauth_service import MCPOAuthService
 
-    with patch("service.MCPOAuthService.MCPCredentialService") as cs:
+    with patch("service.mcp.mcp_oauth_service.MCPCredentialService") as cs:
         cs.get_instance.return_value.store_admin_credentials = AsyncMock()
         cid, secret = await MCPOAuthService().ensure_client(
             {"id": "p1"},
@@ -108,33 +103,32 @@ async def test_ensure_client_uses_supplied_credentials_without_dcr():
 
 
 @pytest.mark.asyncio
-async def test_ensure_client_performs_dcr_when_no_credentials():
-    from service.MCPOAuthService import MCPOAuthService
+async def test_ensure_client_performs_dcr_when_no_credentials(patch_outbound_request):
+    from service.mcp.mcp_oauth_service import MCPOAuthService
 
-    client = MagicMock()
-    client.post = AsyncMock(
+    post = AsyncMock(
         return_value=_resp({"client_id": "dcr-id", "client_secret": "dcr-secret"}, status=201)
     )
     with (
-        patch("service.MCPOAuthService.httpx.AsyncClient", return_value=_client_ctx(client)),
-        patch("service.MCPOAuthService.MCPCredentialService") as cs,
+        patch_outbound_request(post=post),
+        patch("service.mcp.mcp_oauth_service.MCPCredentialService") as cs,
     ):
         cs.get_instance.return_value.store_admin_credentials = AsyncMock()
-        cid, secret = await MCPOAuthService().ensure_client(
+        cid, _secret = await MCPOAuthService().ensure_client(
             {"id": "p1"},
             {"registration_endpoint": "https://as.example/register"},
             client_id=None,
             client_secret=None,
         )
     assert cid == "dcr-id"
-    body = client.post.call_args.kwargs["json"]
+    body = post.call_args.kwargs["json"]
     assert body["grant_types"] == ["authorization_code", "refresh_token"]
     assert body["redirect_uris"][0].endswith("/mcp/oauth/callback")
 
 
 @pytest.mark.asyncio
 async def test_ensure_client_raises_without_registration_endpoint():
-    from service.MCPOAuthService import MCPAuthError, MCPOAuthService
+    from service.mcp.mcp_oauth_service import MCPAuthError, MCPOAuthService
 
     with pytest.raises(MCPAuthError) as ei:
         await MCPOAuthService().ensure_client({"id": "p1"}, {}, client_id=None, client_secret=None)
@@ -143,7 +137,7 @@ async def test_ensure_client_raises_without_registration_endpoint():
 
 @pytest.mark.asyncio
 async def test_begin_builds_authorization_url_and_persists_session():
-    from service.MCPOAuthService import MCPOAuthService
+    from service.mcp.mcp_oauth_service import MCPOAuthService
 
     svc = MCPOAuthService()
     svc._session_repo = AsyncMock()
@@ -175,8 +169,8 @@ async def test_begin_builds_authorization_url_and_persists_session():
 
 
 @pytest.mark.asyncio
-async def test_complete_exchanges_code_and_stores_tokens():
-    from service.MCPOAuthService import MCPOAuthService
+async def test_complete_exchanges_code_and_stores_tokens(patch_outbound_request):
+    from service.mcp.mcp_oauth_service import MCPOAuthService
 
     svc = MCPOAuthService()
     svc._session_repo = AsyncMock()
@@ -197,15 +191,14 @@ async def test_complete_exchanges_code_and_stores_tokens():
         "name": "GitHub Copilot",
         "auth_performer": "PER_USER",
     }
-    client = MagicMock()
-    client.post = AsyncMock(
+    post = AsyncMock(
         return_value=_resp(
             {"access_token": "AT", "refresh_token": "RT", "expires_in": 3600, "scope": "read"}
         )
     )
     with (
-        patch("service.MCPOAuthService.httpx.AsyncClient", return_value=_client_ctx(client)),
-        patch("service.MCPOAuthService.MCPCredentialService") as cs,
+        patch_outbound_request(post=post),
+        patch("service.mcp.mcp_oauth_service.MCPCredentialService") as cs,
     ):
         cs.get_instance.return_value.store_oauth_tokens = AsyncMock()
         out = await svc.complete("st", "the-code")
@@ -219,7 +212,7 @@ async def test_complete_exchanges_code_and_stores_tokens():
 
 @pytest.mark.asyncio
 async def test_complete_raises_on_missing_session():
-    from service.MCPOAuthService import MCPAuthError, MCPOAuthService
+    from service.mcp.mcp_oauth_service import MCPAuthError, MCPOAuthService
 
     svc = MCPOAuthService()
     svc._session_repo = AsyncMock()

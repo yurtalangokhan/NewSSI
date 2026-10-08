@@ -1,4 +1,5 @@
 "use client";
+import { errorMessageFromUnknown } from "@/lib/api/errors";
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -21,19 +22,23 @@ import {
   SvgFileText,
   SvgOrganization,
 } from "@opal/icons";
-import { BillingInformation, LicenseStatus } from "@/lib/billing/interfaces";
+import {
+  BillingInformation,
+  LicenseStatus,
+} from "@/lib/api/domains/billing/types";
+import {
+  claimLicense,
+  refreshLicenseCache,
+} from "@/lib/api/domains/billing/api";
 import {
   createCustomerPortalSession,
   resetStripeConnection,
   updateSeatCount,
-  claimLicense,
-  refreshLicenseCache,
-} from "@/lib/billing/svc";
-import { APP_SUPPORT_EMAIL } from "@/lib/appInfo";
+} from "@/lib/api/domains/billing/api";
 import { formatDateShort } from "@/lib/dateUtils";
 import { humanReadableFormatShort } from "@/lib/time";
-import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
-import useUsers from "@/hooks/useUsers";
+import { useUsers } from "@/lib/api/domains/access/hooks";
+import { appSettings } from "@/lib/settings";
 
 // ----------------------------------------------------------------------------
 // Constants
@@ -241,7 +246,7 @@ function SubscriptionCard({
               {t("managedThroughSales")}
               <br />
               <a
-                href={`mailto:${APP_SUPPORT_EMAIL}?subject=Billing%20change%20request`}
+                href={`mailto:${appSettings.APP_SUPPORT_EMAIL}?subject=Billing%20change%20request`}
                 className="underline"
               >
                 {t("contactBillingLink")}
@@ -343,7 +348,7 @@ function SeatsCard({
 
     try {
       await updateSeatCount({ new_seat_count: newSeatCount });
-      if (!NEXT_PUBLIC_CLOUD_ENABLED) {
+      if (!appSettings.NEXT_PUBLIC_CLOUD_ENABLED) {
         // Wait for control plane to process the subscription update before claiming
         await new Promise((resolve) => setTimeout(resolve, 1500));
         await claimLicense();
@@ -353,7 +358,7 @@ function SeatsCard({
       await onRefresh?.();
       setIsEditing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("failedToUpdateSeats"));
+      setError(errorMessageFromUnknown(err, t("failedToUpdateSeats")));
     } finally {
       setIsSubmitting(false);
     }

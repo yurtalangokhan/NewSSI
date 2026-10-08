@@ -9,7 +9,7 @@ import {
   Packet,
   PacketType,
   StopReason,
-} from "@/app/app/services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 import { createInitialState, processPackets } from "./packetProcessor";
 import { transformPacketGroups } from "../transformers";
 import {

@@ -1,3 +1,8 @@
+import { loadMutableFlowDraft } from "@/lib/api/domains/agents/api";
+import { loadPublishedFlowSeed } from "@/lib/api/domains/agents/api";
+import { saveMutableFlowDraft } from "@/lib/api/domains/agents/api";
+import { discardMutableFlowDraft } from "@/lib/api/domains/agents/api";
+
 /**
  * Loads a flow-backed agent definition's draft into the canvas on mount,
  * and autosaves it back on a debounce. No direct Langflow equivalent —
@@ -17,7 +22,6 @@ import type { StoreApi } from "zustand";
 import type { FlowStore } from "../stores/flowStore";
 import { fromFlowSpec, toFlowSpec } from "../utils/compile";
 import type { WireFlowSpec } from "../types/flow";
-import { flowApi } from "@/components/flow-canvas/api/flowApi";
 
 export type FlowDraftApi = {
   loadDraft: (definitionId: string) => Promise<WireFlowSpec | null>;
@@ -27,9 +31,7 @@ export type FlowDraftApi = {
 async function defaultLoadDraft(
   definitionId: string
 ): Promise<WireFlowSpec | null> {
-  const res = await fetch(flowApi.draft(definitionId), {
-    credentials: "include",
-  });
+  const res = await loadMutableFlowDraft(definitionId);
   if (res.status === 404) return loadPublishedAsDraftSeed(definitionId);
   if (!res.ok) throw new Error(`Failed to load draft: ${res.status}`);
   return res.json();
@@ -50,9 +52,7 @@ async function defaultLoadDraft(
 async function loadPublishedAsDraftSeed(
   definitionId: string
 ): Promise<WireFlowSpec | null> {
-  const res = await fetch(flowApi.published(definitionId), {
-    credentials: "include",
-  });
+  const res = await loadPublishedFlowSeed(definitionId);
   if (!res.ok) return null;
   return res.json();
 }
@@ -73,12 +73,7 @@ async function defaultSaveDraft(
   definitionId: string,
   spec: WireFlowSpec
 ): Promise<void> {
-  const res = await fetch(flowApi.draft(definitionId), {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ flow_spec: spec }),
-  });
+  const res = await saveMutableFlowDraft(definitionId, { flow_spec: spec });
   if (!res.ok) throw new Error(`Failed to save draft: ${res.status}`);
 }
 
@@ -199,10 +194,7 @@ export async function saveDraftNow(
  * existed), so a double-click on "discard changes" is harmless.
  */
 export async function discardDraft(definitionId: string): Promise<void> {
-  const res = await fetch(flowApi.draft(definitionId), {
-    method: "DELETE",
-    credentials: "include",
-  });
+  const res = await discardMutableFlowDraft(definitionId);
   if (!res.ok && res.status !== 404) {
     throw new Error(`Failed to discard draft: ${res.status}`);
   }

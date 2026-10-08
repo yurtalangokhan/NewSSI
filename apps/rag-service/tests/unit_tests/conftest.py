@@ -2,13 +2,13 @@ import os
 from pathlib import Path
 
 import pytest
-from i18n import init_service_i18n
 from idempotency import AsyncRedisPool
+from localization import init_localization
 
-from langconnect import auth
-from langconnect.authorization import AuthorizationClient
+from src.shared import auth
+from src.shared.authorization import AuthorizationClient
 
-init_service_i18n(Path(__file__).resolve().parents[2] / "locales")
+init_localization(Path(__file__).resolve().parents[2] / "locales")
 
 if "OPENAI_API_KEY" in os.environ:
     raise AssertionError(
@@ -45,13 +45,25 @@ class _FakeRedis:
             return 1
         return 0
 
+    async def delete(self, *keys: str) -> int:
+        deleted = 0
+        for key in keys:
+            if self.values.pop(key, None) is not None:
+                deleted += 1
+        return deleted
+
 
 @pytest.fixture(autouse=True)
 def use_test_auth_mode(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(auth, "IS_TESTING", True)
-    monkeypatch.setattr(auth.config, "IS_TESTING", True)
-    monkeypatch.setattr(auth.config, "KEYCLOAK_ENABLED", False)
-    monkeypatch.setattr(auth.config, "KEYCLOAK_ISSUER_URL", "")
+    from tests.unit_tests.fixtures import GATEWAY_SECRET
+
+    monkeypatch.setenv("IS_TESTING", "true")
+    # rag-service authenticates only from the trusted headers Gateway sets, so
+    # the suite configures the service with the secret those headers carry.
+    monkeypatch.setattr(auth, "INTERNAL_SERVICE_TOKEN", GATEWAY_SECRET)
+    monkeypatch.setenv(
+        "INTERNAL_USER_SERVICE_URL", "http://apisix:8000/internal/user-service"
+    )
 
     async def _allow_permission(
         self: AuthorizationClient,

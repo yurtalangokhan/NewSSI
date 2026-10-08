@@ -1,10 +1,19 @@
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { integrationsEndpoints } from "@/lib/api/domains/integrations/endpoints";
+
+import {
+  fetchSlackBot,
+  fetchSlackBots,
+  fetchSlackChannelConfigs,
+  fetchSlackChannelConfigsByBot,
+} from "@/lib/api/domains/integrations/api";
 import { SlackBot, SlackChannelConfig } from "@/lib/types";
 import useSWR, { mutate } from "swr";
 
 export const useSlackChannelConfigs = () => {
-  const url = "/api/manage/admin/slack-app/channel";
-  const swrResponse = useSWR<SlackChannelConfig[]>(url, errorHandlingFetcher);
+  const url = integrationsEndpoints.listSlackChannels.browserPath;
+  const swrResponse = useSWR<SlackChannelConfig[]>(url, () =>
+    fetchSlackChannelConfigs<SlackChannelConfig[]>()
+  );
 
   return {
     ...swrResponse,
@@ -13,8 +22,10 @@ export const useSlackChannelConfigs = () => {
 };
 
 export const useSlackBots = () => {
-  const url = "/api/manage/admin/slack-app/bots";
-  const swrResponse = useSWR<SlackBot[]>(url, errorHandlingFetcher);
+  const url = integrationsEndpoints.createSlackBot.browserPath;
+  const swrResponse = useSWR<SlackBot[]>(url, () =>
+    fetchSlackBots<SlackBot[]>()
+  );
 
   return {
     ...swrResponse,
@@ -23,8 +34,10 @@ export const useSlackBots = () => {
 };
 
 export const useSlackBot = (botId: number) => {
-  const url = `/api/manage/admin/slack-app/bots/${botId}`;
-  const swrResponse = useSWR<SlackBot>(url, errorHandlingFetcher);
+  const url = integrationsEndpoints.fetchSlackBot(String(botId)).browserPath;
+  const swrResponse = useSWR<SlackBot>(url, () =>
+    fetchSlackBot<SlackBot>(botId)
+  );
 
   return {
     ...swrResponse,
@@ -33,8 +46,12 @@ export const useSlackBot = (botId: number) => {
 };
 
 export const useSlackChannelConfigsByBot = (botId: number) => {
-  const url = `/api/manage/admin/slack-app/bots/${botId}/config`;
-  const swrResponse = useSWR<SlackChannelConfig[]>(url, errorHandlingFetcher);
+  const url = integrationsEndpoints.slackChannelConfigByEncodedBot(
+    String(botId)
+  ).browserPath;
+  const swrResponse = useSWR<SlackChannelConfig[]>(url, () =>
+    fetchSlackChannelConfigsByBot<SlackChannelConfig[]>(botId)
+  );
 
   return {
     ...swrResponse,

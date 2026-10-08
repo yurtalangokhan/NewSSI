@@ -6,7 +6,6 @@ import Text from "@/refresh-components/texts/Text";
 import { Select } from "@/refresh-components/cards";
 import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
 import { toast } from "@/hooks/useToast";
-import { errorHandlingFetcher } from "@/lib/fetcher";
 import { LLMProviderResponse, LLMProviderView } from "@/interfaces/llm";
 import { useTranslation } from "react-i18next";
 import {
@@ -14,11 +13,13 @@ import {
   ImageProvider,
 } from "@/app/admin/configuration/image-generation/constants";
 import ImageGenerationConnectionModal from "@/app/admin/configuration/image-generation/ImageGenerationConnectionModal";
+import { ImageGenerationConfigView } from "@/lib/api/domains/model-providers/image-types";
 import {
-  ImageGenerationConfigView,
+  fetchAdminLLMProviderWithImageGen,
+  fetchImageGenerationConfigs,
   setDefaultImageGenerationConfig,
   unsetDefaultImageGenerationConfig,
-} from "@/lib/configuration/imageConfigurationService";
+} from "@/lib/api/domains/model-providers/api";
 import { ProviderIcon } from "@/app/admin/configuration/llm/ProviderIcon";
 import Message from "@/refresh-components/messages/Message";
 
@@ -28,8 +29,9 @@ export default function ImageGenerationContent() {
     error: llmError,
     mutate: refetchProviders,
   } = useSWR<LLMProviderResponse<LLMProviderView>>(
-    "/api/admin/llm/provider?include_image_gen=true",
-    errorHandlingFetcher
+    "image-generation-llm-providers",
+    () =>
+      fetchAdminLLMProviderWithImageGen<LLMProviderResponse<LLMProviderView>>()
   );
   const { t } = useTranslation();
   const llmProviders = llmProviderResponse?.providers ?? [];
@@ -39,8 +41,8 @@ export default function ImageGenerationContent() {
     error: configError,
     mutate: refetchConfigs,
   } = useSWR<ImageGenerationConfigView[]>(
-    "/api/admin/image-generation/config",
-    errorHandlingFetcher
+    "image-generation-configs",
+    fetchImageGenerationConfigs
   );
 
   const modal = useCreateModal();

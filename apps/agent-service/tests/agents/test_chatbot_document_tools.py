@@ -9,11 +9,11 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+import pytest
 
-from agents import chatbot as chatbot_module
-from agents import document_tools
+import agents.implementations.chatbot as chatbot_module
+from agents.tooling import document_create_tools, document_tools
 
 
 class _NoToolSupportModel:
@@ -64,7 +64,7 @@ class _ToolCallingModel:
 
 @pytest.fixture(autouse=True)
 def _clear_file_store():
-    from service.FileService import _STORE
+    from service.storage.file_service import _STORE
 
     _STORE.clear()
     yield
@@ -74,14 +74,14 @@ def _clear_file_store():
 @pytest.fixture(autouse=True)
 def _stub_persistence(monkeypatch):
     """Document tools must not touch real MinIO/DB during these tests."""
-    monkeypatch.setattr("service.MinioService.upload_file", lambda **kwargs: "object-key")
+    monkeypatch.setattr("service.storage.minio_service.upload_file", lambda **kwargs: "object-key")
 
     class _NoopRepo:
         async def create(self, **kwargs):
             return {}
 
     monkeypatch.setattr(
-        "core.db.repositories.document_repo.DocumentRepository", lambda: _NoopRepo()
+        "infrastructure.db.repositories.document_repo.DocumentRepository", lambda: _NoopRepo()
     )
 
 
@@ -149,7 +149,7 @@ async def test_document_tool_prompt_is_injected_only_when_tools_enabled(monkeypa
 
 @pytest.mark.asyncio
 async def test_skips_tool_loop_entirely_when_document_tools_disabled(monkeypatch):
-    monkeypatch.setattr(document_tools.settings, "DOCUMENT_TOOLS_ENABLED", False)
+    monkeypatch.setenv("DOCUMENT_TOOLS_ENABLED", str(False))
     model = _ToolCallingModel()
     monkeypatch.setattr(
         chatbot_module, "get_model_from_config", lambda configurable, default_model: model
@@ -275,11 +275,11 @@ async def test_unexpected_tool_failure_is_reported_back_to_the_model(monkeypatch
         chatbot_module, "get_model_from_config", lambda configurable, default_model: model
     )
 
-    def _boom(*args, **kwargs):
+    async def _boom(*args, **kwargs):
         raise RuntimeError("disk dolu")
 
     # Raised outside the tool's own error handling, so it escapes the call.
-    monkeypatch.setattr(document_tools.docgen, "sanitize_filename", _boom)
+    monkeypatch.setattr(document_create_tools, "_create", _boom)
 
     result = await chatbot_module.call_model(
         {"messages": [HumanMessage(content="Bana bir rapor hazırla")]},
@@ -288,7 +288,8 @@ async def test_unexpected_tool_failure_is_reported_back_to_the_model(monkeypatch
     )
 
     tool_message = result["messages"][1]
-    assert tool_message.content == "Error: create_document failed: disk dolu"
+    assert tool_message.content == "Error: create_document failed unexpectedly; the error was logged."
+    assert "disk dolu" not in tool_message.content
     assert result["messages"][-1].content == "İşte dosyanız."
 
 
@@ -309,6 +310,59 @@ async def test_exhausted_tool_loop_still_ends_with_a_text_answer(monkeypatch):
     final_message = result["messages"][-1]
     assert type(final_message).__name__ == "AIMessage"
     assert final_message.content == "son cevap"
+
+
+class _FiveToolCallsThenAnswerModel:
+    """list → read → edit → retry → re-read, then the answer (design 4.8)."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def bind_tools(self, tools):
+        return self
+
+    async def ainvoke(self, messages):
+        self.calls += 1
+        if self.calls > 5:
+            return AIMessage(content="Belge güncellendi.")
+        return AIMessage(
+            content="",
+            tool_calls=[{"name": "list_documents", "args": {}, "id": f"call-{self.calls}"}],
+        )
+
+
+@pytest.mark.asyncio
+async def test_five_tool_calls_then_an_answer_complete_inside_the_loop(monkeypatch):
+    model = _FiveToolCallsThenAnswerModel()
+    monkeypatch.setattr(
+        chatbot_module, "get_model_from_config", lambda configurable, default_model: model
+    )
+
+    result = await chatbot_module.call_model(
+        {"messages": [HumanMessage(content="Belgeyi düzelt")]},
+        {"configurable": {}},
+        store=None,
+    )
+
+    assert chatbot_module._MAX_DOCUMENT_TOOL_ITERATIONS == 6
+    assert model.calls == 6
+    assert result["messages"][-1].content == "Belge güncellendi."
+
+
+def test_edit_and_rewrite_calls_are_routed_through_argument_recovery():
+    import asyncio
+
+    seen: list[dict] = []
+
+    class _Tool:
+        async def ainvoke(self, args, config):
+            seen.append(args)
+            return "ok"
+
+    asyncio.run(chatbot_module._run_tool_call(_Tool(), {"name": "edit_document", "args": {"edits": {"old": "a", "new": "b"}}}, {}))
+    asyncio.run(chatbot_module._run_tool_call(_Tool(), {"name": "rewrite_document", "args": {"text": "gövde"}}, {}))
+    assert seen[0]["edits"] == [{"old_str": "a", "new_str": "b"}]
+    assert seen[1]["content"] == "gövde"
 
 
 class _WrappedContentModel:
@@ -392,3 +446,183 @@ async def test_model_without_runtime_tool_support_falls_back_to_plain_chat(monke
     assert len(result["messages"]) == 1
     assert result["messages"][0].content == "Merhaba, size nasıl yardımcı olabilirim?"
     assert len(model.plain_calls) == 1
+
+
+class _DeadEndUntilNudgedModel:
+    """Ends its turn empty (reasoning only) until it is nudged, then calls the tool."""
+
+    def __init__(self, dead_ends: int = 1) -> None:
+        self.dead_ends = dead_ends
+        self.ainvoke_calls: list[list] = []
+
+    def bind_tools(self, tools):
+        return self
+
+    async def ainvoke(self, messages):
+        self.ainvoke_calls.append(list(messages))
+        if any(isinstance(m, ToolMessage) and m.name == "create_document" for m in messages):
+            return AIMessage(content="Belge hazır.")
+        if self.dead_ends > 0:
+            self.dead_ends -= 1
+            return AIMessage(content="", additional_kwargs={"reasoning_content": "Belgeyi oluşturacağım."})
+        return AIMessage(
+            content="",
+            tool_calls=[
+                {
+                    "name": "create_document",
+                    "args": {"filename": "rapor", "format": "txt", "content": "gövde"},
+                    "id": "call-1",
+                }
+            ],
+        )
+
+
+@pytest.mark.asyncio
+async def test_a_dead_end_turn_is_nudged_and_the_document_tool_still_runs(monkeypatch):
+    model = _DeadEndUntilNudgedModel(dead_ends=1)
+    monkeypatch.setattr(
+        chatbot_module, "get_model_from_config", lambda configurable, default_model: model
+    )
+
+    result = await chatbot_module.call_model(
+        {"messages": [HumanMessage(content="Bunu bir dokümana ekle")]},
+        {"configurable": {"thread_id": "thread-1", "user_id": "user-1"}},
+        store=None,
+    )
+
+    assert "__generated_file__" in next(m for m in result["messages"] if isinstance(m, ToolMessage)).content
+    assert result["messages"][-1].content == "Belge hazır."
+    # The nudge steers the retry only; it is not part of the saved conversation.
+    assert not any(isinstance(m, HumanMessage) for m in result["messages"])
+    assert not any(m.content == "" and not m.tool_calls for m in result["messages"] if isinstance(m, AIMessage))
+
+
+@pytest.mark.asyncio
+async def test_a_turn_that_stays_a_dead_end_ends_with_an_honest_message_not_a_blank(monkeypatch):
+    model = _DeadEndUntilNudgedModel(dead_ends=99)
+    monkeypatch.setattr(
+        chatbot_module, "get_model_from_config", lambda configurable, default_model: model
+    )
+
+    result = await chatbot_module.call_model(
+        {"messages": [HumanMessage(content="Bunu bir dokümana ekle")]},
+        {"configurable": {"thread_id": "thread-1", "user_id": "user-1"}},
+        store=None,
+    )
+
+    assert len(model.ainvoke_calls) == 3  # first attempt + two nudged retries
+    (final,) = result["messages"]
+    assert final.content.strip()
+    assert not final.tool_calls
+
+
+class _PastesAttachmentUntilNudgedModel:
+    """Writes the attachment markdown into its reply (no tool call) until it is nudged."""
+
+    def __init__(self) -> None:
+        self.ainvoke_calls: list[list] = []
+
+    def bind_tools(self, tools):
+        return self
+
+    async def ainvoke(self, messages):
+        self.ainvoke_calls.append(list(messages))
+        if any(isinstance(m, ToolMessage) and m.name == "create_document" for m in messages):
+            return AIMessage(content="Belge hazır.")
+        if not any(isinstance(m, HumanMessage) and "create_document" in str(m.content) for m in messages):
+            return AIMessage(content="Belgeyi oluşturuyorum:\n\n![alt text](attachment:41173987-2c0f)")
+        return AIMessage(
+            content="",
+            tool_calls=[
+                {
+                    "name": "create_document",
+                    "args": {
+                        "filename": "rapor",
+                        "format": "md",
+                        "content": "gövde",
+                    },
+                    "id": "call-1",
+                }
+            ],
+        )
+
+
+@pytest.mark.asyncio
+async def test_a_reply_that_pastes_an_attachment_into_the_chat_is_retried_and_the_document_is_made(monkeypatch):
+    from agents.graphs.middleware import ATTACHMENT_IN_PROSE_NUDGE
+
+    model = _PastesAttachmentUntilNudgedModel()
+    monkeypatch.setattr(
+        chatbot_module, "get_model_from_config", lambda configurable, default_model: model
+    )
+
+    result = await chatbot_module.call_model(
+        {"messages": [HumanMessage(content="Bu fotoğrafı bir dokümanda kullan")]},
+        {"configurable": {"thread_id": "thread-1", "user_id": "user-1"}},
+        store=None,
+    )
+
+    assert model.ainvoke_calls[1][-1].content == ATTACHMENT_IN_PROSE_NUDGE
+    assert "__generated_file__" in next(m for m in result["messages"] if isinstance(m, ToolMessage)).content
+    assert result["messages"][-1].content == "Belge hazır."
+    # The pasted reply and the nudge steer the retry only; neither is saved.
+    assert not any(isinstance(m, HumanMessage) for m in result["messages"])
+    assert not any("attachment:" in str(m.content) for m in result["messages"] if isinstance(m, AIMessage))
+
+
+class _OneImageStore:
+    async def list_for_thread(self, user_id, thread_id):
+        from core.types.authored_documents import AttachmentImageInfo
+
+        return [AttachmentImageInfo(file_id="f1", filename="m5.jpg", mime_type="image/jpeg")]
+
+
+@pytest.mark.asyncio
+async def test_the_model_is_told_the_attached_image_id_without_calling_a_tool(monkeypatch):
+    """A small model may announce list_attachments and stop: the id must not depend on it."""
+    from agents.tooling import attachment_manifest
+
+    model = _ToolCallingModel()
+    monkeypatch.setattr(
+        chatbot_module, "get_model_from_config", lambda configurable, default_model: model
+    )
+    monkeypatch.setattr(attachment_manifest, "attachment_store", lambda: _OneImageStore())
+
+    result = await chatbot_module.call_model(
+        {"messages": [HumanMessage(content="Bu fotoğrafı dokümanda kullan")]},
+        {
+            "configurable": {
+                "thread_id": "5d0e1c60-7a31-4c8e-9f0b-2c6a9f6f8a11",
+                "user_id": "user-1",
+            }
+        },
+        store=None,
+    )
+
+    system = model.ainvoke_calls[0][0]
+    assert document_tools.DOCUMENT_TOOL_PROMPT in system.content
+    assert "attachment:f1" in system.content
+    # Transient: the manifest is in the model call only, never in the returned state.
+    assert [type(m).__name__ for m in result["messages"]] == ["AIMessage", "ToolMessage", "AIMessage"]
+    assert not any("only these ids work" in str(m.content) for m in result["messages"])
+
+
+@pytest.mark.asyncio
+async def test_a_chat_without_a_thread_gets_the_plain_document_prompt(monkeypatch):
+    from agents.tooling import attachment_manifest
+
+    model = _ToolCallingModel()
+    monkeypatch.setattr(
+        chatbot_module, "get_model_from_config", lambda configurable, default_model: model
+    )
+    monkeypatch.setattr(
+        attachment_manifest, "attachment_store", lambda: pytest.fail("must not query storage")
+    )
+
+    await chatbot_module.call_model(
+        {"messages": [HumanMessage(content="Merhaba")]},
+        {"configurable": {"user_id": "user-1"}},
+        store=None,
+    )
+
+    assert "only these ids work" not in model.ainvoke_calls[0][0].content

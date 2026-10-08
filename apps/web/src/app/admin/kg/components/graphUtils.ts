@@ -10,7 +10,7 @@ import {
   type GraphNode,
   type ClusteredGraphData,
   type GraphData,
-} from "@/lib/langconnect";
+} from "@/lib/api/domains/knowledge/types";
 
 // ── Color palette ──────────────────────────────────────────────────────────
 

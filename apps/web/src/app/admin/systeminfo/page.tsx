@@ -1,9 +1,10 @@
 "use client";
 
-import { getWebVersion, getBackendVersion } from "@/lib/version";
+import { getWebVersion } from "@/lib/api/domains/system/version";
+import { getBackendVersion } from "@/lib/api/domains/system/api";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import Text from "@/refresh-components/texts/Text";
 import ListSkeleton from "@/refresh-components/skeletons/ListSkeleton";

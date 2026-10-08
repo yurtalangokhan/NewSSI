@@ -6,7 +6,7 @@ MUTATING_METHODS = {"DELETE", "PATCH", "POST", "PUT"}
 
 
 def test_rag_idempotency_config_uses_settings_values() -> None:
-    from langconnect.idempotency import build_idempotency_config
+    from src.shared.idempotency import build_idempotency_config
 
     settings = SimpleNamespace(
         REDIS_HOST="redis-host",
@@ -35,7 +35,7 @@ def test_rag_idempotency_config_uses_settings_values() -> None:
 
 
 def test_rag_idempotency_policy_classifies_representative_routes() -> None:
-    from langconnect.idempotency import (
+    from src.shared.idempotency import (
         build_idempotency_exclude_paths,
         build_idempotency_policy,
     )
@@ -58,7 +58,7 @@ def test_rag_idempotency_policy_classifies_representative_routes() -> None:
 
 
 def test_rag_idempotency_policy_classifies_spec_named_routes() -> None:
-    from langconnect.idempotency import build_idempotency_policy
+    from src.shared.idempotency import build_idempotency_policy
 
     policy = build_idempotency_policy(api_prefix="/api/v9")
 
@@ -85,7 +85,7 @@ def test_rag_idempotency_policy_enforces_all_domain_required_routes() -> None:
     (optional_replay) without being explicitly classified. Upload-jobs starts a
     background upload job and is high-risk, so it must require an idempotency key.
     """
-    from langconnect.idempotency import build_idempotency_policy
+    from src.shared.idempotency import build_idempotency_policy
 
     policy = build_idempotency_policy(api_prefix="/api/v9")
 
@@ -115,11 +115,32 @@ def test_rag_idempotency_policy_enforces_all_domain_required_routes() -> None:
         )
 
 
+def test_rag_idempotency_policy_reruns_only_the_records_route_after_a_failure() -> None:
+    """The records route replaces what a failed run stored, so its key is freed.
+
+    Every other route keeps the key of a failed run: running one of them
+    again could repeat a side effect.
+    """
+    from src.shared.idempotency import build_idempotency_policy
+
+    policy = build_idempotency_policy(api_prefix="/api/v9")
+
+    records_policy = policy.resolve("POST", "/api/v9/datasources/collection-1/records")
+    assert records_policy.mode == IdempotencyMode.DOMAIN_REQUIRED
+    assert records_policy.enforce_missing_key is True
+    assert records_policy.rerun_after_failure is True
+    assert [
+        f"{candidate.method} {candidate.path}"
+        for candidate in policy.route_policies
+        if candidate.rerun_after_failure
+    ] == ["POST /api/v9/datasources/{collection_id}/records"]
+
+
 def test_rag_idempotency_policy_explicitly_maps_registered_mutating_routes() -> None:
     from fastapi.routing import APIRoute
 
-    from langconnect.idempotency import build_idempotency_policy
-    from langconnect.server import APP
+    from src.server import APP
+    from src.shared.idempotency import build_idempotency_policy
 
     policy = build_idempotency_policy()
 
@@ -138,3 +159,14 @@ def test_rag_idempotency_policy_explicitly_maps_registered_mutating_routes() -> 
                 unmapped.append(f"{method} {route.path}")
 
     assert unmapped == []
+
+
+def test_rag_idempotency_policy_replays_knowledge_search_optionally() -> None:
+    from src.shared.idempotency import build_idempotency_policy
+
+    policy = build_idempotency_policy(api_prefix="/api/v9")
+
+    for path in ("/api/v9/search", "/api/v9/search/graph/neighborhood"):
+        resolved = policy.resolve("POST", path)
+        assert resolved.mode == IdempotencyMode.OPTIONAL_REPLAY
+        assert not resolved.enforce_missing_key

@@ -26,6 +26,7 @@ function paginatedState(error: Error | null = null) {
     refresh: jest.fn(),
     updateItem: jest.fn(),
     totalItems: 0,
+    totalItemsExact: true,
   };
 }
 

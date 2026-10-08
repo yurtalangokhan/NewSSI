@@ -17,6 +17,7 @@ from service.documents.blocks import (
     Block,
     BulletListBlock,
     CodeBlock,
+    DiagramBlock,
     FootnoteDefBlock,
     HeadingBlock,
     HorizontalRuleBlock,
@@ -106,10 +107,8 @@ def parse_inline(text: str) -> list[InlineSpan]:
 
 def _parse_table_row(line: str) -> list[str]:
     trimmed = line.strip()
-    if trimmed.startswith("|"):
-        trimmed = trimmed[1:]
-    if trimmed.endswith("|"):
-        trimmed = trimmed[:-1]
+    trimmed = trimmed.removeprefix("|")
+    trimmed = trimmed.removesuffix("|")
     return [cell.strip() for cell in trimmed.split("|")]
 
 
@@ -136,14 +135,17 @@ def _parse_separator_row(line: str) -> list[str] | None:
 # ---------------------------------------------------------------------------
 
 
-def _parse_code_block(lines: list[str], i: int) -> tuple[CodeBlock, int]:
+def _parse_code_block(lines: list[str], i: int) -> tuple[CodeBlock | DiagramBlock, int]:
     language = _FENCE_RE.match(lines[i].strip()).group(1) or None
     i += 1
     code_lines: list[str] = []
     while i < len(lines) and not lines[i].strip().startswith("```"):
         code_lines.append(lines[i])
         i += 1
-    return CodeBlock(text="\n".join(code_lines), language=language), i + 1
+    text = "\n".join(code_lines)
+    if (language or "").lower() == "mermaid":
+        return DiagramBlock(source=text), i + 1
+    return CodeBlock(text=text, language=language), i + 1
 
 
 def _parse_table(lines: list[str], i: int) -> tuple[TableBlock, int]:
@@ -206,7 +208,7 @@ def _try_attach_caption(blocks: list[Block], line: str) -> bool:
     match = _TABLE_CAPTION_RE.match(line)
     if not match or match.group(1).lower() not in _CAPTION_PREFIXES:
         return False
-    if not blocks or not isinstance(blocks[-1], TableBlock | ImageBlock):
+    if not blocks or not isinstance(blocks[-1], TableBlock | ImageBlock | DiagramBlock):
         return False
     blocks[-1].caption = match.group(2).strip()
     return True
@@ -246,15 +248,9 @@ def parse_markdown_blocks(markdown: str) -> list[Block]:
         elif _HEADING_RE.match(stripped):
             flush_paragraph()
             match = _HEADING_RE.match(stripped)
-            blocks.append(
-                HeadingBlock(level=len(match.group(1)), spans=parse_inline(match.group(2).strip()))
-            )
+            blocks.append(HeadingBlock(level=len(match.group(1)), spans=parse_inline(match.group(2).strip())))
             i += 1
-        elif (
-            _TABLE_ROW_RE.match(stripped)
-            and i + 1 < n
-            and _parse_separator_row(lines[i + 1].strip()) is not None
-        ):
+        elif _TABLE_ROW_RE.match(stripped) and i + 1 < n and _parse_separator_row(lines[i + 1].strip()) is not None:
             flush_paragraph()
             block, i = _parse_table(lines, i)
             blocks.append(block)

@@ -1,27 +1,25 @@
 "use client";
+import { datasourcesEndpoints } from "@/lib/api/domains/datasources/endpoints";
 
 import { AccessType, ValidSources } from "@/lib/types";
 import { useTranslation } from "react-i18next";
 import useSWR, { mutate } from "swr";
-import { errorHandlingFetcher } from "@/lib/fetcher";
 import { FaKey } from "react-icons/fa";
 import { useState } from "react";
 import { FiEdit2 } from "react-icons/fi";
 import {
   deleteCredential,
+  fetchSimilarCredentials,
   swapCredential,
   updateCredential,
   updateCredentialWithPrivateKey,
-} from "@/lib/credential";
+} from "@/lib/api/domains/datasources/api";
 import { toast } from "@/hooks/useToast";
 import CreateCredential from "./actions/CreateCredential";
 import { CCPairFullInfo } from "@/app/admin/connector/[ccPairId]/types";
 import ModifyCredential from "./actions/ModifyCredential";
 import Text from "@/components/ui/text";
-import {
-  buildCCPairInfoUrl,
-  buildSimilarCredentialInfoURL,
-} from "@/app/admin/connector/[ccPairId]/lib";
+
 import Modal from "@/refresh-components/Modal";
 import EditCredential from "./actions/EditCredential";
 import { getSourceDisplayName } from "@/lib/sources";
@@ -54,13 +52,16 @@ export default function CredentialSection({
     keyPrefix: "admin.credentialSection",
   });
   const { data: credentials } = useSWR<Credential<ConfluenceCredentialJson>[]>(
-    buildSimilarCredentialInfoURL(sourceType),
-    errorHandlingFetcher,
+    datasourcesEndpoints.similarCredentialInfo(sourceType).browserPath,
+    () =>
+      fetchSimilarCredentials<Credential<ConfluenceCredentialJson>[]>(
+        sourceType
+      ),
     { refreshInterval: 5000 } // 5 seconds
   );
   const { data: editableCredentials } = useSWR<Credential<any>[]>(
-    buildSimilarCredentialInfoURL(sourceType, true),
-    errorHandlingFetcher,
+    datasourcesEndpoints.similarCredentialInfo(sourceType, true).browserPath,
+    () => fetchSimilarCredentials<Credential<any>[]>(sourceType, true),
     { refreshInterval: 5000 }
   );
   const { data: oauthDetails, isLoading: oauthDetailsLoading } =
@@ -97,7 +98,9 @@ export default function CredentialSection({
       accessType
     );
     if (response.ok) {
-      mutate(buildSimilarCredentialInfoURL(sourceType));
+      mutate(
+        datasourcesEndpoints.similarCredentialInfo(sourceType).browserPath
+      );
       refresh();
 
       toast.success(t("toastSwapSuccess"));
@@ -148,7 +151,7 @@ export default function CredentialSection({
 
   const onDeleteCredential = async (credential: Credential<any | null>) => {
     await deleteCredential(credential.id, true);
-    mutate(buildCCPairInfoUrl(ccPair.id));
+    mutate(datasourcesEndpoints.ccPairInfoWithQuery(ccPair.id).browserPath);
   };
   const defaultedCredential = ccPair.credential;
 

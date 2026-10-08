@@ -1,4 +1,5 @@
 import { handleSSEStream } from "./streamingUtils";
+import type { RunMetaPacket } from "@/lib/api/domains/chat/run-types";
 
 function createStreamingResponse(chunks: string[]): Response {
   const encoder = new TextEncoder();
@@ -485,6 +486,24 @@ describe("handleSSEStream", () => {
       { type: "graph_stage_end", stage_name: "ChatInput-1" },
     ]);
   });
+  it("carries the backend's is_loop_body flag into placement (B18)", async () => {
+    const response = createStreamingResponse([
+      'data: {"type":"flow_stage_start","stage_key":"A#1","node_id":"A","label":"Analiz","stage_order":1,"iteration":1,"is_final_stage":false,"is_loop_body":true}\n',
+      "data: [DONE]\n",
+    ]);
+
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    const start = packets.find((p) => p.obj?.type === "flow_stage_start");
+    expect(start.placement).toMatchObject({
+      stage_key: "A#1",
+      is_loop_body: true,
+    });
+  });
+
   it("carries FlowAgent stage identity into placement for flow_stage_* and stage-scoped packets", async () => {
     const response = createStreamingResponse([
       'data: {"type":"flow_stage_start","stage_key":"A#1","node_id":"A","label":"Analiz","stage_order":1,"iteration":1,"is_final_stage":false}\n',
@@ -524,5 +543,142 @@ describe("handleSSEStream", () => {
     const end = packets.find((p) => p.obj?.type === "flow_stage_end");
     expect(end.placement.stage_key).toBe("A#1");
     expect(end.obj.duration_ms).toBe(1200);
+  });
+});
+
+describe("handleSSEStream resumable options", () => {
+  const frame = (id: number, data: string) => `id: ${id}\ndata: ${data}\n\n`;
+
+  async function collect<T>(gen: AsyncGenerator<T>): Promise<T[]> {
+    const out: T[] = [];
+    for await (const item of gen) out.push(item);
+    return out;
+  }
+
+  const body =
+    frame(1, '{"type":"run_started","run_id":"r1","thread_id":"t1"}') +
+    frame(
+      2,
+      '{"type":"custom_tool_start","tool_name":"web_search","args":{},"call_id":"c1","timestamp":1}'
+    ) +
+    frame(
+      3,
+      '{"type":"custom_tool_delta","tool_name":"web_search","response_type":"tool_result","data":"ok","call_id":"c1","timestamp":2}'
+    ) +
+    frame(4, '{"type":"token","content":"Answer"}') +
+    frame(5, '{"type":"run_end","status":"completed","error_code":null}') +
+    frame(6, "[DONE]");
+
+  it("reports event ids and hides run meta packets", async () => {
+    const ids: number[] = [];
+    const meta: RunMetaPacket[] = [];
+    const packets = await collect(
+      handleSSEStream(new Response(body), undefined, {
+        onEventId: (seq: number) => ids.push(seq),
+        onRunMeta: (m: RunMetaPacket) => meta.push(m),
+      })
+    );
+    expect(ids).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(meta.map((m) => m.type)).toEqual(["run_started", "run_end"]);
+    expect(JSON.stringify(packets)).not.toContain("run_started");
+    expect(JSON.stringify(packets)).not.toContain("run_end");
+  });
+
+  it("suppresses already delivered events but keeps turn bookkeeping", async () => {
+    const tagged: Array<{ seq: number; packet: unknown }> = [];
+    let pending: unknown[] = [];
+    for await (const packet of handleSSEStream(new Response(body), undefined, {
+      onEventId: (seq: number) => {
+        pending.forEach((p) => tagged.push({ seq, packet: p }));
+        pending = [];
+      },
+    })) {
+      pending.push(packet);
+    }
+    const resumed = await collect(
+      handleSSEStream(new Response(body), undefined, { suppressThroughSeq: 3 })
+    );
+    expect(resumed).toEqual(
+      tagged.filter((t) => t.seq > 3).map((t) => t.packet)
+    );
+    expect(resumed.length).toBeGreaterThan(0);
+  });
+
+  it("reports resync as run meta", async () => {
+    const meta: RunMetaPacket[] = [];
+    await collect(
+      handleSSEStream(
+        new Response('data: {"type":"resync","first_available_seq":9}\n\n'),
+        undefined,
+        {
+          onRunMeta: (m: RunMetaPacket) => meta.push(m),
+        }
+      )
+    );
+    expect(meta).toEqual([{ type: "resync", first_available_seq: 9 }]);
+  });
+
+  it("treats a stream without ids exactly as before", async () => {
+    const legacy = 'data: {"type":"token","content":"x"}\n\ndata: [DONE]\n\n';
+    const withIds =
+      frame(1, '{"type":"token","content":"x"}') + frame(2, "[DONE]");
+    expect(await collect(handleSSEStream(new Response(legacy)))).toEqual(
+      await collect(handleSSEStream(new Response(withIds)))
+    );
+  });
+});
+
+describe("handleSSEStream event ids at a broken stream", () => {
+  async function collect<T>(gen: AsyncGenerator<T>): Promise<T[]> {
+    const out: T[] = [];
+    for await (const item of gen) out.push(item);
+    return out;
+  }
+  function chunkedResponse(chunks: string[], error?: Error): Response {
+    const encoder = new TextEncoder();
+    let index = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (index < chunks.length) {
+          controller.enqueue(encoder.encode(chunks[index++]));
+        } else if (error) {
+          controller.error(error);
+        } else {
+          controller.close();
+        }
+      },
+    });
+    return new Response(body);
+  }
+  const token = (id: number, content: string) =>
+    `id: ${id}\ndata: {"type":"token","content":"${content}"}\n\n`;
+
+  it("never reports an id whose data line did not arrive", async () => {
+    const ids: number[] = [];
+    await collect(
+      handleSSEStream(
+        chunkedResponse([token(1, "A"), token(2, "B"), "id: 3\n"]),
+        undefined,
+        { onEventId: (seq) => ids.push(seq) }
+      )
+    );
+    expect(ids).toEqual([1, 2]);
+  });
+
+  it("reports the id of a delivered event even when the stream then fails", async () => {
+    const ids: number[] = [];
+    await expect(
+      collect(
+        handleSSEStream(
+          chunkedResponse(
+            [token(1, "A"), 'id: 2\ndata: {"type":"token","content":"B"}\n'],
+            new Error("network")
+          ),
+          undefined,
+          { onEventId: (seq) => ids.push(seq) }
+        )
+      )
+    ).rejects.toThrow("network");
+    expect(ids).toEqual([1, 2]);
   });
 });

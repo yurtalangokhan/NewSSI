@@ -1,6 +1,8 @@
+from datetime import datetime
+from typing import Literal
 import uuid
 
-from i18n import t
+from localization import t
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -9,7 +11,7 @@ class UserCreateRequest(BaseModel):
     username: str | None = None
     first_name: str
     last_name: str
-    role: str = "enduser"
+    role_id: str | None = Field(default=None, description="Keycloak realm-role ID; defaults to the enduser role.")
     invited: bool = False
     keycloak_id: str | None = None
     password: str | None = None
@@ -41,7 +43,6 @@ class UserUpdateRequest(BaseModel):
     team_name: str | None = None
     is_active: bool | None = None
     is_verified: bool | None = None
-    role: str | None = None
 
 
 class UserInviteRequest(BaseModel):
@@ -49,12 +50,26 @@ class UserInviteRequest(BaseModel):
 
 
 class UserRoleRequest(BaseModel):
-    role: str
+    role_id: str = Field(description="Keycloak realm-role ID.")
 
 
 class UserRolesAssignRequest(BaseModel):
-    role_ids: list[str] = Field(min_length=1)
-    primary_role_id: str | None = None
+    role_ids: list[str] = Field(min_length=1, description="Keycloak realm-role IDs.")
+    primary_role_id: str | None = Field(default=None, description="One of ``role_ids``.")
+
+
+class RoleCount(BaseModel):
+    role: str
+    count: int
+
+
+class RoleDistributionResponse(BaseModel):
+    status: Literal["ready", "pending", "unavailable"] = Field(
+        description="`pending` while the first snapshot is computed; `unavailable` after a "
+        "failed computation with no earlier snapshot."
+    )
+    distribution: list[RoleCount]
+    computed_at: datetime | None = None
 
 
 class UserActiveRequest(BaseModel):
@@ -113,6 +128,8 @@ __all__ = [
     "InternalUserBatchRequest",
     "InternalUserUpdateRequest",
     "KeycloakUpsertRequest",
+    "RoleCount",
+    "RoleDistributionResponse",
     "UserActiveRequest",
     "UserChangePasswordRequest",
     "UserCreateRequest",

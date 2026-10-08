@@ -11,9 +11,9 @@ import {
   ImageGenerationToolDelta,
   MessageStart,
   StreamProgress,
-} from "@/app/app/services/streamingModels";
-import { CitationMap } from "@/app/app/interfaces";
-import { OnyxDocument } from "@/lib/search/interfaces";
+} from "@/lib/api/domains/chat/streaming-types";
+import { CitationMap } from "@/lib/api/domains/chat/types";
+import { AtlasDocument } from "@/lib/search/interfaces";
 import {
   isActualToolCallPacket,
   isToolPacket,
@@ -81,7 +81,7 @@ export interface ProcessorState {
   citationMap: CitationMap;
 
   // Documents
-  documentMap: Map<string, OnyxDocument>;
+  documentMap: Map<string, AtlasDocument>;
 
   // Packet grouping
   groupedPacketsMap: Map<string, Packet[]>;

@@ -1,7 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ComponentSidebarItem } from "../components/ComponentSidebarItem";
-import type { ComponentTemplate } from "../types/componentTemplate";
 
 const mockTemplate: any = {
   type: "ReActAgent",
@@ -30,9 +29,7 @@ const mockTemplate: any = {
 describe("Task 54 — Flow Canvas Accessibility & Large-Flow Perf", () => {
   it("54.1 — ComponentSidebarItem has button role, tabIndex 0, accessible aria-label, and responds to keyboard", () => {
     const onSelect = jest.fn();
-    render(
-      <ComponentSidebarItem template={mockTemplate} onDragStart={onSelect} />
-    );
+    render(<ComponentSidebarItem template={mockTemplate} onUsed={onSelect} />);
 
     const item = screen.getByRole("button", { name: "ReAct Agent" });
     expect(item).toBeInTheDocument();

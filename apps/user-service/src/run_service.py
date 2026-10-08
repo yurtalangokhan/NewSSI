@@ -1,14 +1,13 @@
+from config_manager import env
 import uvicorn
-
-from src.config import get_settings
 
 
 def main():
-    settings = get_settings()
+    settings = env
     uvicorn.run(
         "src.main:app",
         host=settings.SERVICE_HOST,
-        port=settings.SERVICE_PORT,
+        port=settings.USER_SERVICE_PORT,
         reload=True,
     )
 

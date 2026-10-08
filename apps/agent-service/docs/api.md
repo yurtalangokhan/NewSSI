@@ -1,19 +1,40 @@
 # Agent Service API
 
 **Service:** AI agent orchestration built on LangGraph, FastAPI, and Streamlit.
-**Base URL:** `http://kong:8000/agent-service` (via Kong gateway) or `http://agent-service:8080` (direct)
+**Base URL:** `http://apisix:8000/agent-service` (via Apisix gateway) or `http://agent-service:8080` (direct)
 **Canonical API prefix:** `/api/v1`
-**Auth:** JWT Bearer token (except `/api/v1/health` and `/api/v1/auth/health`). Internal calls use `X-Internal-Service-Token`.
+**Auth:** JWT Bearer token (except `/api/v1/health`). Internal calls use `X-Internal-Service-Token`.
 
 This is the human-maintained endpoint contract for agent-service. Generated
 OpenAPI output lives in `openapi.json` and is for schema-level checks, client
 generation, and Swagger-style inspection.
 
 Permissions are checked per-endpoint via `require_permission("<entity>:<action>")`.
-Compatibility aliases may remain during migration. New integrations must use
-the canonical `/api/v1` paths documented here.
+Compatibility aliases are not supported: each handler exposes exactly one
+canonical path, asserted by `tests/api/test_route_uniqueness.py`. New
+integrations must use the canonical `/api/v1` paths documented here.
 
 ---
+
+## Agent resource access
+
+The agent catalog, detail, assignment options, connector resolution, and chat
+execution use the same saved-persona access policy. Private agents require an
+`execute`-capable direct or organization resource grant from user-service.
+Resource IDs are saved numeric persona IDs serialized as strings. User-service
+resolves either the local user UUID or the authenticated Keycloak subject.
+
+Owners, public agents, built-in agents, and global administrators retain access.
+The authoritative user-service permission response identifies global admins
+with `is_admin` or the `*` permission. The `persona:update` action alone does not bypass resource
+access. Legacy agent groups no longer authorize these surfaces. Permission
+lookup failures grant no additional access.
+
+Chat checks access before provider setup or thread changes. Numeric string IDs
+are normalized, and active dynamic definition UUIDs resolve to their linked saved
+persona before authorization. Generic agent invoke and stream endpoints check
+the same linked-persona policy before loading configuration or streaming. Missing, unlinked, and unauthorized selections
+return 404 without starting a stream.
 
 ## Agent connector bindings
 
@@ -58,11 +79,12 @@ assignment, and the saved source before returning configuration to tools-service
 This endpoint is excluded from idempotency replay storage and responds with
 `Cache-Control: no-store`.
 
-Airbyte 0.50.x with `SECRET_PERSISTENCE=NONE` masks secrets in API responses.
-The internal resolver reads the complete configuration from Airbyte's existing
-`actor` table in a read-only transaction. Other secret persistence modes require
-a corresponding secret resolver and fail closed. No credentials are stored in
-agent bindings, chat messages, or model-visible tool arguments.
+The resolver reads the datasource's configuration from user-service, where it is
+stored encrypted for the owning user, and translates it into the shape the
+tools-service adapter reads. A connector or configuration variant the adapter
+cannot handle is reported as unavailable instead of being resolved. No
+credentials are stored in agent-service, agent bindings, chat messages, or
+model-visible tool arguments.
 
 ## Idempotency
 
@@ -89,21 +111,17 @@ Supplying a key enables replay and conflict detection.
 
 ## Health
 
-| Method | Path                  | Auth   | Description                             |
-| ------ | --------------------- | ------ | --------------------------------------- |
-| GET    | `/api/v1/health`      | Public | Health check (includes Langfuse status) |
-| GET    | `/api/v1/auth/health` | Public | Auth controller health check            |
+| Method | Path             | Auth   | Description                             |
+| ------ | ---------------- | ------ | --------------------------------------- |
+| GET    | `/api/v1/health` | Public | Health check (includes Langfuse status) |
 
 ---
 
 ## Auth
 
-| Method | Path                               | Permission | Description                                                        |
-| ------ | ---------------------------------- | ---------- | ------------------------------------------------------------------ |
-| GET    | `/api/v1/auth/me`                  | user auth  | Get current user data from token                                   |
-| GET    | `/api/v1/auth/settings`            | user auth  | Get user settings (auto_scroll, app status, deep_research_enabled) |
-| GET    | `/api/v1/auth/enterprise-settings` | user auth  | Get enterprise settings (app name, custom logo)                    |
-| GET    | `/api/v1/auth/health`              | public     | Health check `{"status": "ok"}`                                    |
+Agent-service serves no `/api/v1/auth/*` endpoints. The web app reads the
+current user from user-service (`/user-service/api/v1/auth/me`), and Gateway owns
+login, token refresh, and logout.
 
 _(The `GET /api/v1/admin/mcp/servers` stub was replaced by the MCP Server Admin API below.)_
 
@@ -113,17 +131,57 @@ _(The `GET /api/v1/admin/mcp/servers` stub was replaced by the MCP Server Admin 
 
 **Prefix:** `/api/v1/agents`
 
+### Standard JSON responses
+
+All 196 application JSON endpoints return the service-local
+`core.http.response_models.ResponseModel[T]`. The original response DTO remains
+nested under data. A successful response contains:
+
+```json
+{"statusCode": 200, "message": null, "data": [], "error": null}
+```
+
+`data` contains the endpoint's original payload. When a service raises a shared
+application exception, the service propagates it to the route. The route sets
+the HTTP status and returns the same model. For example, a missing agent returns
+HTTP 404 and, for `X-Language: tr`:
+
+```json
+{"statusCode": 404, "message": "Ajan bulunamadı.", "data": null, "error": {"code": "agent.not_found", "message": "Ajan bulunamadı."}}
+```
+
+The exception stores a locale key (`errors.agent.not_found`); the route renders
+the message for the request language. Frontend domain API functions check
+`statusCode` and return `data` to their consumers. Authentication and validation
+failures raised before the route body return the same ResponseModel fields.
+Global framework errors preserve their existing safe public messages and codes;
+idempotency errors also use this contract. Health/readiness/metrics keep their
+native operational payloads, including top-level readiness diagnostics. Built-in Ollama missing-model deletion returns localized
+404. Frontend domain consumers migrate with each endpoint group.
+
+All 196 application JSON endpoints are migrated; follow the
+[shared checklist](../../../docs/response-model-migration.md) for the inventory.
+Creation retains HTTP 201 where declared; discard-draft acknowledgement returns
+HTTP 200 with data null. Runtime serialization and consumer checks remain pending.
+
+### Standard SSE events
+
+`StreamEventModel[T]` lives beside ResponseModel. Producers serialize through
+`to_sse()`, retaining existing data-only frames and event payload fields. Error
+frames add `error: {code, message}` from error_contract locale keys, alongside
+the existing type/content/error_code fields. The frontend prefers error.message.
+The six SSE endpoints retain heartbeat comments and [DONE] sentinels. Failures
+before streaming starts use the JSON HTTP error response; after it starts, a
+localized event carries the failure without changing the already-sent status.
+Raw file responses, health, readiness, and metrics retain their protocols.
+
 | Method | Path                               | Permission       | Description                                           |
 | ------ | ---------------------------------- | ---------------- | ----------------------------------------------------- |
 | GET    | `/api/v1/agents/info`              | `agent:list`     | List all agents, models, default agent, default model |
 | GET    | `/api/v1/agents/catalog`           | `persona:read`   | List lightweight product agent summaries              |
 | GET    | `/api/v1/agents/{agent_id}`        | `persona:read`   | Get full product agent detail                         |
-| GET    | `/api/v1/agents/catalog`           | `persona:read`   | List lightweight product agent summaries              |
-| GET    | `/api/v1/agents/{agent_id}`        | `persona:read`   | Get full product agent detail                         |
 | POST   | `/api/v1/agents/{agent_id}/invoke` | `agent:invoke`   | Invoke agent — non-streaming response                 |
-| POST   | `/api/v1/agents/invoke`            | `agent:invoke`   | Invoke default agent — non-streaming                  |
 | POST   | `/api/v1/agents/{agent_id}/stream` | `agent:stream`   | Stream agent response (SSE events)                    |
-| POST   | `/api/v1/agents/stream`            | `agent:stream`   | Stream default agent response                         |
 | POST   | `/api/v1/agents/feedback`          | `agent:feedback` | Submit run feedback                                   |
 | POST   | `/api/v1/agents/history`           | `chat:read`      | Get chat history for a thread                         |
 
@@ -151,19 +209,6 @@ _(The `GET /api/v1/admin/mcp/servers` stub was replaced by the MCP Server Admin 
 | GET    | `/api/v1/agent-definitions/{definition_id}`                  | `agent:read`   | Get definition by ID                                     |
 | PUT    | `/api/v1/agent-definitions/{definition_id}`                  | `agent:update` | Update definition (partial)                              |
 | DELETE | `/api/v1/agent-definitions/{definition_id}`                  | `agent:delete` | Delete definition                                        |
-
----
-
-## Agent Groups
-
-**Prefix:** `/api/v1/agent-groups`
-
-| Method | Path                              | Permission     | Description              |
-| ------ | --------------------------------- | -------------- | ------------------------ |
-| GET    | `/api/v1/agent-groups`            | `agent:read`   | List agent access groups |
-| POST   | `/api/v1/agent-groups`            | `agent:assign` | Create agent group       |
-| PATCH  | `/api/v1/agent-groups/{group_id}` | `agent:assign` | Update agent group       |
-| DELETE | `/api/v1/agent-groups/{group_id}` | `agent:assign` | Delete agent group       |
 
 ---
 
@@ -210,27 +255,85 @@ _(The `GET /api/v1/admin/mcp/servers` stub was replaced by the MCP Server Admin 
 
 | Method      | Path                                                 | Permission    | Description                           |
 | ----------- | ---------------------------------------------------- | ------------- | ------------------------------------- |
-| GET         | `/api/v1/chat/get-user-chat-sessions`                | `chat:read`   | List user's chat sessions             |
-| GET         | `/api/v1/chat/sessions`                              | `chat:read`   | REST alias for listing sessions       |
-| POST        | `/api/v1/chat/create-chat-session`                   | `chat:send`   | Create chat session                   |
-| POST        | `/api/v1/chat/sessions`                              | `chat:send`   | REST alias for creating a session     |
-| GET         | `/api/v1/chat/get-chat-session/{session_id}`         | `chat:read`   | Get session with messages             |
-| GET         | `/api/v1/chat/sessions/{session_id}`                 | `chat:read`   | REST alias for getting a session      |
-| POST/DELETE | `/api/v1/chat/delete-chat-session/{session_id}`      | `chat:delete` | Delete chat session                   |
-| DELETE      | `/api/v1/chat/sessions/{session_id}`                 | `chat:delete` | REST alias for deleting a session     |
-| POST/DELETE | `/api/v1/chat/delete-all-chat-sessions`              | `chat:delete` | Delete all user sessions              |
-| PUT/PATCH   | `/api/v1/chat/rename-chat-session`                   | `chat:send`   | Rename session                        |
+| GET         | `/api/v1/chat/sessions`                              | `chat:read`   | List user's chat sessions             |
+| POST        | `/api/v1/chat/sessions`                              | `chat:send`   | Create chat session                   |
+| GET         | `/api/v1/chat/sessions/{session_id}`                 | `chat:read`   | Get session with messages             |
+| DELETE      | `/api/v1/chat/sessions/{session_id}`                 | `chat:delete` | Delete chat session                   |
+| DELETE      | `/api/v1/chat/delete-all-chat-sessions`              | `chat:delete` | Delete all user sessions              |
+| PUT         | `/api/v1/chat/rename-chat-session`                   | `chat:send`   | Rename session                        |
 | PUT         | `/api/v1/chat/update-chat-session-model`             | `chat:send`   | Update model override                 |
 | PUT         | `/api/v1/chat/update-chat-session-temperature`       | `chat:send`   | Update temperature override           |
 | POST        | `/api/v1/chat/stop-chat-session/{session_id}`        | `chat:send`   | Stop running session                  |
-| POST        | `/api/v1/chat/send-chat-message`                     | `chat:send`   | Send message (streaming SSE response) |
-| POST        | `/api/v1/chat/messages`                              | `chat:send`   | REST alias for sending a message      |
+| POST        | `/api/v1/chat/messages`                              | `chat:send`   | Send message (streaming SSE response) |
+| GET         | `/api/v1/chat/sessions/{session_id}/active-run`      | `chat:read`   | Get the session's in-flight run, if any |
+| POST        | `/api/v1/chat/sessions/{session_id}/seen`            | `chat:read`   | Advance the session's read watermark (`last_accessed_at`) |
+| GET         | `/api/v1/chat/runs/{run_id}/events`                  | `chat:read`   | Replay or follow a run's event stream (SSE) |
 | POST        | `/api/v1/chat/create-chat-message-feedback`          | `chat:send`   | Create message feedback               |
 | DELETE      | `/api/v1/chat/remove-chat-message-feedback`          | `chat:delete` | Remove message feedback               |
-| GET         | `/api/v1/chat/available-context-tokens`              | `chat:read`   | Get available context tokens          |
 | GET         | `/api/v1/chat/available-context-tokens/{session_id}` | `chat:read`   | Get context tokens for session        |
 
-The `send-chat-message` endpoint handles: base64 file descriptors, LLM provider resolution (fetches provider API keys, base URLs), MinIO persistence, thread ownership checks.
+One handler serves exactly one path: the `/api/v1/chat/sessions*` and
+`/api/v1/chat/messages` routes are the canonical contract, and the earlier
+verb-style aliases (`get-user-chat-sessions`, `create-chat-session`,
+`get-chat-session`, `delete-chat-session`, `send-chat-message`) no longer exist.
+
+The `chat/messages` endpoint handles: base64 file descriptors, LLM provider resolution (fetches provider API keys, base URLs), MinIO persistence, thread ownership checks.
+
+### Resumable chat runs
+
+`POST /api/v1/chat/messages` does not execute the agent in the response body.
+The service registers a chat run and executes it in a supervisor-owned task, so
+the response is only a subscriber: a client disconnect or reload ends the
+subscription, never the run. The response carries the `X-Chat-Run-Id` header.
+The SSE wire contract is unchanged except for additions:
+
+- Every sequenced frame starts with `id: <seq>` (an integer, starting at 1).
+  Clients resume by sending the last received `seq` back.
+- A `run_started` meta packet (frame 1) opens the stream and a `run_end` meta
+  packet carries the terminal status (`completed`, `failed`, `cancelled`, or
+  `interrupted`). `data: [DONE]` is always the last frame, exactly once.
+- A `caught_up` meta packet (no `id:`, never stored in the event log) marks
+  the end of replay: the reader sends it once, the first time the log has
+  nothing after the last delivered event. Everything before it was history;
+  everything after it is the live tail. A stream that ends while still
+  replaying (a finished run, a `resync`, an expired run) sends none, so
+  clients treat the end of the stream as caught up too.
+
+While a run is active for a thread, a second send is rejected before any
+side effect with `409` and the error code `chat_run.active`; the holder's
+`run_id` is in `error.details.run_id`. If the run registry or event log is
+unreachable, sends answer `503` with `chat_run.unavailable` and never leave a
+dangling lock. Both use the standard `ResponseModel` error envelope with a
+localized `error.message`.
+
+`GET /api/v1/chat/sessions/{session_id}/active-run` reports the session's
+in-flight run (`{"active_run": null}` when idle). `GET
+/api/v1/chat/runs/{run_id}/events` replays the run's full event stream from the
+beginning or from `Last-Event-ID` (which wins over `?after=`); a malformed
+resume id answers `422`, an unknown or foreign run answers `404`. Both endpoints
+enforce session and run ownership. Stop is owner-checked: only the session's
+owner can stop it, and a Stop issued from any instance reaches the run's owner
+through a Redis cancel flag within the heartbeat interval. A run on the
+instance that receives the Stop is stopped even if the Redis registry is down;
+only a Stop that cannot be recorded and has no local run answers `503`
+(`chat_run.unavailable`).
+
+Stop accepts an optional `?client_request_id=` (the send's `Idempotency-Key`).
+It reaches a send whose run isn't registered yet: the service records a
+short-lived mark for that request before it looks up the active run, and the
+supervisor checks the mark after acquiring the thread, so the agent never
+starts. Once a Stop is recorded, the run's cooperative cancel event is set
+(also for a generator that registers it later) and no further `token`,
+`reasoning_delta`, or `flow_stage_output_delta` frame is written to the event
+log.
+
+`GET /api/v1/chat/sessions` marks each session with `has_active_run` (a run is
+still generating its answer). `POST /api/v1/chat/sessions/{session_id}/seen`
+moves `last_accessed_at` to now once a client has shown a finished answer, so
+the sidebar's unread dot clears; it answers `404` for a session the caller does
+not own. A finished answer is stamped into `last_message_at` with the instant
+its run finished (never moved backward), so a later `seen` is always newer than
+the answer whichever of the two requests reaches the database first.
 
 Chat session list and detail responses include `time_created`, `time_updated`,
 `last_message_at`, and `last_accessed_at`. Use `last_message_at` for
@@ -240,6 +343,13 @@ has no accepted user-message activity and orders by `time_created`. Use
 Recents or project chat lists. The list endpoints accept `page_size`,
 `before_activity`, and `before_id` for activity-keyset pagination and return
 `next_cursor` with the same cursor field names when another page is available.
+
+`GET /api/v1/chat/sessions` also accepts `q` (at most 200 characters), a
+case-insensitive match on the stored session name, and `agents_only=true`, which
+drops plain-model chats (no `persona_id`, or `0`) and keeps agent and flow
+sessions. Both filters apply before pagination, so the cursor pages through the
+filtered set. Unnamed sessions (no stored name, or the default placeholder name) are not
+matched by `q`.
 
 ---
 
@@ -338,18 +448,70 @@ persona-shaped payload. Use `/api/v1/persona/{persona_id}` or
 
 | Method | Path                                             | Permission          | Description                                                   |
 | ------ | ------------------------------------------------ | ------------------- | ------------------------------------------------------------- |
-| GET    | `/api/v1/datasources/connectors`                 | `datasource:read`   | List Airbyte source connectors (filter: `category`, `search`) |
+| GET    | `/api/v1/datasources/connectors`                 | `datasource:read`   | List source connectors (filter: `category`, `search`)         |
 | GET    | `/api/v1/datasources/connectors/{name}/spec`     | `datasource:read`   | Get connector JSON Schema config spec                         |
 | POST   | `/api/v1/datasources/connectors/{name}/validate` | `datasource:create` | Validate connector config                                     |
 | POST   | `/api/v1/datasources/connectors/{name}/streams`  | `datasource:create` | Get available streams for connector                           |
 | GET    | `/api/v1/datasources`                            | `datasource:read`   | List configured datasources                                   |
-| POST   | `/api/v1/datasources`                            | `datasource:create` | Create datasource (Airbyte source + connection + destination) |
+| POST   | `/api/v1/datasources`                            | `datasource:create` | Create datasource (stores its config for the caller)          |
 | GET    | `/api/v1/datasources/{id}/details`               | `datasource:read`   | Get datasource details with paginated chunks                  |
-| PUT    | `/api/v1/datasources/{id}`                       | `datasource:update` | Update datasource                                             |
+| PUT    | `/api/v1/datasources/{id}`                       | `datasource:update` | Update datasource; a changed `connector_config` forgets the saved incremental checkpoints |
 | POST   | `/api/v1/datasources/{id}/sync`                  | `datasource:sync`   | Trigger sync                                                  |
 | GET    | `/api/v1/datasources/{id}/status`                | `datasource:read`   | Get sync status                                               |
 | GET    | `/api/v1/datasources/{id}/sync-history`          | `datasource:read`   | Get sync job history                                          |
-| DELETE | `/api/v1/datasources/{id}`                       | `datasource:delete` | Delete datasource                                             |
+| DELETE | `/api/v1/datasources/{id}`                       | `datasource:delete` | Delete datasource and the chunks rag-service holds for it     |
+
+Connectors are the in-process sources of `packages/connector-py`; `connector_type`
+is the connector's name (`postgres`, `s3`, `confluence`, ...). Catalog entries
+carry `name`, `display_name`, `category`, `icon_url` (an inline SVG data URI),
+`documentation_url`, and `is_available`.
+
+`GET .../connectors/{name}/spec` returns the schema the configuration form is
+rendered from: a flat JSON Schema (no `$ref`), optional fields without a `null`
+variant, secrets flagged `x-secret` / `writeOnly`, and fields that have no form
+widget (mappings, lists of objects) as JSON text areas flagged `x-json`. A
+mapping that may hold credentials next to ordinary values (`headers`, `params`,
+driver options) is also flagged `x-sensitive-keys`.
+`validate`, `streams`, create, and update accept the form's values, including
+JSON text for those fields.
+
+The configuration is stored encrypted in user-service for the calling user;
+agent-service keeps a reference only. `GET .../{id}/details` returns it in
+`config`, secrets replaced by `********`, only to callers who also hold
+`datasource:update`. For every other caller `config` is `{}` and the stored
+configuration is not read; the rest of the response is the same. Inside an
+`x-sensitive-keys` mapping the keys are shown and the mask replaces what a key
+named like a credential holds (`Authorization`, `X-Api-Key`, `client_secret`,
+`token`, `password`, ...), at any depth; a credential under a name that does
+not say so is returned as it is. Sending the mask back on `PUT` keeps the
+stored secret, entry by entry inside such a mapping; a mask for a secret that
+is not stored in that place is answered 400. A datasource created before the
+in-process connectors has no stored configuration: `PUT` with
+`connector_config` attaches one, and until then sync answers 400. The same
+`PUT` stores the configuration anew when the stored one has gone missing.
+
+`POST .../{id}/sync` starts a background job and returns at once with
+`"status": "Sync started"`. A datasource has at most one pending or running
+job: while one exists the call starts nothing, changes nothing and answers
+`"status": "Already syncing or queued"`. It answers 400 when the datasource has
+no connection or its stored configuration is missing. At most
+`CONNECTOR_MAX_CONCURRENT_SYNCS` jobs run at a time; `GET .../{id}/status`
+reports `queue_position` for a waiting job. `?full_refresh=true` starts the
+job with every stream read from the start: the saved incremental checkpoints
+are forgotten before the first record is read, also when that job fails, so
+the following run starts over as well. A `PUT` whose `connector_config`
+differs from the stored one forgets them too: a connection pointed at another
+server or database must not skip rows. The destination modes are unchanged:
+`overwrite` streams retire the previous run's chunks when the job finishes,
+`append` streams replace records by key. `sync-history` rows are this
+service's own jobs (`created_at`/`updated_at` in epoch seconds, `bytes_synced`
+always 0). `last_error` (details, status, and the `PUT` answer) and
+`error_message` (sync history) carry the reason of a failed sync only for
+callers who also hold `datasource:sync`; every other caller reads "The sync
+did not complete. The reason is shown to users who can run syncs." in its
+place. The reason has its credentials removed: URL query strings, URL
+passwords, the values of the connector's secret fields and what the credential
+keys of its `x-sensitive-keys` mappings hold appear as `***`.
 
 ---
 
@@ -360,11 +522,16 @@ persona-shaped payload. Use `/api/v1/persona/{persona_id}` or
 | Method | Path                                       | Permission        | Description                                       |
 | ------ | ------------------------------------------ | ----------------- | ------------------------------------------------- |
 | GET    | `/api/v1/datasources/schedules`            | `schedule:read`   | List all sync schedules                           |
-| POST   | `/api/v1/datasources/{id}/schedule`        | `schedule:create` | Create sync schedule (cron on Airbyte connection) |
+| POST   | `/api/v1/datasources/{id}/schedule`        | `schedule:create` | Create sync schedule (cron, run by the scheduler) |
 | GET    | `/api/v1/datasources/{id}/schedule`        | `schedule:read`   | Get schedule for datasource                       |
 | PUT    | `/api/v1/datasources/{id}/schedule`        | `schedule:update` | Update schedule                                   |
 | DELETE | `/api/v1/datasources/{id}/schedule`        | `schedule:delete` | Delete schedule (set to manual)                   |
 | GET    | `/api/v1/datasources/{id}/schedule/status` | `schedule:read`   | Get combined sync + schedule status               |
+
+`PUT` takes a partial body: a field left out keeps its value. In particular a
+body without `enabled` leaves the switch as it is, so changing the cron or
+`update_graph_rag` of a disabled schedule does not arm it; the definition is
+still validated and is what `enabled: true` arms later.
 
 ---
 
@@ -372,31 +539,48 @@ persona-shaped payload. Use `/api/v1/persona/{persona_id}` or
 
 | Method | Path                     | Auth            | Description                                                                      |
 | ------ | ------------------------ | --------------- | -------------------------------------------------------------------------------- |
-| POST   | `/api/v1/batch`          | User / Internal | Ingest batch of records → documents → chunks → embed → vector DB. Zero disk I/O. |
-| POST   | `/api/v1/source-preview` | User / Internal | Fetch sample records from Airbyte source for preview                             |
+| POST   | `/api/v1/ingest/source-preview` | `datasource:update` | Live stream schemas of a datasource's connector |
+
+Each stream carries `name`, `key_properties`, `schema` and `field_count`.
+`field_count` is the number of fields the connector declares for the stream, or
+`null` when it declares none: most API connectors publish no schema, which
+means "unknown", not "no fields".
 
 ---
 
 ## MCP Server Admin (frontend-facing)
 
-Onyx-shaped surface backing `apps/web` → `mcpService.ts`. Server ids are the
+Atlas-shaped surface backing `apps/web` → `mcpService.ts`. Server ids are the
 `int_id` surrogate; the built-in tools server is always returned as `id: 1`.
 External MCP server tools load into agent runs with the acting user's stored
 credentials (`MCP_EXTERNAL_ENABLED`).
+
+MCP administration preserves typed authentication, URL validation, and dependency
+failures through the standard response envelope. Public `error.message` values
+use the requested language. A missing tool returns 404, rejected server URLs
+return 422, and dependency timeouts return 504. Circuit-breaker failures retain
+503 and retry metadata while using a localized message. Unknown external tool
+execution failures retain the existing localized `data.error` result contract.
 
 | Method | Path                                                   | Permission            | Description                                                       |
 | ------ | ----------------------------------------------------- | --------------------- | --------------------------------------------------------------- |
 | GET    | `/api/v1/admin/mcp/servers`                            | `mcp_provider:read`   | List servers as `MCPServer` DTOs (built-in + external)          |
 | GET    | `/api/v1/admin/mcp/servers/{int_id}`                   | `mcp_provider:read`   | Single server incl. masked credentials                          |
-| POST   | `/api/v1/admin/mcp/server`                             | `mcp_provider:create` | Create external server `{name, description?, server_url}`       |
+| POST   | `/api/v1/admin/mcp/server/validate`                    | `mcp_provider:create` | Probe `{server_url}` as MCP without persisting → `{valid, auth_required, tool_count}` |
+| POST   | `/api/v1/admin/mcp/server`                             | `mcp_provider:create` | Create external server `{name, description?, server_url}`; rejects a URL that does not answer an MCP handshake with `422` |
 | PATCH  | `/api/v1/admin/mcp/server/{int_id}`                    | `mcp_provider:update` | Update `{name?, description?, server_url?}`                     |
 | DELETE | `/api/v1/admin/mcp/server/{int_id}`                    | `mcp_provider:delete` | Delete server + its tools + credentials                         |
 | PATCH  | `/api/v1/admin/mcp/server/{int_id}/status?status=`     | `mcp_provider:update` | Set status enum                                                 |
 | GET    | `/api/v1/admin/mcp/server/{int_id}/tools/snapshots`    | `mcp_provider:sync`   | Discover tools (with auth), return `ToolSnapshot[]`             |
+| GET    | `/api/v1/admin/mcp/servers/{int_id}/tools`             | `mcp_tool:read`       | Tools last synced from the server (`ToolSnapshot[]`); database read only, never contacts the server or changes its status |
 | POST   | `/api/v1/admin/mcp/servers/create`                     | `mcp_provider:update` | Upsert auth config (API token / OAuth client / template)       |
+| POST   | `/api/v1/admin/mcp/servers/{int_id}/connect`           | `mcp_provider:connect`| Bind credentials to a registered provider (`{transport?, auth_type, auth_performer?, api_token?, auth_template?, admin_credentials?, oauth_client_id?, oauth_client_secret?}`; no url) and sync its tools |
+| DELETE | `/api/v1/admin/mcp/servers/{int_id}/connect`           | `mcp_provider:connect`| Disconnect: drop the shared and per-user credentials and cached tools and return the provider to `CREATED` (the registration is kept) |
 | POST   | `/api/v1/admin/mcp/oauth/connect`                      | `mcp_provider:update` | Begin OAuth (discovery + DCR + PKCE) → `{oauth_url}`           |
 | POST   | `/api/v1/mcp/oauth/callback?code=&state=`              | user auth             | Complete OAuth code exchange → `{redirect_url, server_name}`    |
 | PATCH  | `/api/v1/admin/tool/status`                            | `mcp_provider:update` | Toggle tools `{tool_ids: int[], enabled}`                       |
+
+`mcp_provider:configure` has no endpoint: it gates the web MCP Configuration page (system admin registers providers there, using `create`/`update`/`delete`). Enterprise admins hold `mcp_provider:connect` only: they pick a registered provider, bind credentials (`POST …/connect`) and unbind them (`DELETE …/connect`), but never enter a url.
 
 ---
 
@@ -452,11 +636,24 @@ secrets and only resolves them at runtime when an agent calls `send_email`.
 | DELETE | `/api/v1/mail-configs/{config_id}`      | `mail_config:delete` | Deactivate a mail config                                              |
 | POST   | `/api/v1/mail-configs/{config_id}/test` | `mail_config:test`   | Send a test email through the selected SMTP config                    |
 | POST   | `/api/v1/mail-configs/{config_id}/send` | `mail_config:send`   | Send an email through the selected SMTP config                        |
+| GET    | `/api/v1/mail-configs/user-credentials` | Authenticated user | Get masked personal SMTP credentials |
+| PUT    | `/api/v1/mail-configs/user-credentials` | Authenticated user | Save personal SMTP credentials |
+| DELETE | `/api/v1/mail-configs/user-credentials` | Authenticated user | Deactivate personal SMTP credentials |
+| POST   | `/api/v1/mail-configs/user-credentials/test` | Authenticated user | Test saved personal SMTP credentials |
+
+Personal credential saves with invalid settings and tests without saved
+credentials return `400` with the `request.invalid` error code.
 
 `POST /api/v1/mail-configs/{config_id}/send` accepts the same safe email
 payload used by the playground: `to`, `subject`, `body`, optional `cc`, `bcc`,
 `is_html`, `reply_to`, and optional `attachments`. Each attachment object must
 include `filename`, `mime_type`, and `content_base64`.
+
+Mail failures use the standard response envelope with a localized `error.message`
+and a stable `error.code`. Invalid payloads and refused recipients return 400;
+SMTP authentication and message rejection return 502; connection failures return
+503; timeouts return 504; missing server configuration returns 500. Oversized
+attachments retain 413. SMTP diagnostic text is not returned as a user message.
 
 ---
 
@@ -640,7 +837,7 @@ are always present unless `DOCUMENT_TOOLS_ENABLED=false` (see
   content, shaped `{"__generated_file__": true, "file_id", "filename",
   "mime_type", "size_bytes", "download_url"}`. Both the live SSE path
   (`service/AgentStreamService.py`'s `message_generator`) and the chat-history rebuild path
-  (`controller/chat_controller.py`) recognize this via the shared
+  (`service/chat/chat_management_service.py`) recognize this via the shared
   `service/GeneratedFilePacket.py` helpers and emit a `generated_file` SSE
   packet (`type: "generated_file"`). Neither path emits the generic
   `custom_tool_start` / `custom_tool_delta` timeline packets for these two
@@ -707,6 +904,73 @@ are always present unless `DOCUMENT_TOOLS_ENABLED=false` (see
 
 ---
 
+## Document drafts (versioned editing)
+
+Every document/spreadsheet the tools above create is also a versioned draft:
+each `create_document`/`create_spreadsheet`/`edit_document`/`rewrite_document`
+call appends an immutable `Revision` to an `AuthoredDocument` aggregate
+(`service/authored_documents/`, tables `authored_documents` /
+`authored_document_revisions`, migration `0049_authored_documents`). The
+`document` table stays the rendered-file store used by `file_route.py` — a
+revision only points at its render through `rendered_file_id`, indexed so
+`/by-file` can resolve a chat card back to its draft. Deleting a thread deletes
+its drafts and revisions (`ON DELETE CASCADE`, migration 0050).
+
+All routes below (`api/routes/authored_documents_route.py`) sit behind
+`require_user` and are owner-scoped through `AuthoredDocumentService`; DTOs
+are in `schemas/authored_documents.py`. Domain errors
+(`core/exceptions/authored_documents.py`) subclass the shared
+`error_contract` classes, so the app's global handler produces the HTTP
+status/code/message/details envelope below without route-level translation.
+
+| Method | Path                                                         | Description                                                                 |
+| ------ | ------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| GET    | `/api/v1/documents?thread_id=`                                | List documents authored in one thread, most-recently-updated first.        |
+| GET    | `/api/v1/documents/{document_id}`                              | Document metadata + every revision's summary (no content).                 |
+| GET    | `/api/v1/documents/{document_id}/revisions/{revision_no}`      | One revision's full content, options, stats, `rendered_file_id`.            |
+| GET    | `/api/v1/documents/by-file/{file_id}`                          | Resolve a rendered `file_id` (e.g. a chat card) back to `document_id` / `revision_no`. 404 (`details.file_id`) for a legacy (pre-draft) file. |
+| POST   | `/api/v1/documents/{document_id}/revisions`                    | Save a user edit: `{base_revision_no, content, summary?}` → new revision (`operation=user_edit`). |
+| POST   | `/api/v1/documents/{document_id}/revisions/{revision_no}/restore` | `{base_revision_no}` → new revision copying an older one's content (`operation=restore`). |
+| GET    | `/api/v1/documents/{document_id}/revisions/{revision_no}/export?format=` | On-demand render of a revision to another format of the same kind (`pdf`/`docx`/`md`/`txt`/`json`/`xlsx`/`csv`), streamed; not saved as a new revision. |
+
+- `POST /revisions` and `.../restore` both take `base_revision_no` for
+  optimistic concurrency against `head_revision_no`: a stale base raises
+  `RevisionConflictError` (409, `document.revision_conflict`, details carry
+  `base_revision_no`/`head_revision_no`) so the caller can reload and retry.
+  An edit whose content and metadata are unchanged from head raises
+  `NoChangeError` (422, `document.no_change`); invalid Mermaid fences raise
+  `DiagramValidationError` (422, `document.diagram_invalid`, details carry
+  per-block `block_index`/`document_line`/`line`/`message`).
+- A Markdown draft may embed an image the user attached to the chat as
+  `![alt](attachment:<file_id>)`. Saving resolves every reference for the
+  caller only; an unknown, foreign, non-image or over-5-MiB one raises
+  `AttachmentReferenceError` (422, `document.attachment_invalid`, details carry
+  `file_ids`) and nothing is saved. `pdf`/`docx` renders embed the image; an
+  export whose attachment has since vanished leaves the image out; `md`/`txt`
+  keep the reference text. The panel loads it from `GET /api/chat/file/{id}`.
+- `export` accepts any `ExportFormat` value at the transport layer (FastAPI
+  rejects an unknown one as a plain 422 before the route body runs), but a
+  cross-kind conversion the service can't perform (e.g. rendering a
+  spreadsheet revision as `pdf`) raises `UnsupportedFormatChangeError` (422,
+  `document.format_change_unsupported`) — same envelope, service-level
+  reason.
+- Response shape for both mutating routes (`RevisionMutationResponse`):
+  `{document: DocumentSummaryDTO, revision: RevisionSummaryDTO, file: RenderedFileRefDTO, diagram_check}`,
+  where `diagram_check` is `passed` \| `skipped` \| `not_applicable` (`skipped`
+  when the Mermaid renderer timed out or its process pool failed to start —
+  see the diagram settings below; the diagram still exports as a labelled
+  code block rather than blocking the save).
+- Agent-side tools (`agents/tooling/document_*_tools.py`) operate on the same
+  service and revisions: `list_documents`, `list_attachments` (the
+  thread's attached images and their `attachment:` markdown), `read_document`
+  (quiet, no timeline/progress packets), `edit_document` (content-anchored `old_str`/
+  `new_str` edits, never line-anchored), `rewrite_document` (full
+  replacement). The four writers share the `create_document`/`create_spreadsheet`
+  wire format plus revision fields — see the stream contract in
+  `docs/service-interactions.md`.
+
+---
+
 ## User / Projects
 
 | Method | Path                                                   | Permission       | Description                           |
@@ -768,7 +1032,6 @@ not `last_accessed_at` or read-time metadata updates.
 
 | Permission                                                                                                    | Used by              |
 | ------------------------------------------------------------------------------------------------------------- | -------------------- |
-| `agent:assign`                                                                                                | Agent Groups         |
 | `agent:create`, `agent:delete`, `agent:list`, `agent:read`, `agent:update`                                    | Agent Definitions    |
 | `agent:feedback`                                                                                              | Agents feedback      |
 | `agent:invoke`, `agent:stream`                                                                                | Agents invoke/stream |

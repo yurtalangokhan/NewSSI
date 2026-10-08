@@ -10,6 +10,7 @@ interface ToolsSectionProps {
   onFold?: () => void;
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
+  isSearchDisabled?: boolean;
   className?: string;
 }
 
@@ -17,11 +18,11 @@ const ToolsSection: React.FC<ToolsSectionProps> = ({
   onFold,
   searchQuery,
   onSearchQueryChange,
+  isSearchDisabled = false,
   className,
 }) => {
   const { t } = useTranslation();
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { t } = useTranslation();
     onSearchQueryChange(e.target.value);
   };
 
@@ -37,6 +38,7 @@ const ToolsSection: React.FC<ToolsSectionProps> = ({
             onChange={handleSearchChange}
             leftSearchIcon
             showClearButton
+            variant={isSearchDisabled ? "disabled" : "primary"}
             className="w-full"
           />
         </div>

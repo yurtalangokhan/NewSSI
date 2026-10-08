@@ -16,9 +16,9 @@ import json
 import pytest
 from langchain_core.messages import HumanMessage
 
-from agents.graphs.flow_builder import _make_structured_output_node
+from agents.graphs.flow import _make_structured_output_node
 from core.exceptions import FlowBuildError
-from models.flows import FlowNode
+from schemas.flows import FlowNode
 
 
 @pytest.fixture(autouse=True)
@@ -52,13 +52,25 @@ class _StructuredSpy:
         )
         self.bound_to = None
         self.prompts: list[list] = []
+        #: config tags in force for each ``ainvoke`` call, in order
+        self.call_tags: list[list[str]] = []
+        self._tags: list[str] = []
 
     def with_structured_output(self, schema):
         self.bound_to = schema
         return self
 
+    def with_config(self, config):
+        clone = _StructuredSpy(objects=self._objects)
+        clone.bound_to = self.bound_to
+        clone.prompts = self.prompts
+        clone.call_tags = self.call_tags
+        clone._tags = list((config or {}).get("tags", []))
+        return clone
+
     async def ainvoke(self, messages):
         self.prompts.append(messages)
+        self.call_tags.append(list(self._tags))
         return self.bound_to(objects=self._objects)
 
 
@@ -184,3 +196,89 @@ async def test_a_model_without_structured_output_support_is_a_clear_error():
     fn = _make_structured_output_node(_node(), _Plain())
     with pytest.raises(FlowBuildError, match="structured output"):
         await fn({"messages": [HumanMessage(content="x")], "scratch": {}}, None)
+
+
+# ---------------------------------------------------------------------------
+# B1 crash mode: an unparseable model reply must not 500 the whole run
+# ---------------------------------------------------------------------------
+
+
+class _RaisingSpy:
+    """A bound model whose parse always fails (a small model returning '')."""
+
+    def __init__(self, *, fail_times: int) -> None:
+        self._fail_times = fail_times
+        self.call_tags: list[list[str]] = []  # one entry per ainvoke, shared across clones
+        self._tags: list[str] = []
+
+    @property
+    def calls(self) -> int:
+        return len(self.call_tags)
+
+    def with_structured_output(self, schema):
+        self._schema = schema
+        return self
+
+    def with_config(self, config):
+        clone = _RaisingSpy(fail_times=self._fail_times)
+        clone._schema = self._schema
+        clone.call_tags = self.call_tags  # same list object
+        clone._tags = list((config or {}).get("tags", []))
+        return clone
+
+    async def ainvoke(self, messages):
+        self.call_tags.append(list(self._tags))
+        if self.calls <= self._fail_times:
+            from langchain_core.exceptions import OutputParserException
+
+            raise OutputParserException("Invalid json output: ")
+        return self._schema(objects=[{"baslik": "kurtarildi", "tutar": 9.0}])
+
+
+@pytest.mark.asyncio
+async def test_one_retry_recovers_a_transient_parse_failure():
+    spy = _RaisingSpy(fail_times=1)
+    result = await _run(_node(), spy)
+    assert spy.calls == 2
+    assert result["scratch"]["so-1"] == [{"baslik": "kurtarildi", "tutar": 9.0}]
+
+
+@pytest.mark.asyncio
+async def test_a_persistent_parse_failure_degrades_to_empty_not_a_crash():
+    spy = _RaisingSpy(fail_times=5)
+    result = await _run(_node(), spy)
+    assert spy.calls == 2  # original + one retry, then give up
+    assert result["scratch"]["so-1"] == []
+    assert result["messages"][-1].content == "[]"
+
+
+# ---------------------------------------------------------------------------
+# B1: recovery calls must not stream their tokens into the answer channel
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_the_missing_field_reask_is_tagged_skip_stream():
+    """A second JSON completion concatenated onto the first is not valid
+    JSON. The targeted re-ask for still-null scalar fields runs with the
+    ``skip_stream`` tag so the SSE layer drops its chunks; only the first
+    pass streams."""
+    spy = _StructuredSpy(objects=[{"baslik": "Var", "tutar": None}])
+    long_text = "Fatura metni " * 8  # > 40 chars, so the re-ask fires
+    await _run(_node(), spy, text=long_text)
+
+    assert spy.call_tags[0] == []  # first pass streams normally
+    assert spy.call_tags[1:] == [["skip_stream"]]  # the re-ask is silenced
+
+
+@pytest.mark.asyncio
+async def test_the_parse_retry_is_tagged_skip_stream():
+    """The first pass streams; the stricter retry after a parse failure does
+    not — its tokens would otherwise concatenate onto the partial first
+    completion."""
+    spy = _RaisingSpy(fail_times=1)
+    result = await _run(_node(), spy)
+
+    assert result["scratch"]["so-1"] == [{"baslik": "kurtarildi", "tutar": 9.0}]
+    assert spy.call_tags[0] == []
+    assert spy.call_tags[1] == ["skip_stream"]

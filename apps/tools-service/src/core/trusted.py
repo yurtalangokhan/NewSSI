@@ -19,6 +19,8 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any
 
+from error_contract.composition import ForbiddenTrustedFieldError
+
 INTERNAL_AUTH_HEADER = "x-internal-token"
 USER_ID_HEADER = "x-user-id"
 TENANT_ID_HEADER = "x-tenant-id"
@@ -53,14 +55,6 @@ _REDACTED_FIELDS = frozenset(
         "trusted_context",
     }
 )
-
-
-class ForbiddenTrustedFieldError(Exception):
-    code = "forbidden_trusted_field"
-
-    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
-        super().__init__(message)
-        self.details = details or {}
 
 
 def _freeze_value(value: Any) -> Any:
@@ -123,8 +117,7 @@ def assert_model_arguments_trusted_free(model_arguments: Mapping[str, Any]) -> N
         if isinstance(value, Mapping):
             for key, nested in value.items():
                 if isinstance(key, str) and (
-                    key.lower() in RESERVED_MODEL_ARGUMENT_KEYS
-                    or key.lower().startswith(f"{BINDING_REF_HEADER}-")
+                    key.lower() in RESERVED_MODEL_ARGUMENT_KEYS or key.lower().startswith(f"{BINDING_REF_HEADER}-")
                 ):
                     return key
                 found = _scan(nested)
@@ -145,6 +138,20 @@ def assert_model_arguments_trusted_free(model_arguments: Mapping[str, Any]) -> N
         )
 
 
+def binding_header_name(binding_key: str) -> str:
+    """Transport header carrying a binding reference.
+
+    Binding keys are dotted (``database_search.collection_ids``); on the wire the
+    dot becomes ``__`` so proxies that reject dotted header names still forward it.
+    """
+    return f"{BINDING_REF_HEADER}-{binding_key.replace('.', '__')}"
+
+
+def binding_key_from_header(header_name: str) -> str:
+    """Inverse of :func:`binding_header_name`."""
+    return header_name[len(BINDING_REF_HEADER) + 1 :].replace("__", ".")
+
+
 def extract_trusted_context_from_headers(
     headers: dict[str, str],
 ) -> TrustedToolContext:
@@ -157,8 +164,7 @@ def extract_trusted_context_from_headers(
     attachment_handles: list[str] = []
     for name, value in headers.items():
         if isinstance(name, str) and name.lower().startswith(f"{BINDING_REF_HEADER}-"):
-            binding_key = name[len(BINDING_REF_HEADER) + 1 :]
-            binding_refs[binding_key] = value
+            binding_refs[binding_key_from_header(name)] = value
         if isinstance(name, str) and name.lower().startswith("x-attachment-handle-"):
             attachment_handles.append(value)
 
@@ -172,9 +178,7 @@ def extract_trusted_context_from_headers(
     )
 
 
-def build_transport_headers(
-    context: TrustedToolContext | None, internal_token: str
-) -> dict[str, str]:
+def build_transport_headers(context: TrustedToolContext | None, internal_token: str) -> dict[str, str]:
     """Build outgoing transport headers from a trusted context (for testing/tools)."""
     headers: dict[str, str] = {INTERNAL_AUTH_HEADER: internal_token}
     if context is None:
@@ -190,7 +194,7 @@ def build_transport_headers(
     for index, handle in enumerate(context.attachment_handles):
         headers[f"x-attachment-handle-{index}"] = handle
     for name, ref in context.binding_references.items():
-        headers[f"{BINDING_REF_HEADER}-{name}"] = ref
+        headers[binding_header_name(name)] = ref
     return headers
 
 

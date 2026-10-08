@@ -10,7 +10,8 @@ import Button from "@/refresh-components/buttons/Button";
 import AppInputBar, { AppInputBarHandle } from "@/sections/input/AppInputBar";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import Modal from "@/refresh-components/Modal";
-import { useFilters, useLlmManager } from "@/lib/hooks";
+import { useFilters } from "@/lib/api/domains/knowledge/hooks";
+import { useLlmManager } from "@/lib/api/domains/model-providers/hooks";
 import Dropzone from "react-dropzone";
 import { useSendMessageToParent, getPanelOrigin } from "@/lib/extension/utils";
 import { useNRFPreferences } from "@/components/context/NRFPreferencesContext";
@@ -19,11 +20,12 @@ import { CHROME_MESSAGE } from "@/lib/extension/constants";
 import { SettingsPanel } from "@/app/components/nrf/SettingsPanel";
 import LoginPage from "@/app/auth/login/LoginPage";
 import { sendSetDefaultNewTabMessage } from "@/lib/extension/utils";
-import { useAgents } from "@/hooks/useAgents";
-import { useProjectsContext } from "@/providers/ProjectsContext";
+import { useAgents } from "@/lib/api/domains/agents/hooks";
+import { ProjectFile, useProjectsContext } from "@/providers/ProjectsContext";
 import useDeepResearchToggle from "@/hooks/useDeepResearchToggle";
 import useChatController from "@/hooks/useChatController";
 import useChatSessionController from "@/hooks/useChatSessionController";
+import useActiveRunRecovery from "@/hooks/useActiveRunRecovery";
 import useAgentController from "@/hooks/useAgentController";
 import {
   useCurrentChatState,
@@ -34,21 +36,17 @@ import {
 import ChatUI from "@/sections/chat/ChatUI";
 import ChatScrollContainer from "@/sections/chat/ChatScrollContainer";
 import WelcomeMessage from "@/app/app/components/WelcomeMessage";
-import useChatSessions from "@/hooks/useChatSessions";
+import { useChatSessions } from "@/lib/api/domains/chat/hooks";
 import { cn } from "@/lib/utils";
 import Spacer from "@/refresh-components/Spacer";
 import { DEFAULT_CONTEXT_TOKENS } from "@/lib/constants";
 import { SvgUser, SvgMenu, SvgAlertTriangle } from "@opal/icons";
 import { useAppBackground } from "@/providers/AppBackgroundProvider";
-import { MinimalOnyxDocument } from "@/lib/search/interfaces";
+import { TurksatBackgroundCanvas } from "@/refresh-components/backgrounds/TurksatBackgroundCanvas";
+import { MinimalAtlasDocument } from "@/lib/search/interfaces";
 import DocumentsSidebar from "@/sections/document-sidebar/DocumentsSidebar";
 import TextViewModal from "@/sections/modals/TextViewModal";
 import { personaIncludesRetrieval } from "@/app/app/services/lib";
-import { useQueryController } from "@/providers/QueryControllerProvider";
-import { eeGated } from "@/ce";
-import EESearchUI from "@/ee/sections/SearchUI";
-
-const SearchUI = eeGated(EESearchUI);
 
 interface NRFPageProps {
   isSidePanel?: boolean;
@@ -59,7 +57,7 @@ const AVAILABLE_CONTEXT_TOKENS = Number(DEFAULT_CONTEXT_TOKENS) * 0.5;
 
 export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
   const { t } = useTranslation();
-  const { setUseOnyxAsNewTab } = useNRFPreferences();
+  const { setUseAtlasAsNewTab } = useNRFPreferences();
 
   const searchParams = useSearchParams();
   const filterManager = useFilters();
@@ -121,7 +119,7 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
   const [tabReadingEnabled, setTabReadingEnabled] = useState<boolean>(false);
   const [currentTabUrl, setCurrentTabUrl] = useState<string | null>(null);
   const [presentingDocument, setPresentingDocument] =
-    useState<MinimalOnyxDocument | null>(null);
+    useState<MinimalAtlasDocument | null>(null);
 
   // Document sidebar state (from store)
   const documentSidebarVisible = useDocumentSidebarVisible();
@@ -153,7 +151,8 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
   }, []);
 
   // Chat background from context
-  const { hasBackground, appBackgroundUrl } = useAppBackground();
+  const { hasBackground, appBackgroundUrl, appBackgroundCanvas } =
+    useAppBackground();
 
   // Modals
   const [showTurnOffModal, setShowTurnOffModal] = useState<boolean>(false);
@@ -177,9 +176,6 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
   const autoScrollEnabled = user?.preferences?.auto_scroll !== false;
   const isStreaming = currentChatState === "streaming";
 
-  // Query controller for search/chat classification (EE feature)
-  const { submit: submitQuery, classification } = useQueryController();
-
   // Determine if retrieval (search) is enabled based on the agent
   const retrievalEnabled = useMemo(() => {
     if (liveAgent) {
@@ -187,9 +183,6 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
     }
     return false;
   }, [liveAgent]);
-
-  // Check if we're in search mode
-  const isSearch = classification === "search";
 
   // Anchor for scroll positioning (matches ChatPage pattern)
   const anchorMessage = messageHistory.at(-2) ?? messageHistory[0];
@@ -222,18 +215,18 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
     setSettingsOpen((prev) => !prev);
   };
 
-  // If user toggles the "Use Onyx" switch to off, prompt a modal
-  const handleUseOnyxToggle = (checked: boolean) => {
+  // If user toggles the "Use Atlas" switch to off, prompt a modal
+  const handleUseAtlasToggle = (checked: boolean) => {
     if (!checked) {
       setShowTurnOffModal(true);
     } else {
-      setUseOnyxAsNewTab(true);
+      setUseAtlasAsNewTab(true);
       sendSetDefaultNewTabMessage(true);
     }
   };
 
   const confirmTurnOff = () => {
-    setUseOnyxAsNewTab(false);
+    setUseAtlasAsNewTab(false);
     setShowTurnOffModal(false);
     sendSetDefaultNewTabMessage(false);
   };
@@ -244,20 +237,33 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
     setCurrentMessageFiles([]);
     chatInputBarRef.current?.reset();
   }, [setMessage, setCurrentMessageFiles]);
+  const restoreInputBar = useCallback(
+    (restoredMessage: string, files: ProjectFile[]) => {
+      setMessage((current) => current || restoredMessage);
+      chatInputBarRef.current?.restore(restoredMessage);
+      setCurrentMessageFiles((current) => (current.length ? current : files));
+    },
+    [setMessage, setCurrentMessageFiles]
+  );
 
   // Chat controller for submitting messages
-  const { onSubmit, stopGenerating, handleMessageSpecificFileUpload } =
-    useChatController({
-      filterManager,
-      llmManager,
-      availableAgents: availableAgents || [],
-      liveAgent,
-      existingChatSessionId,
-      selectedDocuments: [],
-      searchParams: searchParams!,
-      resetInputBar,
-      setSelectedAgentFromId,
-    });
+  const {
+    onSubmit,
+    stopGenerating,
+    attachToActiveRun,
+    handleMessageSpecificFileUpload,
+  } = useChatController({
+    filterManager,
+    llmManager,
+    availableAgents: availableAgents || [],
+    liveAgent,
+    existingChatSessionId,
+    selectedDocuments: [],
+    searchParams: searchParams!,
+    resetInputBar,
+    setSelectedAgentFromId,
+    restoreInputBar,
+  });
 
   // Chat session controller for loading sessions
   const { currentSessionFileTokenCount } = useChatSessionController({
@@ -275,6 +281,13 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
     submitOnLoadPerformed,
     refreshChatSessions,
     onSubmit,
+    attachToActiveRun,
+  });
+
+  useActiveRunRecovery({
+    sessionId: currentSessionId,
+    isIdle: () => currentChatState === "input",
+    attach: attachToActiveRun,
   });
 
   // Handle file upload
@@ -285,9 +298,9 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
     [handleMessageSpecificFileUpload]
   );
 
-  // Handle submit from AppInputBar - routes through query controller for search/chat classification
+  // Handle submit from AppInputBar
   const handleChatInputSubmit = useCallback(
-    async (submittedMessage: string) => {
+    (submittedMessage: string) => {
       if (!submittedMessage.trim()) return;
 
       const additionalContext =
@@ -295,42 +308,19 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
           ? `The user is currently viewing: ${currentTabUrl}. Use the open_url tool to read this page and use its content as additional context for your response.`
           : undefined;
 
-      // If we already have messages (chat session started), always use chat mode
-      // (matches AppPage behavior where existing sessions bypass classification)
-      if (hasMessages) {
-        resetInputBar();
-        onSubmit({
-          message: submittedMessage,
-          currentMessageFiles: currentMessageFiles,
-          deepResearch: deepResearchEnabled,
-          additionalContext,
-        });
-        return;
-      }
-
-      // Build an onChat closure that captures additionalContext for this submission
-      const onChat = (chatMessage: string) => {
-        resetInputBar();
-        onSubmit({
-          message: chatMessage,
-          currentMessageFiles: currentMessageFiles,
-          deepResearch: deepResearchEnabled,
-          additionalContext,
-        });
-      };
-
-      // Use submitQuery which will classify the query and either:
-      // - Route to search (sets classification to "search" and shows SearchUI)
-      // - Route to chat (calls onChat callback)
-      await submitQuery(submittedMessage, onChat);
+      resetInputBar();
+      onSubmit({
+        message: submittedMessage,
+        currentMessageFiles: currentMessageFiles,
+        deepResearch: deepResearchEnabled,
+        additionalContext,
+      });
     },
     [
-      hasMessages,
       onSubmit,
       currentMessageFiles,
       deepResearchEnabled,
       resetInputBar,
-      submitQuery,
       tabReadingEnabled,
       currentTabUrl,
     ]
@@ -384,11 +374,10 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
     );
   }, [tabReadingEnabled]);
 
-  // Handle search result document click
-  const handleSearchDocumentClick = useCallback(
-    (doc: MinimalOnyxDocument) => setPresentingDocument(doc),
-    []
-  );
+  const showImageBackground =
+    !isSidePanel && hasBackground && !appBackgroundCanvas;
+  const showCanvasBackground =
+    !isSidePanel && hasBackground && !!appBackgroundCanvas;
 
   return (
     <div
@@ -396,16 +385,27 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
         "relative w-full h-full flex flex-col overflow-hidden",
         isSidePanel
           ? "bg-background"
-          : hasBackground && "bg-cover bg-center bg-fixed"
+          : showImageBackground && "bg-cover bg-center bg-fixed"
       )}
       style={
-        !isSidePanel && hasBackground
+        showImageBackground
           ? { backgroundImage: `url(${appBackgroundUrl})` }
           : undefined
       }
     >
+      {/* A TÜRKSAT animated scene stands in for the CSS background-image
+          above when the active background is canvas-kind. */}
+      {showCanvasBackground && appBackgroundCanvas && (
+        <TurksatBackgroundCanvas
+          company={appBackgroundCanvas.company}
+          mode={appBackgroundCanvas.mode}
+          animate={appBackgroundCanvas.animate}
+          className="absolute inset-0"
+        />
+      )}
+
       {/* Semi-transparent overlay for readability when background is set */}
-      {!isSidePanel && hasBackground && (
+      {(showImageBackground || showCanvasBackground) && (
         <div className="absolute inset-0 bg-background/80 pointer-events-none" />
       )}
 
@@ -467,7 +467,7 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
             )}
 
             {/* Welcome message - centered when no messages and not in search mode */}
-            {!hasMessages && !isSearch && (
+            {!hasMessages && (
               <div className="relative w-full flex-1 flex flex-col items-center justify-end">
                 <WelcomeMessage isDefaultAgent />
                 <Spacer rem={1.5} />
@@ -513,16 +513,8 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
               <Spacer rem={isSidePanel ? 1 : 0.5} />
             </div>
 
-            {/* Search results - shown when query is classified as search */}
-            {isSearch && (
-              <div className="flex-1 w-full max-w-[var(--app-page-main-content-width)] px-4 min-h-0 overflow-auto">
-                <Spacer rem={0.75} />
-                <SearchUI onDocumentClick={handleSearchDocumentClick} />
-              </div>
-            )}
-
             {/* Spacer to push content up when showing welcome message */}
-            {!hasMessages && !isSearch && <div className="flex-1 w-full" />}
+            {!hasMessages && <div className="flex-1 w-full" />}
           </div>
         )}
       </Dropzone>
@@ -556,7 +548,7 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
           <SettingsPanel
             settingsOpen={settingsOpen}
             toggleSettings={toggleSettings}
-            handleUseOnyxToggle={handleUseOnyxToggle}
+            handleUseAtlasToggle={handleUseAtlasToggle}
           />
 
           <Modal open={showTurnOffModal} onOpenChange={setShowTurnOffModal}>

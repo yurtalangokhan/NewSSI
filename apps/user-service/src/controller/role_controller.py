@@ -1,27 +1,41 @@
-import uuid
 from typing import Any
+import uuid
 
-from fastapi import HTTPException
-from i18n import t
+from localization import t
+
+from src.core.exceptions import ConflictError
 
 from .base import BaseController
 
 
 class CompositeRoleController(BaseController):
+    """Platform role use cases; every role is addressed by its Keycloak role ID."""
+
     def __init__(self):
         from src.service.role_service import get_composite_role_service
 
         self.service = get_composite_role_service()
 
-    async def list_roles(self) -> dict[str, Any]:
-        roles = await self.service.list_roles()
-        return {"composite_roles": roles, "roles": roles}
+    async def _audit(self, action: str, role_id: str, user_id: str | None, **details: Any):
+        from src.service import get_audit_service
 
-    async def get_role(self, name: str) -> dict[str, Any]:
-        role = await self.service.get_role(name)
-        if not role:
-            self._raise_not_found("role.not_found", name=name)
-        return role
+        await get_audit_service().log(
+            action=action,
+            resource=f"role:{role_id}",
+            user_id=_safe_uuid(user_id),
+            details=details,
+        )
+
+    def _found(self, role_id: str, result: dict[str, Any] | None) -> dict[str, Any]:
+        if not result:
+            self._raise_not_found("role.id_not_found", role_id=role_id)
+        return result
+
+    async def list_roles(self) -> dict[str, Any]:
+        return {"roles": await self.service.list_roles()}
+
+    async def get_role(self, role_id: str) -> dict[str, Any]:
+        return self._found(role_id, await self.service.get_role(role_id))
 
     async def create_role(
         self,
@@ -31,161 +45,71 @@ class CompositeRoleController(BaseController):
         role_ids: list[str] | None = None,
         user_id: str | None = None,
     ) -> dict[str, Any]:
-        from src.service import get_audit_service
-
         try:
-            result = await self.service.create_role(
-                name=name,
-                description=description,
-                permissions=permissions,
-                role_ids=role_ids,
-                is_builtin=False,
+            role = await self.service.create_role(
+                name=name, description=description, permissions=permissions, role_ids=role_ids
             )
-            audit = get_audit_service()
-            await audit.log(
-                action="role:create",
-                resource=f"role:{name}",
-                user_id=_safe_uuid(user_id),
-                details={"name": name, "description": description, "permissions": permissions},
-            )
-            return result
-        except ValueError as e:
-            raise HTTPException(status_code=409, detail=str(e)) from e
+        except ConflictError:
+            raise
+        await self._audit(
+            "role:create",
+            role["id"],
+            user_id,
+            name=name,
+            description=description,
+            permissions=permissions,
+            role_ids=role_ids,
+        )
+        return role
 
     async def update_role(
         self,
-        name: str,
+        role_id: str,
         description: str | None = None,
         permissions: list[str] | None = None,
         role_ids: list[str] | None = None,
         user_id: str | None = None,
     ) -> dict[str, Any]:
-        from src.service import get_audit_service
-
-        try:
-            role = await self.service.update_role(
-                name=name,
-                description=description,
-                permissions=permissions,
-                role_ids=role_ids,
-            )
-        except ValueError as e:
-            self._raise_bad_request(str(e))
-        if not role:
-            self._raise_not_found("role.not_found", name=name)
-        audit = get_audit_service()
-        await audit.log(
-            action="role:update",
-            resource=f"role:{name}",
-            user_id=_safe_uuid(user_id),
-            details={"description": description, "permissions": permissions, "role_ids": role_ids},
+        role = await self.service.update_role(
+            role_id, description=description, permissions=permissions, role_ids=role_ids
+        )
+        role = self._found(role_id, role)
+        await self._audit(
+            "role:update",
+            role_id,
+            user_id,
+            description=description,
+            permissions=permissions,
+            role_ids=role_ids,
         )
         return role
 
-    async def delete_role(self, name: str, user_id: str | None = None) -> dict[str, Any]:
-        from src.service import get_audit_service
-
-        try:
-            success = await self.service.delete_role(name)
-        except ValueError as e:
-            self._raise_bad_request(str(e))
-        if not success:
-            self._raise_not_found("role.not_found", name=name)
-        audit = get_audit_service()
-        await audit.log(
-            action="role:delete",
-            resource=f"role:{name}",
-            user_id=_safe_uuid(user_id),
-            details={"name": name},
-        )
+    async def delete_role(self, role_id: str, user_id: str | None = None) -> dict[str, Any]:
+        deleted = await self.service.delete_role(role_id)
+        if not deleted:
+            self._raise_not_found("role.id_not_found", role_id=role_id)
+        await self._audit("role:delete", role_id, user_id)
         return {"message": t("role.deleted")}
 
-    async def get_role_permissions(self, name: str) -> dict[str, Any]:
-        try:
-            result = await self.service.get_role_permissions(name)
-        except Exception as e:
-            self._raise_bad_request(str(e))
-        if not result:
-            self._raise_not_found("role.not_found", name=name)
-        return result
+    async def get_role_permissions(self, role_id: str) -> dict[str, Any]:
+        return self._found(role_id, await self.service.get_role_permissions(role_id))
 
     async def set_role_permissions(
-        self, name: str, permissions: list[str], user_id: str | None = None
+        self, role_id: str, permissions: list[str], user_id: str | None = None
     ) -> dict[str, Any]:
-        from src.service import get_audit_service
-
-        try:
-            result = await self.service.set_role_permissions(name, permissions)
-        except ValueError as e:
-            self._raise_bad_request(str(e))
-        if not result:
-            self._raise_not_found("role.not_found", name=name)
-        audit = get_audit_service()
-        await audit.log(
-            action="role:set_permissions",
-            resource=f"role:{name}",
-            user_id=_safe_uuid(user_id),
-            details={"name": name, "permissions": permissions},
-        )
+        result = await self.service.set_role_permissions(role_id, permissions)
+        result = self._found(role_id, result)
+        await self._audit("role:set_permissions", role_id, user_id, permissions=permissions)
         return result
 
-    async def get_role_role_ids(self, name: str) -> dict[str, Any]:
-        result = await self.service.get_role_role_ids(name)
-        if not result:
-            self._raise_not_found("role.not_found", name=name)
+    async def get_role_bundles(self, role_id: str) -> dict[str, Any]:
+        return self._found(role_id, await self.service.get_role_bundles(role_id))
+
+    async def set_role_bundles(self, role_id: str, role_ids: list[str], user_id: str | None = None) -> dict[str, Any]:
+        result = await self.service.set_role_bundles(role_id, role_ids)
+        result = self._found(role_id, result)
+        await self._audit("role:set_role_ids", role_id, user_id, role_ids=role_ids)
         return result
-
-    async def set_role_role_ids(
-        self, name: str, role_ids: list[str], user_id: str | None = None
-    ) -> dict[str, Any]:
-        from src.service import get_audit_service
-
-        try:
-            result = await self.service.set_role_role_ids(name, role_ids)
-        except ValueError as e:
-            self._raise_bad_request(str(e))
-        if not result:
-            self._raise_not_found("role.not_found", name=name)
-        audit = get_audit_service()
-        await audit.log(
-            action="role:set_role_ids",
-            resource=f"role:{name}",
-            user_id=_safe_uuid(user_id),
-            details={"name": name, "role_ids": role_ids},
-        )
-        return result
-
-    async def get_effective_permissions(self, name: str) -> dict[str, Any]:
-        return await self.get_role_permissions(name)
-
-    async def get_inherited_roles(self, name: str) -> dict[str, Any]:
-        return await self.get_role_role_ids(name)
-
-    async def set_inherited_roles(
-        self,
-        name: str,
-        role_ids: list[str],
-        user_id: str | None = None,
-    ) -> dict[str, Any]:
-        return await self.set_role_role_ids(name, role_ids, user_id=user_id)
-
-    async def sync_to_keycloak(self, user_id: str | None = None) -> dict[str, Any]:
-        from src.service import get_audit_service
-
-        try:
-            result = await self.service.sync_to_keycloak()
-            audit = get_audit_service()
-            await audit.log(
-                action="role:sync_keycloak",
-                resource="keycloak:roles",
-                user_id=_safe_uuid(user_id),
-                details={},
-            )
-            return result
-        except Exception as e:
-            raise HTTPException(
-                status_code=500, detail=t("role.keycloak_sync_failed", error=e)
-            ) from e
 
 
 def _safe_uuid(val: str | None) -> uuid.UUID | None:

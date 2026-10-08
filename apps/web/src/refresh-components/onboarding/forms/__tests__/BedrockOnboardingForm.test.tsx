@@ -74,8 +74,8 @@ const mockFetchModels = jest.fn().mockResolvedValue({
   error: null,
 });
 
-jest.mock("@/app/admin/configuration/llm/utils", () => ({
-  canProviderFetchModels: jest.fn().mockReturnValue(true),
+jest.mock("@/lib/api/domains/model-providers/api", () => ({
+  ...jest.requireActual("@/lib/api/domains/model-providers/api"),
   fetchModels: (...args: any[]) => mockFetchModels(...args),
 }));
 
@@ -114,7 +114,7 @@ describe("BedrockOnboardingForm", () => {
   const longTermApiKeyText =
     /^llmOnboarding\.longTermApiKey$|^Long-term API Key$/i;
   const iamDescText =
-    /^llmOnboarding\.iamDesc$|Onyx will use the IAM role attached/i;
+    /^llmOnboarding\.iamDesc$|The app will use the IAM role attached/i;
   const fetchModelsText =
     /^llmOnboarding\.fetchAvailableModelsAria$|fetch available models/i;
   const modelPlaceholder = /selectModel|Select a model/i;

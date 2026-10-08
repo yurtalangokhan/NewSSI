@@ -10,7 +10,7 @@ with explicit, composed components for:
 - retry policy (timeout and retry via RuntimePolicy)
 - execution context (trusted user/tenant identity)
 
-Controllers depend on this interface instead of checking concrete
+Callers depend on this interface instead of checking concrete
 LazyLoadingAgent types or private fields.
 """
 
@@ -20,7 +20,6 @@ from collections.abc import AsyncIterator, Mapping
 from contextvars import ContextVar
 from typing import Any
 
-from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 
 from agent_composition.domain.definitions import RuntimePolicyConfig
@@ -36,7 +35,14 @@ from agent_composition.domain.ports import (
     StateRequest,
     StateUpdateRequest,
 )
-from core.logger import get_logger
+from core.observability.logger import get_logger
+from memory.recall import (
+    build_memory_recall_event,
+    inject_memory_into_input,
+    mark_input_with_ltm_recalled,
+    resolve_langgraph_store,
+    tag_output_with_recalled_memories,
+)
 
 from .execution_context import AgentExecutionContext, TrustedExecutionContext
 from .lifecycle import IdempotentLifecycle
@@ -52,9 +58,7 @@ from .policies import (
 logger = get_logger(__name__)
 
 # Context variable for trusted context at invocation time.
-_trusted_context_var: ContextVar[TrustedExecutionContext | None] = ContextVar(
-    "_trusted_context_var", default=None
-)
+_trusted_context_var: ContextVar[TrustedExecutionContext | None] = ContextVar("_trusted_context_var", default=None)
 
 
 def get_trusted_context() -> TrustedExecutionContext | None:
@@ -213,119 +217,27 @@ class ComposedAgent(ExecutableAgent, IdempotentLifecycle):
 
     def _get_langgraph_store(self):
         """Get the global LangGraph store for long-term memory."""
-        try:
-            from service.LangGraphStoreService import get_langgraph_store
-
-            return get_langgraph_store()
-        except Exception as exc:
-            logger.warning("[ComposedAgent] Could not resolve LangGraph store: %s", exc)
-            return None
+        return resolve_langgraph_store()
 
     def _build_memory_recall_event(self, memories: dict[str, Any]) -> dict[str, Any] | None:
         """Build a custom stream event payload for recalled memories."""
-        facts = memories.get("user_facts", [])
-        if not facts:
-            return None
-        return {
-            "type": "long_term_memory_recall",
-            "fact_count": len(facts),
-            "memories": facts,
-        }
+        return build_memory_recall_event(memories)
 
     def _mark_input_with_ltm_recalled(self, input: Any, recalled_count: int) -> Any:
         """Attach recalled-memory count to the latest user message."""
-        if recalled_count <= 0:
-            return input
-        if not isinstance(input, dict) or "messages" not in input:
-            return input
-
-        messages = list(input.get("messages") or [])
-        for idx in range(len(messages) - 1, -1, -1):
-            msg = messages[idx]
-            if isinstance(msg, dict):
-                msg_type = msg.get("type", "")
-                if msg_type not in ("human", "user"):
-                    continue
-                extra = msg.get("additional_kwargs", {}) or {}
-                extra["_ltm_recalled"] = recalled_count
-                msg["additional_kwargs"] = extra
-                messages[idx] = msg
-                return {**input, "messages": messages}
-            msg_type = getattr(msg, "type", None)
-            if msg_type not in ("human", "user"):
-                continue
-            extra = getattr(msg, "additional_kwargs", {}) or {}
-            extra["_ltm_recalled"] = recalled_count
-            setattr(msg, "additional_kwargs", extra)
-            messages[idx] = msg
-            return {**input, "messages": messages}
-        return input
+        return mark_input_with_ltm_recalled(input, recalled_count)
 
     def _tag_output_with_recalled_memories(self, output: Any, memories: dict[str, Any]) -> Any:
         """Tag response messages so chat history can replay memory recall."""
-        if not memories.get("user_facts"):
-            return output
-
-        try:
-            from memory.long_term import tag_response_with_ltm_recall
-        except ImportError:
-            return output
-
-        if isinstance(output, dict) and output.get("messages"):
-            tag_response_with_ltm_recall(output["messages"][-1], memories)
-            return output
-
-        if isinstance(output, tuple) and len(output) in (2, 3):
-            stream_mode, payload = output[-2], output[-1]
-            if stream_mode == "updates" and isinstance(payload, dict):
-                for updates in payload.values():
-                    if isinstance(updates, dict) and updates.get("messages"):
-                        tag_response_with_ltm_recall(updates["messages"][-1], memories)
-            elif stream_mode == "values" and isinstance(payload, dict) and payload.get("messages"):
-                tag_response_with_ltm_recall(payload["messages"][-1], memories)
-        return output
+        return tag_output_with_recalled_memories(output, memories)
 
     async def _inject_memory_into_input(
         self,
         input: Any,
         config: RunnableConfig | None = None,
     ) -> tuple[Any, dict, str | None]:
-        """Inject memory context into input and return memories dict.
-
-        Mirrors LazyLoadingAgent._inject_memory_into_input but uses
-        the composed MemoryPolicy for store access.
-        """
-        configurable = (config or {}).get("configurable", {})
-        long_term_memory = configurable.get("long_term_memory", False)
-        user_id = configurable.get("user_id")
-        store = self._get_langgraph_store()
-        memories: dict = {}
-
-        if not long_term_memory or not store or not user_id:
-            return input, memories, user_id
-
-        try:
-            from memory.long_term import (
-                build_event_emitters,
-                build_memory_context,
-                recall_memories,
-            )
-
-            on_recall, _ = build_event_emitters(configurable)
-            memories = await recall_memories(store, user_id, on_recall=on_recall)
-            recalled_count = len(memories.get("user_facts", []))
-            input = self._mark_input_with_ltm_recalled(input, recalled_count)
-            memory_context = build_memory_context(memories)
-
-            if memory_context and isinstance(input, dict) and "messages" in input:
-                input = {
-                    **input,
-                    "messages": [SystemMessage(content=memory_context)] + list(input["messages"]),
-                }
-        except Exception as e:
-            logger.warning("[ComposedAgent] Memory recall failed: %s", e)
-
-        return input, memories, user_id
+        """Recall long-term memories and prepend them to *input*."""
+        return await inject_memory_into_input(input, config)
 
     # ------------------------------------------------------------------
     # Runnable passthrough (checkpoint delegation)
@@ -354,9 +266,7 @@ class ComposedAgent(ExecutableAgent, IdempotentLifecycle):
             async for snapshot in self._executable_agent.aget_state_history(request):
                 yield snapshot
         else:
-            raise NotImplementedError(
-                "ComposedAgent.aget_state_history requires a built graph agent"
-            )
+            raise NotImplementedError("ComposedAgent.aget_state_history requires a built graph agent")
 
     # ------------------------------------------------------------------
     # Runtime policy application helpers

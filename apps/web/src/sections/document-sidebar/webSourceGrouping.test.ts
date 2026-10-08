@@ -3,11 +3,11 @@ import {
   groupSourcesByDomain,
   splitMessageSources,
 } from "./webSourceGrouping";
-import { OnyxDocument } from "@/lib/search/interfaces";
+import { AtlasDocument } from "@/lib/search/interfaces";
 import { ValidSources } from "@/lib/types";
-import { Packet, PacketType } from "@/app/app/services/streamingModels";
+import { Packet, PacketType } from "@/lib/api/domains/chat/streaming-types";
 
-const webDoc = (id: string, link: string): OnyxDocument =>
+const webDoc = (id: string, link: string): AtlasDocument =>
   ({
     document_id: id,
     semantic_identifier: id,
@@ -22,9 +22,9 @@ const webDoc = (id: string, link: string): OnyxDocument =>
     metadata: {},
     updated_at: null,
     is_internet: true,
-  }) as OnyxDocument;
+  }) as AtlasDocument;
 
-const internalDoc = (id: string): OnyxDocument =>
+const internalDoc = (id: string): AtlasDocument =>
   ({
     document_id: id,
     semantic_identifier: id,
@@ -39,7 +39,7 @@ const internalDoc = (id: string): OnyxDocument =>
     metadata: {},
     updated_at: null,
     is_internet: false,
-  }) as OnyxDocument;
+  }) as AtlasDocument;
 
 const createPacket = (type: string, data: Record<string, any> = {}): Packet =>
   ({
@@ -55,15 +55,15 @@ describe("isAllWebSources", () => {
   test("true when every document is a web result", () => {
     expect(
       isAllWebSources([
-        webDoc("1", "https://onyx.app"),
-        webDoc("2", "https://docs.onyx.app"),
+        webDoc("1", "https://atlas.app"),
+        webDoc("2", "https://docs.atlas.app"),
       ])
     ).toBe(true);
   });
 
   test("false when any document is an internal source", () => {
     expect(
-      isAllWebSources([webDoc("1", "https://onyx.app"), internalDoc("2")])
+      isAllWebSources([webDoc("1", "https://atlas.app"), internalDoc("2")])
     ).toBe(false);
   });
 });
@@ -71,24 +71,27 @@ describe("isAllWebSources", () => {
 describe("groupSourcesByDomain", () => {
   test("groups documents sharing a hostname, preserving first-seen order", () => {
     const docs = [
-      webDoc("1", "https://onyx.app/page-a"),
-      webDoc("2", "https://docs.onyx.app"),
-      webDoc("3", "https://onyx.app/page-b"),
+      webDoc("1", "https://atlas.app/page-a"),
+      webDoc("2", "https://docs.atlas.app"),
+      webDoc("3", "https://atlas.app/page-b"),
     ];
 
     const groups = groupSourcesByDomain(docs);
 
-    expect(groups.map((g) => g.domain)).toEqual(["onyx.app", "docs.onyx.app"]);
+    expect(groups.map((g) => g.domain)).toEqual([
+      "atlas.app",
+      "docs.atlas.app",
+    ]);
     expect(groups[0]?.documents.map((d) => d.document_id)).toEqual(["1", "3"]);
     expect(groups[1]?.documents.map((d) => d.document_id)).toEqual(["2"]);
   });
 
   test("a single document still gets its own one-element group", () => {
-    const groups = groupSourcesByDomain([webDoc("1", "https://onyx.app")]);
+    const groups = groupSourcesByDomain([webDoc("1", "https://atlas.app")]);
 
     expect(groups).toEqual([
       {
-        domain: "onyx.app",
+        domain: "atlas.app",
         documents: [expect.objectContaining({ document_id: "1" })],
       },
     ]);

@@ -6,7 +6,7 @@ from src.controller.role_controller import CompositeRoleController
 
 
 @pytest.mark.asyncio
-async def test_list_roles_exposes_roles_alias_for_admin_users():
+async def test_list_roles_exposes_a_single_roles_key():
     roles = [{"name": "system-admin", "description": "System administrator"}]
     controller = CompositeRoleController()
     controller.service = AsyncMock()
@@ -14,5 +14,4 @@ async def test_list_roles_exposes_roles_alias_for_admin_users():
 
     response = await controller.list_roles()
 
-    assert response["composite_roles"] == roles
-    assert response["roles"] == roles
+    assert response == {"roles": roles}

@@ -15,10 +15,8 @@ import { ChatSessionMinimal } from "@/app/ee/admin/performance/usage/types";
 import { timestampToReadableDate } from "@/lib/dateUtils";
 import { Dispatch, SetStateAction, useCallback, useState } from "react";
 import { Feedback, TaskStatus } from "@/lib/types";
-import {
-  DateRange,
-  AdminDateRangeSelector,
-} from "@/components/dateRangeSelectors/AdminDateRangeSelector";
+import { AdminDateRangeSelector } from "@/components/dateRangeSelectors/AdminDateRangeSelector";
+import { DateRange } from "@/lib/api/domains/knowledge/types";
 import { PageSelector } from "@/components/PageSelector";
 import Link from "next/link";
 import type { Route } from "next";
@@ -27,7 +25,10 @@ import KickoffCSVExport from "@/app/ee/admin/performance/query-history/KickoffCS
 import CardSection from "@/components/admin/CardSection";
 import usePaginatedFetch from "@/hooks/usePaginatedFetch";
 import { ErrorCallout } from "@/components/ErrorCallout";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import {
+  fetchChatSessionHistoryPage,
+  fetchQueryHistoryTasks,
+} from "@/lib/api/domains/system/api";
 import useSWR from "swr";
 import { TaskQueueState } from "@/app/ee/admin/performance/query-history/types";
 import { withRequestId } from "@/app/ee/admin/performance/query-history/utils";
@@ -165,7 +166,7 @@ function PreviousQueryHistoryExportsModal({
 }) {
   const { data: queryHistoryTasks } = useSWR<TaskQueueState[]>(
     LIST_QUERY_HISTORY_URL,
-    errorHandlingFetcher,
+    () => fetchQueryHistoryTasks<TaskQueueState[]>(),
     {
       refreshInterval: 3000,
     }
@@ -283,7 +284,8 @@ export function QueryHistoryTable() {
   } = usePaginatedFetch<ChatSessionMinimal>({
     itemsPerPage: ITEMS_PER_PAGE,
     pagesPerBatch: PAGES_PER_BATCH,
-    endpoint: "/api/admin/chat-session-history",
+    requestKey: "system:chat-session-history",
+    loadPage: fetchChatSessionHistoryPage,
     filter: filters,
   });
 

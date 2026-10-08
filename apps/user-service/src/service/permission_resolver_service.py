@@ -1,9 +1,11 @@
+from contextlib import nullcontext
 import time
 import uuid
 
+from cachetools import LRUCache
+
 from src.core.permissions.admin_roles import is_admin_role_name
 from src.repository import CompositeRoleRepository, UserRepository, UserRoleRepository
-from src.service.coarse_role_service import get_role_service
 
 
 class PermissionResolverService:
@@ -12,7 +14,9 @@ class PermissionResolverService:
         self.user_role_repo = UserRoleRepository()
         self.role_repo = CompositeRoleRepository()
         self.cache_ttl_seconds = cache_ttl_seconds
-        self._cache: dict[uuid.UUID, tuple[float, list[str], bool]] = {}
+        # Bounded: an unbounded dict here grew one entry per user ever
+        # permission-checked, for the lifetime of the process.
+        self._cache: LRUCache[uuid.UUID, tuple[float, list[str], bool]] = LRUCache(maxsize=10_000)
 
     async def resolve_effective_access(self, user_id: uuid.UUID) -> tuple[list[str], bool]:
         """Resolve a user's effective permissions AND whether they hold an
@@ -27,46 +31,28 @@ class PermissionResolverService:
         if cached and cached[0] > time.monotonic():
             return cached[1], cached[2]
 
+        keycloak = getattr(self.user_repo, "keycloak", None)
+        scope = getattr(type(keycloak), "admin_request_scope", None)
+        async with scope(keycloak) if scope else nullcontext():
+            return await self._resolve_uncached_access(user_id)
+
+    async def _resolve_uncached_access(self, user_id):
+        # Keycloak expands realm-role composites into their feature bundles, so
+        # the expanded grants per token role are already the complete answer.
+        permissions = set(await self.user_role_repo.effective_client_permissions(user_id))
+        if "*" in permissions:
+            return self._cache_access(user_id, ["*"], True)
         role_names = await self._role_names_for_user(user_id)
         if not role_names:
-            return self._cache_access(user_id, [], False)
+            return self._cache_access(user_id, sorted(permissions), False)
 
-        direct_permissions: set[str] = set()
-        feature_bundle_names: list[str] = []
-        is_admin = False
-
-        if hasattr(self.role_repo, "get_access_by_names"):
-            access_by_role = await self.role_repo.get_access_by_names(role_names)
-            for role_name, access in access_by_role.items():
-                if is_admin_role_name(role_name):
-                    is_admin = True
-
-                permissions = access.get("permissions", [])
-                if "*" in permissions:
-                    return self._cache_access(user_id, ["*"], True)
-                direct_permissions.update(permissions)
-                feature_bundle_names.extend(access.get("role_ids", []))
-        else:
-            roles = await self.role_repo.get_by_names(role_names)
-            for role in roles:
-                if is_admin_role_name(role.name):
-                    is_admin = True
-
-                permissions = role.permissions or []
-                if "*" in permissions:
-                    return self._cache_access(user_id, ["*"], True)
-                direct_permissions.update(permissions)
-                feature_bundle_names.extend(role.role_ids or [])
-
-        if feature_bundle_names:
-            bundle_permissions = await get_role_service().get_aggregated_permissions(
-                sorted(set(feature_bundle_names))
-            )
-            if "*" in bundle_permissions:
+        access_by_role = await self.role_repo.get_access_by_names(role_names)
+        is_admin = any(is_admin_role_name(name) for name in access_by_role)
+        for granted in access_by_role.values():
+            if "*" in granted:
                 return self._cache_access(user_id, ["*"], True)
-            direct_permissions.update(bundle_permissions)
-
-        return self._cache_access(user_id, sorted(direct_permissions), is_admin)
+            permissions.update(granted)
+        return self._cache_access(user_id, sorted(permissions), is_admin)
 
     async def resolve_effective_permissions(self, user_id: uuid.UUID) -> list[str]:
         permissions, _ = await self.resolve_effective_access(user_id)
@@ -75,17 +61,9 @@ class PermissionResolverService:
     async def _role_names_for_user(self, user_id: uuid.UUID) -> list[str]:
         assignments = await self.user_role_repo.list_user_roles(user_id)
         role_names = [str(role["name"]) for role in assignments]
-        if role_names:
-            return role_names
+        return role_names
 
-        user = await self.user_repo.get_by_id(user_id)
-        if not user:
-            return []
-        return [str(user.role)]
-
-    def _cache_access(
-        self, user_id: uuid.UUID, permissions: list[str], is_admin: bool
-    ) -> tuple[list[str], bool]:
+    def _cache_access(self, user_id: uuid.UUID, permissions: list[str], is_admin: bool) -> tuple[list[str], bool]:
         if self.cache_ttl_seconds > 0:
             expires_at = time.monotonic() + self.cache_ttl_seconds
             self._cache[user_id] = (expires_at, permissions, is_admin)

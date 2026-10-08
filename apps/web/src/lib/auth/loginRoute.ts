@@ -1,4 +1,4 @@
-import type { AuthTypeMetadata } from "@/lib/userSS";
+import type { AuthTypeMetadata } from "@/lib/api/domains/session/types";
 
 export const getLoginPath = (
   authTypeMetadata?: AuthTypeMetadata | null | undefined

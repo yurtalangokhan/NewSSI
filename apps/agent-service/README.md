@@ -28,7 +28,6 @@ Provider-specific notes live next to the service docs:
 | Area | Location |
 |---|---|
 | FastAPI routes | `src/api/routes/` |
-| Controllers | `src/controller/` |
 | Services | `src/service/` |
 | Repositories | `src/repository/` |
 | Database models and migrations | `src/core/db/` |

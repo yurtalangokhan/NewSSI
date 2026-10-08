@@ -1,4 +1,10 @@
-import React, { useCallback, useMemo, JSX, type CSSProperties } from "react";
+import React, {
+  useCallback,
+  useMemo,
+  useRef,
+  JSX,
+  type CSSProperties,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -11,11 +17,22 @@ import {
   MemoizedAnchor,
   MemoizedParagraph,
 } from "@/app/app/message/MemoizedTextComponents";
-import { extractCodeText, preprocessLaTeX } from "@/app/app/message/codeUtils";
-import { CodeBlock } from "@/app/app/message/CodeBlock";
+import { preprocessLaTeX } from "@/app/app/message/codeUtils";
+import { MarkdownCode } from "@/components/chat/MarkdownCode";
+import {
+  buildMermaidFixRequest,
+  type MermaidDiagnostic,
+} from "@/components/mermaid/mermaidDiagnostics";
+import { useTranslation } from "react-i18next";
+import { MarkdownSourceProvider } from "@/components/chat/MarkdownSourceContext";
 import { transformLinkUri, cn } from "@/lib/utils";
 import { InMessageImage } from "@/app/app/components/files/images/InMessageImage";
 import { extractChatImageFileId } from "@/app/app/components/files/images/utils";
+
+export interface MarkdownRenderOptions {
+  /** True while the text is still streaming; open Mermaid fences stay pending. */
+  isStreaming?: boolean;
+}
 
 /**
  * Processes content for markdown rendering by handling code blocks and LaTeX
@@ -43,11 +60,12 @@ export const processContent = (content: string): string => {
 };
 
 /**
- * Hook that provides markdown component callbacks for consistent rendering
+ * Hook that provides markdown component callbacks for consistent rendering.
+ * The `code` renderer reads the parsed source from MarkdownSourceProvider
+ * (set by renderMarkdown), so it stays stable while content streams.
  */
 export const useMarkdownComponents = (
   state: FullChatState | undefined,
-  processedContent: string,
   className?: string,
   foregroundStyle?: CSSProperties
 ) => {
@@ -60,38 +78,60 @@ export const useMarkdownComponents = (
     [className, foregroundStyle]
   );
 
-  const anchorCallback = useCallback(
-    (props: any) => {
-      const imageFileId = extractChatImageFileId(
-        props.href,
-        String(props.children ?? "")
-      );
-      if (imageFileId) {
-        return (
-          <InMessageImage
-            fileId={imageFileId}
-            fileName={String(props.children ?? "")}
-          />
-        );
-      }
+  // Read through a ref rather than depending on this state directly: any of
+  // these fields (esp. citations) can change mid-stream, and a new
+  // anchorCallback identity would rebuild markdownComponents, remounting
+  // every code block (and a Mermaid diagram's state) on that update.
+  const anchorStateRef = useRef({
+    docs: state?.docs,
+    userFiles: state?.userFiles,
+    citations: state?.citations,
+    setPresentingDocument: state?.setPresentingDocument,
+  });
+  anchorStateRef.current = {
+    docs: state?.docs,
+    userFiles: state?.userFiles,
+    citations: state?.citations,
+    setPresentingDocument: state?.setPresentingDocument,
+  };
+
+  const anchorCallback = useCallback((props: any) => {
+    const imageFileId = extractChatImageFileId(
+      props.href,
+      String(props.children ?? "")
+    );
+    if (imageFileId) {
       return (
-        <MemoizedAnchor
-          updatePresentingDocument={state?.setPresentingDocument || (() => {})}
-          docs={state?.docs || []}
-          userFiles={state?.userFiles || []}
-          citations={state?.citations}
-          href={props.href}
-        >
-          {props.children}
-        </MemoizedAnchor>
+        <InMessageImage
+          fileId={imageFileId}
+          fileName={String(props.children ?? "")}
+        />
       );
-    },
-    [
-      state?.docs,
-      state?.userFiles,
-      state?.citations,
-      state?.setPresentingDocument,
-    ]
+    }
+    const { docs, userFiles, citations, setPresentingDocument } =
+      anchorStateRef.current;
+    return (
+      <MemoizedAnchor
+        updatePresentingDocument={setPresentingDocument || (() => {})}
+        docs={docs || []}
+        userFiles={userFiles || []}
+        citations={citations}
+        href={props.href}
+      >
+        {props.children}
+      </MemoizedAnchor>
+    );
+  }, []);
+
+  const { t } = useTranslation();
+  const sendFollowUp = state?.onSendFollowUp;
+  const requestFix = useMemo(
+    () =>
+      sendFollowUp
+        ? (source: string, diagnostic: MermaidDiagnostic) =>
+            sendFollowUp(buildMermaidFixRequest(t, source, diagnostic))
+        : undefined,
+    [sendFollowUp, t]
   );
 
   const markdownComponents = useMemo(
@@ -135,17 +175,15 @@ export const useMarkdownComponents = (
           </div>
         );
       },
-      code: ({ node, className, children }: any) => {
-        const codeText = extractCodeText(node, processedContent, children);
-
-        return (
-          <CodeBlock className={className} codeText={codeText}>
-            {children}
-          </CodeBlock>
-        );
-      },
+      code: (props: any) => (
+        <MarkdownCode
+          {...props}
+          mermaidVariant="chat"
+          onRequestFix={requestFix}
+        />
+      ),
     }),
-    [anchorCallback, paragraphCallback, processedContent]
+    [anchorCallback, paragraphCallback, requestFix]
   );
 
   return markdownComponents;
@@ -158,23 +196,28 @@ export const renderMarkdown = (
   content: string,
   markdownComponents: any,
   textSize: string = "text-base",
-  foregroundStyle?: CSSProperties
+  foregroundStyle?: CSSProperties,
+  options: MarkdownRenderOptions = {}
 ): JSX.Element => {
   return (
-    <div dir="auto" style={foregroundStyle}>
-      <ReactMarkdown
-        className={`prose dark:prose-invert font-main-content-body max-w-full ${textSize}`}
-        components={markdownComponents}
-        remarkPlugins={[
-          remarkGfm,
-          [remarkMath, { singleDollarTextMath: true }],
-        ]}
-        rehypePlugins={[rehypeHighlight, rehypeKatex]}
-        urlTransform={transformLinkUri}
-      >
-        {content}
-      </ReactMarkdown>
-    </div>
+    <MarkdownSourceProvider
+      value={{ markdown: content, isStreaming: options.isStreaming ?? false }}
+    >
+      <div dir="auto" style={foregroundStyle}>
+        <ReactMarkdown
+          className={`prose dark:prose-invert font-main-content-body max-w-full ${textSize}`}
+          components={markdownComponents}
+          remarkPlugins={[
+            remarkGfm,
+            [remarkMath, { singleDollarTextMath: true }],
+          ]}
+          rehypePlugins={[rehypeHighlight, rehypeKatex]}
+          urlTransform={transformLinkUri}
+        >
+          {content}
+        </ReactMarkdown>
+      </div>
+    </MarkdownSourceProvider>
   );
 };
 
@@ -185,12 +228,13 @@ export const useMarkdownRenderer = (
   content: string,
   state: FullChatState | undefined,
   textSize: string,
-  foregroundStyle?: CSSProperties
+  foregroundStyle?: CSSProperties,
+  options: MarkdownRenderOptions = {}
 ) => {
+  const isStreaming = options.isStreaming ?? false;
   const processedContent = useMemo(() => processContent(content), [content]);
   const markdownComponents = useMarkdownComponents(
     state,
-    processedContent,
     textSize,
     foregroundStyle
   );
@@ -201,9 +245,16 @@ export const useMarkdownRenderer = (
         processedContent,
         markdownComponents,
         textSize,
-        foregroundStyle
+        foregroundStyle,
+        { isStreaming }
       ),
-    [processedContent, markdownComponents, textSize, foregroundStyle]
+    [
+      processedContent,
+      markdownComponents,
+      textSize,
+      foregroundStyle,
+      isStreaming,
+    ]
   );
 
   return {

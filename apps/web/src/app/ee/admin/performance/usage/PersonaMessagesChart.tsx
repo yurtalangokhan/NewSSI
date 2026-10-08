@@ -6,7 +6,7 @@ import {
   usePersonaMessages,
   usePersonaUniqueUsers,
 } from "../lib";
-import { DateRangePickerValue } from "@/components/dateRangeSelectors/AdminDateRangeSelector";
+import { DateRangePickerValue } from "@/lib/api/domains/knowledge/types";
 import Text from "@/refresh-components/texts/Text";
 import Title from "@/components/ui/title";
 import CardSection from "@/components/admin/CardSection";
@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState, useMemo, useEffect } from "react";
-import { Persona } from "@/app/admin/agents/interfaces";
+import { Persona } from "@/lib/api/domains/agents/types";
 
 export function PersonaMessagesChart({
   availablePersonas,

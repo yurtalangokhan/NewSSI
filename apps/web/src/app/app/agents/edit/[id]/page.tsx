@@ -3,7 +3,7 @@
 import { use, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
-import { useAgent } from "@/hooks/useAgents";
+import { useAgent } from "@/lib/api/domains/agents/hooks";
 import AgentEditorPage from "@/refresh-pages/AgentEditorPage";
 import * as AppLayouts from "@/layouts/app-layouts";
 import AgentEditorSkeleton from "@/refresh-components/skeletons/AgentEditorSkeleton";

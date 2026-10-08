@@ -1,8 +1,5 @@
-import {
-  CloudEmbeddingModel,
-  EmbeddingProvider,
-  getFormattedProviderName,
-} from "./interfaces";
+import { CloudEmbeddingModel, getFormattedProviderName } from "./interfaces";
+import { EmbeddingProvider } from "@/lib/api/domains/knowledge/search-settings-types";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { TextFormField, BooleanFormField } from "@/components/Field";

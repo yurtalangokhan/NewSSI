@@ -1,6 +1,8 @@
 "use client";
-
-import { authenticatedFetch } from "@/lib/fetcher";
+import { knowledgeEndpoints } from "@/lib/api/domains/knowledge/endpoints";
+import { modelProvidersEndpoints } from "@/lib/api/domains/model-providers/endpoints";
+import { deleteEmbeddingCredential } from "@/lib/api/domains/knowledge/api";
+import { saveEmbeddingCredential } from "@/lib/api/domains/knowledge/api";
 
 import React, { useRef, useState } from "react";
 import Modal from "@/refresh-components/Modal";
@@ -13,12 +15,9 @@ import {
   CloudEmbeddingProvider,
   getFormattedProviderName,
 } from "@/components/embedding/interfaces";
-import {
-  EMBEDDING_PROVIDERS_ADMIN_URL,
-  LLM_PROVIDERS_ADMIN_URL,
-} from "@/lib/llmConfig/constants";
+
 import { mutate } from "swr";
-import { testEmbedding } from "@/app/admin/embeddings/pages/utils";
+import { testEmbedding } from "@/lib/api/domains/knowledge/api";
 import { SvgSettings } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 
@@ -91,11 +90,8 @@ export default function ChangeCredentialsModal({
     setDeletionError("");
 
     try {
-      const response = await authenticatedFetch(
-        `${EMBEDDING_PROVIDERS_ADMIN_URL}/${provider.provider_type.toLowerCase()}`,
-        {
-          method: "DELETE",
-        }
+      const response = await deleteEmbeddingCredential(
+        provider.provider_type.toLowerCase()
       );
 
       if (!response.ok) {
@@ -104,7 +100,7 @@ export default function ChangeCredentialsModal({
         return;
       }
 
-      mutate(LLM_PROVIDERS_ADMIN_URL);
+      mutate(modelProvidersEndpoints.getAdminProvider.browserPath);
       onDeleted();
     } catch (error) {
       setDeletionError(
@@ -141,20 +137,13 @@ export default function ChangeCredentialsModal({
         throw new Error(errorMsg);
       }
 
-      const updateResponse = await authenticatedFetch(
-        EMBEDDING_PROVIDERS_ADMIN_URL,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            provider_type: normalizedProviderType,
-            api_key: apiKey,
-            api_url: apiUrl,
-            is_default_provider: false,
-            is_configured: true,
-          }),
-        }
-      );
+      const updateResponse = await saveEmbeddingCredential({
+        provider_type: normalizedProviderType,
+        api_key: apiKey,
+        api_url: apiUrl,
+        is_default_provider: false,
+        is_configured: true,
+      });
 
       if (!updateResponse.ok) {
         const errorData = await updateResponse.json();
@@ -167,7 +156,7 @@ export default function ChangeCredentialsModal({
       }
 
       // Refresh cached provider details so the rest of the form sees the new key without forcing a re-index
-      await mutate(EMBEDDING_PROVIDERS_ADMIN_URL);
+      await mutate(knowledgeEndpoints.saveEmbeddingCredential.browserPath);
 
       onConfirm();
     } catch (error) {

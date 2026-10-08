@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import faviconFetch from "favicon-fetch";
 import { SourceIcon } from "./SourceIcon";
 import { ValidSources } from "@/lib/types";
-import { OnyxIcon } from "./icons/icons";
+import { AtlasIcon } from "./icons/icons";
 
 const CACHE_DURATION = 24 * 60 * 60 * 1000;
 
@@ -52,8 +52,8 @@ export function SearchResultIcon({ url }: { url: string }) {
   if (!faviconUrl) {
     return <SourceIcon sourceType={ValidSources.Web} iconSize={18} />;
   }
-  if (url.includes("onyx.app")) {
-    return <OnyxIcon size={18} className="dark:text-[#fff] text-[#000]" />;
+  if (url.includes("atlas.app")) {
+    return <AtlasIcon size={18} className="dark:text-[#fff] text-[#000]" />;
   }
 
   return (

@@ -1,6 +1,5 @@
 "use client";
-
-import { authenticatedFetch } from "@/lib/fetcher";
+import { updateCustomAnalyticsScriptResponse } from "@/lib/api/domains/system/api";
 
 import { Label, SubLabel } from "@/components/Field";
 import { toast } from "@/hooks/useToast";
@@ -37,19 +36,10 @@ export function CustomAnalyticsUpdateForm() {
         onSubmit={async (e) => {
           e.preventDefault();
 
-          const response = await authenticatedFetch(
-            "/api/admin/enterprise-settings/custom-analytics-script",
-            {
-              method: "PUT",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                script: newCustomAnalyticsScript.trim(),
-                secret_key: secretKey,
-              }),
-            }
-          );
+          const response = await updateCustomAnalyticsScriptResponse({
+            script: newCustomAnalyticsScript.trim(),
+            secret_key: secretKey,
+          });
           if (response.ok) {
             toast.success("Custom analytics script updated successfully!");
           } else {
@@ -83,7 +73,7 @@ export function CustomAnalyticsUpdateForm() {
             {t("admin.performance.customAnalytics.secretKeyDescription")}{" "}
             {t("admin.performance.customAnalytics.secretKeyDescriptionSuffix")}
             <i>CUSTOM_ANALYTICS_SECRET_KEY</i> environment variable set when
-            initially setting up Onyx.
+            initially setting up Atlas.
           </>
         </SubLabel>
         <input

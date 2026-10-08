@@ -3,6 +3,14 @@
   background-color: var(--background-neutral-00);
   border: 1px solid var(--border-01);
 }
+
+/* The native WebKit clear button duplicates the input's own clear control. */
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .input-normal:hover {
   border-color: var(--border-02);
 }

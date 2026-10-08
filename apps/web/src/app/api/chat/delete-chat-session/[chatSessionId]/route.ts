@@ -1,4 +1,6 @@
+import { chatEndpoints } from "@/lib/api/domains/chat/endpoints";
 import { proxyToBackend } from "@/lib/api/proxy";
+
 import { NextRequest } from "next/server";
 
 export async function DELETE(
@@ -8,17 +10,9 @@ export async function DELETE(
   const { chatSessionId } = await params;
   return proxyToBackend(
     request,
-    `/api/chat/delete-chat-session/${chatSessionId}`,
+    chatEndpoints.deleteSession(chatSessionId).backend,
     {
       method: "DELETE",
     }
   );
-}
-
-// Also support POST for backward compatibility
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ chatSessionId: string }> }
-) {
-  return DELETE(request, { params });
 }

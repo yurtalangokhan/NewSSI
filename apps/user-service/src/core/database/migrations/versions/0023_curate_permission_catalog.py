@@ -12,8 +12,8 @@ removes the pruned permission names from existing role JSONB arrays.
 
 from collections.abc import Sequence
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
 
 revision: str = "0023"
 down_revision: str | None = "0022"
@@ -112,8 +112,7 @@ def upgrade() -> None:
     for (service, entity), feature in FEATURE_MAP.items():
         op.execute(
             sa.text(
-                "UPDATE permissions SET feature = :feature "
-                "WHERE service = :service AND entity = :entity"
+                "UPDATE permissions SET feature = :feature WHERE service = :service AND entity = :entity"
             ).bindparams(feature=feature, service=service, entity=entity)
         )
 
@@ -145,23 +144,20 @@ def upgrade() -> None:
         for permission in REMOVED_PERMISSIONS:
             op.execute(
                 sa.text(
-                    f"UPDATE {table} SET permissions = permissions - :permission "
-                    "WHERE permissions ? :permission"
+                    f"UPDATE {table} SET permissions = permissions - :permission WHERE permissions ? :permission"
                 ).bindparams(permission=permission)
             )
 
 
 def downgrade() -> None:
-    op.execute(
-        sa.text("DELETE FROM permissions WHERE name = :name").bindparams(name="agent:feedback")
-    )
+    op.execute(sa.text("DELETE FROM permissions WHERE name = :name").bindparams(name="agent:feedback"))
 
     for table in ("roles", "composite_roles"):
         for permission in REMOVED_PERMISSIONS:
             op.execute(
-                sa.text(
-                    f"UPDATE {table} SET permissions = permissions || to_jsonb(:permission)"
-                ).bindparams(permission=permission)
+                sa.text(f"UPDATE {table} SET permissions = permissions || to_jsonb(:permission)").bindparams(
+                    permission=permission
+                )
             )
 
     op.drop_column("permissions", "feature")

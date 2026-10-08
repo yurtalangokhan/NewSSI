@@ -1,34 +1,47 @@
-from typing import Any
+from collections.abc import Awaitable, Callable
+from typing import Any, NoReturn, ParamSpec, TypeVar
+import uuid
 
-from fastapi import HTTPException
-from i18n import t
+from error_contract import (
+    BadRequestError,
+    ConflictError,
+    ForbiddenError,
+    NotFoundError,
+    UnauthorizedError,
+)
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def translate_domain_errors(operation: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
+    """Compatibility decorator; typed domain errors must reach the API handler."""
+    return operation
 
 
 class BaseController:
-    """Raises translated HTTPExceptions.
+    """Propagate keyed shared errors to the route boundary."""
 
-    ``detail`` should be a locale key (e.g. "user.not_found") for messages
-    that are known ahead of time, with any dynamic parts passed as kwargs
-    for interpolation (e.g. ``_raise_not_found("role.not_found", name=name)``).
-    A raw, already-formatted string (e.g. from ``str(exc)``) is also accepted
-    and passed through unchanged, since arbitrary exception text has no
-    matching translation key to look up.
-    """
+    @staticmethod
+    def parse_user_id(raw: uuid.UUID | str) -> uuid.UUID:
+        if isinstance(raw, uuid.UUID):
+            return raw
+        try:
+            return uuid.UUID(raw)
+        except (ValueError, TypeError, AttributeError) as exc:
+            raise UnauthorizedError() from exc
 
-    def _raise_not_found(self, detail: str = "common.not_found", **kwargs: Any):
-        raise HTTPException(status_code=404, detail=t(detail, **kwargs))
+    def _raise_not_found(self, detail: str = "common.not_found", **kwargs: Any) -> NoReturn:
+        raise NotFoundError(message_key=f"errors.user_service.{detail}", message_params=kwargs)
 
-    def _raise_bad_request(self, detail: str = "common.bad_request", **kwargs: Any):
-        raise HTTPException(status_code=400, detail=t(detail, **kwargs))
+    def _raise_bad_request(self, detail: str = "common.bad_request", **kwargs: Any) -> NoReturn:
+        raise BadRequestError(message_key=f"errors.user_service.{detail}", message_params=kwargs)
 
-    def _raise_unauthorized(self, detail: str = "auth.unauthorized", **kwargs: Any):
-        raise HTTPException(status_code=401, detail=t(detail, **kwargs))
+    def _raise_unauthorized(self, detail: str = "auth.unauthorized", **kwargs: Any) -> NoReturn:
+        raise UnauthorizedError(message_key=f"errors.user_service.{detail}", message_params=kwargs)
 
-    def _raise_forbidden(self, detail: str = "auth.forbidden", **kwargs: Any):
-        raise HTTPException(status_code=403, detail=t(detail, **kwargs))
+    def _raise_forbidden(self, detail: str = "auth.forbidden", **kwargs: Any) -> NoReturn:
+        raise ForbiddenError(message_key=f"errors.user_service.{detail}", message_params=kwargs)
 
-    def _raise_conflict(self, detail: str = "common.conflict", **kwargs: Any):
-        raise HTTPException(status_code=409, detail=t(detail, **kwargs))
-
-    def _raise_internal_error(self, detail: str = "common.internal_error", **kwargs: Any):
-        raise HTTPException(status_code=500, detail=t(detail, **kwargs))
+    def _raise_conflict(self, detail: str = "common.conflict", **kwargs: Any) -> NoReturn:
+        raise ConflictError(message_key=f"errors.user_service.{detail}", message_params=kwargs)

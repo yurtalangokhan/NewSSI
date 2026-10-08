@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+import json
 from typing import Any
+
+from security import Redactor
 
 from .errors import ForbiddenTrustedFieldError
 from .ports import ToolInvocation, TrustedToolContext
@@ -80,8 +82,7 @@ def assert_model_arguments_trusted_free(model_arguments: dict[str, Any]) -> None
         if isinstance(value, Mapping):
             for key, nested in value.items():
                 if isinstance(key, str) and (
-                    key.lower() in RESERVED_MODEL_ARGUMENT_KEYS
-                    or key.lower().startswith(f"{BINDING_REF_HEADER}-")
+                    key.lower() in RESERVED_MODEL_ARGUMENT_KEYS or key.lower().startswith(f"{BINDING_REF_HEADER}-")
                 ):
                     return key
                 found = _scan(nested)
@@ -109,9 +110,16 @@ def assert_model_arguments_trusted_free(model_arguments: dict[str, Any]) -> None
             )
 
 
-def build_transport_headers(
-    context: TrustedToolContext | None, internal_token: str
-) -> dict[str, str]:
+def binding_header_name(binding_key: str) -> str:
+    """Transport header carrying a binding reference.
+
+    Binding keys are dotted (``database_search.collection_ids``); on the wire the
+    dot becomes ``__`` so proxies that reject dotted header names still forward it.
+    """
+    return f"{BINDING_REF_HEADER}-{binding_key.replace('.', '__')}"
+
+
+def build_transport_headers(context: TrustedToolContext | None, internal_token: str) -> dict[str, str]:
     headers: dict[str, str] = {INTERNAL_AUTH_HEADER: internal_token}
     if context is None:
         return headers
@@ -126,7 +134,7 @@ def build_transport_headers(
     for index, handle in enumerate(context.attachment_handles):
         headers[f"x-attachment-handle-{index}"] = handle
     for name, ref in context.binding_references.items():
-        headers[f"{BINDING_REF_HEADER}-{name}"] = ref
+        headers[binding_header_name(name)] = ref
     return headers
 
 
@@ -168,23 +176,20 @@ class InternalToolEnvelope:
         )
 
 
+# The field set and the placeholder stay here on purpose: tools-service and
+# agent-service redact different names, and each has its own log convention.
+# Only the traversal and masking are shared, so a fix to the traversal cannot
+# be applied to one service and missed in the other.
+_REDACTOR = Redactor(
+    _REDACTED_FIELDS,
+    prefixes=(f"{BINDING_REF_HEADER}-",),
+    placeholder="***",
+)
+
+
 def redact_payload(value: Any) -> Any:
     """Return a copy with trusted/secret fields masked for logs and traces."""
-    if isinstance(value, dict):
-        return {
-            k: (
-                "***"
-                if isinstance(k, str)
-                and (
-                    k.lower() in _REDACTED_FIELDS or k.lower().startswith(f"{BINDING_REF_HEADER}-")
-                )
-                else redact_payload(v)
-            )
-            for k, v in value.items()
-        }
-    if isinstance(value, (list, tuple)):
-        return type(value)(redact_payload(v) for v in value)
-    return value
+    return _REDACTOR.payload(value)
 
 
 def validate_invocation(invocation: ToolInvocation) -> None:

@@ -1,6 +1,10 @@
 "use client";
+import { knowledgeEndpoints } from "@/lib/api/domains/knowledge/endpoints";
 
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import {
+  fetchEmbeddingModels,
+  fetchEmbeddingProviders,
+} from "@/lib/api/domains/knowledge/api";
 import { useTranslation } from "react-i18next";
 import useSWR from "swr";
 import { Dispatch, SetStateAction, useState } from "react";
@@ -12,7 +16,6 @@ import {
   LITELLM_CLOUD_PROVIDER,
   AZURE_CLOUD_PROVIDER,
   HostedEmbeddingModel,
-  EmbeddingProvider,
 } from "@/components/embedding/interfaces";
 import OpenEmbeddingPage from "@/app/admin/embeddings/pages/OpenEmbeddingPage";
 import CloudEmbeddingPage from "@/app/admin/embeddings/pages/CloudEmbeddingPage";
@@ -23,11 +26,11 @@ import ChangeCredentialsModal from "@/app/admin/embeddings/modals/ChangeCredenti
 import ModelSelectionConfirmationModal from "@/app/admin/embeddings/modals/ModelSelectionModal";
 import AlreadyPickedModal from "@/app/admin/embeddings/modals/AlreadyPickedModal";
 import { ModelOption } from "@/components/embedding/ModelSelector";
+
 import {
-  EMBEDDING_MODELS_ADMIN_URL,
-  EMBEDDING_PROVIDERS_ADMIN_URL,
-} from "@/lib/llmConfig/constants";
-import { AdvancedSearchConfiguration } from "@/app/admin/embeddings/interfaces";
+  AdvancedSearchConfiguration,
+  EmbeddingProvider,
+} from "@/lib/api/domains/knowledge/search-settings-types";
 import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
 
@@ -96,8 +99,8 @@ export default function EmbeddingModelSelection({
     useState<boolean>(false);
 
   const { data: embeddingModelDetails } = useSWR<CloudEmbeddingModel[]>(
-    EMBEDDING_MODELS_ADMIN_URL,
-    errorHandlingFetcher,
+    knowledgeEndpoints.embeddingModels.browserPath,
+    () => fetchEmbeddingModels<CloudEmbeddingModel[]>(),
     { refreshInterval: 5000 } // 5 seconds
   );
 
@@ -105,8 +108,8 @@ export default function EmbeddingModelSelection({
     data: embeddingProviderDetails,
     mutate: mutateEmbeddingProviderDetails,
   } = useSWR<EmbeddingDetails[]>(
-    EMBEDDING_PROVIDERS_ADMIN_URL,
-    errorHandlingFetcher,
+    knowledgeEndpoints.saveEmbeddingCredential.browserPath,
+    () => fetchEmbeddingProviders<EmbeddingDetails[]>(),
     { refreshInterval: 5000 } // 5 seconds
   );
 

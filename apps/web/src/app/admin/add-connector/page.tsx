@@ -5,7 +5,7 @@ import Button from "@/refresh-components/buttons/Button";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Message from "@/refresh-components/messages/Message";
 import Text from "@/refresh-components/texts/Text";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import {
   useCallback,
   useDeferredValue,
@@ -14,11 +14,11 @@ import {
   useEffect,
   useState,
 } from "react";
+import type { SourceConnector } from "@/lib/api/domains/datasources/api";
 import {
-  useAirbyteConnectors,
-  useAirbyteDatasources,
-  AirbyteConnector,
-} from "@/lib/airbyte";
+  useSourceConnectors,
+  useConnectorDatasources,
+} from "@/lib/api/domains/datasources/hooks";
 import { useRouter } from "next/navigation";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 import { useTranslation } from "react-i18next";
@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 
 const MAX_INLINE_SVG_LENGTH = 200_000;
 
-function connectorIconSrc(connector: AirbyteConnector): string | null {
+function connectorIconSrc(connector: SourceConnector): string | null {
   const raw = connector.icon_url || connector.icon;
   if (!raw) return null;
   const trimmed = raw.trim();
@@ -84,9 +84,9 @@ function ConnectorTile({
   preSelect,
   onClick,
 }: {
-  connector: AirbyteConnector;
+  connector: SourceConnector;
   preSelect?: boolean;
-  onClick: (c: AirbyteConnector) => void;
+  onClick: (c: SourceConnector) => void;
 }) {
   const iconSrc = useMemo(() => connectorIconSrc(connector), [connector]);
   const [imageError, setImageError] = useState(false);
@@ -153,26 +153,33 @@ export default function Page() {
   const searchTerm = useDeferredValue(rawSearchTerm);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    searchInputRef.current?.focus();
-  }, []);
+  const hasAutoFocusedRef = useRef(false);
 
   const {
     data: connectorsData,
     isLoading,
     error,
     mutate: refreshConnectors,
-  } = useAirbyteConnectors(searchTerm || undefined);
+  } = useSourceConnectors(searchTerm || undefined);
 
-  const { datasources } = useAirbyteDatasources();
+  // Focus once the search box is actually usable rather than on mount —
+  // it's disabled while the initial catalog is still loading, and a
+  // disabled input can't receive focus.
+  useEffect(() => {
+    if (!isLoading && !hasAutoFocusedRef.current) {
+      hasAutoFocusedRef.current = true;
+      searchInputRef.current?.focus();
+    }
+  }, [isLoading]);
+
+  const { datasources } = useConnectorDatasources();
   const connectedSourcesCount = datasources.length;
   const erroredSourcesCount = datasources.filter(
     (d) => d.sync_status === "error"
   ).length;
 
   // When searching, we get a flat list; otherwise grouped by category
-  const byCategory = useMemo<Record<string, AirbyteConnector[]>>(() => {
+  const byCategory = useMemo<Record<string, SourceConnector[]>>(() => {
     if (!connectorsData) return {};
     if (connectorsData.connectors) {
       // search result — put everything under a virtual "Results" category
@@ -198,8 +205,8 @@ export default function Page() {
   }, [connectorsData]);
 
   const handleConnectorClick = useCallback(
-    (connector: AirbyteConnector) => {
-      // connector.name is e.g. "source-postgres" → route slug is "source-postgres"
+    (connector: SourceConnector) => {
+      // connector.name is e.g. "postgres" → route slug is "postgres"
       // replace underscores with hyphens to match route convention
       const slug = connector.name.replace(/_/g, "-");
       router.push(`/admin/connectors/${slug}`);
@@ -208,7 +215,7 @@ export default function Page() {
   );
 
   // First result for keyboard Enter shortcut
-  const firstConnector = useMemo<AirbyteConnector | null>(() => {
+  const firstConnector = useMemo<SourceConnector | null>(() => {
     for (const cat of categories) {
       const list = byCategory[cat];
       if (list && list.length > 0) return list[0]!;
@@ -295,6 +302,7 @@ export default function Page() {
           type="text"
           placeholder={t("admin.addConnector.searchPlaceholder")}
           ref={searchInputRef}
+          variant={isLoading ? "disabled" : "primary"}
           value={rawSearchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}

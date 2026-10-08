@@ -9,12 +9,12 @@ import Text from "@/refresh-components/texts/Text";
 import { toast } from "@/hooks/useToast";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
 import {
-  useCollections,
   createCollection,
   deleteCollection,
   updateCollection,
-} from "@/lib/langconnect";
-import { useAirbyteDatasources } from "@/lib/airbyte";
+} from "@/lib/api/domains/knowledge/api";
+import { useCollections } from "@/lib/api/domains/knowledge/hooks";
+import { useConnectorDatasources } from "@/lib/api/domains/datasources/hooks";
 import { SvgHardDrive, SvgPlus, SvgTrash } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 
@@ -35,7 +35,7 @@ export default function CollectionsPanel({
     isLoading: collectionsLoading,
     mutate,
   } = useCollections();
-  const { datasources, isLoading: dsLoading } = useAirbyteDatasources();
+  const { datasources, isLoading: dsLoading } = useConnectorDatasources();
   const isLoading = collectionsLoading || dsLoading;
 
   const datasourceIds = useMemo(
@@ -49,7 +49,7 @@ export default function CollectionsPanel({
         byId.set(ds.id, {
           uuid: ds.id,
           name: ds.name,
-          metadata: { source: "airbyte" },
+          metadata: { source: "connector" },
         });
       }
     }
@@ -103,7 +103,7 @@ export default function CollectionsPanel({
       toast.warning(
         t("admin.documentProcessing.datasourceReadOnlyActionsBlocked", {
           defaultValue:
-            "Airbyte datasource koleksiyonlarında bu işlem yapılamaz.",
+            "Bağlayıcı veri kaynağı koleksiyonlarında bu işlem yapılamaz.",
         })
       );
       return;
@@ -144,7 +144,7 @@ export default function CollectionsPanel({
       toast.warning(
         t("admin.documentProcessing.datasourceReadOnlyActionsBlocked", {
           defaultValue:
-            "Airbyte datasource koleksiyonlarında bu işlem yapılamaz.",
+            "Bağlayıcı veri kaynağı koleksiyonlarında bu işlem yapılamaz.",
         })
       );
       return;

@@ -11,24 +11,26 @@ import {
   useNodesState,
   type NodeMouseHandler,
   type NodeChange,
-  type OnNodeDrag,
   type OnInit,
+  type OnNodeDrag,
 } from "@xyflow/react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { SvgArrowExchange, SvgArrowUpDown } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
 import "@xyflow/react/dist/style.css";
 
 import { OrganizationDesignerInspector } from "@/components/organization/OrganizationDesignerInspector";
+import {
+  getProgressiveCollapsedIds,
+  getProgressiveLayoutPositions,
+} from "@/components/organization/organizationProgressiveTree";
+import { OrganizationMiniMapNode } from "@/components/organization/OrganizationMiniMapNode";
+import { getOrganizationMinZoom } from "@/components/organization/organizationViewport";
 import { OrganizationFlowNode } from "@/components/organization/OrganizationFlowNode";
 import { OrganizationMoveConfirmationModal } from "@/components/organization/OrganizationMoveConfirmationModal";
 import { OrganizationSearchCombobox } from "@/components/organization/OrganizationSearchCombobox";
 import {
   organizationTreeToFlowGraph,
-  organizationTreeToLayoutPositions,
-  inferOrganizationLayoutOrientation,
-  repositionOrganizationSubtree,
   isNodeSubtreeExpanded,
   type OrganizationLayoutOrientation,
   type OrganizationFlowEdge,
@@ -50,15 +52,14 @@ import {
   normalizeOrganizationSearch,
 } from "@/components/organization/organizationSearch";
 import {
-  MAX_ORGANIZATION_LAYOUT_POSITIONS,
-  useOrganizationLayout,
-  type OrganizationPositionMap,
-} from "@/components/organization/useOrganizationLayout";
-import { toast } from "@/hooks/useToast";
-import { SvgExpand, SvgOrganization, SvgX } from "@/icons";
+  SvgExpand,
+  SvgOrganization,
+  SvgX,
+  SvgLayoutVertical,
+  SvgLayoutHorizontal,
+} from "@/icons";
 import Button from "@/refresh-components/buttons/Button";
 import IconButton from "@/refresh-components/buttons/IconButton";
-import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
 
@@ -68,8 +69,10 @@ interface OrganizationDesignerProps extends Partial<OrganizationSearchProps> {
   members: OrganizationMember[];
   editable: boolean;
   capabilityLoading: boolean;
+  /** Viewer's organization scope; gates role escalation in the users panel. */
+  globalAccess: boolean;
   canCreateRoot: boolean;
-  canEditLayout: boolean;
+  canMoveOrganization: boolean;
   onClose: () => void;
   onSelectOrg: (organization: OrganizationNode) => void;
   onCreateOrg: CreateOrganization;
@@ -90,44 +93,7 @@ interface OrganizationDesignerProps extends Partial<OrganizationSearchProps> {
 const nodeTypes = { organization: OrganizationFlowNode };
 const DRAFT_NODE_ID = "__new-organization__";
 const EMPTY_MEMBERS_BY_ORGANIZATION: OrganizationMembersByUnit = {};
-const COMPLETE_TREE_FETCH_ERROR = "complete-tree-fetch-failed";
-const COMPLETED_RESET_PROGRESS_VISIBLE_MS = 400;
 const NODE_CLOSE_ANIMATION_MS = 200;
-
-type CompleteResetValidationError = "incomplete-access" | "too-large";
-
-async function fetchCompleteOrganizationTree() {
-  const response = await fetch("/api/user-service/organizations/tree");
-  if (!response.ok) throw new Error(COMPLETE_TREE_FETCH_ERROR);
-  const data = (await response.json()) as
-    | { roots: OrganizationNode[] }
-    | OrganizationNode[];
-  const organizations = Array.isArray(data) ? data : data.roots;
-  if (!Array.isArray(organizations)) {
-    throw new Error(COMPLETE_TREE_FETCH_ERROR);
-  }
-  return organizations;
-}
-
-function validateCompleteReset(
-  organizationIds: string[],
-  writableOrganizationIds: ReadonlySet<string>
-): CompleteResetValidationError | undefined {
-  if (organizationIds.length > MAX_ORGANIZATION_LAYOUT_POSITIONS) {
-    return "too-large";
-  }
-  if (
-    organizationIds.some(
-      (organizationId) => !writableOrganizationIds.has(organizationId)
-    )
-  ) {
-    return "incomplete-access";
-  }
-}
-
-function wait(durationMs: number) {
-  return new Promise((resolve) => setTimeout(resolve, durationMs));
-}
 
 function indexOrganizations(organizations: OrganizationNode[]) {
   const byId = new Map<string, OrganizationNode>();
@@ -151,8 +117,9 @@ function OrganizationDesignerCanvas({
   members,
   editable,
   capabilityLoading,
+  globalAccess,
   canCreateRoot,
-  canEditLayout,
+  canMoveOrganization,
   onClose,
   onSelectOrg,
   onCreateOrg,
@@ -180,33 +147,15 @@ function OrganizationDesignerCanvas({
 }: OrganizationDesignerProps) {
   const { t, i18n } = useTranslation();
   const { resolvedTheme } = useTheme();
-  const {
-    positions,
-    writableOrganizationIds,
-    status,
-    error,
-    isLoading,
-    hasDirtyPositions,
-    setPosition,
-    replacePositionsAndSave,
-    flush,
-    retry,
-    discard,
-    refresh,
-  } = useOrganizationLayout();
+  const [layoutOrientation, setLayoutOrientation] =
+    useState<OrganizationLayoutOrientation>("vertical");
   const flowInstanceRef = useRef<
     Parameters<OnInit<OrganizationCanvasNode, OrganizationFlowEdge>>[0] | null
   >(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
-  const pointerDraggingNodeIdsRef = useRef(new Set<string>());
-  const resetInProgressRef = useRef(false);
-  const resetFitStartedRef = useRef(false);
-  const resetViewportResolverRef = useRef<(() => void) | null>(null);
   const completedRevealIdRef = useRef<number | null>(null);
-  const lastToastMessageRef = useRef<string | undefined>(undefined);
-  const [isClosing, setIsClosing] = useState(false);
-  const [closeAttemptFailed, setCloseAttemptFailed] = useState(false);
+  const draggingNodeIdRef = useRef<string | null>(null);
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(
     Boolean(selectedOrg)
   );
@@ -216,15 +165,7 @@ function OrganizationDesignerCanvas({
     organization: OrganizationNode;
     parent: OrganizationNode;
   } | null>(null);
-  const [pendingLayoutReset, setPendingLayoutReset] =
-    useState<OrganizationLayoutOrientation | null>(null);
-  const [resetProgress, setResetProgress] = useState<{
-    percent: number;
-    label: string;
-  } | null>(null);
-  const [pendingResetPositions, setPendingResetPositions] =
-    useState<OrganizationPositionMap | null>(null);
-  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [orientationFitPending, setOrientationFitPending] = useState(false);
   const [draftParentId, setDraftParentId] = useState<string | null | undefined>(
     undefined
   );
@@ -237,6 +178,16 @@ function OrganizationDesignerCanvas({
   const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(
     () => new Set()
   );
+  const visibleCollapsedIds = useMemo(
+    () =>
+      getProgressiveCollapsedIds(
+        organizations,
+        expandedNodeIds,
+        collapsedNodeIds
+      ),
+    [organizations, expandedNodeIds, collapsedNodeIds]
+  );
+  const [branchToFocus, setBranchToFocus] = useState<string | null>(null);
   // Subtree roots mid-collapse: their children stay mounted (fading out via
   // CSS) until the timeout below actually removes them from the graph, so
   // the collapse reads as a transition instead of an instant disappearance.
@@ -261,7 +212,7 @@ function OrganizationDesignerCanvas({
         nodeId,
         currentChildrenLength,
         expandedNodeIds,
-        collapsedNodeIds
+        visibleCollapsedIds
       );
 
       const pendingClose = closeTimeoutsRef.current.get(nodeId);
@@ -294,6 +245,7 @@ function OrganizationDesignerCanvas({
           next.delete(nodeId);
           return next;
         });
+        setBranchToFocus(nodeId);
         setExpandedNodeIds((prev) => new Set(prev).add(nodeId));
         setCollapsedNodeIds((prev) => {
           const next = new Set(prev);
@@ -305,7 +257,7 @@ function OrganizationDesignerCanvas({
         }
       }
     },
-    [collapsedNodeIds, expandedNodeIds, onExpandOrg]
+    [visibleCollapsedIds, expandedNodeIds, onExpandOrg]
   );
   const organizationsById = useMemo(
     () => indexOrganizations(organizations),
@@ -336,31 +288,36 @@ function OrganizationDesignerCanvas({
     [searchMatches]
   );
   const canvasWritableOrganizationIds = useMemo(
-    () => (canEditLayout ? writableOrganizationIds : new Set<string>()),
-    [canEditLayout, writableOrganizationIds]
-  );
-  const layoutOrientation = useMemo(
-    () => inferOrganizationLayoutOrientation(organizations, positions),
-    [organizations, positions]
+    () =>
+      canMoveOrganization
+        ? new Set(organizationsById.keys())
+        : new Set<string>(),
+    [canMoveOrganization, organizationsById]
   );
   const baseGraph = useMemo(
     () =>
       organizationTreeToFlowGraph(
         organizations,
-        positions,
+        getProgressiveLayoutPositions(
+          organizations,
+          layoutOrientation,
+          expandedNodeIds,
+          visibleCollapsedIds,
+          showMembers
+        ),
         canvasWritableOrganizationIds,
         selectedOrg?.id,
         layoutOrientation,
         expandedNodeIds,
-        collapsedNodeIds
+        visibleCollapsedIds
       ),
     [
       canvasWritableOrganizationIds,
-      collapsedNodeIds,
+      showMembers,
+      visibleCollapsedIds,
       expandedNodeIds,
       layoutOrientation,
       organizations,
-      positions,
       selectedOrg?.id,
     ]
   );
@@ -385,52 +342,64 @@ function OrganizationDesignerCanvas({
     [draftParentId, onCreateOrg]
   );
   const graph = useMemo(() => {
-    const nodes: OrganizationCanvasNode[] = baseGraph.nodes.map((node) => ({
-      ...node,
-      data: {
-        ...node.data,
-        onToggleSubtree: () =>
-          handleToggleSubtree(
-            node.id,
-            (organizationsById.get(node.id)?.children ?? []).length
-          ),
-        searchMatch: hasSearch && matchingOrganizationIds.has(node.id),
-        searchDimmed: hasSearch && !matchingOrganizationIds.has(node.id),
-        closing: closingDescendantIds.has(node.id),
-        isDropTarget: dropTargetId === node.id,
-        members: showMembers ? membersByOrganizationId[node.id] ?? [] : [],
-        parentOptions: allOrganizations
-          .filter((candidate) => {
-            const source = organizationsById.get(node.id);
-            return (
-              source &&
-              candidate.id !== node.id &&
-              !descendantIds(source).has(candidate.id)
-            );
-          })
-          .map(({ id, name }) => ({ id, name })),
-        onRequestMove: (parentId: string) => {
-          const organization = organizationsById.get(node.id);
-          const parent = organizationsById.get(parentId);
-          if (organization && parent && organization.parent_id !== parent.id)
-            setPendingMove({ organization, parent });
+    const nodes: OrganizationCanvasNode[] = baseGraph.nodes.map((node) => {
+      const source = organizationsById.get(node.id);
+      const excludedParentIds = source
+        ? descendantIds(source)
+        : new Set<string>();
+      return {
+        ...node,
+        draggable: Boolean(node.draggable && !source?.is_scope_root),
+        data: {
+          ...node.data,
+          onToggleSubtree: () =>
+            handleToggleSubtree(
+              node.id,
+              (organizationsById.get(node.id)?.children ?? []).length
+            ),
+          searchMatch: hasSearch && matchingOrganizationIds.has(node.id),
+          searchDimmed: hasSearch && !matchingOrganizationIds.has(node.id),
+          closing: closingDescendantIds.has(node.id),
+          members: showMembers ? membersByOrganizationId[node.id] ?? [] : [],
+          parentOptions: allOrganizations
+            .filter((candidate) => {
+              return (
+                source &&
+                candidate.id !== node.id &&
+                !excludedParentIds.has(candidate.id)
+              );
+            })
+            .map(({ id, name }) => ({ id, name })),
+          onRequestMove: (parentId: string) => {
+            const organization = organizationsById.get(node.id);
+            const parent = organizationsById.get(parentId);
+            if (
+              canMoveOrganization &&
+              organization &&
+              !organization.is_scope_root &&
+              parent &&
+              organization.parent_id !== parent.id
+            )
+              setPendingMove({ organization, parent });
+          },
+          canAddChild:
+            node.id === selectedOrg?.id && editable && !capabilityLoading,
+          canManage:
+            node.id === selectedOrg?.id && editable && !capabilityLoading,
+          canDelete: !organizationsById.get(node.id)?.is_scope_root,
+          actionMode: nodeAction?.id === node.id ? nodeAction.mode : undefined,
+          onAddChild: () => startChildCreation(node.id),
+          onBeginDelete: () => beginNodeDelete(node.id),
+          onBeginRename: () => {
+            setDraftParentId(undefined);
+            setNodeAction({ id: node.id, mode: "rename" });
+          },
+          onCancelAction: () => setNodeAction(undefined),
+          onDelete: () => onDeleteOrg(node.id),
+          onRename: (name: string) => onUpdateOrg(node.id, { name }),
         },
-        canAddChild:
-          node.id === selectedOrg?.id && editable && !capabilityLoading,
-        canManage:
-          node.id === selectedOrg?.id && editable && !capabilityLoading,
-        actionMode: nodeAction?.id === node.id ? nodeAction.mode : undefined,
-        onAddChild: () => startChildCreation(node.id),
-        onBeginDelete: () => beginNodeDelete(node.id),
-        onBeginRename: () => {
-          setDraftParentId(undefined);
-          setNodeAction({ id: node.id, mode: "rename" });
-        },
-        onCancelAction: () => setNodeAction(undefined),
-        onDelete: () => onDeleteOrg(node.id),
-        onRename: (name: string) => onUpdateOrg(node.id, { name }),
-      },
-    }));
+      };
+    });
     const edges = baseGraph.edges.map((edge) => ({
       ...edge,
       style: {
@@ -497,11 +466,11 @@ function OrganizationDesignerCanvas({
     beginNodeDelete,
     cancelChildCreation,
     capabilityLoading,
+    canMoveOrganization,
     closingDescendantIds,
     draftParentId,
     editable,
     allOrganizations,
-    dropTargetId,
     hasSearch,
     matchingOrganizationIds,
     layoutOrientation,
@@ -518,87 +487,160 @@ function OrganizationDesignerCanvas({
   ]);
   const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
   const nodesInitialized = useNodesInitialized();
+  const minZoom = useMemo(() => getOrganizationMinZoom(nodes), [nodes]);
+  const initialViewportReadyRef = useRef(false);
+  const focusRoot = useCallback(() => {
+    const root = nodes.find((node) => node.id === organizations[0]?.id);
+    if (!root) return;
+    void flowInstanceRef.current?.fitView({
+      nodes: nodes.filter(
+        (node) => node.id === root.id || node.data.parentId === root.id
+      ),
+      padding: 0.5,
+      minZoom: 0.1,
+      maxZoom: 1,
+      duration: 300,
+    });
+  }, [nodes, organizations]);
 
   useEffect(() => {
-    setNodes(graph.nodes);
+    if (initialViewportReadyRef.current || !nodesInitialized || !nodes.length)
+      return;
+    // Wait for the calculated graph to commit before choosing the viewport.
+    if (
+      nodes.length !== graph.nodes.length ||
+      nodes.some((node, index) => {
+        const expected = graph.nodes[index];
+        return (
+          node.id !== expected?.id ||
+          node.position.x !== expected.position.x ||
+          node.position.y !== expected.position.y
+        );
+      })
+    )
+      return;
+    initialViewportReadyRef.current = true;
+    if (!revealRequest && !orientationFitPending) focusRoot();
+  }, [
+    focusRoot,
+    graph.nodes,
+    minZoom,
+    nodes,
+    nodesInitialized,
+    orientationFitPending,
+    revealRequest,
+  ]);
+
+  useEffect(() => {
+    if (!draggingNodeIdRef.current) {
+      setNodes(graph.nodes);
+      return;
+    }
+    setNodes((current) =>
+      graph.nodes.map((node) => {
+        const dragged =
+          draggingNodeIdRef.current === node.id
+            ? current.find((candidate) => candidate.id === node.id)
+            : undefined;
+        return dragged ? { ...node, position: dragged.position } : node;
+      })
+    );
   }, [graph.nodes, setNodes]);
 
-  const commitResetPositions = useCallback(
-    (nextPositions: OrganizationPositionMap) =>
-      new Promise<void>((resolve) => {
-        resetViewportResolverRef.current = resolve;
-        resetFitStartedRef.current = false;
-        setPendingResetPositions(nextPositions);
-        setNodes((currentNodes) =>
-          currentNodes.map((node) => ({
-            ...node,
-            position: nextPositions[node.id] ?? node.position,
-          }))
+  useEffect(() => {
+    if (!branchToFocus || !nodesInitialized) return;
+    if (revealRequest && completedRevealIdRef.current !== revealRequest.id)
+      return;
+    const expected = graph.nodes.filter(
+      (node) =>
+        node.id === branchToFocus || node.data.parentId === branchToFocus
+    );
+    if (expected.length < 2) return;
+    const actual = new Map(nodes.map((node) => [node.id, node]));
+    if (
+      expected.some(
+        (node) =>
+          actual.get(node.id)?.position.x !== node.position.x ||
+          actual.get(node.id)?.position.y !== node.position.y
+      )
+    )
+      return;
+    setBranchToFocus(null);
+    void flowInstanceRef.current?.fitView({
+      nodes: expected,
+      padding: 0.3,
+      minZoom: 0.15,
+      maxZoom: 1,
+      duration: 300,
+    });
+  }, [branchToFocus, graph.nodes, nodes, nodesInitialized, revealRequest]);
+
+  useEffect(() => {
+    if (!orientationFitPending || !nodesInitialized) return;
+    if (
+      nodes.length !== graph.nodes.length ||
+      nodes.some((node, index) => {
+        const expected = graph.nodes[index];
+        return (
+          node.id !== expected?.id ||
+          node.position.x !== expected.position.x ||
+          node.position.y !== expected.position.y
         );
-      }),
-    [setNodes]
-  );
+      })
+    )
+      return;
+    setOrientationFitPending(false);
+    void flowInstanceRef.current?.fitView({
+      nodes,
+      minZoom,
+      padding: 0.2,
+      duration: 300,
+    });
+  }, [orientationFitPending, nodesInitialized, nodes, graph.nodes, minZoom]);
+
+  useEffect(() => {
+    if (!revealRequest || completedRevealIdRef.current === revealRequest.id) {
+      return;
+    }
+    setBranchToFocus(null);
+    const pathIds = new Set(revealRequest.ancestorIds);
+    setExpandedNodeIds(pathIds);
+    setCollapsedNodeIds(
+      new Set(
+        allOrganizations
+          .filter((node) => !pathIds.has(node.id))
+          .map((node) => node.id)
+      )
+    );
+  }, [revealRequest, allOrganizations]);
 
   useEffect(() => {
     if (
-      !pendingResetPositions ||
+      !revealRequest ||
       !nodesInitialized ||
-      resetFitStartedRef.current
+      completedRevealIdRef.current === revealRequest.id
     ) {
-      return;
-    }
-    const positionsCommitted = nodes.every((node) => {
-      const expectedPosition = pendingResetPositions[node.id];
-      return (
-        !expectedPosition ||
-        (node.position.x === expectedPosition.x &&
-          node.position.y === expectedPosition.y)
-      );
-    });
-    if (!positionsCommitted) return;
-
-    resetFitStartedRef.current = true;
-    setResetProgress({
-      percent: 90,
-      label: t("admin.organizations.designer.resetProgressRendered"),
-    });
-    void (async () => {
-      await flowInstanceRef.current?.fitView({
-        nodes,
-        padding: 0.2,
-        duration: 300,
-      });
-      setPendingResetPositions(null);
-      resetFitStartedRef.current = false;
-      resetViewportResolverRef.current?.();
-      resetViewportResolverRef.current = null;
-    })();
-  }, [nodes, nodesInitialized, pendingResetPositions, t]);
-
-  useEffect(() => {
-    if (!revealRequest || completedRevealIdRef.current === revealRequest.id) {
-      return;
-    }
-    setExpandedNodeIds((current) => {
-      const next = new Set(current);
-      revealRequest.ancestorIds.forEach((id) => next.add(id));
-      return next;
-    });
-    setCollapsedNodeIds((current) => {
-      const next = new Set(current);
-      revealRequest.ancestorIds.forEach((id) => next.delete(id));
-      return next;
-    });
-  }, [revealRequest]);
-
-  useEffect(() => {
-    if (!revealRequest || completedRevealIdRef.current === revealRequest.id) {
       return;
     }
     const targetNode = graph.nodes.find(
       ({ id }) => id === revealRequest.result.id
     );
     if (!targetNode) return;
+    const committedNode = nodes.find(({ id }) => id === targetNode.id);
+    if (
+      !committedNode ||
+      committedNode.position.x !== targetNode.position.x ||
+      committedNode.position.y !== targetNode.position.y
+    )
+      return;
+    const instance = flowInstanceRef.current;
+    if (!instance) return;
+    // Graph data and React Flow measurements commit separately. Fit only once
+    // the renderer knows the target's dimensions.
+    if (instance.getNode) {
+      const rendered = instance.getNode(targetNode.id);
+      if (!rendered?.measured?.width || !rendered.measured.height) return;
+    }
     const organization = organizationsById.get(revealRequest.result.id);
     if (!organization) return;
     completedRevealIdRef.current = revealRequest.id;
@@ -607,9 +649,18 @@ function OrganizationDesignerCanvas({
     void flowInstanceRef.current?.fitView({
       nodes: [targetNode],
       padding: 0.8,
+      minZoom: 0.5,
+      maxZoom: 1,
       duration: 300,
     });
-  }, [graph.nodes, onRevealReady, organizationsById, revealRequest]);
+  }, [
+    graph.nodes,
+    nodes,
+    nodesInitialized,
+    onRevealReady,
+    organizationsById,
+    revealRequest,
+  ]);
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement as HTMLElement | null;
@@ -622,29 +673,9 @@ function OrganizationDesignerCanvas({
     };
   }, []);
 
-  useEffect(() => {
-    if (
-      !error ||
-      resetInProgressRef.current ||
-      error.message === lastToastMessageRef.current
-    ) {
-      return;
-    }
-    lastToastMessageRef.current = error.message;
-    toast.error(error.message);
-  }, [error]);
-
-  const requestClose = useCallback(async () => {
-    if (isClosing || resetInProgressRef.current) return;
-    setIsClosing(true);
-    const saved = await flush();
-    if (saved) {
-      onClose();
-      return;
-    }
-    setCloseAttemptFailed(true);
-    setIsClosing(false);
-  }, [flush, isClosing, onClose]);
+  const requestClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
 
   const handleNodeClick: NodeMouseHandler<OrganizationCanvasNode> = useCallback(
     (_event, node) => {
@@ -657,71 +688,84 @@ function OrganizationDesignerCanvas({
     [onSelectOrg, organizationsById]
   );
 
-  const handleNodeDragStop: OnNodeDrag<OrganizationCanvasNode> = useCallback(
-    (_event, node) => {
-      if (!canEditLayout) return;
-      const organization = organizationsById.get(node.id);
-      const targetNode = flowInstanceRef.current
-        ?.getIntersectingNodes?.(node)
-        .find((candidate) => {
-          const parent = organizationsById.get(candidate.id);
-          return (
-            parent &&
-            organization &&
-            parent.id !== organization.id &&
-            !descendantIds(organization).has(parent.id)
-          );
-        });
-      const parent = targetNode && organizationsById.get(targetNode.id);
-      setDropTargetId(null);
-      if (organization && parent && organization.parent_id !== parent.id) {
-        setPendingMove({ organization, parent });
-        setNodes(graph.nodes);
-        return;
-      }
-      setPosition(node.id, node.position);
-    },
-    [canEditLayout, graph.nodes, organizationsById, setNodes, setPosition]
-  );
-
-  const handleNodeDrag: OnNodeDrag<OrganizationCanvasNode> = useCallback(
-    (_event, node) => {
-      const organization = organizationsById.get(node.id);
-      const target = flowInstanceRef.current
-        ?.getIntersectingNodes?.(node)
-        .find((candidate) => {
-          const parent = organizationsById.get(candidate.id);
-          return (
-            parent &&
-            organization &&
-            parent.id !== organization.id &&
-            !descendantIds(organization).has(parent.id)
-          );
-        });
-      setDropTargetId(target?.id ?? null);
-    },
-    [organizationsById]
-  );
-
   const handleNodesChange = useCallback(
     (changes: NodeChange<OrganizationCanvasNode>[]) => {
       onNodesChange(
-        canEditLayout
-          ? changes
-          : changes.filter((change) => change.type !== "position")
+        changes.filter(
+          (change) =>
+            change.type !== "position" ||
+            (change.id === draggingNodeIdRef.current &&
+              change.dragging !== undefined)
+        )
       );
-      if (!canEditLayout) return;
-      for (const change of changes) {
-        if (change.type !== "position" || !change.position) continue;
-        if (change.dragging) {
-          pointerDraggingNodeIdsRef.current.add(change.id);
-          continue;
-        }
-        if (pointerDraggingNodeIdsRef.current.delete(change.id)) continue;
-        if (change.dragging === false) setPosition(change.id, change.position);
+    },
+    [onNodesChange]
+  );
+
+  const findDropTarget = useCallback(
+    (node: OrganizationCanvasNode) => {
+      const source = organizationsById.get(node.id);
+      if (
+        !source ||
+        source.is_scope_root ||
+        !canMoveOrganization ||
+        !canvasWritableOrganizationIds.has(node.id)
+      )
+        return;
+      const descendants = descendantIds(source);
+      return flowInstanceRef.current
+        ?.getIntersectingNodes(node)
+        .map((candidate) => organizationsById.get(candidate.id))
+        .find(
+          (target) =>
+            target &&
+            target.id !== source.id &&
+            target.id !== source.parent_id &&
+            !descendants.has(target.id) &&
+            canvasWritableOrganizationIds.has(target.id)
+        );
+    },
+    [canMoveOrganization, organizationsById, canvasWritableOrganizationIds]
+  );
+
+  const handleNodeDragStart: OnNodeDrag<OrganizationCanvasNode> = useCallback(
+    (_, node) => {
+      if (node.draggable) {
+        draggingNodeIdRef.current = node.id;
+        setBranchToFocus(null);
       }
     },
-    [canEditLayout, onNodesChange, setPosition]
+    []
+  );
+
+  const handleNodeDrag: OnNodeDrag<OrganizationCanvasNode> = useCallback(
+    (_, node) => {
+      if (draggingNodeIdRef.current !== node.id) return;
+      const target = findDropTarget(node);
+      setNodes((current) =>
+        current.map((candidate) => ({
+          ...candidate,
+          data: {
+            ...candidate.data,
+            isDropTarget: candidate.id === target?.id,
+          },
+        }))
+      );
+    },
+    [findDropTarget, setNodes]
+  );
+
+  const handleNodeDragStop: OnNodeDrag<OrganizationCanvasNode> = useCallback(
+    (_, node) => {
+      if (draggingNodeIdRef.current !== node.id) return;
+      const target = findDropTarget(node);
+      draggingNodeIdRef.current = null;
+      setNodes(graph.nodes);
+      const organization = organizationsById.get(node.id);
+      if (target && organization)
+        setPendingMove({ organization, parent: target });
+    },
+    [findDropTarget, graph.nodes, organizationsById, setNodes]
   );
 
   const handleInit: OnInit<OrganizationCanvasNode, OrganizationFlowEdge> =
@@ -729,99 +773,14 @@ function OrganizationDesignerCanvas({
       flowInstanceRef.current = instance;
     }, []);
 
-  const handleRetry = useCallback(async () => {
-    const saved =
-      status === "error" || hasDirtyPositions
-        ? await retry()
-        : Boolean(await refresh());
-    if (saved && closeAttemptFailed) onClose();
-  }, [closeAttemptFailed, hasDirtyPositions, onClose, refresh, retry, status]);
-
-  const confirmLayoutReset = useCallback(async () => {
-    if (!pendingLayoutReset || resetInProgressRef.current) return;
-    resetInProgressRef.current = true;
-    const orientation = pendingLayoutReset;
-    setPendingLayoutReset(null);
-    setResetProgress({
-      percent: 0,
-      label: t("admin.organizations.designer.resetProgressPreparing"),
-    });
-
-    try {
-      const fullOrganizations = await fetchCompleteOrganizationTree();
-      setResetProgress({
-        percent: 20,
-        label: t("admin.organizations.designer.resetProgressFetched"),
-      });
-
-      const fetchedOrganizationIds = flattenOrganizations(
-        fullOrganizations
-      ).map(({ id }) => id);
-      const nextPositions = organizationTreeToLayoutPositions(
-        fullOrganizations,
-        orientation,
-        expandedNodeIds,
-        collapsedNodeIds,
-        true
-      );
-      setResetProgress({
-        percent: 45,
-        label: t("admin.organizations.designer.resetProgressCalculated"),
-      });
-
-      const validationError = validateCompleteReset(
-        fetchedOrganizationIds,
-        writableOrganizationIds
-      );
-      if (validationError) {
-        toast.error(
-          t(
-            validationError === "too-large"
-              ? "admin.organizations.designer.resetTooLarge"
-              : "admin.organizations.designer.resetIncompleteAccess"
-          )
-        );
-        return;
-      }
-
-      const saved = await replacePositionsAndSave(nextPositions);
-      if (!saved) {
-        toast.error(t("admin.organizations.designer.resetSaveFailed"));
-        return;
-      }
-      setResetProgress({
-        percent: 75,
-        label: t("admin.organizations.designer.resetProgressSaved"),
-      });
-
-      await commitResetPositions(nextPositions);
-
-      setResetProgress({
-        percent: 100,
-        label: t("admin.organizations.designer.resetProgressComplete"),
-      });
-      await wait(COMPLETED_RESET_PROGRESS_VISIBLE_MS);
-      toast.success(t("admin.organizations.designer.resetSuccess"));
-    } catch (caughtError) {
-      toast.error(
-        caughtError instanceof Error &&
-          caughtError.message === COMPLETE_TREE_FETCH_ERROR
-          ? t("admin.organizations.designer.resetFetchFailed")
-          : t("admin.organizations.designer.saveFailed")
-      );
-    } finally {
-      resetInProgressRef.current = false;
-      setResetProgress(null);
-    }
-  }, [
-    collapsedNodeIds,
-    commitResetPositions,
-    expandedNodeIds,
-    pendingLayoutReset,
-    replacePositionsAndSave,
-    t,
-    writableOrganizationIds,
-  ]);
+  const changeOrientation = useCallback(
+    (orientation: OrganizationLayoutOrientation) => {
+      setBranchToFocus(null);
+      setLayoutOrientation(orientation);
+      setOrientationFitPending(true);
+    },
+    []
+  );
 
   const confirmOrganizationMove = useCallback(async () => {
     if (!pendingMove) return;
@@ -830,65 +789,15 @@ function OrganizationDesignerCanvas({
     const moved = await onMoveOrg(move.organization.id, move.parent.id);
     if (!moved) return;
 
-    const movedPositions = repositionOrganizationSubtree(
-      organizations,
-      positions,
-      move.organization.id,
-      move.parent.id,
-      layoutOrientation
-    );
-    if (Object.keys(movedPositions).length === 0) return;
-    const saved = await replacePositionsAndSave(movedPositions);
-    if (!saved) return;
-
-    let movedNode: OrganizationCanvasNode | undefined;
-    setNodes((currentNodes) =>
-      currentNodes.map((node) => {
-        const position = movedPositions[node.id];
-        if (!position) return node;
-        const updatedNode = { ...node, position };
-        if (node.id === move.organization.id) movedNode = updatedNode;
-        return updatedNode;
-      })
-    );
-    const graphNode = graph.nodes.find(
-      (node) => node.id === move.organization.id
-    );
-    if (!movedNode && graphNode) {
-      movedNode = {
-        ...graphNode,
-        position: movedPositions[graphNode.id] ?? graphNode.position,
-      };
-    }
-    if (movedNode) {
-      void flowInstanceRef.current?.fitView({
-        nodes: [movedNode],
-        padding: 0.8,
-        duration: 300,
-      });
-    }
-  }, [
-    graph.nodes,
-    layoutOrientation,
-    onMoveOrg,
-    organizations,
-    pendingMove,
-    positions,
-    replacePositionsAndSave,
-    setNodes,
-  ]);
-
-  const statusLabel = isLoading
-    ? t("admin.organizations.designer.loadingLayout")
-    : status === "saving" || isClosing
-      ? t("admin.organizations.designer.saving")
-      : status === "saved"
-        ? t("admin.organizations.designer.saved")
-        : status === "error"
-          ? t("admin.organizations.designer.saveFailed")
-          : hasDirtyPositions
-            ? t("admin.organizations.designer.unsavedChanges")
-            : t("admin.organizations.designer.ready");
+    setExpandedNodeIds((current) => new Set(current).add(move.parent.id));
+    setCollapsedNodeIds((current) => {
+      const next = new Set(current);
+      next.delete(move.parent.id);
+      return next;
+    });
+    setBranchToFocus(move.parent.id);
+    await onExpandOrg?.(move.parent.id);
+  }, [onExpandOrg, onMoveOrg, pendingMove]);
 
   return (
     <DialogPrimitive.Root open>
@@ -930,13 +839,8 @@ function OrganizationDesignerCanvas({
               {t("admin.organizations.tree.title")}
             </Text>
             <Text secondaryMono text03 className={cn("ml-2")}>
-              {statusLabel}
+              {t("admin.organizations.designer.ready")}
             </Text>
-            {error && (
-              <Text secondaryBody text02 className={cn("min-w-0 truncate")}>
-                {error.message}
-              </Text>
-            )}
             <OrganizationSearchCombobox
               className={cn("ml-auto w-full max-w-md max-md:max-w-xs")}
               query={searchQuery}
@@ -969,39 +873,11 @@ function OrganizationDesignerCanvas({
                   )}
                 </Button>
               )}
-              {error && (
-                <Button secondary size="md" onClick={() => void handleRetry()}>
-                  {t("admin.organizations.actions.retry")}
-                </Button>
-              )}
-              {closeAttemptFailed && (
-                <Button
-                  danger
-                  secondary
-                  size="md"
-                  onClick={() => {
-                    discard();
-                    onClose();
-                  }}
-                >
-                  {t("admin.organizations.designer.discardAndClose")}
-                </Button>
-              )}
-              <IconButton
-                icon={SvgExpand}
-                tooltip={t("admin.organizations.designer.fitView")}
-                aria-label={t("admin.organizations.designer.fitView")}
-                tertiary
-                onClick={() =>
-                  void flowInstanceRef.current?.fitView({ padding: 0.2 })
-                }
-              />
               <IconButton
                 icon={SvgX}
                 tooltip={t("admin.organizations.designer.close")}
                 aria-label={t("admin.organizations.designer.close")}
                 tertiary
-                disabled={isClosing || Boolean(resetProgress)}
                 onClick={() => void requestClose()}
               />
             </div>
@@ -1018,13 +894,14 @@ function OrganizationDesignerCanvas({
                 edgesFocusable={false}
                 deleteKeyCode={null}
                 fitView
-                fitViewOptions={{ padding: 0.2 }}
-                minZoom={0.2}
+                fitViewOptions={{ padding: 0.2, minZoom }}
+                minZoom={minZoom}
                 maxZoom={2}
                 proOptions={{ hideAttribution: true }}
                 onInit={handleInit}
                 onNodeClick={handleNodeClick}
                 onNodesChange={handleNodesChange}
+                onNodeDragStart={handleNodeDragStart}
                 onNodeDrag={handleNodeDrag}
                 onNodeDragStop={handleNodeDragStop}
                 className={cn(
@@ -1041,6 +918,7 @@ function OrganizationDesignerCanvas({
                 <Background color="var(--border-01)" gap={24} size={1} />
                 <Controls
                   showInteractive={false}
+                  fitViewOptions={{ padding: 0.2, minZoom }}
                   className={cn(
                     "!border !border-border-02 !bg-background-neutral-00 !shadow-md !rounded-12 !overflow-hidden",
                     "[&_.react-flow__controls-button]:!bg-background-neutral-00",
@@ -1054,42 +932,89 @@ function OrganizationDesignerCanvas({
                 <MiniMap
                   pannable
                   zoomable
+                  nodeComponent={OrganizationMiniMapNode}
+                  ariaLabel={t("admin.organizations.designer.minimap")}
+                  onNodeClick={(_, node) => {
+                    void flowInstanceRef.current?.fitView({
+                      nodes: [node],
+                      padding: 0.5,
+                      minZoom: 0.5,
+                      maxZoom: 1,
+                      duration: 300,
+                    });
+                  }}
                   className={cn(
                     "!rounded-12 !border !border-border-02 !bg-background-neutral-00 !shadow-md !overflow-hidden"
                   )}
-                  nodeColor="var(--background-neutral-04)"
-                  maskColor="color-mix(in srgb, var(--background-neutral-01) 75%, transparent)"
-                  maskStrokeColor="var(--border-02)"
+                  nodeColor="var(--theme-primary-04)"
+                  maskColor="color-mix(in srgb, var(--background-neutral-01) 35%, transparent)"
+                  maskStrokeColor="var(--theme-primary-05)"
+                  maskStrokeWidth={2}
                 />
               </ReactFlow>
-              {canEditLayout && organizations.length > 0 && (
+              <div
+                className={cn(
+                  "absolute right-4 top-4 z-10 flex items-center gap-2"
+                )}
+              >
                 <div
                   className={cn(
-                    "absolute right-4 top-4 z-10 flex items-center gap-1 rounded-12 border border-border-02 bg-background-neutral-00 p-1 shadow-md"
+                    "flex items-center gap-1 rounded-12 border border-border-02 bg-background-neutral-00 p-1 shadow-md"
                   )}
                 >
                   <IconButton
-                    aria-label={t("admin.organizations.designer.resetVertical")}
-                    disabled={status === "saving" || Boolean(resetProgress)}
-                    icon={SvgArrowUpDown}
+                    icon={SvgOrganization}
+                    tooltip={t("admin.organizations.designer.focusRoot")}
+                    aria-label={t("admin.organizations.designer.focusRoot")}
                     tertiary
-                    tooltip={t("admin.organizations.designer.resetVertical")}
-                    onClick={() => setPendingLayoutReset("vertical")}
+                    disabled={!nodes.length}
+                    onClick={focusRoot}
                   />
                   <IconButton
-                    aria-label={t(
-                      "admin.organizations.designer.resetHorizontal"
-                    )}
-                    disabled={status === "saving" || Boolean(resetProgress)}
-                    icon={SvgArrowExchange}
+                    icon={SvgExpand}
+                    tooltip={t("admin.organizations.designer.fitView")}
+                    aria-label={t("admin.organizations.designer.fitView")}
                     tertiary
-                    tooltip={t("admin.organizations.designer.resetHorizontal")}
-                    onClick={() => setPendingLayoutReset("horizontal")}
+                    onClick={() =>
+                      void flowInstanceRef.current?.fitView({
+                        padding: 0.2,
+                        minZoom,
+                      })
+                    }
                   />
                 </div>
-              )}
-              {!isLoading &&
-                organizations.length === 0 &&
+                {organizations.length > 0 && (
+                  <div
+                    className={cn(
+                      "flex items-center gap-1 rounded-12 border border-border-02 bg-background-neutral-00 p-1 shadow-md"
+                    )}
+                  >
+                    <IconButton
+                      aria-label={t(
+                        "admin.organizations.designer.verticalView"
+                      )}
+                      icon={SvgLayoutVertical}
+                      aria-pressed={layoutOrientation === "vertical"}
+                      secondary={layoutOrientation === "vertical"}
+                      tertiary={layoutOrientation !== "vertical"}
+                      tooltip={t("admin.organizations.designer.verticalView")}
+                      onClick={() => changeOrientation("vertical")}
+                    />
+                    <IconButton
+                      aria-label={t(
+                        "admin.organizations.designer.horizontalView"
+                      )}
+                      icon={SvgLayoutHorizontal}
+                      aria-pressed={layoutOrientation === "horizontal"}
+                      secondary={layoutOrientation === "horizontal"}
+                      tertiary={layoutOrientation !== "horizontal"}
+                      tooltip={t("admin.organizations.designer.horizontalView")}
+                      onClick={() => changeOrientation("horizontal")}
+                    />
+                  </div>
+                )}
+              </div>
+              {organizations.length === 0 &&
                 canCreateRoot &&
                 draftParentId === undefined && (
                   <div
@@ -1111,7 +1036,7 @@ function OrganizationDesignerCanvas({
                 <Button
                   secondary
                   size="md"
-                  className={cn("absolute right-4 top-4 z-10 md:hidden")}
+                  className={cn("absolute right-4 top-20 z-10 md:hidden")}
                   onClick={() => setMobileInspectorOpen(true)}
                 >
                   {t("admin.organizations.designer.showInspector")}
@@ -1120,6 +1045,7 @@ function OrganizationDesignerCanvas({
             </div>
 
             <OrganizationDesignerInspector
+              globalAccess={globalAccess}
               key={selectedOrg?.id ?? "no-selection"}
               organization={selectedOrg}
               organizations={organizations}
@@ -1149,70 +1075,6 @@ function OrganizationDesignerCanvas({
               onCancel={() => setPendingMove(null)}
               onConfirm={() => void confirmOrganizationMove()}
             />
-          )}
-          {pendingLayoutReset && (
-            <ConfirmationModalLayout
-              icon={SvgOrganization}
-              title={t("admin.organizations.designer.resetTitle")}
-              onClose={() => setPendingLayoutReset(null)}
-              submit={
-                <Button
-                  action
-                  primary
-                  onClick={() => void confirmLayoutReset()}
-                >
-                  {t("admin.organizations.designer.resetConfirm")}
-                </Button>
-              }
-            >
-              <Text mainUiBody text04>
-                {t("admin.organizations.designer.resetDescription", {
-                  orientation: t(
-                    pendingLayoutReset === "vertical"
-                      ? "admin.organizations.designer.resetOrientationVertical"
-                      : "admin.organizations.designer.resetOrientationHorizontal"
-                  ),
-                })}
-              </Text>
-            </ConfirmationModalLayout>
-          )}
-          {resetProgress && (
-            <ConfirmationModalLayout
-              icon={SvgOrganization}
-              title={t("admin.organizations.designer.resetProgressTitle")}
-              hideCancel
-              submit={null}
-              onClose={() => {}}
-            >
-              <div
-                data-testid="reset-progress-content"
-                className={cn("flex w-full flex-col gap-3 py-2")}
-              >
-                <Text mainUiBody text04>
-                  {resetProgress.label}
-                </Text>
-                <div
-                  role="progressbar"
-                  aria-label={resetProgress.label}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={resetProgress.percent}
-                  className={cn(
-                    "h-2.5 w-full overflow-hidden rounded-full bg-background-neutral-03"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "h-full rounded-full bg-action-link-05 transition-all duration-300 ease-out"
-                    )}
-                    style={{ width: `${resetProgress.percent}%` }}
-                  />
-                </div>
-                <Text secondaryMono text03 className={cn("text-right")}>
-                  {resetProgress.percent}%
-                </Text>
-              </div>
-            </ConfirmationModalLayout>
           )}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

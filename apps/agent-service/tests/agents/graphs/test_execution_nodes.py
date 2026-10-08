@@ -23,9 +23,9 @@ import pytest
 from langchain_core.messages import HumanMessage
 from langgraph.graph.state import CompiledStateGraph
 
-from agents.graphs.flow_builder import ResolvedResources, make_node
+from agents.graphs.flow import ResolvedResources, make_node
 from core.exceptions import UnknownComponentError
-from models.flows import FlowNode
+from schemas.flows import FlowNode
 
 
 @pytest.fixture(autouse=True)
@@ -84,6 +84,53 @@ async def test_text_input_node_writes_to_scratch_and_emits_a_message():
     assert result["scratch"] == {"text-1": "hello world"}
     # ... and now also emits the text as a message (Langflow parity)
     assert [m.content for m in result["messages"]] == ["hello world"]
+
+
+@pytest.mark.asyncio
+async def test_unconnected_text_input_still_runs(monkeypatch):
+    """B15 — a source node with no incoming edge used to have no START edge
+    and never executed. The compiler now gives every input-handle-less node
+    its own START edge, so its value reaches the flow."""
+    from agents.graphs.flow import FlowGraphBuilder
+    from schemas.flows import FlowSpec
+
+    monkeypatch.setenv("USE_FAKE_MODEL", "true")
+    spec = FlowSpec.model_validate(
+        {
+            "nodes": [
+                {"id": "in-1", "type": "ChatInput"},
+                {"id": "txt-1", "type": "TextInput", "values": {"text": "SIDE FACT"}},
+                {
+                    "id": "pt-1",
+                    "type": "PromptTemplate",
+                    "values": {"template": "Fact: {txt-1}"},
+                },
+                {"id": "out-1", "type": "ChatOutput"},
+            ],
+            "edges": [
+                {
+                    "id": "e1",
+                    "source": "in-1",
+                    "sourceHandle": "message",
+                    "target": "pt-1",
+                    "targetHandle": "variables",
+                },
+                {
+                    "id": "e2",
+                    "source": "pt-1",
+                    "sourceHandle": "text",
+                    "target": "out-1",
+                    "targetHandle": "message",
+                },
+            ],
+        }
+    )
+    graph = await FlowGraphBuilder().build(spec)
+    result = await graph.ainvoke(
+        {"messages": [HumanMessage(content="hi")], "scratch": {}},
+        config={"recursion_limit": 25},
+    )
+    assert "SIDE FACT" in result["messages"][-1].content
 
 
 # ---------------------------------------------------------------------------
@@ -164,7 +211,7 @@ def test_select_model_uses_the_explicitly_wired_resource():
     """A flow with two Model resources feeding two different agent nodes must
     resolve each agent's *own* wired model, not whichever resource happens to
     be first in the dict."""
-    from agents.graphs.flow_builder import _select_model
+    from agents.graphs.flow import _select_model
 
     model_a = object()
     model_b = object()
@@ -176,7 +223,7 @@ def test_select_model_uses_the_explicitly_wired_resource():
 
 def test_select_model_falls_back_to_the_only_resource_when_unspecified():
     """A single-model flow (the common case) needs no explicit wiring."""
-    from agents.graphs.flow_builder import _select_model
+    from agents.graphs.flow import _select_model
 
     model_a = object()
     resources = ResolvedResources(models={"model-a": model_a})
@@ -187,7 +234,7 @@ def test_select_model_falls_back_to_the_only_resource_when_unspecified():
 def test_select_model_returns_none_when_no_resource_and_none_specified():
     """No Model resource at all -> GraphBuilder falls back to DEFAULT_MODEL,
     matching the classic agent's own behavior with no LLM override."""
-    from agents.graphs.flow_builder import _select_model
+    from agents.graphs.flow import _select_model
 
     assert _select_model(ResolvedResources(models={}), None) is None
 

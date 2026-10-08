@@ -1,9 +1,9 @@
 "use client";
-
-import { authenticatedFetch } from "@/lib/fetcher";
+import { updateEnterpriseTheme } from "@/lib/api/domains/system/api";
+import { uploadEnterpriseLogo } from "@/lib/api/domains/system/api";
 
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { getErrorMsg } from "@/lib/fetchUtils";
 import Button from "@/refresh-components/buttons/Button";
 import {
@@ -47,19 +47,10 @@ export default function ThemePage() {
   async function updateEnterpriseSettings(
     newValues: EnterpriseSettings
   ): Promise<boolean> {
-    const response = await authenticatedFetch(
-      "/api/admin/enterprise-settings",
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...(enterpriseSettings || {}),
-          ...newValues,
-        }),
-      }
-    );
+    const response = await updateEnterpriseTheme({
+      ...(enterpriseSettings || {}),
+      ...newValues,
+    });
     if (response.ok) {
       router.refresh();
       return true;
@@ -178,13 +169,7 @@ export default function ThemePage() {
         if (selectedLogo) {
           const formData = new FormData();
           formData.append("file", selectedLogo);
-          const response = await authenticatedFetch(
-            "/api/admin/enterprise-settings/logo",
-            {
-              method: "PUT",
-              body: formData,
-            }
-          );
+          const response = await uploadEnterpriseLogo(formData);
           if (!response.ok) {
             const errorMsg = (await getErrorMsg(response)) ?? "Unknown error";
             toast.error(

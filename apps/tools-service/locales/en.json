@@ -3,12 +3,14 @@
     "file_not_found": "File not found: {file_path}",
     "invalid_page": "Invalid page number. PDF has {total_pages} pages.",
     "search_empty": "Search text cannot be empty",
-    "pymupdf_not_installed": "PyMuPDF (fitz) library not installed. Install with: pip install pymupdf"
+    "pymupdf_not_installed": "PyMuPDF (fitz) library not installed. Install with: pip install pymupdf",
+    "file_too_large": "PDF exceeds the {limit} byte limit"
   },
   "web": {
     "no_results": "No results found for '{query}'",
     "fetch_error": "Error fetching webpage: {error}",
-    "search_error": "Search error: {error}"
+    "search_error": "Search error: {error}",
+    "url_not_allowed": "URL not allowed: {error}"
   },
   "mail": {
     "recipient_subject_body_required": "Recipient, subject, and body are required before sending email.",
@@ -17,26 +19,24 @@
     "auth_failed": "SMTP authentication failed.",
     "connection_failed": "SMTP server could not be reached.",
     "recipient_rejected": "SMTP server rejected one or more recipients.",
-    "message_rejected": "SMTP server rejected the message."
+    "message_rejected": "SMTP server rejected the message.",
+    "host_not_allowed": "The configured SMTP host is not permitted by this deployment."
   },
   "knowledge": {
-    "collection_required": "A configured knowledge collection is required.",
-    "rag_service_not_configured": "RAG service is not configured."
+    "collection_required": "At least one knowledge collection is required.",
+    "rag_service_not_configured": "The knowledge retrieval service is not configured.",
+    "retrieval_failed": "Knowledge retrieval failed."
   },
   "common": {
     "error": "Error: {error}"
   },
   "calculator": {
-    "invalid_character": "Invalid character in expression: {char}",
     "calculation_error": "Calculation error: {error}"
   },
   "json": {
     "invalid_json": "Invalid JSON: {error}",
     "cannot_navigate": "Cannot navigate further at '{key}'",
     "query_error": "Query error: {error}"
-  },
-  "service": {
-    "restart_error": "Service restart error: {error}"
   },
   "time": {
     "error": "Error: {error}"
@@ -46,16 +46,9 @@
     "unknown_algorithm": "Unknown algorithm. Supported: {algorithms}"
   },
   "command": {
-    "blocked_pattern": "Error: Blocked command pattern detected: {pattern}",
     "timeout": "Error: Command timed out after {seconds} seconds",
-    "execution_error": "Error executing command: {error}"
-  },
-  "docker": {
-    "build_error": "Docker build error: {error}",
-    "run_error": "Docker run error: {error}",
-    "stop_error": "Docker stop error: {error}",
-    "logs_error": "Docker logs error: {error}",
-    "ps_error": "Docker ps error: {error}"
+    "not_allowed": "Command not allowed: {command}",
+    "execution_error": "Command execution failed: {error}"
   },
   "file": {
     "read_error": "Error reading file: {error}",
@@ -94,7 +87,8 @@
     "invalid_scope": "Error: scope must be 'global' or 'local', got '{scope}'",
     "repo_dir_required": "Error: repo_dir is required when scope is 'local'",
     "config_error": "Git config error: {error}",
-    "diff_error": "Git diff error: {error}"
+    "diff_error": "Git diff error: {error}",
+    "invalid_argument": "Invalid git argument: {error}"
   },
   "java": {
     "jar_not_found": "Error: JAR file not found: {path}",
@@ -114,33 +108,34 @@
     "file_has_errors": "✗ {name} has errors:\n{errors}",
     "jar_unzip_not_found": "Error: jar/unzip command not found",
     "list_error": "Error listing JAR: {error}",
-    "inspect_error": "Error inspecting JAR: {error}"
+    "inspect_error": "Error inspecting JAR: {error}",
+    "invalid_class_name": "Error: Invalid Java class name: {class_name}"
   },
   "code": {
     "execution_timeout": "Error: Code execution timed out after {seconds} seconds",
-    "python_execution_error": "Error executing Python code: {error}",
     "file_not_found": "Error: File not found: {path}",
     "file_execution_timeout": "Error: Execution timed out after {seconds} seconds",
-    "python_file_error": "Error executing Python file: {error}",
     "python_syntax_error": "✗ Syntax Error at line {lineno}, column {offset}:\n{msg}\n\nProblematic line:\n{text}",
     "validation_error": "✗ Validation error: {error}",
     "node_not_installed": "Error: Node.js is not installed or not in PATH",
-    "node_execution_error": "Error executing Node.js code: {error}",
     "test_path_not_found": "Error: Test path not found: {path}",
     "test_timeout": "Error: Tests timed out after {seconds} seconds",
-    "pytest_error": "Error running pytest: {error}",
     "directory_not_found": "Error: Directory not found: {path}",
     "package_json_not_found": "Error: No package.json found in {path}",
     "npm_not_installed": "Error: npm is not installed or not in PATH",
     "command_timeout": "Error: Command timed out after {seconds} seconds",
-    "npm_error": "Error running npm: {error}",
     "json_syntax_error": "✗ JSON Error at line {lineno}, column {colno}:\n{msg}",
     "json_validate_error": "✗ Error validating JSON: {error}",
     "no_linter_for_extension": "No linter available for {ext} files",
     "unknown_linter": "Unknown linter: {linter}",
     "linter_not_installed": "Error: {linter} is not installed",
-    "linter_error": "Error running linter: {error}",
-    "port_check_error": "Error checking port: {error}"
+    "linter_timeout": "{linter} timed out",
+    "python_execution_error": "Python execution failed: {error}",
+    "python_file_error": "Python file execution failed: {error}",
+    "node_execution_error": "Node.js execution failed: {error}",
+    "pytest_error": "pytest execution failed: {error}",
+    "npm_error": "npm command failed: {error}",
+    "linter_error": "Linting failed: {error}"
   },
   "categories": {
     "calculator": {
@@ -149,7 +144,7 @@
     },
     "command_execution": {
       "label": "Command Execution",
-      "description": "Shell command execution and system information"
+      "description": "Run a fixed set of server-defined, read-only commands and get system info"
     },
     "code_execution": {
       "label": "Code Execution",
@@ -162,10 +157,6 @@
     "java": {
       "label": "Java",
       "description": "Run JAR files, compile and execute Java code, syntax checking"
-    },
-    "service_management": {
-      "label": "Service Management",
-      "description": "Docker and systemd service restart operations"
     },
     "utilities": {
       "label": "Utilities",
@@ -183,10 +174,6 @@
       "label": "File Operations",
       "description": "File read, write, and directory listing"
     },
-    "docker": {
-      "label": "Docker",
-      "description": "Docker container build, run, and management"
-    },
     "git": {
       "label": "Git",
       "description": "Git clone, pull, push, commit, and branch operations"
@@ -199,9 +186,13 @@
       "label": "Mail",
       "description": "SMTP email sending"
     },
-    "knowledge": {
+    "knowledge_retrieval": {
       "label": "Knowledge",
       "description": "Knowledge retrieval"
+    },
+    "connector": {
+      "label": "Connector Data",
+      "description": "Read bounded data from connector instances assigned to the active agent"
     },
     "web_search": {
       "label": "Web",
@@ -216,13 +207,17 @@
       }
     },
     "command_execution": {
-      "execute_shell": {
-        "name": "Execute Shell Command",
-        "description": "Execute a shell command in a sandboxed environment."
-      },
       "get_system_info": {
         "name": "Get System Information",
-        "description": "Get system information (OS, CPU, memory, disk)."
+        "description": "Get system information (OS, architecture, Python version)."
+      },
+      "run_command": {
+        "name": "Run Command",
+        "description": "Run one of the allowed, server-defined commands."
+      },
+      "list_commands": {
+        "name": "List Commands",
+        "description": "List the command_id values run_command accepts."
       }
     },
     "code_execution": {
@@ -261,10 +256,6 @@
       "start_dev_server": {
         "name": "Start Development Server",
         "description": "Start a background development server."
-      },
-      "check_port": {
-        "name": "Check Network Port",
-        "description": "Check if a network port is open/listening."
       }
     },
     "json_data": {
@@ -303,12 +294,6 @@
         "description": "Inspect contents of a JAR file (list classes and entries)."
       }
     },
-    "service_management": {
-      "service_restart": {
-        "name": "Restart Service",
-        "description": "Restart a service (docker container or systemd service)."
-      }
-    },
     "knowledge_retrieval": {
       "database_search": {
         "name": "Search Documents",
@@ -317,6 +302,20 @@
       "graph_search": {
         "name": "Search Knowledge Graph",
         "description": "Retrieve graph context from configured knowledge collections."
+      },
+      "document_search": {
+        "name": "Search Documents",
+        "description": "Retrieve document context from configured knowledge collections."
+      }
+    },
+    "connector": {
+      "connector_list_resources": {
+        "name": "List Connector Resources",
+        "description": "List the selected streams of one assigned data source. No connector credentials are returned."
+      },
+      "connector_read": {
+        "name": "Read Connector Data",
+        "description": "Read bounded data from one selected connector stream."
       }
     },
     "utilities": {
@@ -381,28 +380,6 @@
       "file_delete": {
         "name": "Delete File",
         "description": "Delete a file or directory."
-      }
-    },
-    "docker": {
-      "docker_build": {
-        "name": "Build Docker Image",
-        "description": "Build a Docker image from a Dockerfile."
-      },
-      "docker_run": {
-        "name": "Run Docker Container",
-        "description": "Run a Docker container."
-      },
-      "docker_ps": {
-        "name": "List Docker Containers",
-        "description": "List running Docker containers."
-      },
-      "docker_stop": {
-        "name": "Stop Docker Container",
-        "description": "Stop a running Docker container."
-      },
-      "docker_logs": {
-        "name": "Get Docker Container Logs",
-        "description": "Get logs from a Docker container."
       }
     },
     "git": {
@@ -489,5 +466,8 @@
         "description": "Fetch content of a webpage and extract clean text."
       }
     }
+  },
+  "workspace": {
+    "path_escape_error": "Path escapes the workspace: {error}"
   }
 }

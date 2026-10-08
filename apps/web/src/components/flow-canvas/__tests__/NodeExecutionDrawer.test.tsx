@@ -2,6 +2,8 @@ import React from "react";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { NodeExecutionDrawer } from "../nodes/NodeExecutionDrawer";
 import type { NodeExecutionData } from "../types/execution";
+import type { KnowledgeEvidence } from "@/lib/api/domains/chat/knowledge-evidence-types";
+import { setupUser } from "@tests/setup/test-utils";
 
 // Mock clipboard
 Object.assign(navigator, {
@@ -9,6 +11,36 @@ Object.assign(navigator, {
     writeText: jest.fn().mockImplementation(() => Promise.resolve()),
   },
 });
+
+function documentEvidence(query: string, content: string): KnowledgeEvidence {
+  return {
+    kind: "document",
+    tool: "document_search",
+    query,
+    collections: [{ id: "col-1", name: "İK Politikaları" }],
+    chunks: [
+      {
+        ref: 1,
+        id: "chk-1",
+        score: 0.89,
+        content,
+        truncated: false,
+        collectionId: "col-1",
+        source: {
+          document: "İzin Yönetmeliği 2026.pdf",
+          title: null,
+          page: 7,
+          section: null,
+          fileId: null,
+        },
+      },
+    ],
+    graph: null,
+    modelContext: content,
+    modelContextTruncated: false,
+    elapsedMs: 380,
+  };
+}
 
 describe("NodeExecutionDrawer", () => {
   const sampleData: NodeExecutionData = {
@@ -143,5 +175,159 @@ describe("NodeExecutionDrawer", () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       sampleData.thinking
     );
+  });
+
+  it("opens a retrieval node on its sources and lists the chunks it used", () => {
+    const retrievalData: NodeExecutionData = {
+      nodeId: "search-1",
+      label: "Politika belgeleri",
+      status: "done",
+      durationMs: 380,
+      tools: [],
+      evidence: [
+        {
+          kind: "document",
+          tool: "document_search",
+          query: "izin devri",
+          collections: [{ id: "col-1", name: "İK Politikaları" }],
+          chunks: [
+            {
+              ref: 1,
+              id: "chk-1",
+              score: 0.89,
+              content: "Kullanılmayan izin devredilir.",
+              truncated: false,
+              collectionId: "col-1",
+              source: {
+                document: "İzin Yönetmeliği 2026.pdf",
+                title: null,
+                page: 7,
+                section: null,
+                fileId: null,
+              },
+            },
+          ],
+          graph: null,
+          modelContext: "Kullanılmayan izin devredilir.",
+          modelContextTruncated: false,
+          elapsedMs: 380,
+        },
+      ],
+    };
+
+    render(<NodeExecutionDrawer nodeId="search-1" data={retrievalData} />);
+    expect(screen.getByText(/(Sources|Kaynaklar) \(1\)/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText(/Details|Detaylar/i));
+
+    expect(screen.getByText("İzin Yönetmeliği 2026")).toBeInTheDocument();
+    // The preview is split into highlighted segments; assert the whole text.
+    expect(
+      screen.getByTestId("node-execution-drawer-search-1")
+    ).toHaveTextContent("Kullanılmayan izin devredilir.");
+  });
+
+  describe("sources", () => {
+    const withSources: NodeExecutionData = {
+      nodeId: "search-1",
+      label: "Politika belgeleri",
+      status: "done",
+      durationMs: 380,
+      thinking: "Belgelerde aranacak.",
+      tools: [],
+      output: "Tamam.",
+      evidence: [
+        documentEvidence("izin devri", "Kullanılmayan izin devredilir."),
+      ],
+    };
+
+    it("switches tabs from the keyboard", async () => {
+      const user = setupUser();
+      render(<NodeExecutionDrawer nodeId="search-1" data={withSources} />);
+      fireEvent.click(screen.getByText(/Details|Detaylar/i));
+
+      screen.getByRole("button", { name: /(Sources|Kaynaklar) \(1\)/ }).focus();
+      await user.keyboard("{Enter}");
+      expect(screen.getByText("İzin Yönetmeliği 2026")).toBeInTheDocument();
+
+      screen.getByRole("button", { name: /Tools|Araçlar/i }).focus();
+      await user.keyboard(" ");
+      expect(
+        screen.queryByText("İzin Yönetmeliği 2026")
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText(/harici araç çağrılmadı|No external tools/i)
+      ).toBeInTheDocument();
+    });
+
+    it("tells assistive technology which tab is showing", () => {
+      render(<NodeExecutionDrawer nodeId="search-1" data={withSources} />);
+      fireEvent.click(screen.getByText(/Details|Detaylar/i));
+
+      const thinking = screen.getByRole("button", {
+        name: /^(Thinking|Düşünce)$/,
+      });
+      const sources = screen.getByRole("button", {
+        name: /(Sources|Kaynaklar) \(1\)/,
+      });
+      expect(thinking).toHaveAttribute("aria-pressed", "true");
+      expect(sources).toHaveAttribute("aria-pressed", "false");
+
+      fireEvent.click(sources);
+
+      expect(thinking).toHaveAttribute("aria-pressed", "false");
+      expect(sources).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("follows the loop iteration the reader picks", async () => {
+      const user = setupUser();
+      const looped: NodeExecutionData = {
+        nodeId: "search-1",
+        label: "Politika belgeleri",
+        status: "done",
+        durationMs: 900,
+        tools: [],
+        evidence: [
+          documentEvidence("birinci sorgu", "Birinci turun parçası."),
+          documentEvidence("ikinci sorgu", "İkinci turun parçası."),
+        ],
+        iterations: [
+          {
+            iteration: 1,
+            status: "done",
+            durationMs: 400,
+            evidence: [
+              documentEvidence("birinci sorgu", "Birinci turun parçası."),
+            ],
+          },
+          {
+            iteration: 2,
+            status: "done",
+            durationMs: 500,
+            evidence: [
+              documentEvidence("ikinci sorgu", "İkinci turun parçası."),
+            ],
+          },
+        ],
+      };
+      render(<NodeExecutionDrawer nodeId="search-1" data={looped} />);
+      fireEvent.click(screen.getByText(/Details|Detaylar/i));
+
+      // The latest iteration leads until the reader picks another.
+      const drawer = screen.getByTestId("node-execution-drawer-search-1");
+      expect(drawer).toHaveTextContent("İkinci turun parçası.");
+      expect(drawer).not.toHaveTextContent("Birinci turun parçası.");
+      expect(
+        screen.getByRole("button", { name: /(Sources|Kaynaklar) \(1\)/ })
+      ).toBeInTheDocument();
+
+      const first = screen.getByRole("button", { name: /(Tur|Iteration) 1/ });
+      first.focus();
+      await user.keyboard("{Enter}");
+
+      expect(drawer).toHaveTextContent("Birinci turun parçası.");
+      expect(drawer).not.toHaveTextContent("İkinci turun parçası.");
+      expect(first).toHaveAttribute("aria-pressed", "true");
+    });
   });
 });

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "kind": "document",
+  "tool": "document_search",
+  "query": "refund policy",
+  "collections": [{"id": "col-1", "name": "Policies"}],
+  "chunks": [
+    {
+      "ref": 1,
+      "id": "chunk-1",
+      "score": 0.87,
+      "content": "Refunds are issued within 14 days.",
+      "truncated": false,
+      "collection_id": "col-1",
+      "source": {"document": "policy.pdf", "title": "Policy", "page": 3, "section": "Refunds", "file_id": "file-1"}
+    }
+  ],
+  "graph": null,
+  "model_context": "[1] (policy.pdf)\nRefunds are issued within 14 days.",
+  "model_context_truncated": false,
+  "elapsed_ms": 42
+}

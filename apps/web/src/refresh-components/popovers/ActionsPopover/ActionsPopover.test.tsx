@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import ActionsPopover from "./index";
-import type { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import type { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import type { ToolSnapshot } from "@/lib/tools/interfaces";
 
 jest.mock("next/navigation", () => ({
@@ -109,22 +109,12 @@ jest.mock("@/lib/hooks/useForcedTools", () => ({
   }),
 }));
 
-jest.mock("@/hooks/useAgentPreferences", () => ({
+jest.mock("@/lib/api/domains/preferences/hooks", () => ({
   __esModule: true,
-  default: () => ({
+  useAgentPreferences: () => ({
     agentPreferences: {},
     setSpecificAgentPreferences: jest.fn(),
   }),
-}));
-
-jest.mock("@/providers/UserProvider", () => ({
-  useUser: () => ({
-    isAdmin: false,
-    isCurator: false,
-  }),
-}));
-
-jest.mock("@/lib/hooks", () => ({
   useSourcePreferences: () => ({
     sourcesInitialized: true,
     enableSources: jest.fn(),
@@ -135,16 +125,23 @@ jest.mock("@/lib/hooks", () => ({
   }),
 }));
 
+jest.mock("@/providers/UserProvider", () => ({
+  useUser: () => ({
+    isAdmin: false,
+    isCurator: false,
+  }),
+}));
+
 let mockAvailableTools: ToolSnapshot[] = [];
-jest.mock("@/hooks/useAvailableTools", () => ({
+jest.mock("@/lib/api/domains/tools/hooks", () => ({
   useAvailableTools: () => ({
     tools: mockAvailableTools,
   }),
 }));
 
-jest.mock("@/hooks/useCCPairs", () => ({
+jest.mock("@/lib/api/domains/datasources/hooks", () => ({
   __esModule: true,
-  default: () => ({
+  useCCPairs: () => ({
     ccPairs: [],
   }),
 }));

@@ -14,8 +14,8 @@ import pytest
 from langchain_core.messages import AIMessage
 from langgraph.types import Command
 
-from agents.flow_agent import FlowAgent
-from service.AgentStreamService import _emit_resumed_flow_answer
+from agents.implementations.flow_agent import FlowAgent
+from service.orchestration.agent_stream_service import _emit_resumed_flow_answer
 
 
 class _FakeFlowAgent(FlowAgent):
@@ -27,11 +27,11 @@ class _FakeFlowAgent(FlowAgent):
 
 
 def _ctx(**over):
-    base = dict(
-        emitted_ai_message_ids=set(),
-        streamed_message_ids=set(),
-        run_id="run-1",
-    )
+    base = {
+        "emitted_ai_message_ids": set(),
+        "streamed_message_ids": set(),
+        "run_id": "run-1",
+    }
     base.update(over)
     return SimpleNamespace(**base)
 

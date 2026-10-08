@@ -1,7 +1,9 @@
+import { systemEndpoints } from "@/lib/api/domains/system/endpoints";
+
 import { toast } from "@/hooks/useToast";
 import CreateRateLimitModal from "../../../../admin/token-rate-limits/CreateRateLimitModal";
-import { Scope } from "../../../../admin/token-rate-limits/types";
-import { insertGroupTokenRateLimit } from "../../../../admin/token-rate-limits/lib";
+import { Scope } from "@/lib/api/domains/system/token-rate-limit-types";
+import { insertGroupTokenRateLimit } from "@/lib/api/domains/system/api";
 import { mutate } from "swr";
 import { useTranslation } from "react-i18next";
 
@@ -40,7 +42,7 @@ export const AddTokenRateLimitForm: React.FC<AddMemberFormProps> = ({
       .then(() => {
         setIsOpen(false);
         toast.success(t("admin.tokenRateLimits.createdSuccess"));
-        mutate(`/api/admin/token-rate-limits/user-group/${userGroupId}`);
+        mutate(systemEndpoints.groupTokenRateLimits(userGroupId).browserPath);
       })
       .catch((error) => {
         toast.error(error.message);

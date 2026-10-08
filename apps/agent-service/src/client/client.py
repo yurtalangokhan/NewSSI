@@ -1,12 +1,16 @@
-import json
 from collections.abc import AsyncGenerator, Generator
+import json
 from typing import Any
 
+from config_manager import env
+from error_contract.agent import AgentClientError
 import httpx
+from pydantic import ValidationError
 
-from core.env import env
-from models.agents import ServiceMetadata
-from models.chat import (
+from core.http import outbound
+from core.http.application_response import read_response_model
+from schemas.agents import ServiceMetadata
+from schemas.chat import (
     ChatHistory,
     ChatHistoryInput,
     ChatMessage,
@@ -16,16 +20,12 @@ from models.chat import (
 )
 
 
-class AgentClientError(Exception):
-    pass
-
-
 class AgentClient:
     """Client for interacting with the agent service."""
 
     def __init__(
         self,
-        base_url: str = "http://0.0.0.0",
+        base_url: str | None = None,
         agent: str | None = None,
         timeout: float | None = None,
         get_info: bool = True,
@@ -34,14 +34,18 @@ class AgentClient:
         Initialize the client.
 
         Args:
-            base_url (str): The base URL of the agent service.
+            base_url (str, optional): The base URL of the agent service. If None,
+                reads from AGENT_SERVICE_URL or BASE_URL environment variables.
             agent (str): The name of the default agent to use.
             timeout (float, optional): The timeout for requests.
             get_info (bool, optional): Whether to fetch agent information on init.
                 Default: True
         """
-        self.base_url = base_url
-        self.auth_secret = env.AUTH_SECRET
+        resolved_url = base_url or env.AGENT_SERVICE_URL
+        if not resolved_url:
+            raise ValueError("AGENT_SERVICE_URL environment variable or base_url argument is required")
+        self.base_url = resolved_url.rstrip("/")
+        self.auth_secret = env.AUTHENTICATION_SECRET or ""
         self.timeout = timeout
         self.info: ServiceMetadata | None = None
         self.agent: str | None = None
@@ -59,16 +63,16 @@ class AgentClient:
 
     def retrieve_info(self) -> None:
         try:
-            response = httpx.get(
+            response = outbound.get_sync_client(outbound.EXTERNAL).get(
                 f"{self.base_url}/agents/info",
                 headers=self._headers,
                 timeout=self.timeout,
             )
-            response.raise_for_status()
+            payload = read_response_model(response)
         except httpx.HTTPError as e:
-            raise AgentClientError(f"Error getting service info: {e}")
+            raise AgentClientError(f"Error getting service info: {e}") from e
 
-        self.info = ServiceMetadata.model_validate(response.json())
+        self.info = ServiceMetadata.model_validate(payload)
         if not self.agent or self.agent not in [a.key for a in self.info.agents]:
             self.agent = self.info.default_agent
 
@@ -78,9 +82,7 @@ class AgentClient:
                 self.retrieve_info()
             agent_keys = [a.key for a in self.info.agents]  # type: ignore[union-attr]
             if agent not in agent_keys:
-                raise AgentClientError(
-                    f"Agent {agent} not found in available agents: {', '.join(agent_keys)}"
-                )
+                raise AgentClientError(f"Agent {agent} not found in available agents: {', '.join(agent_keys)}")
         self.agent = agent
 
     async def ainvoke(
@@ -115,19 +117,20 @@ class AgentClient:
             request.agent_config = agent_config
         if user_id:
             request.user_id = user_id
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.post(
-                    f"{self.base_url}/agents/{self.agent}/invoke",
-                    json=request.model_dump(),
-                    headers=self._headers,
-                    timeout=self.timeout,
-                )
-                response.raise_for_status()
-            except httpx.HTTPError as e:
-                raise AgentClientError(f"Error: {e}")
+        try:
+            response = await outbound.request(
+                outbound.EXTERNAL,
+                "POST",
+                f"{self.base_url}/agents/{self.agent}/invoke",
+                timeout=self.timeout,
+                json=request.model_dump(),
+                headers=self._headers,
+            )
+            payload = read_response_model(response)
+        except httpx.HTTPError as e:
+            raise AgentClientError(f"Error: {e}") from e
 
-        return ChatMessage.model_validate(response.json())
+        return ChatMessage.model_validate(payload)
 
     def invoke(
         self,
@@ -162,17 +165,17 @@ class AgentClient:
         if user_id:
             request.user_id = user_id
         try:
-            response = httpx.post(
+            response = outbound.get_sync_client(outbound.EXTERNAL).post(
                 f"{self.base_url}/agents/{self.agent}/invoke",
                 json=request.model_dump(),
                 headers=self._headers,
                 timeout=self.timeout,
             )
-            response.raise_for_status()
+            payload = read_response_model(response)
         except httpx.HTTPError as e:
-            raise AgentClientError(f"Error: {e}")
+            raise AgentClientError(f"Error: {e}") from e
 
-        return ChatMessage.model_validate(response.json())
+        return ChatMessage.model_validate(payload)
 
     def _parse_stream_line(self, line: str) -> ChatMessage | str | None:
         line = line.strip()
@@ -182,15 +185,15 @@ class AgentClient:
                 return None
             try:
                 parsed = json.loads(data)
-            except Exception as e:
-                raise Exception(f"Error JSON parsing message from server: {e}")
+            except json.JSONDecodeError as e:
+                raise AgentClientError("Server returned invalid JSON") from e
             match parsed["type"]:
                 case "message":
                     # Convert the JSON formatted message to an AnyMessage
                     try:
                         return ChatMessage.model_validate(parsed["content"])
-                    except Exception as e:
-                        raise Exception(f"Server returned invalid message: {e}")
+                    except (ValidationError, TypeError) as e:
+                        raise AgentClientError("Server returned invalid message") from e
                 case "token":
                     # Yield the str token directly
                     return parsed["content"]
@@ -239,7 +242,9 @@ class AgentClient:
         if agent_config:
             request.agent_config = agent_config
         try:
-            with httpx.stream(
+            # The shared sync client stays open; only the response closes.
+            client = outbound.get_sync_client(outbound.EXTERNAL)
+            with client.stream(
                 "POST",
                 f"{self.base_url}/agents/{self.agent}/stream",
                 json=request.model_dump(),
@@ -254,7 +259,7 @@ class AgentClient:
                             break
                         yield parsed
         except httpx.HTTPError as e:
-            raise AgentClientError(f"Error: {e}")
+            raise AgentClientError(f"Error: {e}") from e
 
     async def astream(
         self,
@@ -295,30 +300,29 @@ class AgentClient:
             request.agent_config = agent_config
         if user_id:
             request.user_id = user_id
-        async with httpx.AsyncClient() as client:
-            try:
-                async with client.stream(
-                    "POST",
-                    f"{self.base_url}/agents/{self.agent}/stream",
-                    json=request.model_dump(),
-                    headers=self._headers,
-                    timeout=self.timeout,
-                ) as response:
-                    response.raise_for_status()
-                    async for line in response.aiter_lines():
-                        if line.strip():
-                            parsed = self._parse_stream_line(line)
-                            if parsed is None:
-                                break
-                            # Don't yield empty string tokens as they cause generator issues
-                            if parsed != "":
-                                yield parsed
-            except httpx.HTTPError as e:
-                raise AgentClientError(f"Error: {e}")
+        try:
+            # Streaming keeps the shared client open; only the response closes.
+            client = outbound.get_client(outbound.EXTERNAL)
+            async with client.stream(
+                "POST",
+                f"{self.base_url}/agents/{self.agent}/stream",
+                json=request.model_dump(),
+                headers=self._headers,
+                timeout=self.timeout,
+            ) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if line.strip():
+                        parsed = self._parse_stream_line(line)
+                        if parsed is None:
+                            break
+                        # Don't yield empty string tokens as they cause generator issues
+                        if parsed != "":
+                            yield parsed
+        except httpx.HTTPError as e:
+            raise AgentClientError(f"Error: {e}") from e
 
-    async def acreate_feedback(
-        self, run_id: str, key: str, score: float, kwargs: dict[str, Any] = {}
-    ) -> None:
+    async def acreate_feedback(self, run_id: str, key: str, score: float, kwargs: dict[str, Any] | None = None) -> None:
         """
         Create a feedback record for a run.
 
@@ -326,19 +330,22 @@ class AgentClient:
         credentials can be stored and managed in the service rather than the client.
         See: https://api.smith.langchain.com/redoc#tag/feedback/operation/create_feedback_api_v1_feedback_post
         """
+        if kwargs is None:
+            kwargs = {}
         request = Feedback(run_id=run_id, key=key, score=score, kwargs=kwargs)
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.post(
-                    f"{self.base_url}/agents/feedback",
-                    json=request.model_dump(),
-                    headers=self._headers,
-                    timeout=self.timeout,
-                )
-                response.raise_for_status()
-                response.json()
-            except httpx.HTTPError as e:
-                raise AgentClientError(f"Error: {e}")
+        try:
+            response = await outbound.request(
+                outbound.EXTERNAL,
+                "POST",
+                f"{self.base_url}/agents/feedback",
+                timeout=self.timeout,
+                json=request.model_dump(),
+                headers=self._headers,
+            )
+            response.raise_for_status()
+            read_response_model(response)
+        except httpx.HTTPError as e:
+            raise AgentClientError(f"Error: {e}") from e
 
     def get_history(self, thread_id: str) -> ChatHistory:
         """
@@ -349,14 +356,14 @@ class AgentClient:
         """
         request = ChatHistoryInput(thread_id=thread_id)
         try:
-            response = httpx.post(
+            response = outbound.get_sync_client(outbound.EXTERNAL).post(
                 f"{self.base_url}/agents/history",
                 json=request.model_dump(),
                 headers=self._headers,
                 timeout=self.timeout,
             )
-            response.raise_for_status()
+            payload = read_response_model(response)
         except httpx.HTTPError as e:
-            raise AgentClientError(f"Error: {e}")
+            raise AgentClientError(f"Error: {e}") from e
 
-        return ChatHistory.model_validate(response.json())
+        return ChatHistory.model_validate(payload)

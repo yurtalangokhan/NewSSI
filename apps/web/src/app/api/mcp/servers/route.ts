@@ -1,10 +1,8 @@
+import { toolsEndpoints } from "@/lib/api/domains/tools/endpoints";
 import { NextRequest, NextResponse } from "next/server";
-import { getInternalUrl, getToolsServiceUrl } from "@/lib/env.server";
-import { buildServiceUrl } from "@/lib/api/gatewayRouting";
-import { getLanguageHeaders } from "@/lib/api/proxy";
+import { backendRequest, resolveBackendUrl } from "@/lib/api/http/server";
 
-const INTERNAL_URL = getInternalUrl();
-const TOOLS_SERVICE_URL = getToolsServiceUrl();
+import { getCookieValue, getLanguageHeaders } from "@/lib/api/proxy";
 
 // Non-admin MCP server list for the agent editor. Proxies to the agent-service
 // admin endpoint (built-in tools server + configured external MCP servers). If
@@ -15,17 +13,31 @@ export async function GET(request: NextRequest) {
   const cookie = request.headers.get("cookie");
   const authorization = request.headers.get("authorization");
   if (cookie) headers["Cookie"] = cookie;
-  if (authorization) headers["Authorization"] = authorization;
+  if (authorization) {
+    headers["Authorization"] = authorization;
+  } else {
+    // agent-service is bearer-token only and never reads cookies, so
+    // forwarding the raw Cookie header above is not enough on its own --
+    // the access_token has to be lifted into an explicit Authorization
+    // header or every call here gets a bare 401 and silently falls back
+    // to the built-in-only response below.
+    const accessToken = cookie && getCookieValue(cookie, "access_token");
+    if (accessToken) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
+    }
+  }
 
   try {
-    const response = await fetch(
-      buildServiceUrl(INTERNAL_URL, "agent", "/admin/mcp/servers").toString(),
-      { cache: "no-store", headers }
-    );
+    const response = await backendRequest({
+      ...toolsEndpoints.adminServers.backend,
+      cache: "no-store",
+      headers,
+    });
     if (response.ok) {
-      const data = await response.json();
-      if (Array.isArray(data?.mcp_servers)) {
-        return NextResponse.json(data);
+      // Pass the ResponseModel envelope on untouched: the client unwraps it.
+      const envelope = await response.json();
+      if (Array.isArray(envelope?.data?.mcp_servers)) {
+        return NextResponse.json(envelope);
       }
     }
   } catch {
@@ -33,14 +45,19 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
-    mcp_servers: [
-      {
-        id: 1,
-        name: "tools-service",
-        description: "Built-in tools from tools-service",
-        server_url: TOOLS_SERVICE_URL,
-        transport: "streamable_http",
-      },
-    ],
+    statusCode: 200,
+    message: null,
+    data: {
+      mcp_servers: [
+        {
+          id: 1,
+          name: "tools-service",
+          description: "Built-in tools from tools-service",
+          server_url: resolveBackendUrl(toolsEndpoints.mcp.backend).toString(),
+          transport: "streamable_http",
+        },
+      ],
+    },
+    error: null,
   });
 }

@@ -45,7 +45,7 @@ export default [
     // (`bg-background-neutral-00`, `text-text-03`, `theme-green-05`, the
     // `note-*` sticky-note palette) already answer both themes, which is why
     // `dark:` must not appear. The rest of `src/` still carries pre-existing
-    // Onyx violations; widen this `files` list as those areas are converted.
+    // Atlas violations; widen this `files` list as those areas are converted.
     //
     // The last two selectors are the i18n copy guard:
     // `i18next/no-literal-string` (installed version) only sees JSX text and

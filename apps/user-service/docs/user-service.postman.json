@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "User Service API",
-    "description": "User Management Microservice \u2014 Auth, Users, Roles, Permissions",
+    "description": "User Management Microservice — Auth, Users, Roles, Permissions",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -4110,75 +4110,6 @@
           ]
         },
         "description": "Search organizations by name, code, or description.",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Get Organization Layout",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/organizations/layout",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "organizations",
-            "layout"
-          ]
-        },
-        "description": "Return the shared canvas positions and organizations the actor may move.",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Save Organization Layout",
-      "request": {
-        "method": "PUT",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/organizations/layout",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "organizations",
-            "layout"
-          ]
-        },
-        "description": "Atomically create or update shared canvas positions.",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"positions\": [\n    \"item\"\n  ]\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
         "auth": {
           "type": "bearer",
           "bearer": [

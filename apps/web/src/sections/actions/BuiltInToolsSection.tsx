@@ -10,7 +10,7 @@ import {
   buildCategoryLabelMap,
   ToolWithCategory,
 } from "@/lib/tools/builtInToolUtils";
-import useBuiltInTools from "@/hooks/useBuiltInTools";
+import { useBuiltInTools } from "@/lib/api/domains/tools/hooks";
 import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,

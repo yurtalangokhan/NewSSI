@@ -13,7 +13,10 @@ import {
   useDiscordBotConfig,
   useDiscordGuilds,
 } from "@/app/admin/discord-bot/hooks";
-import { createBotConfig, deleteBotConfig } from "@/app/admin/discord-bot/lib";
+import {
+  createBotConfig,
+  deleteBotConfig,
+} from "@/lib/api/domains/integrations/api";
 import { toast } from "@/hooks/useToast";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
 import { getFormattedDateTime } from "@/lib/dateUtils";

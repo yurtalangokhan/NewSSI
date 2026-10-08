@@ -1,7 +1,7 @@
 """Tests for the single, shared agent-construction factory.
 
 Three existing call sites each independently decided "definition -> which
-agent class": service/AgentHelpers.py, api/routes/AgentsRoute.py (the
+agent class": service/AgentHelpers.py, api/routes/agents_route.py (the
 isinstance check), service/AssistantAgentService.py. This factory is the one
 place that decision is made now, so the branch isn't duplicated three times.
 
@@ -15,9 +15,9 @@ from dataclasses import dataclass
 
 import pytest
 
-from agents.agent_factory import create_agent_for_definition
-from agents.dynamic_agent import DynamicAgent
-from agents.flow_agent import FlowAgent
+from agents.implementations.dynamic_agent import DynamicAgent
+from agents.implementations.flow_agent import FlowAgent
+from agents.registry.agent_factory import create_agent_for_definition
 
 
 @dataclass
@@ -30,7 +30,16 @@ class _FakeDefinition:
     published_flow_version_id: str | None = None
 
     def to_config(self) -> dict:
-        return {"name": "x", "graph_schema": self.graph_schema}
+        config = {"name": "x", "graph_schema": self.graph_schema}
+        # pipeline/supervisor need at least one stage/sub-agent to build a
+        # valid graph -- load() now raises on a validation failure instead
+        # of silently falling back, so an empty config is no longer enough
+        # to exercise "does the factory pick the right class".
+        if self.graph_schema == "pipeline":
+            config["stages"] = [{"name": "stage1", "system_prompt": "Do step 1"}]
+        elif self.graph_schema == "supervisor":
+            config["sub_agents"] = [{"name": "agent1", "system_prompt": "Do task 1"}]
+        return config
 
 
 @pytest.mark.asyncio
@@ -61,13 +70,13 @@ async def test_flow_agent_owner_id_resolved_from_persona(monkeypatch):
     """A flow's send_email tool needs the flow owner's id. AgentDefinitionModel
     has no user_id column and created_by is never populated, so the owner must
     come from the linked persona."""
-    from repository import persona_repository as PersonaRepository
+    from infrastructure.db.repositories import PersonaRepository
 
     async def fake_get(persona_id):
         assert persona_id == 7
         return {"id": 7, "user_id": "owner-kc-sub"}
 
-    monkeypatch.setattr(PersonaRepository.PersonaDB, "get", staticmethod(fake_get))
+    monkeypatch.setattr(PersonaRepository, "get", staticmethod(fake_get))
 
     definition = _FakeDefinition(
         id="d5", graph_schema="flow", flow_spec={"nodes": [], "edges": []}, persona_id=7
@@ -80,12 +89,12 @@ async def test_flow_agent_owner_id_resolved_from_persona(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_flow_agent_owner_id_falls_back_to_created_by(monkeypatch):
-    from repository import persona_repository as PersonaRepository
+    from infrastructure.db.repositories import PersonaRepository
 
     async def fake_get(persona_id):
         return None
 
-    monkeypatch.setattr(PersonaRepository.PersonaDB, "get", staticmethod(fake_get))
+    monkeypatch.setattr(PersonaRepository, "get", staticmethod(fake_get))
 
     definition = _FakeDefinition(
         id="d6",
@@ -102,12 +111,12 @@ async def test_flow_agent_owner_id_falls_back_to_created_by(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_flow_agent_owner_id_survives_persona_lookup_error(monkeypatch):
-    from repository import persona_repository as PersonaRepository
+    from infrastructure.db.repositories import PersonaRepository
 
     async def boom(persona_id):
         raise RuntimeError("persona store down")
 
-    monkeypatch.setattr(PersonaRepository.PersonaDB, "get", staticmethod(boom))
+    monkeypatch.setattr(PersonaRepository, "get", staticmethod(boom))
 
     definition = _FakeDefinition(
         id="d7",
@@ -133,7 +142,7 @@ async def test_flow_agent_has_no_version_when_nothing_is_published():
 
 @pytest.mark.asyncio
 async def test_flow_agent_carries_the_published_version_no(monkeypatch):
-    from repository import flow_version_repository
+    from infrastructure.db.repositories import flow_version_repo
 
     class _Row:
         version_no = 5
@@ -143,7 +152,7 @@ async def test_flow_agent_carries_the_published_version_no(monkeypatch):
         return _Row()
 
     monkeypatch.setattr(
-        flow_version_repository.FlowVersionRepository,
+        flow_version_repo.FlowVersionRepository,
         "get_published",
         fake_get_published,
     )

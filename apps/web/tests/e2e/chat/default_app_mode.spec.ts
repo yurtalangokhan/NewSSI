@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { loginAs } from "@tests/e2e/utils/auth";
-import { OnyxApiClient } from "@tests/e2e/utils/onyxApiClient";
+import { AtlasApiClient } from "@tests/e2e/utils/atlasApiClient";
 
 test.describe("Default App Mode", () => {
   test("loads persisted Search mode after refresh", async ({ page }) => {
@@ -8,10 +8,7 @@ test.describe("Default App Mode", () => {
     await loginAs(page, "admin");
 
     // Arrange
-    const apiClient = new OnyxApiClient(page.request);
-    const ccPairId = await apiClient.createFileConnector(
-      "Default App Mode Test Connector"
-    );
+    const apiClient = new AtlasApiClient(page.request);
     await apiClient.setDefaultAppMode("SEARCH");
 
     try {
@@ -25,7 +22,6 @@ test.describe("Default App Mode", () => {
       await expect(appModeButton).toHaveText(/Search/);
     } finally {
       await apiClient.setDefaultAppMode("CHAT");
-      await apiClient.deleteCCPair(ccPairId);
     }
   });
 });

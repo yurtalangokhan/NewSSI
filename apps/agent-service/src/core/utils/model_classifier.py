@@ -2,16 +2,11 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any
+import re
+from typing import Any
 
-if TYPE_CHECKING:
-    from core.providers.base import ModelInfo
-
-    ModelLike = ModelInfo | Mapping[str, Any] | None
-else:  # pragma: no cover - runtime alias, no import cycle
-    ModelLike = Any
+ModelLike = Any | Mapping[str, Any] | None
 
 # Values (case-insensitive) that mark a model_type/model as an embedding model.
 _EMBEDDING_TYPE_TOKENS = frozenset({"embedding", "embeddings"})
@@ -32,9 +27,9 @@ _GEMINI_REASONING_PREFIXES = (
 
 def _extra_reasoning_prefixes() -> tuple[str, ...]:
     """Operator-supplied reasoning model-name prefixes, lower-cased."""
-    from core.settings import settings
+    from config_manager import env
 
-    raw = getattr(settings, "LLM_EXTRA_REASONING_MODEL_PREFIXES", "") or ""
+    raw = getattr(env, "LLM_EXTRA_REASONING_MODEL_PREFIXES", "") or ""
     return tuple(part.strip().lower() for part in raw.split(",") if part.strip())
 
 
@@ -55,17 +50,14 @@ def _embedding_from_mapping(data: Mapping[str, Any]) -> bool:
     if isinstance(model_type, str) and model_type.strip().lower() in _EMBEDDING_TYPE_TOKENS:
         return True
 
-    capabilities = (
-        data.get("capabilities")
-        or data.get("supported_capabilities")
-        or data.get("supported_features")
-    )
+    capabilities = data.get("capabilities") or data.get("supported_capabilities") or data.get("supported_features")
     if isinstance(capabilities, list):
         if "embedding" in {str(c).strip().lower() for c in capabilities}:
             return True
-    elif isinstance(capabilities, dict):
-        if capabilities.get("embedding") is True or capabilities.get("embeddings") is True:
-            return True
+    elif isinstance(capabilities, dict) and (
+        capabilities.get("embedding") is True or capabilities.get("embeddings") is True
+    ):
+        return True
 
     gen_methods = data.get("supportedGenerationMethods")
     if isinstance(gen_methods, list):

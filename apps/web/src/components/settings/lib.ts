@@ -6,12 +6,11 @@ import {
   QueryHistoryType,
 } from "@/interfaces/settings";
 import {
-  CUSTOM_ANALYTICS_ENABLED,
-  HOST_URL,
-  SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED,
-} from "@/lib/constants";
-import { fetchSS } from "@/lib/utilsSS";
-import { getWebVersion } from "@/lib/version";
+  fetchCustomAnalyticsScriptSS,
+  fetchEnterpriseSettingsSS,
+} from "@/lib/api/domains/system/server";
+import { getWebVersion } from "@/lib/api/domains/system/version";
+import { appSettings } from "@/lib/settings";
 
 export enum SettingsError {
   OTHER = "OTHER",
@@ -37,19 +36,11 @@ export async function fetchStandardSettingsSS() {
   } as any;
 }
 
-export async function fetchEnterpriseSettingsSS() {
-  return fetchSS("/enterprise-settings");
-}
-
-export async function fetchCustomAnalyticsScriptSS() {
-  return fetchSS("/enterprise-settings/custom-analytics-script");
-}
-
 export async function fetchSettingsSS(): Promise<CombinedSettings | null> {
   const tasks = [fetchStandardSettingsSS()];
-  if (SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED) {
+  if (appSettings.SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED) {
     tasks.push(fetchEnterpriseSettingsSS());
-    if (CUSTOM_ANALYTICS_ENABLED) {
+    if (appSettings.CUSTOM_ANALYTICS_ENABLED) {
       tasks.push(fetchCustomAnalyticsScriptSS());
     }
   }
@@ -140,10 +131,10 @@ export async function fetchSettingsSS(): Promise<CombinedSettings | null> {
       settings,
       enterpriseSettings,
       customAnalyticsScript,
+      customAnalyticsEnabled: appSettings.CUSTOM_ANALYTICS_ENABLED,
       webVersion,
-      webDomain: HOST_URL,
-      // Server-side default; the real value is computed client-side in
-      // SettingsProvider where connector data is available via useCCPairs.
+      webDomain: appSettings.HOST_URL,
+      // Server-side default; SettingsProvider refines it for the app shell.
       isSearchModeAvailable: settings.search_ui_enabled !== false,
     };
 

@@ -1,24 +1,30 @@
 "use client";
-
-import { FormEvent, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { ADMIN_PATHS, ADMIN_ROUTE_CONFIG } from "@/lib/admin-routes";
-import { toast } from "@/hooks/useToast";
+import { errorMessageFromUnknown } from "@/lib/api/errors";
 import Button from "@/refresh-components/buttons/Button";
 import CreateButton from "@/refresh-components/buttons/CreateButton";
-import InputSelect from "@/refresh-components/inputs/InputSelect";
-import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import PasswordInputTypeIn from "@/refresh-components/inputs/PasswordInputTypeIn";
-import Text from "@/refresh-components/texts/Text";
-import { authenticatedFetch } from "@/lib/fetcher";
-import { useTranslation } from "react-i18next";
-import { errorHandlingFetcher } from "@/lib/fetcher";
-import useSWR from "swr";
-import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
+
 import { formatRoleName } from "@/lib/auth/roles";
 
+import { createDirectoryUser } from "@/lib/api/domains/access/api";
+
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import * as SettingsLayouts from "@/layouts/settings-layouts";
+import { ADMIN_PATHS, ADMIN_ROUTE_CONFIG } from "@/lib/navigation/admin-routes";
+import { toast } from "@/hooks/useToast";
+
+import InputSelect from "@/refresh-components/inputs/InputSelect";
+import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
+
+import Text from "@/refresh-components/texts/Text";
+
+import { useTranslation } from "react-i18next";
+import { useDirectoryRoles } from "@/lib/api/domains/access/hooks";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
+
 const usersRoute = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.USERS]!;
+const DEFAULT_ROLE_NAME = "enduser";
 
 export default function AddUserPage() {
   const { t } = useTranslation();
@@ -27,13 +33,21 @@ export default function AddUserPage() {
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [role, setRole] = useState("enduser");
+  const [roleId, setRoleId] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: roles, isLoading: isRolesLoading } = useSWR<{
-    roles: { name: string }[];
-  }>("/api/user-service/roles", errorHandlingFetcher);
+  const { data: roles, isLoading: isRolesLoading } = useDirectoryRoles();
+
+  // Roles are submitted by Keycloak role ID; preselect the default role once known.
+  useEffect(() => {
+    if (roleId || !roles?.roles) return;
+    const fallback = roles.roles.find((r) => r.name === DEFAULT_ROLE_NAME);
+    if (fallback) setRoleId(fallback.id);
+  }, [roleId, roles]);
+
+  const selectedRoleName =
+    roles?.roles?.find((r) => r.id === roleId)?.name ?? DEFAULT_ROLE_NAME;
 
   const disabled = useMemo(() => {
     return (
@@ -53,17 +67,13 @@ export default function AddUserPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await authenticatedFetch("/api/user-service/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: username.trim(),
-          email: email.trim(),
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          role,
-          password: password.trim() || undefined,
-        }),
+      const response = await createDirectoryUser({
+        username: username.trim(),
+        email: email.trim(),
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        role_id: roleId || undefined,
+        password: password.trim() || undefined,
       });
 
       if (!response.ok) {
@@ -76,7 +86,7 @@ export default function AddUserPage() {
       router.push("/admin/users");
       router.refresh();
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = errorMessageFromUnknown(error);
       toast.error(t("admin.users.createError", { error: message }));
     } finally {
       setIsSubmitting(false);
@@ -118,7 +128,9 @@ export default function AddUserPage() {
               label: t("admin.users.initialRoleLabel", {
                 defaultValue: "Initial role",
               }),
-              value: role,
+              value: t(`admin.users.roles.${selectedRoleName}`, {
+                defaultValue: formatRoleName(selectedRoleName),
+              }),
             },
             {
               label: t("admin.users.availableRolesLabel", {
@@ -196,11 +208,11 @@ export default function AddUserPage() {
                 <Text as="p" mainUiBody>
                   {t("admin.users.roleHeader")}
                 </Text>
-                <InputSelect value={role} onValueChange={setRole}>
+                <InputSelect value={roleId} onValueChange={setRoleId}>
                   <InputSelect.Trigger />
                   <InputSelect.Content>
                     {roles?.roles?.map((r) => (
-                      <InputSelect.Item key={r.name} value={r.name}>
+                      <InputSelect.Item key={r.id} value={r.id}>
                         {t(`admin.users.roles.${r.name}`, {
                           defaultValue: formatRoleName(r.name),
                         })}

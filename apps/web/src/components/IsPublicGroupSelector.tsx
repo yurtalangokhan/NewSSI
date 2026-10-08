@@ -3,7 +3,7 @@
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
 import React, { useState, useEffect } from "react";
 import { FormikProps } from "formik";
-import { useUserGroups } from "@/lib/hooks";
+import { useUserGroups } from "@/lib/api/domains/access/hooks";
 import { BooleanFormField } from "@/components/Field";
 import { useUser } from "@/providers/UserProvider";
 import { GroupsMultiSelect } from "./GroupsMultiSelect";

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { PageSelector } from "@/components/PageSelector";
 import { DocumentBoostStatus } from "@/lib/types";
-import { updateHiddenStatus } from "../lib";
+import { updateHiddenStatus } from "@/lib/api/domains/knowledge/api";
 import { numToDisplay } from "./constants";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { getErrorMsg } from "@/lib/fetchUtils";

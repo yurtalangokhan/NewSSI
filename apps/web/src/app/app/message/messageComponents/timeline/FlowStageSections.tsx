@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  SvgCheck,
   SvgLoader,
   SvgChevronDown,
   SvgChevronRight,
@@ -60,11 +59,14 @@ export function StageOutputModal({
   onOpenChange,
   title,
   text,
+  isStreaming = false,
 }: {
   open: boolean;
   onOpenChange: (value: boolean) => void;
   title: string;
   text: string;
+  /** True while the owning stage is still running. */
+  isStreaming?: boolean;
 }) {
   const { t } = useTranslation();
   const lineCount = text.split("\n").length;
@@ -78,7 +80,7 @@ export function StageOutputModal({
         />
         <Modal.Body>
           <div className="w-full text-text-04 [&_*]:!text-text-04">
-            <MinimalMarkdown content={text} />
+            <MinimalMarkdown content={text} isStreaming={isStreaming} />
           </div>
         </Modal.Body>
         <Modal.Footer>
@@ -106,7 +108,16 @@ export function StageOutputModal({
   );
 }
 
-function StageOutputBlock({ text, title }: { text: string; title?: string }) {
+function StageOutputBlock({
+  text,
+  title,
+  isStreaming = false,
+}: {
+  text: string;
+  title?: string;
+  /** True while the owning stage is still running. */
+  isStreaming?: boolean;
+}) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -147,7 +158,7 @@ function StageOutputBlock({ text, title }: { text: string; title?: string }) {
           )}
           data-testid="stage-output-text"
         >
-          <MinimalMarkdown content={text} />
+          <MinimalMarkdown content={text} isStreaming={isStreaming} />
         </div>
         <div className="flex w-8 shrink-0 justify-end self-end">
           <Button
@@ -165,6 +176,7 @@ function StageOutputBlock({ text, title }: { text: string; title?: string }) {
         onOpenChange={setModalOpen}
         title={title?.trim() || outputLabel}
         text={text}
+        isStreaming={isStreaming}
       />
     </div>
   );
@@ -313,6 +325,7 @@ export function StageGroupSection({
           <StageOutputBlock
             text={group.outputText}
             title={`${index}. ${group.label}`}
+            isStreaming={group.status === "running"}
           />
         </div>
       )}

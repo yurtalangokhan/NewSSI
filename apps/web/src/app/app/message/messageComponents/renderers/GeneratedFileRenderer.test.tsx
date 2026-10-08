@@ -6,8 +6,8 @@ import {
   GeneratedFile,
   GeneratedFilePacket,
   PacketType,
-} from "@/app/app/services/streamingModels";
-import { MinimalOnyxDocument } from "@/lib/search/interfaces";
+} from "@/lib/api/domains/chat/streaming-types";
+import { MinimalAtlasDocument } from "@/lib/search/interfaces";
 
 // Minimal i18next stand-in: string fallbacks pass through, option objects use
 // their defaultValue and get {{placeholder}} interpolation like the real thing.
@@ -27,7 +27,7 @@ const textViewModalSpy = jest.fn();
 jest.mock("@/sections/modals/TextViewModal", () => ({
   __esModule: true,
   default: (props: {
-    presentingDocument: MinimalOnyxDocument;
+    presentingDocument: MinimalAtlasDocument;
     onClose: () => void;
   }) => {
     textViewModalSpy(props);

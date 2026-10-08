@@ -1,9 +1,9 @@
 import {
-  AuthTypeMetadata,
   getAuthUrlSS,
   getAuthTypeMetadataSS,
   getCurrentUserSS,
-} from "@/lib/userSS";
+} from "@/lib/api/domains/session/server";
+import type { AuthTypeMetadata } from "@/lib/api/domains/session/types";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import AuthFlowContainer from "@/components/auth/AuthFlowContainer";

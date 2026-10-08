@@ -1,3 +1,4 @@
+import { approveTenantJoinRequest } from "@/lib/api/domains/access/api";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
@@ -14,7 +15,7 @@ import { InvitedUserSnapshot } from "@/lib/types";
 import { TableHeader } from "@/components/ui/table";
 import Button from "@/refresh-components/buttons/Button";
 import { ErrorCallout } from "@/components/ErrorCallout";
-import { FetchError, authenticatedFetch } from "@/lib/fetcher";
+import { FetchError } from "@/lib/api/http/errors";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
 import { SvgCheck } from "@opal/icons";
 import Text from "@/refresh-components/texts/Text";
@@ -84,13 +85,7 @@ function PendingUsersTable({ users, mutate, error, isLoading, q }: Props) {
   const handleAcceptRequest = async (email: string) => {
     const normalizedEmail = email.toLowerCase();
     try {
-      await authenticatedFetch("/api/tenants/users/invite/approve", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: normalizedEmail }),
-      });
+      await approveTenantJoinRequest({ email: normalizedEmail });
       mutate();
       setUserToApprove(null);
     } catch (error) {

@@ -1,6 +1,6 @@
-# LangConnect
+# RAG Service
 
-LangConnect is a RAG (Retrieval-Augmented Generation) service built with FastAPI and LangChain. It provides a REST API for managing collections and documents, with PostgreSQL and pgvector for vector storage.
+RAG Service is a Retrieval-Augmented Generation service built with FastAPI and LangChain. It provides a REST API for managing collections and documents, with PostgreSQL and pgvector for vector storage.
 
 ## Features
 
@@ -17,10 +17,9 @@ LangConnect is a RAG (Retrieval-Augmented Generation) service built with FastAPI
 
 ### Running with Docker
 
-1. Clone the repository:
+1. From the monorepo root:
    ```bash
-   git clone https://github.com/langchain-ai/langconnect.git
-   cd langconnect
+   cd apps/rag-service
    ```
 
 2. Start the services:
@@ -30,7 +29,7 @@ LangConnect is a RAG (Retrieval-Augmented Generation) service built with FastAPI
 
    This will:
    - Start a PostgreSQL database with pgvector extension
-   - Build and start the LangConnect API service
+   - Build and start the RAG service API
 
 3. Access the API:
    - API documentation: http://localhost:8080/docs

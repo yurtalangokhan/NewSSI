@@ -9,20 +9,20 @@ import {
   AVAILABLE_CLOUD_PROVIDERS,
   CloudEmbeddingProviderFull,
   EmbeddingModelDescriptor,
-  EmbeddingProvider,
   LITELLM_CLOUD_PROVIDER,
   AZURE_CLOUD_PROVIDER,
   getFormattedProviderName,
 } from "../../../../components/embedding/interfaces";
+import { EmbeddingProvider } from "@/lib/api/domains/knowledge/search-settings-types";
 import { EmbeddingDetails } from "../EmbeddingModelSelectionForm";
 import { FiExternalLink, FiInfo, FiTrash } from "react-icons/fi";
 import { HoverPopup } from "@/components/HoverPopup";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { CustomEmbeddingModelForm } from "@/components/embedding/CustomEmbeddingModelForm";
-import { deleteSearchSettings } from "./utils";
+import { deleteSearchSettings } from "@/lib/api/domains/knowledge/api";
 import { toast } from "@/hooks/useToast";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
-import { AdvancedSearchConfiguration } from "../interfaces";
+import { AdvancedSearchConfiguration } from "@/lib/api/domains/knowledge/search-settings-types";
 import CardSection from "@/components/admin/CardSection";
 
 export default function CloudEmbeddingPage({

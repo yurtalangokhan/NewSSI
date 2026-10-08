@@ -1,15 +1,22 @@
 "use client";
+import { systemEndpoints } from "@/lib/api/domains/system/endpoints";
+import { datasourcesEndpoints } from "@/lib/api/domains/datasources/endpoints";
+
+import { cancelEmbeddingUpgrade } from "@/lib/api/domains/knowledge/api";
 
 import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
 import Modal from "@/refresh-components/Modal";
-import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
+import {
+  fetchAllConnectors,
+  fetchSecondaryFailedIndexingStatus,
+} from "@/lib/api/domains/datasources/api";
 import {
   ConnectorIndexingStatusLite,
   ConnectorIndexingStatusLiteResponse,
   FailedConnectorIndexingStatus,
   ValidStatuses,
 } from "@/lib/types";
-import OldText from "@/components/ui/text";
+
 import Title from "@/components/ui/title";
 import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
@@ -23,9 +30,9 @@ import {
 } from "../../../../components/embedding/interfaces";
 import { Connector } from "@/lib/connectors/connectors";
 import { FailedReIndexAttempts } from "@/components/embedding/FailedReIndexAttempts";
-import { useConnectorIndexingStatusWithPagination } from "@/lib/hooks";
+import { useConnectorIndexingStatusWithPagination } from "@/lib/api/domains/datasources/hooks";
 import { SvgX } from "@opal/icons";
-import { ConnectorCredentialPairStatus } from "@/app/admin/connector/[ccPairId]/types";
+import { ConnectorCredentialPairStatus } from "@/lib/api/domains/datasources/types";
 import { useTranslation } from "react-i18next";
 
 export default function UpgradingPage({
@@ -38,9 +45,13 @@ export default function UpgradingPage({
 
   const { data: connectors, isLoading: isLoadingConnectors } = useSWR<
     Connector<any>[]
-  >("/api/manage/connector", errorHandlingFetcher, {
-    refreshInterval: 5000, // 5 seconds
-  });
+  >(
+    datasourcesEndpoints.listConnectors.browserPath,
+    () => fetchAllConnectors<Connector<any>[]>(),
+    {
+      refreshInterval: 5000, // 5 seconds
+    }
+  );
 
   const {
     data: connectorIndexingStatuses,
@@ -56,20 +67,15 @@ export default function UpgradingPage({
   const { data: failedIndexingStatus } = useSWR<
     FailedConnectorIndexingStatus[]
   >(
-    "/api/manage/admin/connector/failed-indexing-status?secondary_index=true",
-    errorHandlingFetcher,
+    datasourcesEndpoints.secondaryFailedIndexingStatus.browserPath,
+    () => fetchSecondaryFailedIndexingStatus<FailedConnectorIndexingStatus[]>(),
     { refreshInterval: 5000 } // 5 seconds
   );
 
   const onCancel = async () => {
-    const response = await authenticatedFetch(
-      "/api/search-settings/cancel-new-embedding",
-      {
-        method: "POST",
-      }
-    );
+    const response = await cancelEmbeddingUpgrade();
     if (response.ok) {
-      mutate("/api/search-settings/get-secondary-search-settings");
+      mutate(systemEndpoints.searchSettingsSecondary.browserPath);
     } else {
       alert(
         `Failed to cancel embedding model update - ${await response.text()}`

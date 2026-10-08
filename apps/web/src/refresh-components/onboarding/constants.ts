@@ -3,7 +3,7 @@ import {
   FinalStepItemProps,
 } from "@/refresh-components/onboarding/types";
 import { SvgGlobe, SvgImage, SvgUsers } from "@opal/icons";
-import { APP_NAME } from "@/lib/appInfo";
+import { appSettings } from "@/lib/settings";
 
 type StepConfig = {
   index: number;
@@ -60,7 +60,7 @@ export const STEP_NAVIGATION: Record<
 export const FINAL_SETUP_CONFIG: FinalStepItemProps[] = [
   {
     title: "Select web search provider",
-    description: `Enable ${APP_NAME} to search the internet for information.`,
+    description: `Enable ${appSettings.APP_NAME} to search the internet for information.`,
     icon: SvgGlobe,
     buttonText: "Web Search",
     buttonHref: "/admin/configuration/web-search",

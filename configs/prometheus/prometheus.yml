@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: agenticai-services
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["agent-service:8123"]
+        labels: { service: agent-service }
+      - targets: ["user-service:8090"]
+        labels: { service: user-service }
+      - targets: ["rag-service:8083"]
+        labels: { service: rag-service }
+      - targets: ["tools-service:8003"]
+        labels: { service: tools-service }

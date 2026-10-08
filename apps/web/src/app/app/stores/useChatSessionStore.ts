@@ -6,14 +6,19 @@ import {
   ChatSessionSharedStatus,
   BackendChatSession,
   FeedbackType,
-} from "../interfaces";
-import { AgentId } from "@/app/admin/agents/interfaces";
+} from "@/lib/api/domains/chat/types";
+import { AgentId } from "@/lib/api/domains/agents/types";
 import {
   getLatestMessageChain,
   getMessageByMessageId,
   MessageTreeState,
 } from "../services/messageTree";
 import { useMemo } from "react";
+
+// cleanupOldSessions() existed but was never called from any action, so
+// this Map grew for the lifetime of the tab, one entry per chat session
+// ever opened, each holding its own message tree and AbortController.
+export const MAX_SESSIONS = 50;
 
 interface ChatSessionData {
   sessionId: string;
@@ -211,6 +216,7 @@ export const useChatSessionStore = create<ChatSessionStore>()((set, get) => ({
 
       return { currentSessionId: sessionId };
     });
+    get().cleanupOldSessions();
   },
 
   createSession: (
@@ -224,6 +230,7 @@ export const useChatSessionStore = create<ChatSessionStore>()((set, get) => ({
 
       return { sessions: newSessions };
     });
+    get().cleanupOldSessions();
   },
 
   updateSessionData: (sessionId: string, updates: Partial<ChatSessionData>) => {
@@ -526,7 +533,7 @@ export const useChatSessionStore = create<ChatSessionStore>()((set, get) => ({
     }
   },
 
-  cleanupOldSessions: (maxSessions: number = 10) => {
+  cleanupOldSessions: (maxSessions: number = MAX_SESSIONS) => {
     set((state) => {
       const sortedSessions = Array.from(state.sessions.entries()).sort(
         ([, a], [, b]) => b.lastAccessed.getTime() - a.lastAccessed.getTime()
@@ -654,3 +661,9 @@ export const useStreamingStartTime = () =>
       : null;
     return currentSession?.streamingStartTime;
   });
+
+/** Persona of a loaded chat session, known as soon as its history is fetched. */
+export const useChatSessionPersonaId = (sessionId: string | null) =>
+  useChatSessionStore((state) =>
+    sessionId ? state.sessions.get(sessionId)?.personaId : undefined
+  );

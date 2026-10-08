@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Button from "@/refresh-components/buttons/Button";
 import { SvgLink, SvgCopy, SvgCheck, SvgX } from "@opal/icons";
-import { setSessionSharing } from "@/app/craft/services/apiServices";
-import type { SharingScope } from "@/app/craft/types/streamingTypes";
+import { setSessionSharing } from "@/lib/api/domains/craft/api";
+import type { SharingScope } from "@/lib/api/domains/craft/streaming-types";
 import { cn } from "@/lib/utils";
 import Popover from "@/refresh-components/Popover";
 import Truncated from "@/refresh-components/texts/Truncated";

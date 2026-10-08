@@ -1,4 +1,5 @@
 import React from "react";
+import i18n from "@/i18n/config";
 
 /**
  * Escapes special regex characters in a string
@@ -26,8 +27,6 @@ export function highlightMatch(text: string, query: string): React.ReactNode {
       : React.createElement(React.Fragment, { key: i }, part)
   );
 }
-
-import i18n from "i18next";
 
 /**
  * Formats a date string for display in the chat search menu.

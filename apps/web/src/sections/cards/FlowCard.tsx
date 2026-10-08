@@ -7,10 +7,10 @@ import { useTranslation } from "react-i18next";
 import type {
   FullPersona,
   MinimalPersonaSnapshot,
-} from "@/app/admin/agents/interfaces";
+} from "@/lib/api/domains/agents/types";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
 import Chip from "@/refresh-components/Chip";
-import Text from "@/refresh-components/texts/Text";
+
 import Button from "@/refresh-components/buttons/Button";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
@@ -20,16 +20,22 @@ import { CardItemLayout } from "@/layouts/general-layouts";
 import { Interactive } from "@opal/core";
 import { Content } from "@opal/layouts";
 import { useAppRouter } from "@/hooks/appNavigation";
-import { usePinnedAgents, useAgents, useAgent } from "@/hooks/useAgents";
+import {
+  usePinnedAgents,
+  useAgents,
+  useAgent,
+} from "@/lib/api/domains/agents/hooks";
 import { useUser } from "@/providers/UserProvider";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
 import {
   checkUserOwnsAgent,
-  deleteAgent,
   resolveAgentOwnerEmail,
+} from "@/lib/api/domains/agents/selectors";
+import {
+  deleteAgent,
   updateAgentSharedStatus,
   updateAgentFeaturedStatus,
-} from "@/lib/agents";
+} from "@/lib/api/domains/agents/api";
 import { isFlowChatReady } from "@/lib/flows/flowAgent";
 import { timeAgo } from "@/lib/time";
 import { cn, noProp } from "@/lib/utils";

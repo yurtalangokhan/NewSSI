@@ -1,9 +1,9 @@
-import { getInternalUrl } from "@/lib/env.server";
-import { buildServiceUrl } from "@/lib/api/gatewayRouting";
-import { getLanguageHeaders } from "@/lib/api/proxy";
-import { NextRequest, NextResponse } from "next/server";
+import { toolsEndpoints } from "@/lib/api/domains/tools/endpoints";
+import { backendRequest } from "@/lib/api/http/server";
+import { parseResponseModel } from "@/lib/api/responseModel";
 
-const INTERNAL_URL = getInternalUrl();
+import { getCookieValue, getLanguageHeaders } from "@/lib/api/proxy";
+import { NextRequest, NextResponse } from "next/server";
 
 interface BuiltInTool {
   name?: string;
@@ -22,12 +22,15 @@ async function fetchExternalMcpTools(
   headers: HeadersInit
 ): Promise<Record<string, unknown>[]> {
   try {
-    const serversRes = await fetch(
-      buildServiceUrl(INTERNAL_URL, "agent", "/admin/mcp/servers").toString(),
-      { cache: "no-store", headers }
-    );
+    const serversRes = await backendRequest({
+      ...toolsEndpoints.adminServers.backend,
+      cache: "no-store",
+      headers,
+    });
     if (!serversRes.ok) return [];
-    const serversData = await serversRes.json();
+    const serversData = await parseResponseModel<{
+      mcp_servers?: McpServerSummary[];
+    }>(serversRes);
     const servers: McpServerSummary[] = Array.isArray(serversData?.mcp_servers)
       ? serversData.mcp_servers
       : [];
@@ -39,20 +42,24 @@ async function fetchExternalMcpTools(
     const perServer = await Promise.all(
       externalConnected.map(async (server) => {
         try {
-          const toolsUrl = buildServiceUrl(
-            INTERNAL_URL,
-            "agent",
-            `/admin/mcp/server/${server.id}/tools/snapshots`
-          );
-          toolsUrl.searchParams.set("source", "db");
-          const res = await fetch(toolsUrl.toString(), {
+          const res = await backendRequest({
+            ...toolsEndpoints.getMcpServerTools(server.id).backend,
             cache: "no-store",
             headers,
           });
-          if (!res.ok) return [];
-          const snapshots = await res.json();
+          if (!res.ok) {
+            console.warn(
+              `Could not read tools of MCP server ${server.id} (${res.status})`
+            );
+            return [];
+          }
+          const snapshots = await parseResponseModel<unknown>(res);
           return Array.isArray(snapshots) ? snapshots : [];
-        } catch {
+        } catch (error) {
+          console.warn(
+            `Could not read tools of MCP server ${server.id}`,
+            error
+          );
           return [];
         }
       })
@@ -69,13 +76,26 @@ export async function GET(request: NextRequest) {
     const cookie = request.headers.get("cookie");
     const authorization = request.headers.get("authorization");
     if (cookie) headers["Cookie"] = cookie;
-    if (authorization) headers["Authorization"] = authorization;
+    if (authorization) {
+      headers["Authorization"] = authorization;
+    } else {
+      // agent-service is bearer-token only and never reads cookies, so
+      // forwarding the raw Cookie header above is not enough on its own --
+      // without this, every call below (built-in tools, the external
+      // server list, and each server's tool snapshots) got a bare 401,
+      // and fetchExternalMcpTools() swallows that silently.
+      const accessToken = cookie && getCookieValue(cookie, "access_token");
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+    }
 
     const [builtInRes, externalTools] = await Promise.all([
-      fetch(
-        buildServiceUrl(INTERNAL_URL, "agent", "/mcp/tools-builtin").toString(),
-        { cache: "no-store", headers }
-      ),
+      backendRequest({
+        ...toolsEndpoints.listBuiltInTools.backend,
+        cache: "no-store",
+        headers,
+      }),
       fetchExternalMcpTools(headers),
     ]);
 

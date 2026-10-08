@@ -1,22 +1,40 @@
 """
 Code Execution and Testing Tools Category.
 Provides tools for running and testing code in various languages.
+
+Every path-taking tool in this module resolves its argument through
+resolve_in_workspace before touching the filesystem or setting a
+subprocess cwd — see spec TS-2. check_port was removed entirely: a
+localhost port scanner has no legitimate use for a model and is internal
+network reconnaissance for anyone else — see spec TS-4.
+
+Every tool that runs a model-supplied program (run_python, run_python_file,
+run_node, run_pytest, run_npm_command) or an external linter (run_linter)
+goes through core.sandbox.run_sandboxed instead of a bare subprocess.run:
+argv only, its own process group so a timeout kills grandchildren, rlimits
+on CPU/memory/open files, a clean environment the service's own secrets
+are never inherited into, and a server-side cap on the timeout a model can
+request — see spec TS-7a.
 """
 
-import ast
 import json
-import os
-import subprocess
-import tempfile
 from pathlib import Path
+import tempfile
 from typing import Any
 
-from i18n import t
+from localization import t
 
 from ..core.base import BaseToolCategory
-from ..core.settings import optional_env
-
-WORKSPACE_DIR = optional_env("WORKSPACE_DIR", "/workspace")
+from ..core.sandbox import SandboxResult, run_sandboxed
+from ..core.schema import BoundedTimeout, LongText, ShortText
+from ..core.workspace import (
+    WorkspaceEscapeError,
+    WorkspacePath,
+    guard_workspace_escape,
+    resolve_in_workspace,
+    workspace_root,
+)
+from .response import tool_error_message
 
 
 def normalize_code(code: str) -> str:
@@ -31,6 +49,15 @@ def normalize_code(code: str) -> str:
     # Convert literal \r to carriage return
     code = code.replace("\\r", "\r")
     return code
+
+
+def _format_output(result: SandboxResult) -> str:
+    output = result.stdout
+    if result.stderr:
+        output += f"\n[STDERR]: {result.stderr}"
+    if result.exit_code != 0:
+        output += f"\n[Exit Code: {result.exit_code}]"
+    return output if output.strip() else "[No output]"
 
 
 class CodeTools(BaseToolCategory):
@@ -55,114 +82,82 @@ class CodeTools(BaseToolCategory):
         """Register all code execution tools with MCP."""
 
         @mcp.tool()
-        def run_python(code: str, timeout: int = 30) -> str:
+        async def run_python(code: LongText, timeout: BoundedTimeout = 30) -> str:  # noqa: ASYNC109 - timeout is part of the MCP tool schema
             """
             Execute Python code and return the output.
             Use \\n for newlines when writing multi-line code.
 
             Args:
                 code: Python code to execute (use \\n for newlines)
-                timeout: Timeout in seconds (default: 30)
+                timeout: Timeout in seconds (default: 30, capped server-side)
 
             Returns:
                 Code output (stdout + stderr) or error message
             """
             try:
-                # Normalize escaped characters from UI input
+                root = workspace_root()
                 code = normalize_code(code)
 
-                # Create a temporary file for the code
+                # A temporary file inside the workspace, so the code's own
+                # cwd-relative file access stays within the same boundary as
+                # every other tool.
                 with tempfile.NamedTemporaryFile(
-                    mode="w",
-                    suffix=".py",
-                    delete=False,
-                    dir=WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None,
+                    mode="w", suffix=".py", delete=False, dir=str(root), encoding="utf-8"
                 ) as f:
                     f.write(code)
-                    temp_file = f.name
+                    script = Path(f.name)
 
                 try:
-                    result = subprocess.run(
-                        ["python3", temp_file],
-                        capture_output=True,
-                        text=True,
-                        timeout=timeout,
-                        cwd=WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None,
-                    )
-
-                    output = ""
-                    if result.stdout:
-                        output += result.stdout
-                    if result.stderr:
-                        if output:
-                            output += "\n[STDERR]:\n"
-                        output += result.stderr
-                    if result.returncode != 0:
-                        output += f"\n[Exit Code: {result.returncode}]"
-
-                    return output if output.strip() else "[No output]"
-
+                    result = await run_sandboxed(["python3", str(script)], cwd=root, execution_timeout=timeout)
                 finally:
-                    # Cleanup temp file
-                    os.unlink(temp_file)
+                    script.unlink(missing_ok=True)  # noqa: ASYNC240 - unlink is a negligible blocking op  # noqa: ASYNC240 - unlink is a negligible blocking op
 
-            except subprocess.TimeoutExpired:
-                return t("code.execution_timeout", seconds=timeout)
-            except Exception as e:
-                return t("code.python_execution_error", error=str(e))
+                if result.timed_out:
+                    return t("code.execution_timeout", seconds=timeout)
+                return _format_output(result)
+            except (OSError, ValueError) as e:
+                return t("code.python_execution_error", error=tool_error_message(e))
 
         @mcp.tool()
-        def run_python_file(file_path: str, args: str | None = None, timeout: int = 60) -> str:
+        @guard_workspace_escape
+        async def run_python_file(
+            file_path: WorkspacePath,
+            args: ShortText | None = None,
+            timeout: BoundedTimeout = 60,  # noqa: ASYNC109 - part of the MCP tool schema
+        ) -> str:
             """
-            Execute a Python file and return the output.
+            Execute a Python file inside the workspace and return the output.
 
             Args:
-                file_path: Path to the Python file (relative to workspace or absolute)
+                file_path: Path to the Python file, relative to the workspace
                 args: Command line arguments (optional)
-                timeout: Timeout in seconds (default: 60)
+                timeout: Timeout in seconds (default: 60, capped server-side)
 
             Returns:
                 Code output (stdout + stderr) or error message
             """
-            # Resolve path
-            if not os.path.isabs(file_path):
-                file_path = os.path.join(WORKSPACE_DIR, file_path)
-
-            if not os.path.exists(file_path):
-                return t("code.file_not_found", path=file_path)
-
             try:
-                cmd = ["python3", file_path]
+                path = resolve_in_workspace(file_path, root=workspace_root())
+
+                if not path.exists():
+                    return t("code.file_not_found", path=file_path)
+
+                cmd = ["python3", str(path)]
                 if args:
                     cmd.extend(args.split())
 
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout,
-                    cwd=os.path.dirname(file_path),
-                )
+                result = await run_sandboxed(cmd, cwd=path.parent, execution_timeout=timeout)
 
-                output = ""
-                if result.stdout:
-                    output += result.stdout
-                if result.stderr:
-                    if output:
-                        output += "\n[STDERR]:\n"
-                    output += result.stderr
-                if result.returncode != 0:
-                    output += f"\n[Exit Code: {result.returncode}]"
-
-                return output if output.strip() else "[No output]"
-
-            except subprocess.TimeoutExpired:
-                return t("code.file_execution_timeout", seconds=timeout)
-            except Exception as e:
-                return t("code.python_file_error", error=str(e))
+                if result.timed_out:
+                    return t("code.file_execution_timeout", seconds=timeout)
+                return _format_output(result)
+            except WorkspaceEscapeError:
+                raise
+            except (OSError, ValueError) as e:
+                return t("code.python_file_error", error=tool_error_message(e))
 
         @mcp.tool()
-        def validate_python(code: str) -> str:
+        def validate_python(code: LongText) -> str:
             """
             Validate Python code syntax without executing it.
             Use \\n for newlines when writing multi-line code.
@@ -173,6 +168,8 @@ class CodeTools(BaseToolCategory):
             Returns:
                 Validation result (OK or syntax errors)
             """
+            import ast
+
             try:
                 # Normalize escaped characters from UI input
                 code = normalize_code(code)
@@ -187,177 +184,148 @@ class CodeTools(BaseToolCategory):
                     msg=e.msg,
                     text=e.text,
                 )
-            except Exception as e:
-                return t("code.validation_error", error=str(e))
+            except ValueError as e:
+                # ast.parse raises ValueError (not SyntaxError) for input
+                # containing NUL bytes.
+                return t("code.validation_error", error=tool_error_message(e))
 
         @mcp.tool()
-        def run_node(code: str, timeout: int = 30) -> str:
+        async def run_node(code: LongText, timeout: BoundedTimeout = 30) -> str:  # noqa: ASYNC109 - timeout is part of the MCP tool schema
             """
             Execute JavaScript/Node.js code and return the output.
             Use \\n for newlines when writing multi-line code.
 
             Args:
                 code: JavaScript code to execute (use \\n for newlines)
-                timeout: Timeout in seconds (default: 30)
+                timeout: Timeout in seconds (default: 30, capped server-side)
 
             Returns:
                 Code output or error message
             """
             try:
-                # Normalize escaped characters from UI input
+                root = workspace_root()
                 code = normalize_code(code)
 
-                # Create a temporary file for the code
                 with tempfile.NamedTemporaryFile(
-                    mode="w",
-                    suffix=".js",
-                    delete=False,
-                    dir=WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None,
+                    mode="w", suffix=".js", delete=False, dir=str(root), encoding="utf-8"
                 ) as f:
                     f.write(code)
-                    temp_file = f.name
+                    script = Path(f.name)
 
                 try:
-                    result = subprocess.run(
-                        ["node", temp_file],
-                        capture_output=True,
-                        text=True,
-                        timeout=timeout,
-                        cwd=WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None,
-                    )
-
-                    output = ""
-                    if result.stdout:
-                        output += result.stdout
-                    if result.stderr:
-                        if output:
-                            output += "\n[STDERR]:\n"
-                        output += result.stderr
-                    if result.returncode != 0:
-                        output += f"\n[Exit Code: {result.returncode}]"
-
-                    return output if output.strip() else "[No output]"
-
+                    try:
+                        result = await run_sandboxed(["node", str(script)], cwd=root, execution_timeout=timeout)
+                    except FileNotFoundError:
+                        return t("code.node_not_installed")
                 finally:
-                    os.unlink(temp_file)
+                    script.unlink(missing_ok=True)  # noqa: ASYNC240 - unlink is a negligible blocking op
 
-            except FileNotFoundError:
-                return t("code.node_not_installed")
-            except subprocess.TimeoutExpired:
-                return t("code.execution_timeout", seconds=timeout)
-            except Exception as e:
-                return t("code.node_execution_error", error=str(e))
+                if result.timed_out:
+                    return t("code.execution_timeout", seconds=timeout)
+                return _format_output(result)
+            except (OSError, ValueError) as e:
+                return t("code.node_execution_error", error=tool_error_message(e))
 
         @mcp.tool()
-        def run_pytest(test_path: str, args: str | None = None, timeout: int = 120) -> str:
+        @guard_workspace_escape
+        async def run_pytest(
+            test_path: WorkspacePath,
+            args: ShortText | None = None,
+            timeout: BoundedTimeout = 120,  # noqa: ASYNC109 - part of the MCP tool schema
+        ) -> str:
             """
-            Run pytest tests on a file or directory.
+            Run pytest tests on a file or directory inside the workspace.
 
             Args:
-                test_path: Path to test file or directory (relative to workspace or absolute)
+                test_path: Path to test file or directory, relative to the workspace
                 args: Additional pytest arguments (e.g., "-v", "-x", "--tb=short")
-                timeout: Timeout in seconds (default: 120)
+                timeout: Timeout in seconds (default: 120, capped server-side)
 
             Returns:
                 Test results
             """
-            # Resolve path
-            if not os.path.isabs(test_path):
-                test_path = os.path.join(WORKSPACE_DIR, test_path)
-
-            if not os.path.exists(test_path):
-                return t("code.test_path_not_found", path=test_path)
-
             try:
-                cmd = ["python3", "-m", "pytest", test_path, "-v"]
+                root = workspace_root()
+                path = resolve_in_workspace(test_path, root=root)
+
+                if not path.exists():
+                    return t("code.test_path_not_found", path=test_path)
+
+                cmd = ["python3", "-m", "pytest", str(path), "-v"]
                 if args:
                     cmd.extend(args.split())
 
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout,
-                    cwd=WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None,
-                )
+                result = await run_sandboxed(cmd, cwd=root, execution_timeout=timeout)
 
+                if result.timed_out:
+                    return t("code.test_timeout", seconds=timeout)
                 output = result.stdout
                 if result.stderr:
                     output += f"\n[STDERR]:\n{result.stderr}"
-
                 return output if output.strip() else "[No test output]"
-
-            except subprocess.TimeoutExpired:
-                return t("code.test_timeout", seconds=timeout)
-            except Exception as e:
-                return t("code.pytest_error", error=str(e))
+            except WorkspaceEscapeError:
+                raise
+            except (OSError, ValueError) as e:
+                return t("code.pytest_error", error=tool_error_message(e))
 
         @mcp.tool()
-        def run_npm_command(project_dir: str, command: str, timeout: int = 120) -> str:
+        @guard_workspace_escape
+        async def run_npm_command(project_dir: WorkspacePath, command: ShortText, timeout: BoundedTimeout = 120) -> str:  # noqa: ASYNC109 - timeout is part of the MCP tool schema
             """
-            Run an npm command in a project directory.
+            Run an npm command in a project directory inside the workspace.
 
             Args:
-                project_dir: Project directory (relative to workspace or absolute)
+                project_dir: Project directory, relative to the workspace
                 command: npm command to run (e.g., "install", "run build", "test")
-                timeout: Timeout in seconds (default: 120)
+                timeout: Timeout in seconds (default: 120, capped server-side)
 
             Returns:
                 Command output
             """
-            # Resolve path
-            if not os.path.isabs(project_dir):
-                project_dir = os.path.join(WORKSPACE_DIR, project_dir)
-
-            if not os.path.exists(project_dir):
-                return t("code.directory_not_found", path=project_dir)
-
-            package_json = os.path.join(project_dir, "package.json")
-            if not os.path.exists(package_json):
-                return t("code.package_json_not_found", path=project_dir)
-
             try:
-                cmd = ["npm"] + command.split()
+                path = resolve_in_workspace(project_dir, root=workspace_root())
 
-                result = subprocess.run(
-                    cmd, capture_output=True, text=True, timeout=timeout, cwd=project_dir
-                )
+                if not path.exists():
+                    return t("code.directory_not_found", path=project_dir)
 
-                output = result.stdout
-                if result.stderr:
-                    output += f"\n[STDERR]:\n{result.stderr}"
-                if result.returncode != 0:
-                    output += f"\n[Exit Code: {result.returncode}]"
+                package_json = path / "package.json"
+                if not package_json.exists():
+                    return t("code.package_json_not_found", path=project_dir)
 
-                return output if output.strip() else "[No output]"
+                cmd = ["npm", *command.split()]
 
-            except FileNotFoundError:
-                return t("code.npm_not_installed")
-            except subprocess.TimeoutExpired:
-                return t("code.command_timeout", seconds=timeout)
-            except Exception as e:
-                return t("code.npm_error", error=str(e))
+                try:
+                    result = await run_sandboxed(cmd, cwd=path, execution_timeout=timeout)
+                except FileNotFoundError:
+                    return t("code.npm_not_installed")
+
+                if result.timed_out:
+                    return t("code.command_timeout", seconds=timeout)
+                return _format_output(result)
+            except WorkspaceEscapeError:
+                raise
+            except (OSError, ValueError) as e:
+                return t("code.npm_error", error=tool_error_message(e))
 
         @mcp.tool()
-        def validate_json_file(file_path: str) -> str:
+        @guard_workspace_escape
+        def validate_json_file(file_path: WorkspacePath) -> str:
             """
-            Validate a JSON file's syntax.
+            Validate a JSON file's syntax. The file must be inside the workspace.
 
             Args:
-                file_path: Path to the JSON file
+                file_path: Path to the JSON file, relative to the workspace
 
             Returns:
                 Validation result
             """
-            # Resolve path
-            if not os.path.isabs(file_path):
-                file_path = os.path.join(WORKSPACE_DIR, file_path)
+            path = resolve_in_workspace(file_path, root=workspace_root())
 
-            if not os.path.exists(file_path):
+            if not path.exists():
                 return t("code.file_not_found", path=file_path)
 
             try:
-                with open(file_path, encoding="utf-8") as f:
+                with open(path, encoding="utf-8") as f:
                     content = f.read()
 
                 json.loads(content)
@@ -365,99 +333,97 @@ class CodeTools(BaseToolCategory):
 
             except json.JSONDecodeError as e:
                 return t("code.json_syntax_error", lineno=e.lineno, colno=e.colno, msg=e.msg)
-            except Exception as e:
-                return t("code.json_validate_error", error=str(e))
+            except (OSError, UnicodeError, ValueError) as e:
+                return t("code.json_validate_error", error=tool_error_message(e))
 
         @mcp.tool()
-        def run_linter(file_path: str, linter: str = "auto") -> str:
+        @guard_workspace_escape
+        async def run_linter(file_path: WorkspacePath, linter: ShortText = "auto") -> str:
             """
-            Run a linter on a file.
+            Run a linter on a file inside the workspace.
 
             Args:
-                file_path: Path to the file to lint
+                file_path: Path to the file to lint, relative to the workspace
                 linter: Linter to use ("auto", "pylint", "flake8", "eslint")
 
             Returns:
                 Linter output
             """
-            # Resolve path
-            if not os.path.isabs(file_path):
-                file_path = os.path.join(WORKSPACE_DIR, file_path)
-
-            if not os.path.exists(file_path):
-                return t("code.file_not_found", path=file_path)
-
-            # Auto-detect linter based on file extension
-            ext = Path(file_path).suffix.lower()
-
-            if linter == "auto":
-                if ext == ".py":
-                    linter = "flake8"
-                elif ext in [".js", ".jsx", ".ts", ".tsx"]:
-                    linter = "eslint"
-                else:
-                    return t("code.no_linter_for_extension", ext=ext)
-
             try:
+                path = resolve_in_workspace(file_path, root=workspace_root())
+
+                if not path.exists():
+                    return t("code.file_not_found", path=file_path)
+
+                # Auto-detect linter based on file extension
+                ext = path.suffix.lower()
+
+                if linter == "auto":
+                    if ext == ".py":
+                        linter = "flake8"
+                    elif ext in [".js", ".jsx", ".ts", ".tsx"]:
+                        linter = "eslint"
+                    else:
+                        return t("code.no_linter_for_extension", ext=ext)
+
                 if linter == "flake8":
-                    cmd = ["python3", "-m", "flake8", file_path, "--max-line-length=120"]
+                    cmd = ["python3", "-m", "flake8", str(path), "--max-line-length=120"]
                 elif linter == "pylint":
-                    cmd = ["python3", "-m", "pylint", file_path, "--disable=C0114,C0115,C0116"]
+                    cmd = ["python3", "-m", "pylint", str(path), "--disable=C0114,C0115,C0116"]
                 elif linter == "eslint":
-                    cmd = ["npx", "eslint", file_path]
+                    cmd = ["npx", "eslint", str(path)]
                 else:
                     return t("code.unknown_linter", linter=linter)
 
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                try:
+                    result = await run_sandboxed(cmd, cwd=path.parent, execution_timeout=60)
+                except FileNotFoundError:
+                    return t("code.linter_not_installed", linter=linter)
+
+                if result.timed_out:
+                    return t("code.linter_timeout", linter=linter, default=f"{linter} timed out")
 
                 output = result.stdout + result.stderr
-
                 if not output.strip():
-                    return f"✓ No linting issues found in {Path(file_path).name}"
-
+                    return f"✓ No linting issues found in {path.name}"
                 return output
-
-            except FileNotFoundError:
-                return t("code.linter_not_installed", linter=linter)
-            except Exception as e:
-                return t("code.linter_error", error=str(e))
+            except WorkspaceEscapeError:
+                raise
+            except (OSError, ValueError) as e:
+                return t("code.linter_error", error=tool_error_message(e))
 
         @mcp.tool()
-        def start_dev_server(
-            project_dir: str, port: int = 3000, command: str = "npm run dev"
-        ) -> str:
+        @guard_workspace_escape
+        def start_dev_server(project_dir: WorkspacePath, port: int = 3000, command: ShortText = "npm run dev") -> str:
             """
             Start a development server (non-blocking check).
             Note: This only validates the setup, actual server needs to run in background.
 
             Args:
-                project_dir: Project directory
+                project_dir: Project directory, relative to the workspace
                 port: Port to check (default: 3000)
                 command: Command to suggest for starting the server
 
             Returns:
                 Setup validation and instructions
             """
-            # Resolve path
-            if not os.path.isabs(project_dir):
-                project_dir = os.path.join(WORKSPACE_DIR, project_dir)
+            path = resolve_in_workspace(project_dir, root=workspace_root())
 
-            if not os.path.exists(project_dir):
+            if not path.exists():
                 return t("code.directory_not_found", path=project_dir)
 
             # Check for package.json (Node.js project)
-            package_json = os.path.join(project_dir, "package.json")
-            has_node = os.path.exists(package_json)
+            has_node = (path / "package.json").exists()
 
             # Check for requirements.txt or setup.py (Python project)
             has_python = (
-                os.path.exists(os.path.join(project_dir, "requirements.txt"))
-                or os.path.exists(os.path.join(project_dir, "setup.py"))
-                or os.path.exists(os.path.join(project_dir, "pyproject.toml"))
+                (path / "requirements.txt").exists()
+                or (path / "setup.py").exists()
+                or (path / "pyproject.toml").exists()
             )
 
             # Check for index.html (static site)
-            has_html = os.path.exists(os.path.join(project_dir, "index.html"))
+            has_html = (path / "index.html").exists()
 
             result = f"Project directory: {project_dir}\n\n"
             result += "Detected project types:\n"
@@ -480,29 +446,3 @@ class CodeTools(BaseToolCategory):
             result += f"\nServer would be available at: http://localhost:{port}"
 
             return result
-
-        @mcp.tool()
-        def check_port(port: int) -> str:
-            """
-            Check if a port is in use.
-
-            Args:
-                port: Port number to check
-
-            Returns:
-                Port status
-            """
-            import socket
-
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.settimeout(1)
-                    result = s.connect_ex(("localhost", port))
-
-                    if result == 0:
-                        return f"Port {port} is IN USE (something is listening)"
-                    else:
-                        return f"Port {port} is AVAILABLE"
-
-            except Exception as e:
-                return t("code.port_check_error", error=str(e))

@@ -18,7 +18,7 @@ import {
   SessionStatus,
   ToolCall,
   ToolCallStatus,
-} from "@/app/craft/types/streamingTypes";
+} from "@/lib/api/domains/craft/streaming-types";
 
 import {
   StreamItem,
@@ -27,16 +27,18 @@ import {
 } from "@/app/craft/types/displayTypes";
 
 import {
-  createSession as apiCreateSession,
   fetchSession,
   fetchSessionHistory,
   generateSessionName,
   updateSessionName,
-  deleteSession as apiDeleteSession,
   fetchMessages,
   fetchArtifacts,
+} from "@/lib/api/domains/craft/api";
+import {
+  createSession as apiCreateSession,
+  deleteSession as apiDeleteSession,
   restoreSession,
-} from "@/app/craft/services/apiServices";
+} from "@/lib/api/domains/craft/api";
 
 import { genId } from "@/app/craft/utils/streamItemHelpers";
 import { parsePacket } from "@/app/craft/utils/parsePacket";
@@ -338,6 +340,11 @@ export interface BuildSessionData {
   suggestionsLoading: boolean;
 }
 
+// cleanupOldSessions() existed but was never called from any action, so
+// this Map grew for the lifetime of the tab, one entry per build session
+// ever opened, each holding its own artifacts and AbortController.
+export const MAX_SESSIONS = 50;
+
 interface BuildSessionStore {
   // Session management (mirrors chat)
   currentSessionId: string | null;
@@ -586,6 +593,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         noSessionOutputPanelOpen: false,
       };
     });
+    get().cleanupOldSessions();
   },
 
   // Initialize local session state (does NOT create backend session - use apiCreateSession for that)
@@ -605,6 +613,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
       newSessions.set(sessionId, newSession);
       return { sessions: newSessions };
     });
+    get().cleanupOldSessions();
   },
 
   updateSessionData: (
@@ -1394,7 +1403,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
   // Utilities (mirrors chat's cleanup pattern)
   // ===========================================================================
 
-  cleanupOldSessions: (maxSessions: number = 10) => {
+  cleanupOldSessions: (maxSessions: number = MAX_SESSIONS) => {
     set((state) => {
       const sortedSessions = Array.from(state.sessions.entries()).sort(
         ([, a], [, b]) => b.lastAccessed.getTime() - a.lastAccessed.getTime()

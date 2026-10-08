@@ -1,6 +1,6 @@
 "use client";
+import { loginAnonymousTenantUser } from "@/lib/api/domains/session/api";
 
-import { authenticatedFetch } from "@/lib/fetcher";
 import { redirect } from "next/navigation";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,17 +15,8 @@ export default function AnonymousPage({
   const { t } = useTranslation("common", { keyPrefix: "anonymousPage" });
   const loginAsAnonymousUser = async () => {
     try {
-      const response = await authenticatedFetch(
-        `/api/tenants/anonymous-user?anonymous_user_path=${encodeURIComponent(
-          anonymousPath
-        )}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "same-origin",
-        }
+      const response = await loginAnonymousTenantUser(
+        encodeURIComponent(anonymousPath)
       );
 
       if (!response.ok) {

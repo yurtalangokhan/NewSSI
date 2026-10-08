@@ -17,8 +17,8 @@ from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.state import CompiledStateGraph
 
-from agents.graphs.flow_builder import FlowGraphBuilder, evaluate_condition
-from models.flows import FlowSpec
+from agents.graphs.flow import FlowGraphBuilder, evaluate_condition
+from schemas.flows import FlowSpec
 
 
 @pytest.fixture(autouse=True)
@@ -573,7 +573,7 @@ async def test_prompt_template_can_feed_an_agent():
     """1.7 — Prompt Template's output is a Message now, so
     ChatInput -> PromptTemplate -> agent -> ChatOutput is type-valid and
     compiles (it was a FLOW_TYPE_MISMATCH dead end before)."""
-    from domain.flows.validator import FLOW_TYPE_MISMATCH, validate
+    from service.flow_model.validator import FLOW_TYPE_MISMATCH, validate
 
     spec = FlowSpec.model_validate(
         {

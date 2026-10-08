@@ -77,7 +77,6 @@ async def test_update_keycloak_settings_persists_and_applies_runtime_settings():
 
     await service.update_keycloak_settings(
         KeycloakConfigUpdate(
-            keycloak_enabled=True,
             keycloak_base_url="http://keycloak:8080",
             external_keycloak=True,
             external_keycloak_client_secret="very-secret",
@@ -85,7 +84,8 @@ async def test_update_keycloak_settings_persists_and_applies_runtime_settings():
     )
 
     saved = service.repo.set_value.await_args.args[1]
-    assert saved["KEYCLOAK_ENABLED"] is True
+    assert "KEYCLOAK_ENABLED" not in saved
+    assert "keycloak_enabled" not in KeycloakConfigUpdate.model_fields
     assert saved["KEYCLOAK_BASE_URL"] == "http://keycloak:8080"
     assert "EXTERNAL_KEYCLOAK_CLIENT_SECRET" not in saved
     assert "EXTERNAL_KEYCLOAK_CLIENT_SECRET_ENCRYPTED" in saved

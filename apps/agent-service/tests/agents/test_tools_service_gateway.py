@@ -7,7 +7,7 @@ import pytest
 
 from agent_composition.adapters import tools_service_gateway as gateway_module
 from agent_composition.adapters.tools_service_gateway import ToolsServiceToolGateway
-from agent_composition.domain.ports import ToolInvocation
+from agent_composition.domain.ports import ToolInvocation, thaw_value
 from agent_composition.domain.trusted_context import build_trusted_context
 
 
@@ -76,7 +76,7 @@ async def test_open_mcp_session_initializes_before_yield(monkeypatch) -> None:
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "service_url",
-    ["http://tools-service:8003", "http://kong:8000/internal/tools-service/mcp"],
+    ["http://tools-service:8003", "http://apisix:8000/internal/tools-service/mcp"],
 )
 async def test_gateway_uses_initialized_mcp_session_for_discovery(
     monkeypatch, service_url: str
@@ -162,7 +162,7 @@ async def test_binding_calls_tool_in_initialized_session_with_trusted_headers(mo
         {"datasource_id": "source-1", "path": "README.md"},
     )
     assert received_headers["x-user-id"] == "user-1"
-    assert received_headers["x-binding-ref-connectors.persona_id"] == "persona-9"
+    assert received_headers["x-binding-ref-connectors__persona_id"] == "persona-9"
     assert received_headers["Authorization"] == "Bearer internal-secret"
     assert received_headers["x-internal-token"] == "internal-secret"
     assert result.output == ({"type": "text", "text": "connector result"},)
@@ -188,3 +188,51 @@ async def test_binding_sanitizes_transport_failures(monkeypatch) -> None:
 
     assert str(exc_info.value) == "Tools service is unavailable"
     assert "internal-secret" not in str(exc_info.value)
+
+
+def _gateway_with_result(monkeypatch, call_result) -> ToolsServiceToolGateway:
+    class FakeSession:
+        async def list_tools(self, cursor=None):
+            return _Result(tools=[_Tool()], nextCursor=None)
+
+        async def call_tool(self, name, arguments):
+            return call_result
+
+    @asynccontextmanager
+    async def fake_session(url: str, headers: dict[str, str]):
+        yield FakeSession()
+
+    monkeypatch.setattr(gateway_module, "_open_mcp_session", fake_session)
+    return ToolsServiceToolGateway("http://tools-service:8003", "internal-secret")
+
+
+@pytest.mark.asyncio
+async def test_binding_passes_structured_content_through(monkeypatch) -> None:
+    evidence = {"kind": "document", "tool": "database_search", "chunks": [{"ref": 1}]}
+    gateway = _gateway_with_result(
+        monkeypatch,
+        _Result(
+            content=[_Result(type="text", text="[1] (a.pdf)\nchunk")],
+            structuredContent=evidence,
+            isError=False,
+        ),
+    )
+    binding = (await gateway.resolve(("connector_read",)))[0]
+
+    result = await binding.invoke(ToolInvocation(model_arguments={"datasource_id": "s"}))
+
+    assert thaw_value(result.structured) == evidence
+    assert result.output == ({"type": "text", "text": "[1] (a.pdf)\nchunk"},)
+
+
+@pytest.mark.asyncio
+async def test_binding_without_structured_content_reports_none(monkeypatch) -> None:
+    gateway = _gateway_with_result(
+        monkeypatch,
+        _Result(content=[_Result(type="text", text="plain")], isError=False),
+    )
+    binding = (await gateway.resolve(("connector_read",)))[0]
+
+    result = await binding.invoke(ToolInvocation(model_arguments={"datasource_id": "s"}))
+
+    assert result.structured is None

@@ -6,7 +6,7 @@ the workflow; this file routes identity work to code, tests, and documentation.
 ## Ownership and source map
 
 User service owns authentication, users, roles, permissions, settings, API
-keys, memories, and Keycloak integration.
+keys, memories, per-user connector configurations, and Keycloak integration.
 
 ```text
 src/api/routes/              HTTP routes
@@ -16,7 +16,7 @@ src/service/                 Business logic and Keycloak coordination
 src/repository/              Async SQLAlchemy access
 src/schema/                  Request and response schemas
 src/core/database/           Engine and sessions
-src/core/db/                 Models and Alembic migrations
+src/core/database/                 Models and Alembic migrations
 src/core/exceptions.py       Domain failures
 src/core/permissions/        Permission resolution
 src/core/idempotency.py      Idempotency
@@ -34,7 +34,7 @@ Use the narrowest row that matches the task.
 | API or schema | `src/api/routes/`, `src/schema/` | Matching route/controller tests |
 | Auth or Keycloak flow | Route, controller, then `src/service/` | Login/OIDC/refresh/logout tests |
 | RBAC | `src/core/permissions/`, service | Role/permission/effective-access tests |
-| Persistence | `src/repository/`, `src/core/db/` | Repository and migration tests |
+| Persistence | `src/repository/`, `src/core/database/` | Repository and migration tests |
 | API keys, settings, or memories | Matching route/service/repository | Matching domain tests |
 
 ## Documentation routing
@@ -55,9 +55,13 @@ Open only a document whose condition matches the change.
 - Keep FastAPI types out of services and persistence out of services.
 - Preserve `_to_dict()` response serialization unless explicitly changed.
 - Preserve Keycloak boundaries and `system-admin` wildcard behavior.
-- Treat `users.role` as a derived mirror, not the source of truth.
-- Use shared domain exceptions and `from i18n import t` for user-facing text.
+- Treat Keycloak as the identity and assignment source of truth; API primary
+  roles are derived projections, and SQL stores only application data.
+- Use shared domain exceptions and `from localization import t` for user-facing text.
 - Use Ruff line length 100 and existing migration commands.
+- Read configuration only through config_manager's typed accessor
+  (`from config_manager import env`); direct `os.environ`/`os.getenv` reads are
+  not allowed in application code (migrations and bootstrap excepted).
 
 ## Test scope
 

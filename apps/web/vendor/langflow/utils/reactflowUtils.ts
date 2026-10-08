@@ -791,7 +791,7 @@ export function validateEdge(
 
   const loop = hasLoop(e, nodes, edges);
   if (targetHandleObject.output_types && !loop) {
-    return [i18n.t("errors.incompleteLoop")];
+    return [localization.t("errors.incompleteLoop")];
   }
   return [];
 }
@@ -2058,7 +2058,7 @@ export function getGroupStatus(
   flow: FlowType,
   ssData: { [key: string]: { valid: boolean; params: string } },
 ) {
-  let status = { valid: true, params: i18n.t("flow.buildSuccess") };
+  let status = { valid: true, params: localization.t("flow.buildSuccess") };
   const { nodes } = flow.data!;
   const ids = nodes.map((n: AllNodeType) => n.data.id);
   ids.forEach((id) => {
@@ -2408,7 +2408,7 @@ export function getRandomElement<T>(array: T[]): T {
 }
 
 export function getRandomDescription(): string {
-  return i18n.t(getRandomElement(DESCRIPTIONS));
+  return localization.t(getRandomElement(DESCRIPTIONS));
 }
 
 export const createNewFlow = (
@@ -2418,7 +2418,7 @@ export const createNewFlow = (
 ) => {
   return {
     description: flow?.description ?? getRandomDescription(),
-    name: flow?.name ? flow.name : i18n.t("flow.defaultName"),
+    name: flow?.name ? flow.name : localization.t("flow.defaultName"),
     data: flowData,
     id: "",
     icon: flow?.icon ?? undefined,

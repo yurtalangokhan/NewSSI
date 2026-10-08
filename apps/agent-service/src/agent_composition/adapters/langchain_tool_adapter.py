@@ -8,21 +8,22 @@ from typing import Any
 from langchain_core.tools import StructuredTool
 
 from agent_composition.domain.errors import ToolInvocationError
-from agent_composition.domain.ports import ToolBinding, ToolInvocation
+from agent_composition.domain.ports import (
+    ToolArtifactPolicy,
+    ToolBinding,
+    ToolInvocation,
+    ToolResult,
+    thaw_value,
+)
 from agent_composition.domain.trusted_context import TrustedToolContext
+from core.observability.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class TrustedContextProvider:
     def __call__(self) -> TrustedToolContext | None:
         raise NotImplementedError
-
-
-def _thaw_schema(value: Any) -> Any:
-    if isinstance(value, dict) or hasattr(value, "items"):
-        return {key: _thaw_schema(item) for key, item in value.items()}
-    if isinstance(value, tuple):
-        return [_thaw_schema(item) for item in value]
-    return value
 
 
 def _format_output(output: Any) -> str:
@@ -43,22 +44,41 @@ def _format_output(output: Any) -> str:
     return str(output) if output is not None else ""
 
 
+ToolOutput = tuple[str, dict[str, Any] | None]
+
+
+async def _artifact_for(
+    policy: ToolArtifactPolicy | None,
+    tool_name: str,
+    result: ToolResult,
+) -> dict[str, Any] | None:
+    """The policy's artifact; a failing policy costs the artifact, never the call."""
+    if policy is None:
+        return None
+    try:
+        artifact = await policy.artifact_for(tool_name, result)
+    except Exception:
+        logger.warning("Artifact policy failed for tool '%s'", tool_name, exc_info=True)
+        return None
+    return dict(artifact) if artifact else None
+
+
 def _make_async_invoke(
     binding: ToolBinding,
     context_provider: TrustedContextProvider | None,
+    artifact_policy: ToolArtifactPolicy | None,
 ) -> Callable[..., Any]:
-    async def async_invoke(*args: Any, **kwargs: Any) -> str:
+    async def async_invoke(*args: Any, **kwargs: Any) -> ToolOutput:
         if args and kwargs:
             raise ValueError("Cannot use both positional and keyword arguments")
         model_arguments = args[0] if args else kwargs
         context = context_provider() if context_provider is not None else None
         try:
-            result = await binding.invoke(
-                ToolInvocation(model_arguments=model_arguments, trusted_context=context)
-            )
-            return _format_output(result.output)
+            result = await binding.invoke(ToolInvocation(model_arguments=model_arguments, trusted_context=context))
         except ToolInvocationError as exc:
-            return f"Tool invocation failed: {exc.message}"
+            return f"Tool invocation failed: {exc.message}", None
+        artifact = await _artifact_for(artifact_policy, binding.descriptor.key, result)
+        return _format_output(result.output), artifact
 
     return async_invoke
 
@@ -71,27 +91,35 @@ def _make_sync_stub() -> Callable[..., str]:
 
 
 class LangChainToolAdapter(StructuredTool):
-    """A StructuredTool backed by a domain ToolBinding."""
+    """A StructuredTool backed by a domain ToolBinding.
+
+    Results use LangChain's ``content_and_artifact`` format: the model reads the
+    text, and ``artifact_policy`` may attach a platform-only artifact (for
+    example a knowledge evidence reference) to the ToolMessage.
+    """
 
     def __init__(
         self,
         binding: ToolBinding,
         context_provider: TrustedContextProvider | None = None,
+        artifact_policy: ToolArtifactPolicy | None = None,
     ) -> None:
         descriptor = binding.descriptor
         super().__init__(
             name=descriptor.key,
             description=descriptor.description,
             func=_make_sync_stub(),
-            coroutine=_make_async_invoke(binding, context_provider),
-            args_schema=_thaw_schema(descriptor.input_schema)
-            or {"type": "object", "properties": {}},
+            coroutine=_make_async_invoke(binding, context_provider, artifact_policy),
+            args_schema=thaw_value(descriptor.input_schema) or {"type": "object", "properties": {}},
+            response_format="content_and_artifact",
         )
 
     def _run(self, *args: Any, config: Any = None, **kwargs: Any) -> str:
+        del config  # accepted so a stray ``config`` never becomes a tool argument
         return self.func(*args, **kwargs)
 
-    async def _arun(self, *args: Any, config: Any = None, **kwargs: Any) -> str:
+    async def _arun(self, *args: Any, config: Any = None, **kwargs: Any) -> ToolOutput:
+        del config  # accepted so a stray ``config`` never becomes a tool argument
         if self.coroutine is None:
             raise NotImplementedError("Tool created from ToolBinding only supports async invocation")
         return await self.coroutine(*args, **kwargs)
@@ -100,12 +128,14 @@ class LangChainToolAdapter(StructuredTool):
 def tool_binding_to_langchain_tool(
     binding: ToolBinding,
     context_provider: TrustedContextProvider | None = None,
+    artifact_policy: ToolArtifactPolicy | None = None,
 ) -> LangChainToolAdapter:
-    return LangChainToolAdapter(binding=binding, context_provider=context_provider)
+    return LangChainToolAdapter(binding=binding, context_provider=context_provider, artifact_policy=artifact_policy)
 
 
 def tool_bindings_to_langchain_tools(
     bindings: tuple[ToolBinding, ...],
     context_provider: TrustedContextProvider | None = None,
+    artifact_policy: ToolArtifactPolicy | None = None,
 ) -> list[LangChainToolAdapter]:
-    return [tool_binding_to_langchain_tool(binding, context_provider) for binding in bindings]
+    return [tool_binding_to_langchain_tool(binding, context_provider, artifact_policy) for binding in bindings]

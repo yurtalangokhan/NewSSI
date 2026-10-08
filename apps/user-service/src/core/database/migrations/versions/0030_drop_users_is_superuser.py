@@ -7,8 +7,8 @@ Create Date: 2026-08-13 00:00:00.000000
 
 import json
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
 
 revision = "0030"
 down_revision = "0029"
@@ -168,6 +168,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superuser BOOLEAN DEFAULT false NOT NULL"
-    )
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superuser BOOLEAN DEFAULT false NOT NULL")

@@ -1,5 +1,7 @@
-import uuid
 from typing import Any
+import uuid
+
+from error_contract import PromptShortcutNotFoundError
 
 from src.repository import UserSettingsRepository
 
@@ -37,9 +39,7 @@ class UserSettingsService:
         settings = await self.repo.ensure_defaults(user_id)
         return self._settings_to_dict(settings)
 
-    async def create_prompt_shortcut(
-        self, user_id: uuid.UUID, shortcut: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def create_prompt_shortcut(self, user_id: uuid.UUID, shortcut: dict[str, Any]) -> dict[str, Any]:
         settings = await self.repo.get_by_user_id(user_id)
         if not settings:
             settings = await self.repo.ensure_defaults(user_id)
@@ -52,12 +52,10 @@ class UserSettingsService:
         await self.repo.upsert(user_id, prompt_shortcuts=shortcuts)
         return shortcut
 
-    async def update_prompt_shortcut(
-        self, user_id: uuid.UUID, shortcut_id: int, **updates: Any
-    ) -> dict[str, Any] | None:
+    async def update_prompt_shortcut(self, user_id: uuid.UUID, shortcut_id: int, **updates: Any) -> dict[str, Any]:
         settings = await self.repo.get_by_user_id(user_id)
         if not settings:
-            return None
+            raise PromptShortcutNotFoundError()
 
         shortcuts = list(settings.prompt_shortcuts or [])
         for i, s in enumerate(shortcuts):
@@ -66,17 +64,17 @@ class UserSettingsService:
                 await self.repo.upsert(user_id, prompt_shortcuts=shortcuts)
                 return shortcuts[i]
 
-        return None
+        raise PromptShortcutNotFoundError()
 
     async def delete_prompt_shortcut(self, user_id: uuid.UUID, shortcut_id: int) -> bool:
         settings = await self.repo.get_by_user_id(user_id)
         if not settings:
-            return False
+            raise PromptShortcutNotFoundError()
 
         shortcuts = list(settings.prompt_shortcuts or [])
         filtered = [s for s in shortcuts if s.get("id") != shortcut_id]
         if len(filtered) == len(shortcuts):
-            return False
+            raise PromptShortcutNotFoundError()
 
         await self.repo.upsert(user_id, prompt_shortcuts=filtered)
         return True

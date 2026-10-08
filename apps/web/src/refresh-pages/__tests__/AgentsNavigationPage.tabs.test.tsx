@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import AgentsNavigationPage from "@/refresh-pages/AgentsNavigationPage";
-import type { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import type { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 
 const mockReplace = jest.fn();
 let mockSearchParams = new URLSearchParams();
@@ -52,7 +52,7 @@ const agents: MinimalPersonaSnapshot[] = [
   }),
 ];
 
-jest.mock("@/hooks/useAgents", () => ({
+jest.mock("@/lib/api/domains/agents/hooks", () => ({
   useAgents: () => ({ agents, isLoading: false, refresh: jest.fn() }),
   usePinnedAgents: () => ({ pinnedAgents: [], togglePinnedAgent: jest.fn() }),
   useAgent: () => ({ agent: null, refresh: jest.fn() }),

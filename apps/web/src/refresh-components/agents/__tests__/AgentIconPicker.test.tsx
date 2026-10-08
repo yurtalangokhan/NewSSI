@@ -1,4 +1,10 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import "@/i18n/config";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { uploadAgentIcon } from "@/lib/api/domains/agents/api";
+
+jest.mock("@/lib/api/domains/agents/api", () => ({
+  uploadAgentIcon: jest.fn(),
+}));
 import userEvent from "@testing-library/user-event";
 import AgentIconPicker from "@/refresh-components/agents/AgentIconPicker";
 import StarterMessagesField from "@/refresh-components/agents/StarterMessagesField";
@@ -18,7 +24,7 @@ describe("extracted editor fields", () => {
     // trigger opens it — Radix activates on real pointer sequencing, so
     // userEvent (not a bare fireEvent.click) is required here too.
     await userEvent.click(
-      screen.getByRole("button", { name: /editButton/ }).parentElement!
+      screen.getByRole("button", { name: "Edit" }).parentElement!
     );
     fireEvent.click(screen.getAllByTestId("agent-icon-option")[0]!);
     expect(onChange).toHaveBeenCalledWith(
@@ -37,12 +43,12 @@ describe("extracted editor fields", () => {
 
     // Clicking avatar/edit trigger opens popover
     await userEvent.click(
-      screen.getByRole("button", { name: /editButton/ }).parentElement!
+      screen.getByRole("button", { name: "Edit" }).parentElement!
     );
     expect(fileClickSpy).not.toHaveBeenCalled();
 
     // Now click upload image inside the open popover
-    const uploadButton = screen.getAllByText(/uploadImage/)[0]!;
+    const uploadButton = screen.getAllByText(/uploadImage|Upload image/i)[0]!;
     fireEvent.click(uploadButton);
     expect(fileClickSpy).toHaveBeenCalledTimes(1);
 
@@ -58,8 +64,7 @@ describe("extracted editor fields", () => {
       />
     );
 
-    const trigger = screen.getByRole("button", { name: /editButton/ })
-      .parentElement!;
+    const trigger = screen.getByRole("button", { name: "Edit" }).parentElement!;
     expect(trigger.className).toContain("h-[10rem]");
     expect(trigger.className).toContain("w-[10rem]");
   });
@@ -89,5 +94,66 @@ describe("extracted editor fields", () => {
 
     fireEvent.click(screen.getByTestId("agent-visibility-public"));
     expect(onChange).toHaveBeenCalledWith({ isPublic: true, featured: false });
+  });
+  it("applies rounded square boundaries when variant is flow", () => {
+    render(
+      <AgentIconPicker
+        value={{ uploadedImageId: null, iconName: null }}
+        onChange={jest.fn()}
+        variant="flow"
+      />
+    );
+
+    const trigger = screen.getByRole("button", { name: "Edit" }).parentElement!;
+    expect(trigger).toHaveAttribute("data-variant", "flow");
+    expect(trigger.className).toContain("rounded-[28%]");
+    expect(trigger.className).not.toContain("rounded-full");
+  });
+
+  it("applies circular boundaries when variant is agent", () => {
+    render(
+      <AgentIconPicker
+        value={{ uploadedImageId: null, iconName: null }}
+        onChange={jest.fn()}
+        variant="agent"
+      />
+    );
+
+    const trigger = screen.getByRole("button", { name: "Edit" }).parentElement!;
+    expect(trigger).toHaveAttribute("data-variant", "agent");
+    expect(trigger.className).toContain("rounded-full");
+    expect(trigger.className).not.toContain("rounded-[28%]");
+  });
+  it("uploads an image and updates uploadedImageId on file change", async () => {
+    jest
+      .mocked(uploadAgentIcon)
+      .mockResolvedValue(
+        new Response(JSON.stringify({ file_id: "file-456" }), { status: 200 })
+      );
+    const onChange = jest.fn();
+    render(
+      <AgentIconPicker
+        value={{ uploadedImageId: null, iconName: null }}
+        onChange={onChange}
+      />
+    );
+
+    const fileInput = document.querySelector(
+      "input[type='file']"
+    ) as HTMLInputElement;
+    expect(fileInput).toBeInTheDocument();
+
+    const file = new File(["dummy content"], "avatar.png", {
+      type: "image/png",
+    });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    expect(uploadAgentIcon).toHaveBeenCalledWith(expect.any(FormData));
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith({
+        uploadedImageId: "file-456",
+        iconName: null,
+      });
+    });
   });
 });

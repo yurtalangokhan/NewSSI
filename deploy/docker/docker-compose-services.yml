@@ -1,0 +1,647 @@
+# =============================================================================
+# Docker Compose - Infrastructure Services
+# 
+# Database, Neo4j, Milvus, Redis, APISIX, Keycloak
+# Run with: docker compose -f docker-compose-services.yml up -d
+# =============================================================================
+
+name: agentic-ai-infrastructure
+
+services:
+
+  # ==========================================================================
+  # PostgreSQL - Main Database
+  # ==========================================================================
+
+  postgres:
+    container_name: postgres
+    image: postgres:18
+    restart: unless-stopped
+    # Published infrastructure ports bind to the loopback interface unless the
+    # deployment sets <SERVICE>_BIND_ADDR (a shared server developers reach
+    # remotely); see docs/env-variables.md.
+    ports:
+      - "${POSTGRES_BIND_ADDR:-127.0.0.1}:8124:5432"
+    # No POSTGRES_DB: the image would create it owned by the admin role, and the
+    # service role could not create tables in it (PostgreSQL 15+). Each service's
+    # bootstrap creates its own database with the right owner.
+    environment:
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD}
+    volumes:
+      # The image keeps the data of each major version in its own directory of
+      # the volume: /var/lib/postgresql/<major>/docker.
+      - postgres-data:/var/lib/postgresql
+    # On a volume that only holds the data of another major version the image
+    # would create an empty cluster and start. Refuse that start; the upgrade
+    # is described in docs/deployment.md ("Infrastructure upgrade").
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        if [ ! -s "$$PGDATA/PG_VERSION" ]; then
+          for dir in /var/lib/postgresql /var/lib/postgresql/* /var/lib/postgresql/*/docker; do
+            if [ -s "$$dir/PG_VERSION" ]; then
+              echo "PostgreSQL $$(cat "$$dir/PG_VERSION") data in $$dir and none in $$PGDATA: not starting with empty databases." >&2
+              echo "See \"Infrastructure upgrade\" in docs/deployment.md." >&2
+              exit 1
+            fi
+          done
+        fi
+        exec docker-entrypoint.sh "$$@"
+      - postgres-guard
+    command: ["postgres"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_ADMIN_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak-db-init:
+    container_name: keycloak-db-init
+    image: postgres:18
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_ADMIN_USER}
+      PGPASSWORD: ${POSTGRES_ADMIN_PASSWORD}
+      KEYCLOAK_DB_NAME: ${KEYCLOAK_DB_NAME}
+    command:
+      - sh
+      - -c
+      - |
+        if [ -z "$${KEYCLOAK_DB_NAME}" ]; then
+          echo "KEYCLOAK_DB_NAME must be set in configs/.env" >&2
+          exit 1
+        fi
+        if psql -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$${KEYCLOAK_DB_NAME}'" | grep -q 1; then
+          echo "Keycloak database already exists: $${KEYCLOAK_DB_NAME}"
+        else
+          createdb "$${KEYCLOAK_DB_NAME}"
+          echo "Created Keycloak database: $${KEYCLOAK_DB_NAME}"
+        fi
+
+  # ==========================================================================
+  # Ollama - Built-in Local LLM Runtime
+  # ==========================================================================
+
+  ollama:
+    container_name: ollama
+    image: ollama/ollama:${OLLAMA_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_BIND_ADDR:-127.0.0.1}:${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 15s
+
+  # ==========================================================================
+  # Neo4j - Knowledge Graph
+  # ==========================================================================
+
+  neo4j:
+    image: neo4j:5.24-community
+    container_name: neo4j
+    hostname: neo4j
+    restart: unless-stopped
+    ports:
+      - "${NEO4J_BIND_ADDR:-127.0.0.1}:8484:7474"   # HTTP (Browser UI)
+      - "${NEO4J_BIND_ADDR:-127.0.0.1}:8697:7687"   # Bolt protocol
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+      - neo4j-plugins:/plugins
+    environment:
+      NEO4J_AUTH: ${NEO4J_USERNAME}/${NEO4J_PASSWORD}
+      NEO4J_PLUGINS: ${NEO4J_PLUGINS}
+      NEO4J_server_memory_heap_initial__size: ${NEO4J_HEAP_INITIAL_SIZE}
+      NEO4J_server_memory_heap_max__size: ${NEO4J_HEAP_MAX_SIZE}
+      NEO4J_server_memory_pagecache_size: ${NEO4J_PAGECACHE_SIZE}
+      NEO4J_dbms_security_procedures_unrestricted: ${NEO4J_PROCEDURES_UNRESTRICTED}
+      NEO4J_dbms_security_procedures_allowlist: ${NEO4J_PROCEDURES_ALLOWLIST}
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # ==========================================================================
+  # Milvus - Vector Database (etcd + minio + standalone)
+  # ==========================================================================
+
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.18
+    restart: unless-stopped
+    command: >
+      etcd
+      --advertise-client-urls=http://etcd:2379
+      --listen-client-urls=http://0.0.0.0:2379
+      --listen-peer-urls=http://0.0.0.0:2380
+      --initial-advertise-peer-urls=http://etcd:2380
+      --initial-cluster=default=http://etcd:2380
+      --data-dir=/etcd
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: ${MILVUS_ETCD_AUTO_COMPACTION_MODE}
+      ETCD_AUTO_COMPACTION_RETENTION: ${MILVUS_ETCD_AUTO_COMPACTION_RETENTION}
+      ETCD_QUOTA_BACKEND_BYTES: ${MILVUS_ETCD_QUOTA_BACKEND_BYTES}
+      ETCD_SNAPSHOT_COUNT: ${MILVUS_ETCD_SNAPSHOT_COUNT}
+    volumes:
+      - milvus-etcd-data:/etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health", "--endpoints=http://127.0.0.1:2379"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  minio:
+    container_name: milvus-minio
+    image: minio/minio:RELEASE.2025-02-28T09-55-16Z
+    restart: unless-stopped
+    command: minio server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "${MINIO_BIND_ADDR:-127.0.0.1}:10000:9000"
+      - "${MINIO_BIND_ADDR:-127.0.0.1}:10001:9001"
+    volumes:
+      - milvus-minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  milvus:
+    container_name: milvus
+    image: milvusdb/milvus:v2.5.11
+    restart: unless-stopped
+    command: ["milvus", "run", "standalone"]
+    depends_on:
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      ETCD_ENDPOINTS: ${MILVUS_ETCD_ENDPOINTS}
+      MINIO_ADDRESS: ${MILVUS_MINIO_ADDRESS}
+      MINIO_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "${MILVUS_BIND_ADDR}:9765:19530"
+      - "${MILVUS_BIND_ADDR}:9091:9091"
+    volumes:
+      - milvus-data:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ==========================================================================
+  # Redis - Idempotency cache & distributed locks
+  # ==========================================================================
+
+  redis:
+    container_name: redis
+    image: redis:8.10-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
+    ports:
+      - "${REDIS_BIND_ADDR:-127.0.0.1}:6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "--no-auth-warning", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ==========================================================================
+  # OpenTelemetry Collector - traces and push-metrics pipeline
+  # ==========================================================================
+  # Services export over OTLP/http when OTEL_ENABLED=true; with it false they
+  # never contact this service at all. The collector's config decides where the
+  # data goes next (configs/otel-collector/config.yaml), so changing the log or
+  # trace backend never touches the services.
+
+  otel-collector:
+    container_name: otel-collector
+    profiles:
+      - observability
+    image: otel/opentelemetry-collector-contrib:0.112.0
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ../../configs/otel-collector/config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      # Loopback only: the collector is infrastructure, not a public surface.
+      - "127.0.0.1:4318:4318"
+    healthcheck:
+      # The image carries no curl or wget; bash's /dev/tcp opens a plain TCP
+      # connection to the OTLP receiver, which is enough to prove it is up.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/4318 && exec 3<&-"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ==========================================================================
+  # Observability stack - logs, metrics, traces
+  # ==========================================================================
+  # Elasticsearch stores the logs (shipped directly by the services through the
+  # observability package's elasticsearch sink) and the traces (forwarded by
+  # otel-collector). Kibana is the log and trace workspace, Prometheus stores
+  # scraped and pushed metrics, and Grafana renders all three. Every host port
+  # is loopback-only: this stack is internal tooling, not a public surface.
+  # Elasticsearch needs the host's vm.max_map_count >= 262144; see
+  # docs/deployment.md.
+
+  elasticsearch:
+    container_name: elasticsearch
+    profiles:
+      - observability
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION:?ELASTIC_VERSION is required}
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "${ES_JAVA_OPTS:--Xms512m -Xmx512m}"
+    ports:
+      - "127.0.0.1:${ELASTICSEARCH_PORT:-9200}:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  elasticsearch-provision:
+    container_name: elasticsearch-provision
+    image: alpine:3.20
+    restart: "no"
+    profiles:
+      - observability
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      LOG_RETENTION_DAYS: ${LOG_RETENTION_DAYS:-30}
+    volumes:
+      - ../../scripts/provision_observability.sh:/provision.sh:ro
+    command: ["sh", "/provision.sh"]
+
+  kibana:
+    container_name: kibana
+    profiles:
+      - observability
+    image: docker.elastic.co/kibana/kibana:${ELASTIC_VERSION:?ELASTIC_VERSION is required}
+    restart: unless-stopped
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      SERVER_NAME: kibana
+      SERVER_HOST: 0.0.0.0
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "127.0.0.1:${KIBANA_PORT:-5601}:5601"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5601/api/status >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+  prometheus-config:
+    container_name: prometheus-config
+    profiles:
+      - observability
+    image: alpine:3.20
+    restart: "no"
+    environment:
+      AGENT_SERVICE_PORT: ${AGENT_SERVICE_PORT}
+      USER_SERVICE_PORT: ${USER_SERVICE_PORT}
+      RAG_SERVICE_PORT: ${RAG_SERVICE_PORT}
+      TOOLS_SERVICE_PORT: ${TOOLS_SERVICE_PORT}
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        cp /template/prometheus.yml.template /shared/prometheus.yml
+        for var in AGENT_SERVICE_PORT USER_SERVICE_PORT RAG_SERVICE_PORT TOOLS_SERVICE_PORT; do
+          eval "value=\$${var}"
+          sed -i "s/\$$var/$$value/g" /shared/prometheus.yml
+        done
+    volumes:
+      - ../../configs/prometheus/prometheus.yml.template:/template/prometheus.yml.template:ro
+      - prometheus-config:/shared
+
+  prometheus:
+    container_name: prometheus
+    profiles:
+      - observability
+    image: prom/prometheus:${PROMETHEUS_VERSION:?PROMETHEUS_VERSION is required}
+    restart: unless-stopped
+    depends_on:
+      prometheus-config:
+        condition: service_completed_successfully
+    # The remote-write receiver is what otel-collector pushes OTLP metrics
+    # into; the scrape of the services' /metrics endpoints needs no flag.
+    command:
+      - --config.file=/shared/prometheus.yml
+      - --web.enable-remote-write-receiver
+      - --storage.tsdb.retention.time=15d
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - prometheus-config:/shared:ro
+      - prometheus-data:/prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:9090/-/ready || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  grafana:
+    container_name: grafana
+    profiles:
+      - observability
+    image: grafana/grafana:${GRAFANA_VERSION:?GRAFANA_VERSION is required}
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - ../../configs/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3000/api/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 15
+      start_period: 30s
+
+  # ==========================================================================
+  # Keycloak - Identity Provider
+  # ==========================================================================
+
+  apisix:
+    container_name: apisix
+    build:
+      context: ../..
+      dockerfile: configs/apisix/Dockerfile
+      args:
+        APISIX_IMAGE_TAG: ${APISIX_IMAGE_TAG}
+    image: agentic-ai-platform/apisix:${APP_IMAGE_TAG}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      keycloak-bootstrap:
+        condition: service_completed_successfully
+    ports:
+      - "${APISIX_HTTP_PORT}:8000"
+    extra_hosts:
+      # Maps to Docker host for OIDC discovery when KC_HOSTNAME uses a hostname.
+      # When KEYCLOAK_PUBLIC_HOSTNAME is an IP, this entry is a no-op — APISIX
+      # reaches that IP directly via the network.
+      - "keycloak.localhost:host-gateway"
+      # Keep host.docker.internal available for local-only integrations.
+      # Local VS Code launch configs run app services on the Docker host, so
+      # APISIX can reach them through host.docker.internal.
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ../../configs/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+      - ../../configs/apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml.template:ro
+      - ../../configs/apisix/gateway-policies.json:/usr/local/apisix/conf/gateway-policies.json:ro
+      - ../../scripts/render_gateway_config.py:/usr/local/apisix/render_gateway_config.py:ro
+      - ../../scripts/apisix/bootstrap_apisix_security.sh:/scripts/apisix/bootstrap_apisix_security.sh:ro
+    environment:
+      APISIX_STAND_ALONE: "true"
+      KEYCLOAK_PUBLIC_HOSTNAME: ${KEYCLOAK_PUBLIC_HOSTNAME}
+      KEYCLOAK_PUBLIC_PORT: ${KEYCLOAK_PUBLIC_PORT}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      KEYCLOAK_ISSUER_URL: ${KEYCLOAK_ISSUER_URL}
+      KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      GATEWAY_KEYCLOAK_CLIENT_ID: ${GATEWAY_KEYCLOAK_CLIENT_ID:?Set the Gateway Keycloak client ID}
+      GATEWAY_KEYCLOAK_CLIENT_SECRET: ${GATEWAY_KEYCLOAK_CLIENT_SECRET:?Set the Gateway Keycloak client secret}
+      GATEWAY_ALLOWED_REDIRECT_URIS: ${GATEWAY_ALLOWED_REDIRECT_URIS:?Set exact Gateway callback URLs as a JSON array}
+      GATEWAY_COOKIE_SECURE: ${GATEWAY_COOKIE_SECURE:-false}
+      GATEWAY_EXTERNAL_IDP_ALIAS: ${GATEWAY_EXTERNAL_IDP_ALIAS:-}
+      EXTERNAL_KEYCLOAK: ${EXTERNAL_KEYCLOAK}
+      EXTERNAL_KEYCLOAK_ALIAS: ${EXTERNAL_KEYCLOAK_ALIAS}
+      GATEWAY_BROKER_URL_REWRITES: ${GATEWAY_BROKER_URL_REWRITES:-}
+      GATEWAY_REDIS_DB: ${GATEWAY_REDIS_DB:-0}
+      REDIS_HOST: ${REDIS_HOST_CONTAINER}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?Set the internal service credential}
+      USER_SERVICE_UPSTREAM_ADDR: ${USER_SERVICE_UPSTREAM_ADDR}
+      AGENT_SERVICE_UPSTREAM_ADDR: ${AGENT_SERVICE_UPSTREAM_ADDR}
+      RAG_SERVICE_UPSTREAM_ADDR: ${RAG_SERVICE_UPSTREAM_ADDR}
+      TOOLS_SERVICE_UPSTREAM_ADDR: ${TOOLS_SERVICE_UPSTREAM_ADDR}
+    entrypoint:
+      - /bin/sh
+      - -c
+    command:
+      - |
+        python3 /usr/local/apisix/render_gateway_config.py /usr/local/apisix/conf/apisix.yaml.template /usr/local/apisix/conf/apisix.yaml
+        exec /docker-entrypoint.sh docker-start
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:7085/status/ready >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    container_name: keycloak
+    image: quay.io/keycloak/keycloak:26.8
+    restart: unless-stopped
+    command: ["start-dev", "--http-port=8080"]
+    depends_on:
+      keycloak-db-init:
+        condition: service_completed_successfully
+    ports:
+      - "${KEYCLOAK_BIND_ADDR:-127.0.0.1}:8085:8080"
+    environment:
+      KC_DB: ${KEYCLOAK_DB_VENDOR}
+      KC_DB_URL_HOST: ${KEYCLOAK_DB_HOST}
+      KC_DB_URL_DATABASE: ${KEYCLOAK_DB_NAME}
+      KC_DB_USERNAME: ${POSTGRES_ADMIN_USER}
+      KC_DB_PASSWORD: ${POSTGRES_ADMIN_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HEALTH_ENABLED: ${KEYCLOAK_HEALTH_ENABLED}
+      KC_HOSTNAME: http://${KEYCLOAK_PUBLIC_HOSTNAME}:${KEYCLOAK_PUBLIC_PORT}
+      KC_HOSTNAME_STRICT: ${KEYCLOAK_HOSTNAME_STRICT}
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+    healthcheck:
+      # Keycloak's readiness endpoint on the management port; it exists only
+      # while KC_HEALTH_ENABLED is true. The image has no curl, and its shell
+      # is bash.
+      test:
+        - CMD-SHELL
+        - |
+          exec 3<>/dev/tcp/127.0.0.1/9000 || exit 1
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3
+          read -r status <&3
+          case "$$status" in "HTTP/1.1 200"*) exit 0 ;; *) exit 1 ;; esac
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      # The first start creates or migrates the database schema.
+      start_period: 180s
+
+  keycloak-bootstrap:
+    container_name: keycloak-bootstrap
+    image: alpine:3.20
+    restart: "no"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "keycloak.localhost:host-gateway"
+    environment:
+      KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_USER_SERVICE_CLIENT_ID: ${KEYCLOAK_USER_SERVICE_CLIENT_ID:?Set the user-service Keycloak client ID}
+      KEYCLOAK_AGENT_SERVICE_CLIENT_ID: ${KEYCLOAK_AGENT_SERVICE_CLIENT_ID:?Set the agent-service Keycloak client ID}
+      KEYCLOAK_RAG_SERVICE_CLIENT_ID: ${KEYCLOAK_RAG_SERVICE_CLIENT_ID:?Set the RAG-service Keycloak client ID}
+      KEYCLOAK_TOOLS_SERVICE_CLIENT_ID: ${KEYCLOAK_TOOLS_SERVICE_CLIENT_ID:?Set the tools-service Keycloak client ID}
+      GATEWAY_KEYCLOAK_CLIENT_ID: ${GATEWAY_KEYCLOAK_CLIENT_ID:?Set the Gateway Keycloak client ID}
+      GATEWAY_KEYCLOAK_CLIENT_SECRET: ${GATEWAY_KEYCLOAK_CLIENT_SECRET:?Set the Gateway Keycloak client secret}
+      REDIS_HOST: ${REDIS_CONTAINER_HOST:?Set the Redis host containers reach}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_DB: ${REDIS_DB:-0}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      KEYCLOAK_REDIRECT_URI: ${KEYCLOAK_REDIRECT_URI}
+      KEYCLOAK_REDIRECT_URIS: ${KEYCLOAK_REDIRECT_URIS}
+      KEYCLOAK_WEB_ORIGIN: ${KEYCLOAK_WEB_ORIGIN}
+      KEYCLOAK_WEB_ORIGINS: ${KEYCLOAK_WEB_ORIGINS}
+      KEYCLOAK_POST_LOGOUT_REDIRECT_URIS: ${KEYCLOAK_POST_LOGOUT_REDIRECT_URIS}
+      KEYCLOAK_TEST_USER: ${KEYCLOAK_TEST_USER}
+      KEYCLOAK_TEST_EMAIL: ${KEYCLOAK_TEST_EMAIL}
+      KEYCLOAK_TEST_PASSWORD: ${KEYCLOAK_TEST_PASSWORD}
+      KEYCLOAK_DEFAULT_ADMIN_USER: ${KEYCLOAK_DEFAULT_ADMIN_USER}
+      KEYCLOAK_DEFAULT_ADMIN_EMAIL: ${KEYCLOAK_DEFAULT_ADMIN_EMAIL}
+      KEYCLOAK_DEFAULT_ADMIN_PASSWORD: ${KEYCLOAK_DEFAULT_ADMIN_PASSWORD}
+      KEYCLOAK_DEFAULT_ADMIN_FIRST_NAME: ${KEYCLOAK_DEFAULT_ADMIN_FIRST_NAME}
+      KEYCLOAK_DEFAULT_ADMIN_LAST_NAME: ${KEYCLOAK_DEFAULT_ADMIN_LAST_NAME}
+      KEYCLOAK_DEFAULT_ADMIN_REALM_ROLE: ${KEYCLOAK_DEFAULT_ADMIN_REALM_ROLE}
+    volumes:
+      - ../../scripts:/workspace/scripts:ro
+      - ../../apps/user-service/src:/workspace/apps/user-service/src:ro
+      - ../../apps/agent-service/src/api:/workspace/apps/agent-service/src/api:ro
+      # The authorization inventory reads src/<domain>/router.py.
+      - ../../apps/rag-service/src:/workspace/apps/rag-service/src:ro
+      - ../../apps/tools-service/src:/workspace/apps/tools-service/src:ro
+      - ../../configs/apisix:/workspace/configs/apisix:ro
+    command:
+      - sh
+      - -c
+      - apk add --no-cache bash curl jq python3 py3-redis >/dev/null && bash /workspace/scripts/bootstrap_keycloak.sh
+
+  # mongo:
+  #   image: mongo:7
+  #   container_name: mongo
+  #   ports:
+  #     - "27017:27017"
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   environment:
+  #     - MONGO_INITDB_ROOT_USERNAME=admin
+  #     - MONGO_INITDB_ROOT_PASSWORD=admin123
+  #   command: >
+  #     bash -c "
+  #       openssl rand -base64 756 > /tmp/mongodb-keyfile &&
+  #       chmod 400 /tmp/mongodb-keyfile &&
+  #       chown 999:999 /tmp/mongodb-keyfile &&
+  #       exec /usr/local/bin/docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --keyFile /tmp/mongodb-keyfile
+  #     "
+
+  # ==========================================================================
+  # MySQL - Legacy data (optional)
+  # ==========================================================================
+
+  # mysql:
+  #   image: mysql:8.0
+  #   container_name: mysql
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql-data:/var/lib/mysql
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-mysql_root_123}
+  #     MYSQL_DATABASE: ${MYSQL_DATABASE:-rag_testdb}
+  #     MYSQL_USER: ${MYSQL_USER:-raguser}
+  #     MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ragpass123}
+  #   command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+volumes:
+  postgres-data:
+    external: true
+    name: langgraph-with-ui_postgres-vanilla-data
+  neo4j-data:
+    external: true
+    name: langgraph-with-ui_neo4j-data
+  neo4j-logs:
+    external: true
+    name: langgraph-with-ui_neo4j-logs
+  neo4j-plugins:
+    external: true
+    name: langgraph-with-ui_neo4j-plugins
+  milvus-etcd-data:
+  milvus-minio-data:
+  milvus-data:
+  redis-data:
+  keycloak-data:
+  elasticsearch-data:
+  prometheus-data:
+  prometheus-config:
+  grafana-data:
+  ollama-data:
+    external: true
+    name: ollama
+  # mysql-data:

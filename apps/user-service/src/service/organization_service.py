@@ -1,9 +1,11 @@
 """Organization management service."""
 
-import uuid
 from typing import Any
+import uuid
 
-from src.core.exceptions import ConflictError
+from error_contract import BadRequestError, DatabaseOperationError, NotFoundError
+from error_contract.identity import ConflictError
+
 from src.repository import OrganizationRepository
 
 
@@ -26,20 +28,26 @@ class OrganizationService:
         # Check for duplicate code
         existing = await self.repo.get_by_code(code)
         if existing:
-            raise ValueError(f"Organization with code '{code}' already exists")
+            raise ConflictError(
+                message_key="errors.user_service.organization.organization_with_code_already_exists",
+                message_params={"code": code},
+            )
 
         # The enterprise hierarchy has exactly one root.  Any existing
         # organization implies the root has already been established.
         if parent_id is None:
             _organizations, total = await self.repo.list_all(skip=0, limit=1)
             if total:
-                raise ValueError("A root organization already exists")
+                raise ConflictError(message_key="errors.user_service.organization.a_root_organization_already_exists")
 
         # Validate parent exists
         if parent_id:
             parent = await self.repo.get_by_id(parent_id)
             if not parent:
-                raise ValueError(f"Parent organization {parent_id} not found")
+                raise NotFoundError(
+                    message_key="errors.user_service.organization.parent_organization_not_found",
+                    message_params={"parent_id": parent_id},
+                )
 
         return await self.repo.create(
             name=name,
@@ -54,21 +62,23 @@ class OrganizationService:
         """Get organization by ID."""
         return await self.repo.get_by_id(org_id)
 
-    async def get_organization_by_code(self, code: str) -> dict[str, Any] | None:
-        """Get organization by unique code."""
-        return await self.repo.get_by_code(code)
-
     async def update_organization(self, org_id: uuid.UUID, **updates: Any) -> dict[str, Any] | None:
         """Update organization fields."""
         org = await self.repo.get_by_id(org_id)
         if not org:
-            raise ValueError(f"Organization {org_id} not found")
+            raise NotFoundError(
+                message_key="errors.user_service.organization.organization_not_found",
+                message_params={"org_id": org_id},
+            )
 
         # If updating code, check for conflicts
         if "code" in updates and updates["code"] != org["code"]:
             existing = await self.repo.get_by_code(updates["code"])
             if existing and existing["id"] != org_id:
-                raise ValueError(f"Organization with code '{updates['code']}' already exists")
+                raise ConflictError(
+                    message_key="errors.user_service.organization.organization_with_code_already_exists",
+                    message_params={"param1": updates["code"]},
+                )
 
         return await self.repo.update(org_id, **updates)
 
@@ -81,21 +91,22 @@ class OrganizationService:
         """
         org = await self.repo.get_by_id(org_id)
         if not org:
-            raise ValueError(f"Organization {org_id} not found")
+            raise NotFoundError(
+                message_key="errors.user_service.organization.organization_not_found",
+                message_params={"org_id": org_id},
+            )
 
         # Check for children
         children = await self.repo.get_children(org_id, direct_only=True)
         if children and not cascade:
-            raise ValueError(
-                f"Cannot delete organization with {len(children)} children. "
-                "Use cascade=True to delete all descendants."
+            raise ConflictError(
+                message_key="errors.user_service.organization.cannot_delete_organization_with_children_use_cascade_true_to",
+                message_params={"param1": len(children)},
             )
 
         return await self.repo.delete(org_id)
 
-    async def move_organization(
-        self, org_id: uuid.UUID, new_parent_id: uuid.UUID | None
-    ) -> dict[str, Any]:
+    async def move_organization(self, org_id: uuid.UUID, new_parent_id: uuid.UUID | None) -> dict[str, Any]:
         """
         Move organization to new parent.
 
@@ -106,22 +117,30 @@ class OrganizationService:
         """
         org = await self.repo.get_by_id(org_id)
         if not org:
-            raise ValueError(f"Organization {org_id} not found")
+            raise NotFoundError(
+                message_key="errors.user_service.organization.organization_not_found",
+                message_params={"org_id": org_id},
+            )
 
         if new_parent_id:
             parent = await self.repo.get_by_id(new_parent_id)
             if not parent:
-                raise ValueError(f"Parent organization {new_parent_id} not found")
+                raise NotFoundError(
+                    message_key="errors.user_service.organization.parent_organization_not_found",
+                    message_params={"new_parent_id": new_parent_id},
+                )
 
             # Check for circular reference
             if str(org_id) in parent["path"]:
-                raise ValueError("Cannot move organization to its own descendant")
+                raise BadRequestError(
+                    message_key="errors.user_service.organization.cannot_move_organization_to_its_own_descendant"
+                )
         elif org["parent_id"] is not None:
-            raise ConflictError("A root organization already exists")
+            raise ConflictError(message_key="errors.user_service.organization.a_root_organization_already_exists")
 
         result = await self.repo.move_organization(org_id, new_parent_id)
         if not result:
-            raise ValueError("Failed to move organization")
+            raise DatabaseOperationError(message_key="errors.user_service.organization.failed_to_move_organization")
 
         return result
 
@@ -133,14 +152,14 @@ class OrganizationService:
         parent_id: uuid.UUID | None = None,
     ) -> tuple[list[dict[str, Any]], int]:
         """List organizations with pagination and filtering."""
-        return await self.repo.list_all(
-            skip=skip, limit=limit, is_active=is_active, parent_id=parent_id
-        )
+        return await self.repo.list_all(skip=skip, limit=limit, is_active=is_active, parent_id=parent_id)
 
     async def search_organizations(self, query: str, max_results: int = 20) -> list[dict[str, Any]]:
         """Search organizations by name, code, or description."""
         if not query or len(query) < 2:
-            raise ValueError("Search query must be at least 2 characters")
+            raise BadRequestError(
+                message_key="errors.user_service.organization.search_query_must_be_at_least_characters"
+            )
 
         return await self.repo.search(query, max_results)
 
@@ -159,9 +178,7 @@ class OrganizationService:
         """
         return await self.repo.get_tree(root_id=root_id, max_depth=max_depth)
 
-    async def get_organization_children(
-        self, parent_id: uuid.UUID, direct_only: bool = True
-    ) -> list[dict[str, Any]]:
+    async def get_organization_children(self, parent_id: uuid.UUID, direct_only: bool = True) -> list[dict[str, Any]]:
         """
         Get child organizations.
 
@@ -174,16 +191,6 @@ class OrganizationService:
     async def get_organization_ancestors(self, org_id: uuid.UUID) -> list[dict[str, Any]]:
         """Get all ancestor organizations up to root."""
         return await self.repo.get_ancestors(org_id)
-
-    async def get_children_count(self, org_id: uuid.UUID) -> int:
-        """Count direct children of organization."""
-        children = await self.repo.get_children(org_id, direct_only=True)
-        return len(children)
-
-    async def get_descendants_count(self, org_id: uuid.UUID) -> int:
-        """Count all descendants of organization."""
-        descendants = await self.repo.get_children(org_id, direct_only=False)
-        return len(descendants)
 
     async def get_organization_stats(self) -> dict[str, Any]:
         """

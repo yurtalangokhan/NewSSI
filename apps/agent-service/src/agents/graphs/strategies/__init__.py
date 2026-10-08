@@ -15,13 +15,37 @@ from agents.graphs.strategies.zero_shot import ZeroShotGraphStrategy
 
 __all__ = [
     "GraphSchemaStrategy",
-    "ZeroShotGraphStrategy",
-    "ReActGraphStrategy",
-    "SupervisorGraphStrategy",
+    "GraphSchemaStrategyRegistry",
     "PipelineGraphStrategy",
     "PlanExecuteGraphStrategy",
+    "ReActGraphStrategy",
     "SelfReflectGraphStrategy",
-    "GraphSchemaStrategyRegistry",
+    "SupervisorGraphStrategy",
+    "ZeroShotGraphStrategy",
     "get_registry",
     "get_strategy",
 ]
+
+
+def _register_built_in_strategies() -> None:
+    """Populate the registry once, from the one place that already imports every strategy.
+
+    Registration lives here rather than in ``registry`` so the registry stays
+    free of concrete strategies; importing any module in this package runs this
+    first, so the registry is never observed empty.
+    """
+    registry = get_registry()
+    if registry.supported_types():
+        return
+    for strategy in (
+        ZeroShotGraphStrategy,
+        ReActGraphStrategy,
+        SupervisorGraphStrategy,
+        PipelineGraphStrategy,
+        PlanExecuteGraphStrategy,
+        SelfReflectGraphStrategy,
+    ):
+        registry.register(strategy)
+
+
+_register_built_in_strategies()

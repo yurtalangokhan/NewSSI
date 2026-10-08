@@ -1,7 +1,7 @@
 import React from "react";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import Card from "@/refresh-components/cards/Card";
-import { SvgOnyxOctagon } from "@opal/icons";
+import { SvgAtlasOctagon } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 
 export interface AgentEditorSkeletonProps {
@@ -16,7 +16,7 @@ export function AgentEditorSkeleton({
   return (
     <SettingsLayouts.Root width="xl">
       <SettingsLayouts.Header
-        icon={SvgOnyxOctagon}
+        icon={SvgAtlasOctagon}
         title={
           isEditing
             ? t("agentEditor.editAgentTitle", { defaultValue: "Ajanı Düzenle" })

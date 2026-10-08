@@ -11,13 +11,17 @@ import {
   SvgSparkle,
   SvgMaximize2,
   SvgLoader,
-  SvgAlertCircle,
+  SvgFileText,
 } from "@opal/icons";
 import { cn } from "@/lib/utils";
 import MinimalMarkdown from "@/components/chat/MinimalMarkdown";
 import { formatRunTime } from "../utils/formatRunTime";
 import type { NodeExecutionData } from "../types/execution";
 import { StageOutputModal } from "@/app/app/message/messageComponents/timeline/FlowStageSections";
+import { DrawerControl } from "./DrawerControl";
+import { KnowledgeEvidenceList } from "@/app/app/message/messageComponents/timeline/renderers/knowledge/KnowledgeEvidenceList";
+
+type DrawerTab = "thinking" | "tools" | "sources" | "output";
 
 export interface NodeExecutionDrawerProps {
   nodeId: string;
@@ -70,6 +74,13 @@ export function NodeExecutionDrawer({
     return data.tools || [];
   }, [activeIterationData, data.tools]);
 
+  const currentEvidence = useMemo(() => {
+    if (activeIterationData) {
+      return activeIterationData.evidence || [];
+    }
+    return data.evidence || [];
+  }, [activeIterationData, data.evidence]);
+
   const currentOutput = useMemo(() => {
     if (activeIterationData) {
       return activeIterationData.output || "";
@@ -78,11 +89,11 @@ export function NodeExecutionDrawer({
   }, [activeIterationData, data.output]);
 
   // Active tab selection: follow live phase if user hasn't explicitly chosen a tab
-  const [userSelectedTab, setUserSelectedTab] = useState<
-    "thinking" | "tools" | "output" | null
-  >(null);
+  const [userSelectedTab, setUserSelectedTab] = useState<DrawerTab | null>(
+    null
+  );
 
-  const activeTab = useMemo((): "thinking" | "tools" | "output" => {
+  const activeTab = useMemo((): DrawerTab => {
     if (userSelectedTab !== null) {
       return userSelectedTab;
     }
@@ -102,8 +113,10 @@ export function NodeExecutionDrawer({
     ) {
       return "output";
     }
-    // 3. Normal order (or finished state): thinking -> tools -> output
+    // 3. Normal order (or finished state): thinking -> sources -> tools -> output.
+    // A retrieval node's sources are what it produced, so they lead.
     if (currentThinking.trim()) return "thinking";
+    if (currentEvidence.length > 0) return "sources";
     if (currentTools.length > 0) return "tools";
     return "output";
   }, [
@@ -112,18 +125,14 @@ export function NodeExecutionDrawer({
     currentOutput,
     currentTools,
     currentThinking,
+    currentEvidence,
   ]);
 
-  const handleToggle = useCallback(
-    (e: React.MouseEvent | React.KeyboardEvent) => {
-      e.stopPropagation();
-      if ("preventDefault" in e) e.preventDefault();
-      const next = !isExpanded;
-      setIsExpanded(next);
-      onToggle?.(next);
-    },
-    [isExpanded, onToggle]
-  );
+  const toggle = useCallback(() => {
+    const next = !isExpanded;
+    setIsExpanded(next);
+    onToggle?.(next);
+  }, [isExpanded, onToggle]);
 
   const copyToClipboard = useCallback((text: string, type: string) => {
     if (!text) return;
@@ -146,6 +155,7 @@ export function NodeExecutionDrawer({
   const hasContent = Boolean(
     currentThinking.trim() ||
       currentTools.length > 0 ||
+      currentEvidence.length > 0 ||
       currentOutput.trim() ||
       data.status === "running"
   );
@@ -163,17 +173,10 @@ export function NodeExecutionDrawer({
     >
       {/* Collapsed Summary Bar */}
       {!isExpanded && (
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={handleToggle}
+        <DrawerControl
+          onActivate={toggle}
           onMouseDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              handleToggle(e);
-            }
-          }}
           className="group/drawer flex w-full items-center justify-between px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/40 cursor-pointer nodrag nopan pointer-events-auto select-none"
         >
           <div className="flex flex-wrap items-center gap-1.5 overflow-hidden">
@@ -200,6 +203,16 @@ export function NodeExecutionDrawer({
               </span>
             )}
 
+            {currentEvidence.length > 0 && (
+              <span className="inline-flex items-center gap-1 rounded bg-action-link-01 px-1.5 py-0.5 text-[10px] font-medium text-action-link-05 border border-action-link-02">
+                <SvgFileText className="size-2.5 shrink-0" />
+                <span>
+                  {t("chat.nodeDrawer.sources", "Kaynaklar")} (
+                  {currentEvidence.length})
+                </span>
+              </span>
+            )}
+
             {currentOutput.trim() && (
               <span className="inline-flex items-center gap-1 rounded bg-theme-green-01 px-1.5 py-0.5 text-[10px] font-medium text-theme-green-05 border border-theme-green-02">
                 <SvgCheck className="size-2.5 shrink-0" />
@@ -221,7 +234,7 @@ export function NodeExecutionDrawer({
             </span>
             <SvgChevronDown className="size-3 shrink-0 transition-transform" />
           </div>
-        </div>
+        </DrawerControl>
       )}
 
       {/* Expanded Drawer Content */}
@@ -230,13 +243,9 @@ export function NodeExecutionDrawer({
           {/* Drawer Header & Tabs */}
           <div className="flex items-center justify-between border-b border-canvas-border bg-muted/30 px-2 py-1">
             <div className="flex items-center gap-1">
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setUserSelectedTab("thinking");
-                }}
+              <DrawerControl
+                pressed={activeTab === "thinking"}
+                onActivate={() => setUserSelectedTab("thinking")}
                 className={cn(
                   "flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors",
                   activeTab === "thinking"
@@ -249,15 +258,11 @@ export function NodeExecutionDrawer({
                 {currentThinking.trim() && (
                   <span className="size-1.5 rounded-full bg-action-link-05 shrink-0" />
                 )}
-              </div>
+              </DrawerControl>
 
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setUserSelectedTab("tools");
-                }}
+              <DrawerControl
+                pressed={activeTab === "tools"}
+                onActivate={() => setUserSelectedTab("tools")}
                 className={cn(
                   "flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors",
                   activeTab === "tools"
@@ -270,15 +275,30 @@ export function NodeExecutionDrawer({
                   {t("chat.nodeDrawer.tools", "Araçlar")}
                   {totalToolCalls > 0 && ` (${totalToolCalls})`}
                 </span>
-              </div>
+              </DrawerControl>
 
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setUserSelectedTab("output");
-                }}
+              {currentEvidence.length > 0 && (
+                <DrawerControl
+                  pressed={activeTab === "sources"}
+                  onActivate={() => setUserSelectedTab("sources")}
+                  className={cn(
+                    "flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors",
+                    activeTab === "sources"
+                      ? "bg-card text-foreground shadow-2xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <SvgFileText className="size-2.5 text-action-link-05" />
+                  <span>
+                    {t("chat.nodeDrawer.sources", "Kaynaklar")} (
+                    {currentEvidence.length})
+                  </span>
+                </DrawerControl>
+              )}
+
+              <DrawerControl
+                pressed={activeTab === "output"}
+                onActivate={() => setUserSelectedTab("output")}
                 className={cn(
                   "flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors",
                   activeTab === "output"
@@ -291,18 +311,16 @@ export function NodeExecutionDrawer({
                 {currentOutput.trim() && (
                   <span className="size-1.5 rounded-full bg-theme-green-05 shrink-0" />
                 )}
-              </div>
+              </DrawerControl>
             </div>
 
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={handleToggle}
+            <DrawerControl
+              onActivate={toggle}
               aria-label={t("chat.nodeDrawer.collapse", "Kapat")}
               className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <SvgChevronUp className="size-3" />
-            </div>
+            </DrawerControl>
           </div>
 
           {/* Multiple Iterations / Loop Pills */}
@@ -312,14 +330,10 @@ export function NodeExecutionDrawer({
                 {t("chat.flowTimeline.loopLabel", { name: "Döngü" })}:
               </span>
               {data.iterations.map((it) => (
-                <div
+                <DrawerControl
                   key={it.iteration}
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setUserSelectedIteration(it.iteration);
-                  }}
+                  pressed={selectedIterationNum === it.iteration}
+                  onActivate={() => setUserSelectedIteration(it.iteration)}
                   className={cn(
                     "rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors",
                     selectedIterationNum === it.iteration
@@ -331,7 +345,7 @@ export function NodeExecutionDrawer({
                     turn: it.iteration,
                   })}
                   {it.durationMs ? ` · ${formatRunTime(it.durationMs)}` : ""}
-                </div>
+                </DrawerControl>
               ))}
             </div>
           )}
@@ -351,13 +365,10 @@ export function NodeExecutionDrawer({
                         {thinkingWordCount}{" "}
                         {t("chat.nodeDrawer.words", "kelime")}
                       </span>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          copyToClipboard(currentThinking, "thinking");
-                        }}
+                      <DrawerControl
+                        onActivate={() =>
+                          copyToClipboard(currentThinking, "thinking")
+                        }
                         className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-muted hover:text-foreground transition-colors"
                       >
                         {copied === "thinking" ? (
@@ -378,7 +389,7 @@ export function NodeExecutionDrawer({
                             </span>
                           </>
                         )}
-                      </div>
+                      </DrawerControl>
                     </div>
                   </>
                 ) : (
@@ -486,22 +497,27 @@ export function NodeExecutionDrawer({
               </div>
             )}
 
-            {/* 3. OUTPUT TAB */}
+            {/* 3. SOURCES TAB */}
+            {activeTab === "sources" && (
+              <KnowledgeEvidenceList evidence={currentEvidence} />
+            )}
+
+            {/* 4. OUTPUT TAB */}
             {activeTab === "output" && (
               <div className="flex flex-col gap-2">
                 {currentOutput.trim() ? (
                   <>
                     <div className="rounded-md border border-canvas-border/60 bg-background/50 p-2.5 text-xs select-text max-h-48 overflow-y-auto leading-normal">
-                      <MinimalMarkdown content={currentOutput} />
+                      <MinimalMarkdown
+                        content={currentOutput}
+                        isStreaming={data.status === "running"}
+                      />
                     </div>
                     <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1">
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          copyToClipboard(currentOutput, "output");
-                        }}
+                      <DrawerControl
+                        onActivate={() =>
+                          copyToClipboard(currentOutput, "output")
+                        }
                         className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-muted hover:text-foreground transition-colors"
                       >
                         {copied === "output" ? (
@@ -522,20 +538,15 @@ export function NodeExecutionDrawer({
                             </span>
                           </>
                         )}
-                      </div>
+                      </DrawerControl>
 
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsModalOpen(true);
-                        }}
+                      <DrawerControl
+                        onActivate={() => setIsModalOpen(true)}
                         className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-primary hover:bg-primary/10 transition-colors font-medium"
                       >
                         <SvgMaximize2 className="size-2.5" />
                         <span>{t("chat.nodeDrawer.maximize", "Büyüt")}</span>
-                      </div>
+                      </DrawerControl>
                     </div>
                   </>
                 ) : (
@@ -556,6 +567,7 @@ export function NodeExecutionDrawer({
           onOpenChange={setIsModalOpen}
           title={data.label || nodeId}
           text={currentOutput}
+          isStreaming={data.status === "running"}
         />
       )}
     </div>

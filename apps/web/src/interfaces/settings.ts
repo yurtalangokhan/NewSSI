@@ -43,8 +43,8 @@ export interface Settings {
   // Default Assistant settings
   disable_default_assistant?: boolean;
 
-  // Onyx Craft (Build Mode) feature flag
-  onyx_craft_enabled?: boolean;
+  // Atlas Craft (Build Mode) feature flag
+  atlas_craft_enabled?: boolean;
 
   // Enterprise features flag - controlled by license enforcement at runtime
   // True when user has a valid license, False for community edition
@@ -120,6 +120,12 @@ export interface CombinedSettings {
   settings: Settings;
   enterpriseSettings: EnterpriseSettings | null;
   customAnalyticsScript: string | null;
+  /**
+   * Whether CUSTOM_ANALYTICS_SECRET_KEY is configured. Computed on the server
+   * and carried here because the variable itself is server-only — reading it
+   * from a client component used to yield a silent `false`.
+   */
+  customAnalyticsEnabled: boolean;
   isMobile?: boolean;
   webVersion: string | null;
   webDomain: string | null;

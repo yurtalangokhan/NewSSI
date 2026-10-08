@@ -8,12 +8,62 @@ import importlib.util
 from pathlib import Path
 from typing import Any
 
-from i18n import t
+from localization import t
 
 from .base import BaseToolCategory
 from .observability import get_logger
 
 logger = get_logger(__name__)
+
+# MCP tool annotation hints (spec TS-9 step 5): a client can use these to
+# gate or confirm calls without knowing anything about a specific tool
+# beyond its name. Both sets are opt-in and intentionally short-listed --
+# an unlisted tool gets no hint rather than a guessed one.
+DESTRUCTIVE_TOOLS = frozenset(
+    {
+        "file_write",
+        "file_update",
+        "file_delete",
+        "create_directory",
+        "git_clone",
+        "git_push",
+        "git_commit",
+        "run_command",
+        "run_python",
+        "run_node",
+        "run_npm_command",
+        "send_email",
+    }
+)
+READ_ONLY_TOOLS = frozenset(
+    {
+        "file_read",
+        "file_list",
+        "file_exists",
+        "git_status",
+        "git_log",
+        "git_diff",
+        "read_pdf",
+        "get_pdf_info",
+        "search_pdf",
+        "fetch_webpage",
+        "list_commands",
+        "get_system_info",
+        "calculate",
+    }
+)
+# A read-only tool that reaches outside the service's own infrastructure
+# (the open web) rather than a fixed, known set of internal resources.
+OPEN_WORLD_TOOLS = frozenset({"fetch_webpage", "web_search"})
+
+
+def tool_annotations_for(tool_name: str) -> dict[str, bool] | None:
+    """The MCP ToolAnnotations dict for tool_name, or None for no hint."""
+    if tool_name in DESTRUCTIVE_TOOLS:
+        return {"destructiveHint": True}
+    if tool_name in READ_ONLY_TOOLS:
+        return {"readOnlyHint": True, "openWorldHint": tool_name in OPEN_WORLD_TOOLS}
+    return None
 
 
 def _safe_t(key: str, default: str | None = None) -> str | None:
@@ -66,20 +116,16 @@ class ToolRegistry:
                         c_end = desc_str.find("]", c_start)
                         if c_end > c_start:
                             cat_name = desc_str[c_start:c_end]
-                    except Exception:
+                    except (TypeError, AttributeError):
                         pass
 
                 if orig_desc is None:
                     base_desc = desc_str
                     if "[category:" in base_desc:
-                        base_desc = (
-                            base_desc.split("[category:")[0].split("[category_label:")[0].strip()
-                        )
+                        base_desc = base_desc.split("[category:")[0].split("[category_label:")[0].strip()
                     orig_desc = base_desc
 
-                cat_label = (
-                    _safe_t(f"categories.{cat_name}.label", cat_name or "") if cat_name else ""
-                )
+                cat_label = _safe_t(f"categories.{cat_name}.label", cat_name or "") if cat_name else ""
 
                 trans_desc = None
                 if cat_name:
@@ -94,18 +140,20 @@ class ToolRegistry:
                 if cat_name:
                     trans_title = _safe_t(f"tools.{cat_name}.{orig_name}.name")
                 if trans_title is None:
-                    trans_title = _safe_t(
-                        f"tools.{orig_name}.name", orig_name.replace("_", " ").title()
-                    )
+                    trans_title = _safe_t(f"tools.{orig_name}.name", orig_name.replace("_", " ").title())
 
                 category_tag = f"[category:{cat_name}]" if cat_name else ""
                 label_tag = f"[category_label:{cat_label}]" if cat_label else ""
                 title_tag = f"[title:{trans_title}]" if trans_title else ""
                 full_desc = f"{category_tag}{label_tag}{title_tag} {trans_desc or ''}".strip()
 
-                tool.name = orig_name
-                tool.description = full_desc
-                translated_tools.append(tool)
+                # A copy, not a mutation: these Tool objects are the exact
+                # ones registered once in FastMCP's LocalProvider and shared
+                # across every request. Setting .name/.description directly
+                # on the shared object let concurrent requests in different
+                # locales interleave on it and see each other's text
+                # (spec TS-10).
+                translated_tools.append(tool.model_copy(update={"name": orig_name, "description": full_desc}))
 
             return translated_tools
 
@@ -160,7 +208,7 @@ class ToolRegistry:
                 if category:
                     self.register_category(category)
                     registered += 1
-            except Exception as e:
+            except Exception as e:  # Isolate plugin discovery, initialization, or cleanup.
                 logger.error(
                     "Failed to load category from %s: %s",
                     file_path.name,
@@ -200,11 +248,7 @@ class ToolRegistry:
         # Find classes that inherit from BaseToolCategory
         for attr_name in dir(module):
             attr = getattr(module, attr_name)
-            if (
-                isinstance(attr, type)
-                and issubclass(attr, BaseToolCategory)
-                and attr is not BaseToolCategory
-            ):
+            if isinstance(attr, type) and issubclass(attr, BaseToolCategory) and attr is not BaseToolCategory:
                 # Instantiate and return the category
                 return attr()
 
@@ -278,7 +322,7 @@ class ToolRegistry:
             if self._enabled.get(name, False):
                 try:
                     await category.initialize()
-                except Exception as e:
+                except Exception as e:  # Isolate plugin discovery, initialization, or cleanup.
                     logger.error("Failed to initialize category '%s': %s", name, e, exc_info=True)
 
     async def cleanup_all(self) -> None:
@@ -286,7 +330,7 @@ class ToolRegistry:
         for name, category in self._categories.items():
             try:
                 await category.cleanup()
-            except Exception as e:
+            except Exception as e:  # Isolate plugin discovery, initialization, or cleanup.
                 logger.error("Failed to cleanup category '%s': %s", name, e, exc_info=True)
 
 
@@ -300,9 +344,7 @@ class _CategoryTaggedMCP:
     tools by category with proper display labels.
     """
 
-    def __init__(
-        self, mcp: Any, category_name: str, category_description: str, category_label: str
-    ):
+    def __init__(self, mcp: Any, category_name: str, category_description: str, category_label: str):
         self._mcp = mcp
         self._category_name = category_name
         self._category_description = category_description
@@ -311,9 +353,13 @@ class _CategoryTaggedMCP:
     def tool(self, *args, **kwargs):
         """
         Wrap the @mcp.tool() decorator to inject category tag
-        into the tool's docstring/description.
+        into the tool's docstring/description, and a destructiveHint/
+        readOnlyHint annotation when the tool's name is one of the ones
+        registry.py knows about (spec TS-9 step 5). The annotations kwarg
+        depends on the function's own name, so the underlying decorator is
+        built inside wrapper() once that name is known, rather than eagerly
+        here where only args/kwargs (almost always empty) are available.
         """
-        original_decorator = self._mcp.tool(*args, **kwargs)
         category_tag = f"[category:{self._category_name}]"
         label_tag = f"[category_label:{self._category_label}]"
 
@@ -321,7 +367,14 @@ class _CategoryTaggedMCP:
             original_doc = func.__doc__ or ""
             original_name = getattr(func, "__name__", "tool")
             func.__doc__ = f"{category_tag}{label_tag} {original_doc}"
-            res_tool = original_decorator(func)
+
+            call_kwargs = dict(kwargs)
+            if "annotations" not in call_kwargs:
+                hint = tool_annotations_for(original_name)
+                if hint:
+                    call_kwargs["annotations"] = hint
+
+            res_tool = self._mcp.tool(*args, **call_kwargs)(func)
 
             target = res_tool if res_tool is not None else func
             target._category_name = self._category_name

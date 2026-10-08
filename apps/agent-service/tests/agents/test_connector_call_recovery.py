@@ -4,7 +4,7 @@ from langgraph.types import Command
 
 
 def test_text_call_requests_native_retry_without_executing_json():
-    from agents.connector_call_recovery import recover_connector_call
+    from agents.tooling.connector_call_recovery import recover_connector_call
 
     state = {
         "messages": [
@@ -22,7 +22,7 @@ def test_text_call_requests_native_retry_without_executing_json():
 
 
 def test_retry_is_bounded_and_new_user_turn_resets_it():
-    from agents.connector_call_recovery import recover_connector_call
+    from agents.tooling.connector_call_recovery import recover_connector_call
 
     text = AIMessage(id="answer", content='{"name":"connector_read","parameters":{}}')
     messages = [HumanMessage(content="List roles"), text]
@@ -47,7 +47,7 @@ def test_retry_is_bounded_and_new_user_turn_resets_it():
     ],
 )
 def test_leaves_normal_native_and_untrusted_messages_unchanged(message):
-    from agents.connector_call_recovery import recover_connector_call
+    from agents.tooling.connector_call_recovery import recover_connector_call
 
     assert recover_connector_call({"messages": [message]}, {"connector_read"}) is None
 
@@ -58,7 +58,7 @@ async def test_real_graph_retries_text_call_then_executes_native_read(monkeypatc
     from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
     from langchain_core.tools import tool
 
-    from agents.configurable_mcp_agent import ConfigurableMCPAgent
+    from agents.implementations.configurable_mcp_agent import ConfigurableMCPAgent
 
     class Model(FakeMessagesListChatModel):
         def bind_tools(self, tools, **kwargs):
@@ -84,8 +84,10 @@ async def test_real_graph_retries_text_call_then_executes_native_read(monkeypatc
             AIMessage(content="agent-maintainer"),
         ]
     )
-    monkeypatch.setattr("agents.configurable_mcp_agent.get_model", lambda _: model)
-    monkeypatch.setattr("agents.configurable_mcp_agent.get_document_tools", lambda: [])
+    monkeypatch.setattr("agents.implementations.configurable_mcp_agent.get_model", lambda _: model)
+    monkeypatch.setattr(
+        "agents.implementations.configurable_mcp_agent.get_document_tools", lambda: []
+    )
     graph = ConfigurableMCPAgent()._create_agent_graph(
         system_prompt="Read actual source records.",
         mcp_tool_names=["connector_read"],

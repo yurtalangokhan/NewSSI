@@ -16,6 +16,16 @@ if (typeof window !== "undefined") {
   // @ts-ignore
   import("whatwg-fetch");
 
+  // whatwg-fetch installs nothing when a test has already replaced
+  // `global.fetch`, yet those tests still need real Response objects for the
+  // mocked replies (the transports read `status`, headers and the body).
+  const fetchApi = require("whatwg-fetch");
+  for (const name of ["Headers", "Request", "Response"] as const) {
+    if (typeof (globalThis as Record<string, unknown>)[name] === "undefined") {
+      (globalThis as Record<string, unknown>)[name] = fetchApi[name];
+    }
+  }
+
   // Mock BroadcastChannel for JSDOM
   global.BroadcastChannel = class BroadcastChannel {
     constructor(public name: string) {}

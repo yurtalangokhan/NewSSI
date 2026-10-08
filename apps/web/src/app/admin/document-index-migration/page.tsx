@@ -1,9 +1,16 @@
 "use client";
+import { knowledgeEndpoints } from "@/lib/api/domains/knowledge/endpoints";
+
+import {
+  fetchMigrationRetrievalStatus,
+  fetchMigrationStatus,
+  updateMigrationRetrieval,
+} from "@/lib/api/domains/knowledge/api";
 
 import { useState } from "react";
 import useSWR from "swr";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.INDEX_MIGRATION]!;
 
@@ -13,7 +20,6 @@ import Text from "@/refresh-components/texts/Text";
 import Skeleton from "@/refresh-components/skeletons/Skeleton";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import Button from "@/refresh-components/buttons/Button";
-import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 import { useTranslation } from "react-i18next";
 
 interface MigrationStatus {
@@ -34,8 +40,8 @@ function formatTimestamp(iso: string): string {
 function MigrationStatusSection() {
   const { t } = useTranslation();
   const { data, isLoading, error } = useSWR<MigrationStatus>(
-    "/api/admin/opensearch-migration/status",
-    errorHandlingFetcher
+    knowledgeEndpoints.migrationStatus.browserPath,
+    () => fetchMigrationStatus<MigrationStatus>()
   );
 
   if (isLoading) {
@@ -129,8 +135,8 @@ function MigrationStatusSection() {
 function RetrievalSourceSection() {
   const { t } = useTranslation();
   const { data, isLoading, error, mutate } = useSWR<RetrievalStatus>(
-    "/api/admin/opensearch-migration/retrieval",
-    errorHandlingFetcher
+    knowledgeEndpoints.updateMigrationRetrieval.browserPath,
+    () => fetchMigrationRetrievalStatus<RetrievalStatus>()
   );
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
@@ -144,16 +150,9 @@ function RetrievalSourceSection() {
   async function handleUpdate() {
     setUpdating(true);
     try {
-      const response = await authenticatedFetch(
-        "/api/admin/opensearch-migration/retrieval",
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            enable_opensearch_retrieval: currentValue === "opensearch",
-          }),
-        }
-      );
+      const response = await updateMigrationRetrieval({
+        enable_opensearch_retrieval: currentValue === "opensearch",
+      });
       if (!response.ok) {
         throw new Error(t("admin.indexMigration.failedToUpdateRetrieval"));
       }

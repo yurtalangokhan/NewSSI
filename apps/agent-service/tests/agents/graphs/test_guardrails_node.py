@@ -11,13 +11,13 @@ from __future__ import annotations
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
-from agents.graphs.flow_builder import (
+from agents.graphs.flow import (
     _guardrails_result_key,
     _make_guardrails_node,
     _make_guardrails_route_fn,
 )
 from core.exceptions import FlowBuildError
-from models.flows import FlowEdge, FlowNode
+from schemas.flows import FlowEdge, FlowNode
 
 
 class _ReplySpy:

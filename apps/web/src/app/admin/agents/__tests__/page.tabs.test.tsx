@@ -11,7 +11,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import AdminAgentsPage from "@/app/admin/agents/page";
-import type { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import type { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 
 const mockReplace = jest.fn();
 let mockSearchParams = new URLSearchParams();
@@ -64,7 +64,7 @@ const agents: MinimalPersonaSnapshot[] = [
   }),
 ];
 
-jest.mock("@/hooks/useAgents", () => ({
+jest.mock("@/lib/api/domains/agents/hooks", () => ({
   useAgents: () => ({
     agents,
     isLoading: false,
@@ -91,11 +91,6 @@ jest.mock("@/hooks/appNavigation", () => ({
 
 jest.mock("@/components/settings/usePaidEnterpriseFeaturesEnabled", () => ({
   usePaidEnterpriseFeaturesEnabled: () => false,
-}));
-
-jest.mock("@/app/admin/agents/AgentAccessGroupsTab", () => ({
-  __esModule: true,
-  default: () => <div data-testid="access-groups-tab" />,
 }));
 
 /** A metric tile renders its label and value as sibling <p> elements. */
@@ -179,17 +174,6 @@ describe("admin agents page tabs", () => {
 
     await userEvent.click(screen.getByTestId("admin-agents-tab-catalog"));
     expect(mockReplace).toHaveBeenCalledWith("/admin/agents");
-  });
-
-  it("keeps the access groups tab reachable", async () => {
-    render(<AdminAgentsPage />);
-
-    await userEvent.click(screen.getByTestId("admin-agents-tab-access-groups"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("access-groups-tab")).toBeInTheDocument();
-    });
-    expect(mockReplace).toHaveBeenCalledWith("/admin/agents?tab=access-groups");
   });
 
   it("counts agents and flows separately in the overview metrics", () => {

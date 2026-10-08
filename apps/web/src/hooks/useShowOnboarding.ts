@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import { useOnboardingState } from "@/refresh-components/onboarding/useOnboardingState";
 
 function getOnboardingCompletedKey(userId: string): string {
-  return `onyx:onboardingCompleted:${userId}`;
+  return `atlas:onboardingCompleted:${userId}`;
 }
 
 interface UseShowOnboardingParams {

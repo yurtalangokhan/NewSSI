@@ -5,6 +5,7 @@
  * Tests the complete user journey for configuring a custom LLM provider.
  * This tests the full workflow: open modal → form fill → test config → save → set as default
  */
+import { envelopeResponse } from "@tests/setup/responseModel";
 import React from "react";
 import { render, screen, setupUser, waitFor } from "@tests/setup/test-utils";
 import { CustomModal } from "./CustomModal";
@@ -49,6 +50,21 @@ jest.mock("@/hooks/useToast", () => {
 jest.mock("@/components/settings/usePaidEnterpriseFeaturesEnabled", () => ({
   usePaidEnterpriseFeaturesEnabled: () => false,
 }));
+
+/** A ResponseModel reply: a success wraps `body` as data; a failure carries `body.detail` as its message. */
+function fakeResponse(ok: boolean, status: number, body: any): Response {
+  if (ok) return envelopeResponse(body, { status });
+  const message = body?.detail ?? body?.message ?? "Request failed";
+  return new Response(
+    JSON.stringify({
+      statusCode: status,
+      message,
+      data: null,
+      error: { code: "request.failed", message },
+    }),
+    { status, headers: { "Content-Type": "application/json" } }
+  );
+}
 
 describe("Custom LLM Provider Configuration Workflow", () => {
   let fetchSpy: jest.SpyInstance;
@@ -103,23 +119,17 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     const user = setupUser();
 
     // Mock POST /api/admin/llm/test
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(fakeResponse(true, 200, {}));
 
     // Mock PUT /api/admin/llm/provider?is_creation=true
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({
+    fetchSpy.mockResolvedValueOnce(
+      fakeResponse(true, 200, {
         id: 1,
         name: "My Custom Provider",
         provider: "openai",
         api_key: "test-key",
-      }),
-    } as Response);
+      })
+    );
 
     render(<CustomModal />);
 
@@ -166,11 +176,9 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     const user = setupUser();
 
     // Mock POST /api/admin/llm/test (failure)
-    fetchSpy.mockResolvedValueOnce({
-      ok: false,
-      status: 400,
-      json: async () => ({ detail: "Invalid API key" }),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(
+      fakeResponse(false, 400, { detail: "Invalid API key" })
+    );
 
     render(<CustomModal />);
 
@@ -237,18 +245,12 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     };
 
     // Mock POST /api/admin/llm/test
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(fakeResponse(true, 200, {}));
 
     // Mock PUT /api/admin/llm/provider (update, no is_creation param)
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({ ...existingProvider, api_key: "new-key" }),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(
+      fakeResponse(true, 200, { ...existingProvider, api_key: "new-key" })
+    );
 
     render(<CustomModal existingLlmProvider={existingProvider} />);
 
@@ -319,17 +321,11 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     };
 
     // Mock POST /api/admin/llm/test
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(fakeResponse(true, 200, {}));
 
     // Mock PUT /api/admin/llm/provider
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({
+    fetchSpy.mockResolvedValueOnce(
+      fakeResponse(true, 200, {
         ...existingProvider,
         model_configurations: [
           {
@@ -347,8 +343,8 @@ describe("Custom LLM Provider Configuration Workflow", () => {
             supports_reasoning: false,
           },
         ],
-      }),
-    } as Response);
+      })
+    );
 
     render(<CustomModal existingLlmProvider={existingProvider} />);
 
@@ -397,29 +393,19 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     const user = setupUser();
 
     // Mock POST /api/admin/llm/test
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(fakeResponse(true, 200, {}));
 
     // Mock PUT /api/admin/llm/provider?is_creation=true
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({
+    fetchSpy.mockResolvedValueOnce(
+      fakeResponse(true, 200, {
         id: 5,
         name: "New Default Provider",
         provider: "openai",
-      }),
-    } as Response);
+      })
+    );
 
     // Mock POST /api/admin/llm/default
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(fakeResponse(true, 200, {}));
 
     render(<CustomModal shouldMarkAsDefault={true} />);
 
@@ -457,18 +443,12 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     const user = setupUser();
 
     // Mock POST /api/admin/llm/test
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(fakeResponse(true, 200, {}));
 
     // Mock PUT /api/admin/llm/provider?is_creation=true (failure)
-    fetchSpy.mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      json: async () => ({ detail: "Database error" }),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(
+      fakeResponse(false, 500, { detail: "Database error" })
+    );
 
     render(<CustomModal />);
 
@@ -495,18 +475,12 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     const user = setupUser();
 
     // Mock POST /api/admin/llm/test
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(fakeResponse(true, 200, {}));
 
     // Mock PUT /api/admin/llm/provider?is_creation=true
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({ id: 1, name: "Provider with Custom Config" }),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(
+      fakeResponse(true, 200, { id: 1, name: "Provider with Custom Config" })
+    );
 
     render(<CustomModal />);
 

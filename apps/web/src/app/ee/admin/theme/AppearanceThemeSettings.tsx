@@ -1,4 +1,5 @@
 "use client";
+import { systemEndpoints } from "@/lib/api/domains/system/endpoints";
 
 import { useTranslation } from "react-i18next";
 import { FormField } from "@/refresh-components/form/FormField";
@@ -180,7 +181,7 @@ export const AppearanceThemeSettings = forwardRef<
       return logoObjectUrl;
     }
     if (values.use_custom_logo) {
-      return `/api/enterprise-settings/logo?u=${Date.now()}`;
+      return systemEndpoints.logoCacheBusted(Date.now()).browserPath;
     }
     return undefined;
   };

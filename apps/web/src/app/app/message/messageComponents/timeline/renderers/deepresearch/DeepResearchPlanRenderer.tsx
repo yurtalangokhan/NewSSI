@@ -1,11 +1,11 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { SvgCircle } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 
 import {
   DeepResearchPlanPacket,
   PacketType,
-} from "@/app/app/services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 import {
   MessageRenderer,
   FullChatState,
@@ -54,9 +54,10 @@ export const DeepResearchPlanRenderer: MessageRenderer<
         components={
           isExpanded ? mutedTextMarkdownComponents : collapsedMarkdownComponents
         }
+        isStreaming={!isComplete}
       />
     ),
-    []
+    [isComplete]
   );
 
   const planContent = (

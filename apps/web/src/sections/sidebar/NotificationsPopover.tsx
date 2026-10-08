@@ -1,11 +1,11 @@
 "use client";
 
-import useSWR from "swr";
 import { useRouter } from "next/navigation";
 import { Route } from "next";
 import { usePostHog } from "posthog-js/react";
 import { Notification, NotificationType } from "@/interfaces/settings";
-import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
+import { useNotifications } from "@/lib/api/domains/notifications/hooks";
+import { dismissNotification } from "@/lib/api/domains/notifications/api";
 import Text from "@/refresh-components/texts/Text";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import { SvgSparkle, SvgRefreshCw, SvgX } from "@opal/icons";
@@ -41,11 +41,7 @@ export default function NotificationsPopover({
   const router = useRouter();
   const posthog = usePostHog();
   const { t } = useTranslation();
-  const {
-    data: notifications,
-    mutate,
-    isLoading,
-  } = useSWR<Notification[]>("/api/notifications", errorHandlingFetcher);
+  const { data: notifications, mutate, isLoading } = useNotifications();
 
   const handleNotificationClick = (notification: Notification) => {
     // Handle build_mode feature announcement specially - show intro animation
@@ -89,12 +85,7 @@ export default function NotificationsPopover({
   ) => {
     e?.stopPropagation(); // Prevent triggering the LineItem onClick
     try {
-      const response = await authenticatedFetch(
-        `/api/notifications/${notificationId}/dismiss`,
-        {
-          method: "POST",
-        }
-      );
+      const response = await dismissNotification(notificationId);
       if (response.ok) {
         mutate(); // Refresh the notifications list
       }

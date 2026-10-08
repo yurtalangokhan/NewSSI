@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useMemo, useEffect } from "react";
 import { useUser } from "@/providers/UserProvider";
-import { useLLMProviders } from "@/hooks/useLLMProviders";
+import { useLLMProviders } from "@/lib/api/domains/model-providers/hooks";
 import { LLMProviderName } from "@/interfaces/llm";
 import {
   OnboardingModalMode,
@@ -13,7 +13,7 @@ import {
   getBuildUserPersona,
   setBuildUserPersona,
 } from "@/app/craft/onboarding/constants";
-import { updateUserPersonalization } from "@/lib/userSettings";
+import { updatePersonalization as updateUserPersonalization } from "@/lib/api/domains/preferences/api";
 import { useBuildSessionStore } from "@/app/craft/hooks/useBuildSessionStore";
 
 // Check if all 3 build mode providers are configured (anthropic, openai, openrouter)

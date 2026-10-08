@@ -217,6 +217,50 @@ class QuietValidationTests(unittest.TestCase):
         self.assertEqual(pushed.returncode, 0, pushed.stdout + pushed.stderr)
         self.assertIn("-C apps/agent-service validate", push_calls)
 
+    def run_push_quality_gate(self, quality_files: str) -> tuple[int, str, str]:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            bin_dir = temp_path / "bin"
+            bin_dir.mkdir()
+            calls_file = temp_path / "make-calls"
+            make_stub = bin_dir / "make"
+            make_stub.write_text(
+                '#!/usr/bin/env bash\nprintf "%s\\n" "$*" >>"$MAKE_CALLS_FILE"\n'
+            )
+            make_stub.chmod(0o755)
+
+            env = os.environ | {
+                "MAKE_CALLS_FILE": str(calls_file),
+                "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                "QUALITY_FILES": quality_files,
+            }
+            result = subprocess.run(
+                ["bash", "scripts/quality/check.sh", "push"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            calls = calls_file.read_text() if calls_file.exists() else ""
+        return result.returncode, result.stdout + result.stderr, calls
+
+    def test_push_with_only_script_changes_skips_docker_steps(self) -> None:
+        status, output, calls = self.run_push_quality_gate(
+            "scripts/quality/fix.sh\nscripts/git-hooks/pre-commit"
+        )
+
+        self.assertEqual(status, 0, output)
+        self.assertEqual(calls, "")
+
+    def test_push_with_compose_changes_still_validates_compose(self) -> None:
+        status, output, calls = self.run_push_quality_gate(
+            "deploy/docker/docker-compose-dev.yml"
+        )
+
+        self.assertEqual(status, 0, output)
+        self.assertIn("docker-config", calls)
+
     def test_merge_validation_runs_only_affected_services_concisely(self) -> None:
         result, calls, _ = self.run_merge_validation(
             "\n".join(

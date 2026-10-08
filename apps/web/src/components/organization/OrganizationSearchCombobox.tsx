@@ -52,6 +52,9 @@ export function OrganizationSearchCombobox({
 
   const selectResult = (result: OrganizationNode) => {
     setIsOpen(false);
+    onQueryChange("");
+    onActiveIndexChange(-1);
+    onSearch("");
     onReveal(result);
   };
 

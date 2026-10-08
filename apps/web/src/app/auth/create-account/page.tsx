@@ -1,15 +1,24 @@
 "use client";
 
 import AuthFlowContainer from "@/components/auth/AuthFlowContainer";
-import { REGISTRATION_URL } from "@/lib/constants";
 import Button from "@/refresh-components/buttons/Button";
 import Link from "next/link";
 import { SvgImport } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
+import { useContext } from "react";
+import { SettingsContext } from "@/providers/SettingsProvider";
 
 export default function Page() {
   const { t } = useTranslation();
+  const settings = useContext(SettingsContext);
+
+  // The registration link used to be built from a server-only service URL
+  // variable. In this client component it was never inlined, so the href
+  // resolved through the old `|| "http://127.0.0.1:3001"` fallback in every
+  // build. `webDomain` is the app's configured public origin and already
+  // reaches the client on CombinedSettings.
+  const registrationUrl = `${settings?.webDomain ?? ""}/register`;
 
   return (
     <AuthFlowContainer>
@@ -26,7 +35,7 @@ export default function Page() {
         </ul>
         <div className="flex justify-center">
           <Button
-            href={`${REGISTRATION_URL}/register`}
+            href={registrationUrl}
             className="w-full"
             leftIcon={SvgImport}
           >

@@ -1,6 +1,18 @@
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { systemEndpoints } from "@/lib/api/domains/system/endpoints";
+
+import {
+  fetchAdminAtlasBotAnalytics,
+  fetchAdminQueryAnalytics,
+  fetchAdminUserAnalytics,
+  fetchPersonaMessagesAnalytics,
+  fetchPersonaUniqueUsersAnalytics,
+} from "@/lib/api/domains/system/api";
 import useSWR, { mutate } from "swr";
-import { OnyxBotAnalytics, QueryAnalytics, UserAnalytics } from "./usage/types";
+import {
+  AtlasBotAnalytics,
+  QueryAnalytics,
+  UserAnalytics,
+} from "./usage/types";
 import { useState } from "react";
 import { buildApiPath } from "@/lib/urlBuilder";
 
@@ -10,7 +22,7 @@ import {
   getXDaysAgo,
 } from "../../../../components/dateRangeSelectors/dateUtils";
 import { THIRTY_DAYS } from "../../../../components/dateRangeSelectors/AdminDateRangeSelector";
-import { DateRangePickerValue } from "@/components/dateRangeSelectors/AdminDateRangeSelector";
+import { DateRangePickerValue } from "@/lib/api/domains/knowledge/types";
 
 export const useTimeRange = () => {
   return useState<DateRangePickerValue>({
@@ -21,11 +33,16 @@ export const useTimeRange = () => {
 };
 
 export const useQueryAnalytics = (timeRange: DateRangePickerValue) => {
-  const url = buildApiPath("/api/analytics/admin/query", {
+  const url = buildApiPath(systemEndpoints.analyticsAdminQuery.browserPath, {
     start: convertDateToStartOfDay(timeRange.from)?.toISOString(),
     end: convertDateToEndOfDay(timeRange.to)?.toISOString(),
   });
-  const swrResponse = useSWR<QueryAnalytics[]>(url, errorHandlingFetcher);
+  const swrResponse = useSWR<QueryAnalytics[]>(url, () =>
+    fetchAdminQueryAnalytics<QueryAnalytics[]>(
+      convertDateToStartOfDay(timeRange.from)?.toISOString(),
+      convertDateToEndOfDay(timeRange.to)?.toISOString()
+    )
+  );
 
   return {
     ...swrResponse,
@@ -34,11 +51,16 @@ export const useQueryAnalytics = (timeRange: DateRangePickerValue) => {
 };
 
 export const useUserAnalytics = (timeRange: DateRangePickerValue) => {
-  const url = buildApiPath("/api/analytics/admin/user", {
+  const url = buildApiPath(systemEndpoints.analyticsAdminUser.browserPath, {
     start: convertDateToStartOfDay(timeRange.from)?.toISOString(),
     end: convertDateToEndOfDay(timeRange.to)?.toISOString(),
   });
-  const swrResponse = useSWR<UserAnalytics[]>(url, errorHandlingFetcher);
+  const swrResponse = useSWR<UserAnalytics[]>(url, () =>
+    fetchAdminUserAnalytics<UserAnalytics[]>(
+      convertDateToStartOfDay(timeRange.from)?.toISOString(),
+      convertDateToEndOfDay(timeRange.to)?.toISOString()
+    )
+  );
 
   return {
     ...swrResponse,
@@ -46,16 +68,21 @@ export const useUserAnalytics = (timeRange: DateRangePickerValue) => {
   };
 };
 
-export const useOnyxBotAnalytics = (timeRange: DateRangePickerValue) => {
-  const url = buildApiPath("/api/analytics/admin/onyxbot", {
+export const useAtlasBotAnalytics = (timeRange: DateRangePickerValue) => {
+  const url = buildApiPath(systemEndpoints.analyticsAdminAtlasbot.browserPath, {
     start: convertDateToStartOfDay(timeRange.from)?.toISOString(),
     end: convertDateToEndOfDay(timeRange.to)?.toISOString(),
   });
-  const swrResponse = useSWR<OnyxBotAnalytics[]>(url, errorHandlingFetcher); // TODO
+  const swrResponse = useSWR<AtlasBotAnalytics[]>(url, () =>
+    fetchAdminAtlasBotAnalytics<AtlasBotAnalytics[]>(
+      convertDateToStartOfDay(timeRange.from)?.toISOString(),
+      convertDateToEndOfDay(timeRange.to)?.toISOString()
+    )
+  ); // TODO
 
   return {
     ...swrResponse,
-    refreshOnyxBotAnalytics: () => mutate(url),
+    refreshAtlasBotAnalytics: () => mutate(url),
   };
 };
 
@@ -91,15 +118,23 @@ export const usePersonaMessages = (
   personaId: number | undefined,
   timeRange: DateRangePickerValue
 ) => {
-  const url = buildApiPath(`/api/analytics/admin/persona/messages`, {
-    persona_id: personaId?.toString(),
-    start: convertDateToStartOfDay(timeRange.from)?.toISOString(),
-    end: convertDateToEndOfDay(timeRange.to)?.toISOString(),
-  });
+  const url = buildApiPath(
+    systemEndpoints.analyticsAdminPersonaMessages.browserPath,
+    {
+      persona_id: personaId?.toString(),
+      start: convertDateToStartOfDay(timeRange.from)?.toISOString(),
+      end: convertDateToEndOfDay(timeRange.to)?.toISOString(),
+    }
+  );
 
   const { data, error, isLoading } = useSWR<PersonaMessageAnalytics[]>(
     personaId !== undefined ? url : null,
-    errorHandlingFetcher
+    () =>
+      fetchPersonaMessagesAnalytics<PersonaMessageAnalytics[]>(
+        personaId!,
+        convertDateToStartOfDay(timeRange.from)?.toISOString(),
+        convertDateToEndOfDay(timeRange.to)?.toISOString()
+      )
   );
 
   return {
@@ -120,15 +155,23 @@ export const usePersonaUniqueUsers = (
   personaId: number | undefined,
   timeRange: DateRangePickerValue
 ) => {
-  const url = buildApiPath(`/api/analytics/admin/persona/unique-users`, {
-    persona_id: personaId?.toString(),
-    start: convertDateToStartOfDay(timeRange.from)?.toISOString(),
-    end: convertDateToEndOfDay(timeRange.to)?.toISOString(),
-  });
+  const url = buildApiPath(
+    systemEndpoints.analyticsAdminPersonaUniqueUsers.browserPath,
+    {
+      persona_id: personaId?.toString(),
+      start: convertDateToStartOfDay(timeRange.from)?.toISOString(),
+      end: convertDateToEndOfDay(timeRange.to)?.toISOString(),
+    }
+  );
 
   const { data, error, isLoading } = useSWR<PersonaUniqueUserAnalytics[]>(
     personaId !== undefined ? url : null,
-    errorHandlingFetcher
+    () =>
+      fetchPersonaUniqueUsersAnalytics<PersonaUniqueUserAnalytics[]>(
+        personaId!,
+        convertDateToStartOfDay(timeRange.from)?.toISOString(),
+        convertDateToEndOfDay(timeRange.to)?.toISOString()
+      )
   );
 
   return {

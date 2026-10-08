@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agents.graphs.flow_builder import FlowNode, ResolvedResources, make_node
+from agents.graphs.flow import FlowNode, ResolvedResources, make_node
 
 
 @pytest.mark.asyncio
@@ -55,8 +55,8 @@ async def test_web_search_degrades_to_empty_results_on_tools_service_outage():
 
 
 @pytest.mark.asyncio
-async def test_fetch_webpage_node_calls_onyx_crawler_in_process():
-    """46.8 — Fetch Webpage node calls WebSearchController in-process."""
+async def test_fetch_webpage_node_calls_atlas_crawler_in_process():
+    """46.8 — Fetch Webpage node calls WebSearchService in-process."""
     node = FlowNode(
         id="fw_1",
         type="FetchWebpage",
@@ -74,7 +74,7 @@ async def test_fetch_webpage_node_calls_onyx_crawler_in_process():
     }
 
     with patch(
-        "controller.web_search_controller.get_web_search_controller", return_value=mock_ctrl
+        "service.web_search.web_crawl_service.get_web_crawl_service", return_value=mock_ctrl
     ):
         state = {"scratch": {}}
         res = await runnable(state, {})
@@ -98,7 +98,7 @@ async def test_fetch_webpage_surfaces_failure_reason_without_raising():
     mock_ctrl.crawl_url.side_effect = RuntimeError("DNS lookup failed")
 
     with patch(
-        "controller.web_search_controller.get_web_search_controller", return_value=mock_ctrl
+        "service.web_search.web_crawl_service.get_web_crawl_service", return_value=mock_ctrl
     ):
         state = {"scratch": {}}
         res = await runnable(state, {})
@@ -136,7 +136,7 @@ async def test_content_crawl_fetches_multiple_urls_in_one_call():
     ]
 
     with patch(
-        "controller.web_search_controller.get_web_search_controller", return_value=mock_ctrl
+        "service.web_search.web_crawl_service.get_web_crawl_service", return_value=mock_ctrl
     ):
         state = {"scratch": {}}
         res = await runnable(state, {})

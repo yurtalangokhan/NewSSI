@@ -16,10 +16,10 @@ import { Section } from "@/layouts/general-layouts";
 import {
   DiscordChannelConfig,
   DiscordChannelType,
-} from "@/app/admin/discord-bot/types";
+} from "@/lib/api/domains/integrations/discord-types";
 import { SvgHash, SvgBubbleText, SvgLock } from "@opal/icons";
 import { IconProps } from "@opal/types";
-import { Persona } from "@/app/admin/agents/interfaces";
+import { Persona } from "@/lib/api/domains/agents/types";
 import { useTranslation } from "react-i18next";
 
 function getChannelIcon(

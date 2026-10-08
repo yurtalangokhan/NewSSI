@@ -1,0 +1,414 @@
+{
+  "errors": {
+    "auth": {
+      "forbidden": "Bu işlemi gerçekleştirme izniniz yok.",
+      "unauthorized": "Kimlik doğrulaması gerekli.",
+      "delegation_required": "Yetkilendirilmiş kullanıcı kimliği gereklidir.",
+      "trusted_identity_required": "Güvenilir kullanıcı kimliği gereklidir."
+    },
+    "configuration": {
+      "invalid": "Sunucu yapılandırması geçersiz."
+    },
+    "database": {
+      "connection_failed": "Veritabanı bağlantısı başarısız oldu.",
+      "operation_failed": "Veritabanı işlemi başarısız oldu.",
+      "timeout": "Veritabanı işlemi zaman aşımına uğradı."
+    },
+    "dependency": {
+      "connection_failed": "Gerekli bağımlılığa ulaşılamadı.",
+      "authentication_failed": "Gerekli bağımlılıkla kimlik doğrulaması başarısız oldu.",
+      "invalid_response": "Gerekli bağımlılık geçersiz bir yanıt döndürdü.",
+      "rate_limited": "Gerekli bağımlılık isteği hız sınırına tabi tuttu.",
+      "timeout": "Bağımlılık zaman aşımına uğradı.",
+      "unavailable": "Gerekli bir bağımlılık kullanılamıyor."
+    },
+    "agent": {
+      "not_found": "Ajan bulunamadı.",
+      "error": "Agent işlemi başarısız oldu.",
+      "invalid_questions": "Gönderilen sorular geçersiz.",
+      "graph_build_failed": "Agent grafiği oluşturulamadı.",
+      "client_failed": "Agent hizmeti isteği başarısız oldu.",
+      "permission_denied": "Bu agent'ı kullanma izniniz yok.",
+      "expansion_failed": "Agent genişletilemedi.",
+      "mcp_auth_failed": "MCP kimlik doğrulaması başarısız oldu.",
+      "execution_limit_exceeded": "Ajan bu tur için yürütme sınırına ulaştı. Lütfen yeniden deneyin.",
+      "streaming_unsupported": "Bu ajan akış yanıtlarını desteklemiyor.",
+      "checkpointer_unavailable": "Sohbet kontrol noktası deposu kullanılamıyor."
+    },
+    "flow": {
+      "failed": "Akış işlemi başarısız oldu.",
+      "component_duplicate": "Bu akış bileşeni zaten kayıtlı.",
+      "component_unknown": "Bu akış bileşeni bilinmiyor.",
+      "options_source_unknown": "Bu akış seçenek kaynağı bilinmiyor.",
+      "node_not_resource": "Bu akış düğümü bir kaynak düğümü değil.",
+      "build_failed": "Akış oluşturulamadı.",
+      "version_conflict": "Akış sürümü mevcut durumla çakışıyor.",
+      "validation_failed": "Akış doğrulaması başarısız oldu.",
+      "not_published": "Bu akış yayımlanmamış.",
+      "migration_missing": "Gerekli akış geçişi kullanılamıyor."
+    },
+    "security": {
+      "url_rejected": "İstenen URL'ye izin verilmiyor.",
+      "url_blocked": "İstenen URL güvenlik nedeniyle engellendi.",
+      "dns_resolution_failed": "İstenen adres güvenli biçimde çözümlenemedi.",
+      "trusted_field_forbidden": "Güvenilir kimlik alanları araç parametresi olarak gönderilemez."
+    },
+    "internal": {
+      "server_error": "Beklenmeyen bir hata oluştu."
+    },
+    "operation": {
+      "failed": "İşlem başarısız oldu.",
+      "timeout": "İşlem zaman aşımına uğradı."
+    },
+    "rate_limit": {
+      "exceeded": "Çok fazla istek. Daha sonra tekrar deneyin."
+    },
+    "request": {
+      "conflict": "İstek mevcut durumla çakışıyor.",
+      "invalid": "Geçersiz istek.",
+      "not_found": "Kaynak bulunamadı.",
+      "payload_too_large": "İstek yükü çok büyük.",
+      "unsupported_media_type": "İstek medya türü desteklenmiyor.",
+      "method_not_allowed": "Bu HTTP metoduna izin verilmiyor."
+    },
+    "validation": {
+      "failed": "İstek doğrulaması başarısız oldu.",
+      "field_required": "Alan gerekli",
+      "invalid_boolean": "Geçerli bir boole değeri olmalıdır.",
+      "invalid_integer": "Geçerli bir tam sayı olmalıdır.",
+      "invalid_list": "Geçerli bir liste olmalıdır.",
+      "invalid_object": "Geçerli bir nesne olmalıdır.",
+      "invalid_string": "Geçerli bir metin olmalıdır.",
+      "invalid_value": "Geçersiz değer.",
+      "string_too_long": "En fazla {max_length} karakter içermelidir.",
+      "string_too_short": "En az {min_length} karakter içermelidir.",
+      "field_required_named": "{field} alanı boş olamaz."
+    },
+    "connector": {
+      "authorization": "Bu bağlayıcıya erişim izniniz yok.",
+      "configuration": "Bağlayıcı yapılandırması geçersiz.",
+      "validation": "Bağlayıcı girdisi geçersiz.",
+      "connection": "Bağlayıcıya erişilemiyor.",
+      "timeout": "Bağlayıcı zaman aşımına uğradı.",
+      "authentication": "Bağlayıcı kimlik doğrulaması başarısız oldu.",
+      "unsupported": "Bu bağlayıcı işlemi desteklenmiyor.",
+      "response": "Bağlayıcı geçersiz bir yanıt döndürdü."
+    },
+    "idempotency_key_required": "Bu uç nokta için Idempotency-Key başlığı gerekli.",
+    "idempotency_key_invalid": "Idempotency-Key 1-255 karakter uzunluğunda olmalı; yalnızca harf, rakam, '.', '_' veya '-' içermeli.",
+    "idempotency_key_reused": "Idempotency-Key farklı bir istek veya kullanıcı için zaten kullanıldı.",
+    "idempotency_request_in_progress": "Bu Idempotency-Key ile bir istek hâlâ işleniyor.",
+    "idempotency_store_unavailable": "İstek tekrarını önleyen depoya geçici olarak erişilemiyor; aynı Idempotency-Key ile yeniden deneyin.",
+    "collection": {
+      "not_found": "Koleksiyon bulunamadı veya erişim izniniz yok.",
+      "access_denied": "Bu koleksiyona erişim izniniz yok."
+    },
+    "retrieval": {
+      "graph_permission_required": "Graf arama izni gereklidir."
+    },
+    "memory": {
+      "upsert_failed": "Hafıza bilgisi dizine eklenemedi.",
+      "delete_failed": "Hafıza dizininden bilgi silinemedi."
+    },
+    "settings": {
+      "shortcut_not_found": "İstem kısayolu bulunamadı."
+    },
+    "user": {
+      "not_found": "Kullanıcı bulunamadı."
+    },
+    "user_service": {
+      "api_key": {
+        "not_found": "API anahtarı bulunamadı"
+      },
+      "auth": {
+        "external_credentials_rejected": "Harici kimlik sağlayıcı kimlik bilgilerini reddetti",
+        "external_login_failed": "Harici oturum açma başarısız oldu",
+        "external_no_subject_in_token": "Harici kimlik doğrulama başarısız oldu — token içinde subject yok",
+        "external_sp_user_not_created": "Harici kimlik doğrulama başarısız oldu — SP kullanıcısı oluşturulamadı",
+        "forbidden": "Bu işlem için yetkiniz yok",
+        "invalid_credentials": "Geçersiz kullanıcı adı veya şifre",
+        "no_id_token": "Kimlik doğrulama başarısız oldu — id_token alınamadı",
+        "no_subject_in_token": "Kimlik doğrulama başarısız oldu — token içinde subject yok",
+        "oidc_callback_failed": "OIDC geri çağırma başarısız oldu: {error}",
+        "refresh_no_id_token": "Jeton yenileme başarısız oldu — id_token alınamadı",
+        "refresh_no_subject_in_token": "Jeton yenileme başarısız oldu — token içinde subject yok",
+        "refresh_token_required": "Yenileme jetonu gerekli",
+        "registration_managed_by_keycloak": "Kullanıcı kaydı Keycloak tarafından yönetilmektedir",
+        "required": "Kimlik doğrulaması gerekli",
+        "sync_failed": "Senkronizasyon başarısız oldu: {error}",
+        "unauthorized": "Yetkisiz erişim",
+        "refresh_managed_by_keycloak": "Oturum yenileme Keycloak tarafından yönetilir.",
+        "basic_login_disabled": "Parola ile giriş devre dışı.",
+        "external_login_disabled": "Harici parola ile giriş devre dışı."
+      },
+      "common": {
+        "bad_request": "Geçersiz istek",
+        "conflict": "Kaynak çakışması",
+        "forbidden": "Erişim reddedildi",
+        "not_found": "Kaynak bulunamadı",
+        "service_unavailable": "Gerekli bir servise şu anda ulaşılamıyor. Lütfen kısa süre sonra tekrar deneyin."
+      },
+      "keycloak": {
+        "base_url_not_configured": "KEYCLOAK_BASE_URL veya KEYCLOAK_ISSUER_URL yapılandırılmalıdır",
+        "client_not_found": "'{client_id}' Keycloak istemcisi bulunamadı",
+        "client_response_invalid": "'{client_id}' Keycloak istemcisi yanıtı geçersiz",
+        "external_client_id_not_configured": "EXTERNAL_KEYCLOAK_CLIENT_ID yapılandırılmalıdır",
+        "external_client_secret_not_configured": "EXTERNAL_KEYCLOAK_CLIENT_SECRET yapılandırılmalıdır",
+        "external_issuer_not_configured": "EXTERNAL_KEYCLOAK_ISSUER_URL veya EXTERNAL_KEYCLOAK_BASE_URL + EXTERNAL_KEYCLOAK_REALM yapılandırılmalıdır",
+        "external_not_configured": "Harici Keycloak yapılandırılmamış",
+        "external_realm_not_configured": "EXTERNAL_KEYCLOAK_REALM yapılandırılmalıdır",
+        "login_form_not_found": "Harici IdP giriş formu bulunamadı",
+        "redirect_uri_not_absolute": "KEYCLOAK_REDIRECT_URI veya KEYCLOAK_REDIRECT_URIS mutlak bir geri çağırma URL'si içermelidir",
+        "redirect_uri_required": "Harici Keycloak girişi için redirect_uri gereklidir",
+        "service_account_not_configured": "Keycloak servis hesabı yapılandırılmamış",
+        "sp_user_create_failed": "Harici kimlik için SP kullanıcısı oluşturulamadı",
+        "token_refresh_failed_status": "Jeton yenileme başarısız oldu (durum {status})",
+        "identity_already_exists": "Keycloak kimliği zaten mevcut."
+      },
+      "memory": {
+        "content_required": "İçerik gereklidir",
+        "not_found": "Kullanıcı hafızası bulunamadı",
+        "already_exists": "Bu hafıza bilgisi zaten mevcut."
+      },
+      "organization": {
+        "not_found": "Kuruluş bulunamadı",
+        "primary_not_found": "Birincil kuruluş bulunamadı",
+        "organization_with_code_already_exists": "'{param1}' kodlu organizasyon zaten mevcut.",
+        "organization_not_found": "{org_id} organizasyonu bulunamadı.",
+        "cannot_delete_organization_with_children_use_cascade_true_to": "{param1} alt organizasyonu olan organizasyon silinemez. Tüm alt organizasyonları silmek için cascade=True kullanın.",
+        "failed_to_move_organization": "Organizasyon taşınamadı.",
+        "search_query_must_be_at_least_characters": "Arama en az 2 karakter içermelidir.",
+        "a_root_organization_already_exists": "Bir kök organizasyon zaten mevcut.",
+        "parent_organization_not_found": "{new_parent_id} üst organizasyonu bulunamadı.",
+        "cannot_move_organization_to_its_own_descendant": "Organizasyon kendi alt organizasyonuna taşınamaz.",
+        "catalog_gateway_unconfigured": "Organizasyon kataloğu ağ geçidi yapılandırılmamış.",
+        "catalog_unavailable": "Organizasyon kaynak kataloğuna ulaşılamıyor."
+      },
+      "permission": {
+        "invalid_permissions": "Geçersiz izinler: {permissions}",
+        "not_found": "'{name}' izni bulunamadı"
+      },
+      "role": {
+        "already_exists": "'{name}' rolü zaten mevcut",
+        "cannot_delete_builtin": "'{name}' yerleşik rolü silinemez",
+        "cannot_delete_in_use": "'{name}' rolüne atanmış kullanıcılar varken rol silinemez",
+        "id_not_found": "'{role_id}' ID'li rol bulunamadı",
+        "invalid_permissions": "Geçersiz izinler: {permissions}",
+        "invalid_role_ids": "Geçersiz roller: {roles}",
+        "session_invalidation_failed_for_user": "{email} kullanıcısının aktif Keycloak oturumları geçersiz kılınamadı"
+      },
+      "user": {
+        "already_exists": "{email} e-postasına sahip kullanıcı zaten mevcut",
+        "cannot_remove_last_role": "Kullanıcının son rolü kaldırılamaz",
+        "keycloak_id_required": "Keycloak kullanıcı kimliği gereklidir",
+        "keycloak_password_set_failed": "Keycloak şifresi ayarlanamadı",
+        "keycloak_user_create_failed": "Keycloak kullanıcısı oluşturulamadı",
+        "keycloak_user_missing_id": "Mevcut Keycloak kullanıcısının kimliği yok",
+        "not_found": "Kullanıcı bulunamadı",
+        "not_found_by_keycloak_id": "keycloak_id {keycloak_id} olan kullanıcı bulunamadı",
+        "password_managed_by_keycloak": "Şifre yönetimi Keycloak tarafından yapılmaktadır",
+        "primary_role_must_be_assigned": "Birincil rol atanacak rollerin içinde olmalıdır",
+        "role_not_assigned": "Bu rol kullanıcıya atanmamış: {role}",
+        "session_invalidation_failed": "Aktif Keycloak oturumları geçersiz kılınamadı"
+      },
+      "user_organization": {
+        "not_found": "Kullanıcı kuruluşu bulunamadı",
+        "unknown_organization_role": "'{role_name}' organizasyon rolü bilinmiyor.",
+        "user_not_found": "{user_id} kullanıcısı bulunamadı.",
+        "organization_not_found": "{organization_id} organizasyonu bulunamadı.",
+        "user_is_already_assigned_to_organization": "{user_id} kullanıcısı {organization_id} organizasyonuna zaten atanmış.",
+        "failed_to_update_user_role": "Kullanıcının rolü güncellenemedi.",
+        "user_is_not_assigned_to_organization": "{user_id} kullanıcısı {organization_id} organizasyonuna atanmamış.",
+        "failed_to_set_primary_organization": "Birincil organizasyon ayarlanamadı.",
+        "actor_cannot_manage_the_selected_organization": "Seçilen organizasyonu yönetme yetkiniz yok.",
+        "actor_cannot_manage_organization_members": "Organizasyon üyelerini yönetme yetkiniz yok."
+      },
+      "resource_permission": {
+        "either_organization_id_or_user_id_must_be_provided": "organization_id veya user_id belirtilmelidir.",
+        "only_one_of_organization_id_or_user_id_can": "organization_id ve user_id alanlarından yalnızca biri belirtilebilir.",
+        "invalid_permission_level_must_be_one_of": "'{permission_level}' yetki seviyesi geçersiz. Desteklenen seviyeler: {param2}.",
+        "permission_already_exists_for_this_resource_use_update_permission": "Bu kaynak için bir yetki zaten mevcut. Değiştirmek için update_permission kullanın.",
+        "permission_not_found": "{permission_id} yetkisi bulunamadı.",
+        "failed_to_update_permission": "Yetki güncellenemedi.",
+        "actor_cannot_change_permissions_outside_their_organization_scope": "Organizasyon kapsamınız dışındaki yetkileri değiştiremezsiniz.",
+        "cannot_delegate_a_resource_permission_the_actor_does_not": "Sahip olmadığınız bir kaynak yetkisini devredemezsiniz.",
+        "actor_cannot_read_organization_resources": "Organizasyon kaynaklarını okuma yetkiniz yok.",
+        "resource_ids_must_be_unique": "Kaynak kimlikleri benzersiz olmalıdır.",
+        "target_type_must_be_organization_or_user": "target_type 'organization' veya 'user' olmalıdır.",
+        "resource_type_must_be_agent_or_rag_collection": "resource_type 'agent' veya 'rag_collection' olmalıdır.",
+        "organization_not_found": "Organizasyon bulunamadı.",
+        "organization_target_must_match_the_organization_scope": "Hedef organizasyon, organizasyon kapsamıyla eşleşmelidir.",
+        "actor_cannot_manage_the_selected_organization": "Seçilen organizasyonu yönetme yetkiniz yok.",
+        "user_target_must_be_an_active_member_of_the": "Hedef kullanıcı seçilen organizasyonun aktif bir üyesi olmalıdır.",
+        "global_permission_listings_require_a_global_administrator": "Tüm yetkileri listelemek için global yönetici yetkisi gerekir.",
+        "actor_cannot_manage_organization_resources": "Organizasyon kaynaklarını yönetme yetkiniz yok."
+      },
+      "scoped_organization": {
+        "only_a_global_administrator_can_create_a_root": "Yalnızca global yönetici bir kök organizasyon oluşturabilir."
+      },
+      "organization_scope": {
+        "actor_cannot_access_the_selected_organization": "Seçilen organizasyona erişim yetkiniz yok.",
+        "an_assigned_scope_root_cannot_be_moved_or_deleted": "Atanmış bir kapsam kökü taşınamaz veya silinemez."
+      },
+      "connector_config": {
+        "not_found": "Bağlayıcı yapılandırması bulunamadı",
+        "unreadable": "Bağlayıcı yapılandırması tanımlı anahtarla çözülemiyor"
+      }
+    },
+    "rag": {
+      "collection": {
+        "create_failed": "Koleksiyon oluşturulamadı",
+        "update_requires_attribute": "En az 1 özellik güncellenmelidir",
+        "locked_graph_build_in_progress": "Grafik RAG derlemesi devam ederken koleksiyon kilitlidir. Derleme tamamlandıktan sonra tekrar deneyin.",
+        "connector_managed_readonly": "Bu koleksiyon bir bağlayıcı tarafından yönetilmektedir ve salt okunurdur. Yeniden adlandırma, silme, yükleme ve doküman silme işlemlerine izin verilmez."
+      },
+      "document": {
+        "not_found": "Doküman bulunamadı",
+        "metadata_count_mismatch": "Meta veri nesnesi sayısı ({metadata_count}) dosya sayısıyla ({file_count}) eşleşmiyor.",
+        "no_documents_processed": "Sağlanan dosyalardan hiçbir doküman işlenemedi.",
+        "vectorstore_add_failed": "İşleme sonrası doküman(lar) vektör deposuna eklenemedi.",
+        "search_query_empty": "Arama sorgusu boş olamaz",
+        "invalid_metadata": "Belge metaverisi JSON nesnelerinden oluşan bir dizi olmalıdır."
+      },
+      "graph": {
+        "build_no_documents": "Bilgi grafiği oluşturulamıyor: koleksiyon hiçbir doküman içermiyor.",
+        "no_running_build_pause": "Duraklatılacak çalışan bir grafik derlemesi bulunamadı.",
+        "no_running_build_resume": "Devam ettirilecek çalışan bir grafik derlemesi bulunamadı.",
+        "no_running_build_stop": "Durdurulacak çalışan bir grafik derlemesi bulunamadı.",
+        "neo4j_unreachable": "Neo4j'e ulaşılamıyor",
+        "cypher_admin_required": "Ham Cypher için yönetici erişimi gereklidir."
+      },
+      "auth": {
+        "invalid_scheme": "Geçersiz kimlik doğrulama şeması",
+        "bearer_token_required": "Taşıyıcı token gereklidir",
+        "permission_required": "Gerekli izin eksik: {permission}"
+      }
+    },
+    "web_search": {
+      "unsupported_provider_type": "Desteklenmeyen içerik sağlayıcı türü: {provider_type}",
+      "test_fetch_failed": "Test URL’si alınamadı.",
+      "url_required": "Boş olmayan bir 'url' alanı gereklidir.",
+      "url_invalid_scheme": "URL, http:// veya https:// ile başlamalıdır.",
+      "no_crawler_result": "Tarayıcıdan sonuç dönmedi."
+    },
+    "ollama": {
+      "model_not_found": "Model bulunamadı."
+    },
+    "provider": {
+      "not_found": "Sağlayıcı bulunamadı.",
+      "ollama_unconfigured": "Ollama yapılandırılmadı.",
+      "builtin_url_collision": "Bu URL yerleşik Ollama sağlayıcısı tarafından zaten kullanılıyor.",
+      "connection_failed": "Model sağlayıcısına bağlanılamadı."
+    },
+    "proxy": {
+      "mcp_unavailable": "MCP hizmeti kullanılamıyor.",
+      "tool_not_found": "Araç bulunamadı.",
+      "ollama_unavailable": "Ollama modelleri alınamadı."
+    },
+    "schedule": {
+      "cron_required": "Cron ifadesi gereklidir."
+    },
+    "mail": {
+      "config_not_found": "E-posta yapılandırması bulunamadı.",
+      "config_unavailable": "Seçilen e-posta yapılandırması kullanılamıyor.",
+      "config_in_use": "Bu e-posta yapılandırması etkin bir ajan tarafından kullanılıyor.",
+      "password_required": "E-posta parolası gereklidir.",
+      "credentials_required": "E-posta göndermeden önce kimlik bilgilerinizi yapılandırın.",
+      "delivery_failed": "E-posta teslim edilemedi.",
+      "invalid_payload": "E-posta alıcılarını, konusunu, içeriğini ve eklerini kontrol edin.",
+      "smtp_not_configured": "E-posta sunucusu yapılandırılmamış.",
+      "authentication_failed": "E-posta sunucusu yapılandırılan kimlik bilgilerini reddetti.",
+      "timeout": "E-posta sunucusu zamanında yanıt vermedi.",
+      "connection_failed": "E-posta sunucusuna bağlanılamadı.",
+      "recipients_rejected": "E-posta sunucusu alıcıları reddetti.",
+      "message_rejected": "E-posta sunucusu mesajı reddetti.",
+      "attachment_too_large": "Bir ek dosya boyut sınırını aşıyor.",
+      "attachments_too_large": "Ek dosyalar birlikte boyut sınırını aşıyor.",
+      "config_required": "send_email aracı seçildiğinde bir e-posta yapılandırması gereklidir."
+    },
+    "upload": {
+      "unsupported_type": "Yüklenen dosya türü desteklenmiyor.",
+      "content_mismatch": "Dosyanın içeriği belirtilen türle eşleşmiyor."
+    }
+  },
+  "assistant": {
+    "id_required": "Asistan kimliği gereklidir.",
+    "cannot_update_system_template": "Sistem şablonları güncellenemez",
+    "graph_not_found": "{graph_id} grafiği bulunamadı",
+    "not_found": "{assistant_id} asistanı bulunamadı"
+  },
+  "mcp_provider": {
+    "not_found": "{provider_id} sağlayıcısı bulunamadı",
+    "invalid_status": "Geçersiz durum: {status_value}"
+  },
+  "tool": {
+    "not_found": "Araç {tool_id} bulunamadı",
+    "binding_not_found": "Araç bağlaması bulunamadı",
+    "ids_required": "tool_ids gereklidir"
+  },
+  "mcp": {
+    "oauth_failed": "OAuth kimlik doğrulaması başarısız oldu",
+    "oauth_callback_invalid": "Geçersiz OAuth geri çağırması: code veya state eksik"
+  },
+  "connectors": {
+    "timeout": "Konnektör çözümlemesi zaman aşımına uğradı.",
+    "access_denied": "Ajan erişimi reddedildi."
+  },
+  "common": {
+    "bad_request": "Geçersiz istek",
+    "not_found": "Kaynak bulunamadı",
+    "internal_error": "Sunucu iç hatası",
+    "forbidden": "Yasak"
+  },
+  "auth": {
+    "not_authenticated": "Kimlik doğrulanmadı"
+  },
+  "chat": {
+    "chat_session_not_found": "Sohbet oturumu bulunamadı",
+    "missing_session_id": "session_id eksik",
+    "session_not_found": "Oturum bulunamadı"
+  },
+  "project": {
+    "invalid_temp_id_map": "Geçersiz temp_id_map",
+    "name_required": "Proje adı gereklidir",
+    "not_found": "Proje bulunamadı",
+    "or_chat_session_not_found": "Proje veya sohbet oturumu bulunamadı"
+  },
+  "file": {
+    "not_found": "Dosya bulunamadı."
+  },
+  "agent": {
+    "definition_not_found": "{definition_id} temsilci tanımı bulunamadı",
+    "graph_schema_required": "graph_schema gereklidir",
+    "invalid_uuid": "Geçersiz UUID: {id}",
+    "no_fields_to_update": "Güncellenecek alan yok",
+    "sub_agent_ids_must_be_array": "sub_agent_ids bir dizi olmalıdır"
+  },
+  "datasource": {
+    "create_collection_failed": "Koleksiyon oluşturulamadı",
+    "duplicate_name": "'{name}' adında bir veri kaynağı zaten mevcut. Lütfen farklı bir ad seçin.",
+    "invalid_sync_mode_combination": "Geçersiz senkronizasyon modu kombinasyonu: {sync_mode} | {dest_mode}. Geçerli kombinasyonlar: full_refresh|overwrite, full_refresh|append, incremental|append",
+    "not_found": "{datasource_id} veri kaynağı bulunamadı",
+    "unknown_connector": "Bilinmeyen bağlayıcı: {connector_type}"
+  },
+  "flow": {
+    "draft_not_found": "'{definition_id}' tanımı için taslak bulunamadı",
+    "published_not_found": "'{definition_id}' tanımı için yayınlanmış akış bulunamadı",
+    "target_version_required": "target_version_no gereklidir",
+    "unknown_component": "Bilinmeyen bileşen türü: '{component_type}'",
+    "unknown_options_source": "Bilinmeyen seçenek kaynağı: '{source}'",
+    "validation_failed": "Akış doğrulaması başarısız oldu.",
+    "version_conflict": "Akış sürümü mevcut durumla çakışıyor",
+    "version_not_found": "'{definition_id}' tanımı için {version_no} sürümü bulunamadı"
+  },
+  "persona": {
+    "not_found": "Persona bulunamadı",
+    "cannot_delete_builtin": "Yerleşik temsilciler silinemez",
+    "cannot_update_builtin": "Yerleşik temsilciler güncellenemez",
+    "image_is_empty": "Yüklenen görsel boş",
+    "image_must_be_an_image": "Avatar bir görsel dosyası olmalıdır"
+  },
+  "thread": {
+    "not_found": "Konuşma başlığı bulunamadı"
+  }
+}

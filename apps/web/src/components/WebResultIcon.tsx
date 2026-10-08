@@ -4,7 +4,7 @@ import { ValidSources } from "@/lib/types";
 import { SourceIcon } from "./SourceIcon";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { OnyxIcon } from "./icons/icons";
+import { AtlasIcon } from "./icons/icons";
 
 export function WebResultIcon({
   url,
@@ -19,12 +19,12 @@ export function WebResultIcon({
   try {
     hostname = new URL(url).hostname;
   } catch (e) {
-    hostname = "onyx.app";
+    hostname = "atlas.app";
   }
   return (
     <>
-      {hostname.includes("onyx.app") ? (
-        <OnyxIcon size={size} className="dark:text-[#fff] text-[#000]" />
+      {hostname.includes("atlas.app") ? (
+        <AtlasIcon size={size} className="dark:text-[#fff] text-[#000]" />
       ) : !error ? (
         <img
           className="my-0 rounded-full py-0"

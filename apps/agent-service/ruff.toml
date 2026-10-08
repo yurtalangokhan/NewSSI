@@ -1,52 +1,149 @@
-# Ruff configuration
-# https://docs.astral.sh/ruff/settings/
+# Shared Ruff configuration (base: agent-service ruff.toml).
+# Keep this file identical across Python services.
 
-line-length = 100
+line-length = 120
+indent-width = 4
 target-version = "py311"
 
-# Exclude patterns
-exclude = [
-    ".git",
-    ".venv",
-    "venv",
-    "__pycache__",
-    ".pytest_cache",
-    ".mypy_cache",
-    ".ruff_cache",
-    "*.egg-info",
-    "dist",
-    "build",
-    "*.pyc",
-    "*.pyo",
-    # Migration files
-    "src/core/db/migrations/versions/*.py",
-    # Generated files
-    "media/*",
-    # Private credentials
-    "privatecredentials/*",
+respect-gitignore = true
+force-exclude = true
+
+extend-exclude = [
+    "test",
+    "tests",
 ]
 
 [lint]
-# Enable import sorting and unused variables
-extend-select = ["I", "U"]
-
-# Per-file ignores
-[lint.per-file-ignores]
-"tests/*" = [
-    "ARG001",  # Unused function argument
-    "ARG002",  # Unused method argument
-    "ARG003",  # Unused class method argument
-    "ARG004",  # Unused decorator argument
-    "ARG005",  # Unused lambda argument
-    "ANN",     # pytest fixtures don't need annotations
-    "A",       # pytest unused import
-    "C901",    # complex functions in tests
-    "PLR0913", # too many arguments
-    "PLR2004", # false positives in tests
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # import sorting
+    "B",      # flake8-bugbear
+    "UP",     # pyupgrade
+    "SIM",    # flake8-simplify
+    "C4",     # flake8-comprehensions
+    "ARG",    # unused arguments
+    "N",      # PEP 8 naming
+    "S",      # security checks
+    "ASYNC",  # async/await correctness
+    "PERF",   # performance anti-patterns
+    "FAST",   # FastAPI-specific checks
+    "RUF",    # Ruff-specific rules
 ]
-"tests/conftest.py" = ["ANN", "ARG"]
-"src/streamlit_app.py" = ["ANN"]
-"scripts/*" = ["ANN", "ARG"]
 
-# Ignore specific rules globally
-ignore = ["E501", "D104", "D100"]
+ignore = [
+    "E501",
+]
+
+# This service answers in Turkish, so its own strings, docstrings and comments
+# legitimately contain 'ı' (LATIN SMALL LETTER DOTLESS I) and the typographic
+# quotes / full-width punctuation Turkish text uses. RUF001-003 read them as
+# typos for ASCII; they are content, not mistakes.
+allowed-confusables = ["ı", "İ", "‘", "’", "“", "”", "，", "！", "？"]
+
+fixable = ["ALL"]
+unfixable = []
+
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+
+[lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Body",
+    "fastapi.Header",
+    "fastapi.Cookie",
+    "fastapi.Form",
+    "fastapi.File",
+    "fastapi.Security",
+    # Our own dependency factory. `permission: str = Depends(require_permission)`
+    # is the same FastAPI idiom as the fastapi.* entries above; without this,
+    # B008 fires on 73 route signatures and the gate fails any commit that
+    # touches a route file.
+    "api.dependencies.require_permission",
+]
+
+[lint.per-file-ignores]
+# __init__.py modules exist to re-export the public surface of a package.
+"__init__.py" = ["F401"]
+# Alembic migrations are one-shot scripts whose SQL is built from literal,
+# code-controlled seed constants; rewriting them to bound parameters would
+# touch already-applied history for no security gain.
+"**/migrations/**" = ["S608"]
+
+"src/api/routes/*.py" = [
+    # FAST002 wants `param: Annotated[T, Depends(...)]` instead of
+    # `param: T = Depends(...)`. Both are first-class FastAPI and the routes
+    # here are the second form throughout. Converting them is not mechanical:
+    # the tests call the route functions directly with positional/keyword
+    # arguments, and Python's default-argument ordering forces either moving
+    # parameters (breaking those calls) or adding dummy defaults. Left as-is
+    # until the routes are converted as their own piece of work.
+    "FAST002",
+    # `request: Request` is FastAPI-injected and unused in two handlers whose
+    # comments record why (the raw x-api-key read was removed). Renaming to
+    # `_request` breaks the tests, which call the handlers with `request=`.
+    "ARG001",
+]
+# LangGraph resolves node signatures by inspecting them: a parameter literally
+# named `config` (and `state`) is how it decides what to inject. Renaming to
+# `_config`/`_state` makes the runtime pass one argument fewer and every flow
+# test fails with "missing 1 required positional argument". The unused
+# parameters are the framework contract, not dead code.
+"src/agents/graphs/flow/nodes/*.py" = ["ARG001"]
+"src/app.py" = [
+    # `lifespan(app)` is the FastAPI contract; the app object is not needed in
+    # the body and the tests call the function with `app=`.
+    "ARG001",
+]
+"src/service/auth/mail_config_service.py" = [
+    # `bcc` is accepted for signature parity with the payload that carries it;
+    # BCC recipients are deliberately NOT written into the message headers.
+    "ARG004",
+]
+"src/service/personas/persona_service.py" = [
+    # `local_cache` is part of the shared serialization signature; callers pass
+    # it by keyword and the helper that ignores it is one of several.
+    "ARG002",
+]
+"src/service/flows/resolvers.py" = [
+    # Every resolver takes `ResolverContext` because the registry type says so,
+    # even the ones that do not read it. Dropping the parameter would make the
+    # signatures inconsistent across the table.
+    "ARG001",
+]
+"src/core/http/outbound.py" = [
+    # AGENTS.md: "Pass timeouts per request; the shared client is process-wide."
+    # A `timeout` argument per call is the documented interface. ASYNC109 wants
+    # anyio.fail_after() around the body instead, which would put the deadline on
+    # our side of the pooled client rather than on the request.
+    "ASYNC109",
+]
+"src/integrations/user_service_client.py" = ["ASYNC109"]
+# `_request` forwards a per-call budget to outbound.request for the same reason.
+"src/integrations/rag_client.py" = ["ASYNC109"]
+"src/service/orchestration/agent_stream_service.py" = [
+    # Aliased on import so the call sites read `_flow_passthrough_node_types`
+    # next to the private flow module it comes from.
+    "N811",
+]
+"src/service/orchestration/assistant_agent_service.py" = [
+    # Module names are snake_case, the class in it is PascalCase. Naming the
+    # import after the class is correct.
+    "N812",
+]
+
+[lint.isort]
+combine-as-imports = true
+force-sort-within-sections = true
+
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = "dynamic"

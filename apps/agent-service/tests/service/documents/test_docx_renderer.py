@@ -91,6 +91,25 @@ def test_image_from_data_uri_is_embedded():
     assert len(document.inline_shapes) == 1
 
 
+def test_attachment_image_is_embedded_from_the_supplied_bytes():
+    import base64
+
+    png = base64.b64decode(_PNG_DATA_URI.split(",", 1)[1])
+
+    data = render_docx(None, "![foto](attachment:file-1)", attachment_images={"file-1": png})
+
+    assert len(docx.Document(io.BytesIO(data)).inline_shapes) == 1
+
+
+def test_attachment_image_without_bytes_is_skipped():
+    data = render_docx(None, "![foto](attachment:file-1)\n\nsonrası metin")
+
+    document = docx.Document(io.BytesIO(data))
+
+    assert len(document.inline_shapes) == 0
+    assert "sonrası metin" in _paragraph_texts(document)
+
+
 def test_image_with_unloadable_source_does_not_break_document():
     data = render_docx(None, "![alt](https://does-not-exist.invalid/x.png)\n\nsonrası metin")
 

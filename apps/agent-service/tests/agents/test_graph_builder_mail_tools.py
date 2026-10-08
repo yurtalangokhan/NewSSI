@@ -1,7 +1,12 @@
-"""Mail tool binding tests for dynamic graph construction."""
+"""Mail tool binding tests for dynamic graph construction.
+
+The wrapper no longer forwards to the tools-service MCP tool: SMTP
+credentials stay inside agent-service, which performs the send itself. The
+raw tool is still what the wrapper stands in for, so these tests keep it in
+the map and assert on what reached the mail service instead.
+"""
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
 
 import pytest
 from langchain_core.tools import StructuredTool
@@ -15,7 +20,6 @@ async def test_graph_builder_wraps_send_email_with_selected_mail_config(monkeypa
     captured = {}
 
     async def raw_send_email(
-        smtp_config: dict,
         to: list[str],
         subject: str,
         body: str,
@@ -24,15 +28,7 @@ async def test_graph_builder_wraps_send_email_with_selected_mail_config(monkeypa
         is_html: bool = False,
         reply_to: str | None = None,
     ) -> str:
-        captured["smtp_config"] = smtp_config
-        captured["to"] = to
-        captured["subject"] = subject
-        captured["body"] = body
-        captured["cc"] = cc
-        captured["bcc"] = bcc
-        captured["is_html"] = is_html
-        captured["reply_to"] = reply_to
-        return "sent"
+        raise AssertionError("the send must not be forwarded over MCP")
 
     raw_tool = StructuredTool.from_function(
         coroutine=raw_send_email,
@@ -40,20 +36,15 @@ async def test_graph_builder_wraps_send_email_with_selected_mail_config(monkeypa
         description="Raw MCP mail sender",
     )
 
-    mail_service = SimpleNamespace(
-        get_effective_user_smtp_config=AsyncMock(
-            return_value={
-                "host": "smtp.example.com",
-                "port": 587,
-                "username": "agent@example.com",
-                "password": "secret",
-                "from_email": "agent@example.com",
-                "security": "starttls",
-            }
-        )
-    )
+    async def _send_email(user_id, config_id, payload, owner_user_id=None):
+        captured.update(payload)
+        captured["user_id"] = user_id
+        captured["config_id"] = config_id
+        return {"success": True, "message": "Email sent."}
+
+    mail_service = SimpleNamespace(send_email=_send_email)
     monkeypatch.setattr(
-        "service.MailConfigService.get_mail_config_service",
+        "service.auth.mail_config_service.get_mail_config_service",
         lambda: mail_service,
     )
 
@@ -75,13 +66,11 @@ async def test_graph_builder_wraps_send_email_with_selected_mail_config(monkeypa
         }
     )
 
-    assert result == "sent"
-    assert captured["smtp_config"]["host"] == "smtp.example.com"
-    mail_service.get_effective_user_smtp_config.assert_awaited_once_with(
-        user_id="user-1",
-        mail_config_id="mail-config-1",
-        owner_user_id=None,
-    )
+    assert result == "Email sent."
+    assert "smtp_config" not in captured
+    assert captured["user_id"] == "user-1"
+    assert captured["config_id"] == "mail-config-1"
+    assert captured["to"] == ["recipient@example.com"]
 
 
 @pytest.mark.asyncio
@@ -90,17 +79,13 @@ async def test_graph_builder_resolves_selected_chat_attachments(monkeypatch):
     captured = {}
 
     async def raw_send_email(
-        smtp_config: dict,
         to: list[str],
         subject: str,
         body: str,
         attachments: list[dict] | None = None,
         **kwargs: object,
     ) -> str:
-        _ = kwargs
-        captured["smtp_config"] = smtp_config
-        captured["attachments"] = attachments
-        return "sent"
+        raise AssertionError("the send must not be forwarded over MCP")
 
     raw_tool = StructuredTool.from_function(
         coroutine=raw_send_email,
@@ -108,20 +93,13 @@ async def test_graph_builder_resolves_selected_chat_attachments(monkeypatch):
         description="Raw MCP mail sender",
     )
 
-    mail_service = SimpleNamespace(
-        get_effective_user_smtp_config=AsyncMock(
-            return_value={
-                "host": "smtp.example.com",
-                "port": 587,
-                "username": "agent@example.com",
-                "password": "secret",
-                "from_email": "agent@example.com",
-                "security": "starttls",
-            }
-        )
-    )
+    async def _send_email(user_id, config_id, payload, owner_user_id=None):
+        captured.update(payload)
+        return {"success": True, "message": "Email sent."}
+
+    mail_service = SimpleNamespace(send_email=_send_email)
     monkeypatch.setattr(
-        "service.MailConfigService.get_mail_config_service",
+        "service.auth.mail_config_service.get_mail_config_service",
         lambda: mail_service,
     )
 
@@ -152,7 +130,7 @@ async def test_graph_builder_resolves_selected_chat_attachments(monkeypatch):
         }
     )
 
-    assert result == "sent"
+    assert result == "Email sent."
     assert captured["attachments"] == [
         {
             "filename": "report.txt",

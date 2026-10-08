@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import Text from "@/refresh-components/texts/Text";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Button from "@/refresh-components/buttons/Button";
-import { updateUserPersonalization } from "@/lib/userSettings";
+import { updatePersonalization as updateUserPersonalization } from "@/lib/api/domains/preferences/api";
 import { useUser } from "@/providers/UserProvider";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import { Button as OpalButton } from "@opal/components";
@@ -10,7 +10,7 @@ import InputAvatar from "@/refresh-components/inputs/InputAvatar";
 import { cn } from "@/lib/utils";
 import { SvgCheckCircle, SvgEdit, SvgUser, SvgX } from "@opal/icons";
 import { useTranslation } from "react-i18next";
-import { APP_NAME } from "@/lib/appInfo";
+import { appSettings } from "@/lib/settings";
 
 export default function NonAdminStep() {
   const { t } = useTranslation();
@@ -90,7 +90,9 @@ export default function NonAdminStep() {
             </div>
             <div>
               <Text as="p" text04 mainUiAction>
-                {t("nameStep.whatShouldAppCallYou", { appName: APP_NAME })}
+                {t("nameStep.whatShouldAppCallYou", {
+                  appName: appSettings.APP_NAME,
+                })}
               </Text>
               <Text as="p" text03 secondaryBody>
                 {t("nameStep.nameDisplayDesc")}

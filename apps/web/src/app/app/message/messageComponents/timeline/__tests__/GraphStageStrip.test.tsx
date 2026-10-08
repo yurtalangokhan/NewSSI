@@ -1,11 +1,10 @@
-import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { SWRConfig } from "swr";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import GraphStageStrip from "../GraphStageStrip";
 
-jest.mock("@/lib/fetcher", () => ({
-  errorHandlingFetcher: jest.fn(),
+jest.mock("@/lib/api/domains/agents/api", () => ({
+  fetchFlowSource: jest.fn(),
 }));
 
 // Mock useAppBackground so background blur styling doesn't break
@@ -13,7 +12,9 @@ jest.mock("@/providers/AppBackgroundProvider", () => ({
   useAppBackground: () => ({ hasBackground: false }),
 }));
 
-const { errorHandlingFetcher } = jest.requireMock("@/lib/fetcher");
+const { fetchFlowSource: errorHandlingFetcher } = jest.requireMock(
+  "@/lib/api/domains/agents/api"
+);
 
 function stagePacket(
   type: "graph_stage_start" | "graph_stage_end",
@@ -120,9 +121,7 @@ describe("GraphStageStrip — flow-backed agents", () => {
     ]);
 
     await waitFor(() =>
-      expect(errorHandlingFetcher).toHaveBeenCalledWith(
-        "/api/agent-definitions/def-1/flow/published"
-      )
+      expect(errorHandlingFetcher).toHaveBeenCalledWith("def-1", "published")
     );
     expect(await screen.findByText("ReAct Agent")).toBeInTheDocument();
     expect(screen.queryByText("ReActAgent-89c5195d")).not.toBeInTheDocument();
@@ -138,13 +137,9 @@ describe("GraphStageStrip — flow-backed agents", () => {
     ]);
 
     await waitFor(() =>
-      expect(errorHandlingFetcher).toHaveBeenCalledWith(
-        "/api/agent-definitions/def-1/flow/versions/3"
-      )
+      expect(errorHandlingFetcher).toHaveBeenCalledWith("def-1", 3)
     );
-    expect(errorHandlingFetcher).not.toHaveBeenCalledWith(
-      "/api/agent-definitions/def-1/flow/published"
-    );
+    expect(errorHandlingFetcher).not.toHaveBeenCalledWith("def-1", "published");
   });
 
   it("falls back to the published flow when no flow_version packet is present", async () => {
@@ -153,9 +148,7 @@ describe("GraphStageStrip — flow-backed agents", () => {
     ]);
 
     await waitFor(() =>
-      expect(errorHandlingFetcher).toHaveBeenCalledWith(
-        "/api/agent-definitions/def-1/flow/published"
-      )
+      expect(errorHandlingFetcher).toHaveBeenCalledWith("def-1", "published")
     );
   });
 

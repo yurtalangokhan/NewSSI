@@ -1,20 +1,20 @@
 <h2 align="center">
-    <a href="https://www.onyx.app/?utm_source=onyx_repo&utm_medium=github&utm_campaign=readme"> <img width="50%" src="https://github.com/onyx-dot-app/onyx/blob/logo/OnyxLogoCropped.jpg?raw=true" /></a>
+    <a href="https://www.atlas.app/?utm_source=atlas_repo&utm_medium=github&utm_campaign=readme"> <img width="50%" src="https://github.com/atlas-dot-app/atlas/blob/logo/AtlasLogoCropped.jpg?raw=true" /></a>
 </h2>
 
-<h1 align="center">Onyx Craft</h1>
+<h1 align="center">Atlas Craft</h1>
 
 <p align="center">
   <strong>Build apps, documents, and presentations from your company knowledge</strong>
 </p>
 
 <p align="center">
-  <a href="https://docs.onyx.app/overview/core_features/craft"><img alt="Documentation" src="https://img.shields.io/badge/docs-onyx.app-blue?style=flat-square" /></a>
-  <a href="https://github.com/onyx-dot-app/onyx/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green?style=flat-square" /></a>
+  <a href="https://docs.atlas.app/overview/core_features/craft"><img alt="Documentation" src="https://img.shields.io/badge/docs-atlas.app-blue?style=flat-square" /></a>
+  <a href="https://github.com/atlas-dot-app/atlas/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green?style=flat-square" /></a>
     <a href="https://discord.gg/TDJ59cGV2X" target="_blank" rel="noopener noreferrer">
         <img src="https://img.shields.io/badge/discord-join-blue.svg?logo=discord&logoColor=white" alt="Discord" />
     </a>
-  <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/onyx-dot-app/onyx" />
+  <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/atlas-dot-app/atlas" />
 </p>
 
 ---
@@ -29,9 +29,9 @@
 
 ## Overview
 
-Onyx Craft is an AI coding agent that creates web applications, documents, presentations, and more using your company's indexed knowledge. Users describe what they want in natural language, and the agent builds artifacts in an isolated sandbox environment with access to documents from connected sources like Linear, Slack, Google Drive, Confluence, and more.
+Atlas Craft is an AI coding agent that creates web applications, documents, presentations, and more using your company's indexed knowledge. Users describe what they want in natural language, and the agent builds artifacts in an isolated sandbox environment with access to documents from connected sources like Linear, Slack, Google Drive, Confluence, and more.
 
-For detailed documentation, visit [our docs](https://docs.onyx.app/overview/core_features/craft).
+For detailed documentation, visit [our docs](https://docs.atlas.app/overview/core_features/craft).
 
 ## Key Features
 
@@ -45,14 +45,14 @@ For detailed documentation, visit [our docs](https://docs.onyx.app/overview/core
 
 ### Requirements
 
-- Onyx deployment with an LLM provider configured (Anthropic, OpenAI, etc.)
+- Atlas deployment with an LLM provider configured (Anthropic, OpenAI, etc.)
 
 ### New Installations
 
-You can install Onyx Craft using our [quickstart script](https://docs.onyx.app/deployment/getting_started/quickstart):
+You can install Atlas Craft using our [quickstart script](https://docs.atlas.app/deployment/getting_started/quickstart):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/onyx-dot-app/onyx/main/deployment/docker_compose/install.sh > install.sh \
+curl -fsSL https://raw.githubusercontent.com/atlas-dot-app/atlas/main/deployment/docker_compose/install.sh > install.sh \
   && chmod +x install.sh \
   && ./install.sh --include-craft
 ```
@@ -87,7 +87,7 @@ Craft supports two sandbox backends controlled by `SANDBOX_BACKEND`:
 
 **Self-Hosted**
 
-- Filesystem-based sandboxes under `SANDBOX_BASE_PATH` (default: `/tmp/onyx-sandboxes`)
+- Filesystem-based sandboxes under `SANDBOX_BASE_PATH` (default: `/tmp/atlas-sandboxes`)
 - No container isolation (process-level only)
 - No automatic cleanup or snapshots
 - Direct file access via symlinks to user's knowledge files
@@ -188,7 +188,7 @@ For Craft-specific development:
 
 1. Set `ENABLE_CRAFT=true` in your environment
 2. Ensure templates are available at `/templates/outputs` and `/templates/venv`
-3. For local development, sandboxes are created under `/tmp/onyx-sandboxes`
+3. For local development, sandboxes are created under `/tmp/atlas-sandboxes`
 
 ## License
 

@@ -1,0 +1,500 @@
+# APISIX routes with Keycloak authentication and authorization.
+global_rules:
+- id: global-request-id
+  plugins:
+    request-id:
+      header_name: X-Request-Id
+      include_in_response: true
+      algorithm: uuid
+upstreams:
+- id: user-service
+  name: user-service
+  type: roundrobin
+  scheme: http
+  pass_host: node
+  timeout:
+    connect: 5
+    send: 60
+    read: 60
+  nodes:
+    __USER_SERVICE_UPSTREAM_ADDR__: 1
+- id: agent-service
+  name: agent-service
+  type: roundrobin
+  scheme: http
+  pass_host: node
+  timeout:
+    connect: 5
+    send: 600
+    read: 600
+  nodes:
+    __AGENT_SERVICE_UPSTREAM_ADDR__: 1
+- id: rag-service
+  name: rag-service
+  type: roundrobin
+  scheme: http
+  pass_host: node
+  timeout:
+    connect: 5
+    send: 60
+    read: 60
+  nodes:
+    __RAG_SERVICE_UPSTREAM_ADDR__: 1
+- id: tools-service
+  name: tools-service
+  type: roundrobin
+  scheme: http
+  pass_host: node
+  timeout:
+    connect: 5
+    send: 600
+    read: 600
+  nodes:
+    __TOOLS_SERVICE_UPSTREAM_ADDR__: 1
+routes:
+- id: operational-endpoints-denied
+  name: operational-endpoints-denied
+  uris:
+  - /internal/user-service/metrics
+  - /internal/rag-service/metrics
+  - /internal/tools-service/metrics
+  - /internal/agent-service/metrics
+  - /user-service/metrics
+  - /rag-service/metrics
+  - /tools-service/metrics
+  - /agent-service/metrics
+  priority: 300
+  upstream_id: user-service
+  plugins:
+    fault-injection:
+      abort:
+        http_status: 404
+        body: '{"message":"Not Found"}'
+- id: user-health-short
+  name: user-health-short
+  uri: /user-service/health
+  methods:
+  - GET
+  priority: 100
+  upstream_id: user-service
+  plugins:
+    proxy-rewrite:
+      uri: /api/v1/health
+- id: user-health
+  name: user-health
+  uri: /user-service/api/v1/health
+  methods:
+  - GET
+  priority: 100
+  upstream_id: user-service
+  plugins:
+    proxy-rewrite:
+      uri: /api/v1/health
+- id: user-readiness-short
+  name: user-readiness-short
+  uri: /user-service/health/ready
+  methods:
+  - GET
+  priority: 100
+  upstream_id: user-service
+  plugins:
+    proxy-rewrite:
+      uri: /api/v1/health/ready
+- id: user-readiness
+  name: user-readiness
+  uri: /user-service/api/v1/health/ready
+  methods:
+  - GET
+  priority: 100
+  upstream_id: user-service
+  plugins:
+    proxy-rewrite:
+      uri: /api/v1/health/ready
+- id: user-service-protected
+  name: user-service-protected
+  uris:
+  - /user-service/api/v1
+  - /user-service/api/v1/*
+  priority: 10
+  upstream_id: user-service
+  plugins:
+    proxy-rewrite:
+      regex_uri:
+      - ^/user-service/(.*)
+      - /$1
+    gateway-auth:
+      mode: protected
+      issuer_url: __KEYCLOAK_ISSUER_URL__
+      keycloak_base_url: __GATEWAY_KEYCLOAK_REALM_URL__
+      login_client_id: __KEYCLOAK_CLIENT_ID__
+      login_client_secret: __KEYCLOAK_CLIENT_SECRET__
+      introspection_client_id: __GATEWAY_KEYCLOAK_CLIENT_ID__
+      introspection_client_secret: __GATEWAY_KEYCLOAK_CLIENT_SECRET__
+      allowed_redirect_uris: __GATEWAY_ALLOWED_REDIRECT_URIS__
+      cookie_secure: __GATEWAY_COOKIE_SECURE__
+      external_idp_alias: __GATEWAY_EXTERNAL_IDP_ALIAS__
+      broker_url_rewrites: __GATEWAY_BROKER_URL_REWRITES__
+      policy_file: /usr/local/apisix/conf/gateway-policies.json
+      redis_host: __REDIS_HOST__
+      redis_port: __REDIS_PORT__
+      redis_password: __REDIS_PASSWORD__
+      redis_database: __GATEWAY_REDIS_DB__
+      internal_service_token: __INTERNAL_SERVICE_TOKEN__
+- id: agent-health-short
+  name: agent-health-short
+  uri: /agent-service/health
+  methods:
+  - GET
+  priority: 100
+  upstream_id: agent-service
+  plugins:
+    proxy-rewrite:
+      uri: /api/v1/health
+- id: agent-health
+  name: agent-health
+  uri: /agent-service/api/v1/health
+  methods:
+  - GET
+  priority: 100
+  upstream_id: agent-service
+  plugins:
+    proxy-rewrite:
+      uri: /api/v1/health
+- id: agent-service-protected
+  name: agent-service-protected
+  uris:
+  - /agent-service/api/v1
+  - /agent-service/api/v1/*
+  priority: 10
+  upstream_id: agent-service
+  timeout:
+    connect: 5
+    send: 600
+    read: 600
+  plugins:
+    proxy-buffering:
+      disable_proxy_buffering: true
+    proxy-rewrite:
+      regex_uri:
+      - ^/agent-service/(.*)
+      - /$1
+    gateway-auth:
+      mode: protected
+      issuer_url: __KEYCLOAK_ISSUER_URL__
+      keycloak_base_url: __GATEWAY_KEYCLOAK_REALM_URL__
+      login_client_id: __KEYCLOAK_CLIENT_ID__
+      login_client_secret: __KEYCLOAK_CLIENT_SECRET__
+      introspection_client_id: __GATEWAY_KEYCLOAK_CLIENT_ID__
+      introspection_client_secret: __GATEWAY_KEYCLOAK_CLIENT_SECRET__
+      allowed_redirect_uris: __GATEWAY_ALLOWED_REDIRECT_URIS__
+      cookie_secure: __GATEWAY_COOKIE_SECURE__
+      external_idp_alias: __GATEWAY_EXTERNAL_IDP_ALIAS__
+      broker_url_rewrites: __GATEWAY_BROKER_URL_REWRITES__
+      policy_file: /usr/local/apisix/conf/gateway-policies.json
+      redis_host: __REDIS_HOST__
+      redis_port: __REDIS_PORT__
+      redis_password: __REDIS_PASSWORD__
+      redis_database: __GATEWAY_REDIS_DB__
+      internal_service_token: __INTERNAL_SERVICE_TOKEN__
+- id: rag-health-short
+  name: rag-health-short
+  uri: /rag-service/health
+  methods:
+  - GET
+  priority: 100
+  upstream_id: rag-service
+  plugins:
+    proxy-rewrite:
+      uri: /api/v1/health
+- id: rag-health
+  name: rag-health
+  uri: /rag-service/api/v1/health
+  methods:
+  - GET
+  priority: 100
+  upstream_id: rag-service
+  plugins:
+    proxy-rewrite:
+      uri: /api/v1/health
+- id: rag-graph-health
+  name: rag-graph-health
+  uri: /rag-service/api/v1/graph/health
+  methods:
+  - GET
+  priority: 100
+  upstream_id: rag-service
+  plugins:
+    proxy-rewrite:
+      uri: /api/v1/graph/health
+- id: rag-service-protected
+  name: rag-service-protected
+  uris:
+  - /rag-service/api/v1
+  - /rag-service/api/v1/*
+  priority: 10
+  upstream_id: rag-service
+  plugins:
+    proxy-rewrite:
+      regex_uri:
+      - ^/rag-service/(.*)
+      - /$1
+    gateway-auth:
+      mode: protected
+      issuer_url: __KEYCLOAK_ISSUER_URL__
+      keycloak_base_url: __GATEWAY_KEYCLOAK_REALM_URL__
+      login_client_id: __KEYCLOAK_CLIENT_ID__
+      login_client_secret: __KEYCLOAK_CLIENT_SECRET__
+      introspection_client_id: __GATEWAY_KEYCLOAK_CLIENT_ID__
+      introspection_client_secret: __GATEWAY_KEYCLOAK_CLIENT_SECRET__
+      allowed_redirect_uris: __GATEWAY_ALLOWED_REDIRECT_URIS__
+      cookie_secure: __GATEWAY_COOKIE_SECURE__
+      external_idp_alias: __GATEWAY_EXTERNAL_IDP_ALIAS__
+      broker_url_rewrites: __GATEWAY_BROKER_URL_REWRITES__
+      policy_file: /usr/local/apisix/conf/gateway-policies.json
+      redis_host: __REDIS_HOST__
+      redis_port: __REDIS_PORT__
+      redis_password: __REDIS_PASSWORD__
+      redis_database: __GATEWAY_REDIS_DB__
+      internal_service_token: __INTERNAL_SERVICE_TOKEN__
+- id: tools-health
+  name: tools-health
+  uri: /tools-service/health
+  methods:
+  - GET
+  priority: 100
+  upstream_id: tools-service
+  plugins:
+    proxy-rewrite:
+      uri: /health
+- id: tools-service-mcp
+  name: tools-service-mcp
+  uris:
+  - /tools-service/mcp
+  - /tools-service/mcp/*
+  priority: 10
+  upstream_id: tools-service
+  timeout:
+    connect: 5
+    send: 600
+    read: 600
+  plugins:
+    proxy-buffering:
+      disable_proxy_buffering: true
+    proxy-rewrite:
+      regex_uri:
+      - ^/tools-service/(.*)
+      - /$1
+    gateway-auth:
+      mode: protected
+      issuer_url: __KEYCLOAK_ISSUER_URL__
+      keycloak_base_url: __GATEWAY_KEYCLOAK_REALM_URL__
+      login_client_id: __KEYCLOAK_CLIENT_ID__
+      login_client_secret: __KEYCLOAK_CLIENT_SECRET__
+      introspection_client_id: __GATEWAY_KEYCLOAK_CLIENT_ID__
+      introspection_client_secret: __GATEWAY_KEYCLOAK_CLIENT_SECRET__
+      allowed_redirect_uris: __GATEWAY_ALLOWED_REDIRECT_URIS__
+      cookie_secure: __GATEWAY_COOKIE_SECURE__
+      external_idp_alias: __GATEWAY_EXTERNAL_IDP_ALIAS__
+      broker_url_rewrites: __GATEWAY_BROKER_URL_REWRITES__
+      policy_file: /usr/local/apisix/conf/gateway-policies.json
+      redis_host: __REDIS_HOST__
+      redis_port: __REDIS_PORT__
+      redis_password: __REDIS_PASSWORD__
+      redis_database: __GATEWAY_REDIS_DB__
+      internal_service_token: __INTERNAL_SERVICE_TOKEN__
+- id: internal-agent-connector-tools
+  name: internal-agent-connector-tools
+  methods:
+  - POST
+  priority: 200
+  upstream_id: agent-service
+  plugins:
+    proxy-rewrite:
+      regex_uri:
+      - ^/internal/agent-service/(.*)
+      - /$1
+    gateway-auth:
+      mode: internal
+      issuer_url: __KEYCLOAK_ISSUER_URL__
+      keycloak_base_url: __GATEWAY_KEYCLOAK_REALM_URL__
+      login_client_id: __KEYCLOAK_CLIENT_ID__
+      login_client_secret: __KEYCLOAK_CLIENT_SECRET__
+      introspection_client_id: __GATEWAY_KEYCLOAK_CLIENT_ID__
+      introspection_client_secret: __GATEWAY_KEYCLOAK_CLIENT_SECRET__
+      allowed_redirect_uris: __GATEWAY_ALLOWED_REDIRECT_URIS__
+      cookie_secure: __GATEWAY_COOKIE_SECURE__
+      external_idp_alias: __GATEWAY_EXTERNAL_IDP_ALIAS__
+      broker_url_rewrites: __GATEWAY_BROKER_URL_REWRITES__
+      policy_file: /usr/local/apisix/conf/gateway-policies.json
+      redis_host: __REDIS_HOST__
+      redis_port: __REDIS_PORT__
+      redis_password: __REDIS_PASSWORD__
+      redis_database: __GATEWAY_REDIS_DB__
+      internal_service_token: __INTERNAL_SERVICE_TOKEN__
+  uris:
+  - /internal/agent-service/api/v1/internal/connector-tools
+  - /internal/agent-service/api/v1/internal/connector-tools/*
+- id: internal-user-service
+  name: internal-user-service
+  uris:
+  - /internal/user-service
+  - /internal/user-service/*
+  priority: 50
+  upstream_id: user-service
+  plugins:
+    proxy-rewrite:
+      regex_uri:
+      - ^/internal/user-service/?(.*)
+      - /$1
+    gateway-auth:
+      mode: internal
+      issuer_url: __KEYCLOAK_ISSUER_URL__
+      keycloak_base_url: __GATEWAY_KEYCLOAK_REALM_URL__
+      login_client_id: __KEYCLOAK_CLIENT_ID__
+      login_client_secret: __KEYCLOAK_CLIENT_SECRET__
+      introspection_client_id: __GATEWAY_KEYCLOAK_CLIENT_ID__
+      introspection_client_secret: __GATEWAY_KEYCLOAK_CLIENT_SECRET__
+      allowed_redirect_uris: __GATEWAY_ALLOWED_REDIRECT_URIS__
+      cookie_secure: __GATEWAY_COOKIE_SECURE__
+      external_idp_alias: __GATEWAY_EXTERNAL_IDP_ALIAS__
+      broker_url_rewrites: __GATEWAY_BROKER_URL_REWRITES__
+      policy_file: /usr/local/apisix/conf/gateway-policies.json
+      redis_host: __REDIS_HOST__
+      redis_port: __REDIS_PORT__
+      redis_password: __REDIS_PASSWORD__
+      redis_database: __GATEWAY_REDIS_DB__
+      internal_service_token: __INTERNAL_SERVICE_TOKEN__
+- id: internal-rag-service
+  name: internal-rag-service
+  uris:
+  - /internal/rag-service
+  - /internal/rag-service/*
+  priority: 50
+  upstream_id: rag-service
+  plugins:
+    proxy-rewrite:
+      regex_uri:
+      - ^/internal/rag-service/?(.*)
+      - /$1
+    gateway-auth:
+      mode: internal
+      issuer_url: __KEYCLOAK_ISSUER_URL__
+      keycloak_base_url: __GATEWAY_KEYCLOAK_REALM_URL__
+      login_client_id: __KEYCLOAK_CLIENT_ID__
+      login_client_secret: __KEYCLOAK_CLIENT_SECRET__
+      introspection_client_id: __GATEWAY_KEYCLOAK_CLIENT_ID__
+      introspection_client_secret: __GATEWAY_KEYCLOAK_CLIENT_SECRET__
+      allowed_redirect_uris: __GATEWAY_ALLOWED_REDIRECT_URIS__
+      cookie_secure: __GATEWAY_COOKIE_SECURE__
+      external_idp_alias: __GATEWAY_EXTERNAL_IDP_ALIAS__
+      broker_url_rewrites: __GATEWAY_BROKER_URL_REWRITES__
+      policy_file: /usr/local/apisix/conf/gateway-policies.json
+      redis_host: __REDIS_HOST__
+      redis_port: __REDIS_PORT__
+      redis_password: __REDIS_PASSWORD__
+      redis_database: __GATEWAY_REDIS_DB__
+      internal_service_token: __INTERNAL_SERVICE_TOKEN__
+- id: internal-tools-service
+  name: internal-tools-service
+  uris:
+  - /internal/tools-service
+  - /internal/tools-service/*
+  priority: 50
+  upstream_id: tools-service
+  timeout:
+    connect: 5
+    send: 600
+    read: 600
+  plugins:
+    proxy-buffering:
+      disable_proxy_buffering: true
+    proxy-rewrite:
+      regex_uri:
+      - ^/internal/tools-service/?(.*)
+      - /$1
+    gateway-auth:
+      mode: internal
+      issuer_url: __KEYCLOAK_ISSUER_URL__
+      keycloak_base_url: __GATEWAY_KEYCLOAK_REALM_URL__
+      login_client_id: __KEYCLOAK_CLIENT_ID__
+      login_client_secret: __KEYCLOAK_CLIENT_SECRET__
+      introspection_client_id: __GATEWAY_KEYCLOAK_CLIENT_ID__
+      introspection_client_secret: __GATEWAY_KEYCLOAK_CLIENT_SECRET__
+      allowed_redirect_uris: __GATEWAY_ALLOWED_REDIRECT_URIS__
+      cookie_secure: __GATEWAY_COOKIE_SECURE__
+      external_idp_alias: __GATEWAY_EXTERNAL_IDP_ALIAS__
+      broker_url_rewrites: __GATEWAY_BROKER_URL_REWRITES__
+      policy_file: /usr/local/apisix/conf/gateway-policies.json
+      redis_host: __REDIS_HOST__
+      redis_port: __REDIS_PORT__
+      redis_password: __REDIS_PASSWORD__
+      redis_database: __GATEWAY_REDIS_DB__
+      internal_service_token: __INTERNAL_SERVICE_TOKEN__
+- id: gateway-auth
+  name: gateway-auth
+  uris:
+  - /auth/api/v1
+  - /auth/api/v1/*
+  priority: 150
+  upstream_id: user-service
+  plugins:
+    gateway-auth:
+      mode: auth
+      issuer_url: __KEYCLOAK_ISSUER_URL__
+      keycloak_base_url: __GATEWAY_KEYCLOAK_REALM_URL__
+      login_client_id: __KEYCLOAK_CLIENT_ID__
+      login_client_secret: __KEYCLOAK_CLIENT_SECRET__
+      introspection_client_id: __GATEWAY_KEYCLOAK_CLIENT_ID__
+      introspection_client_secret: __GATEWAY_KEYCLOAK_CLIENT_SECRET__
+      allowed_redirect_uris: __GATEWAY_ALLOWED_REDIRECT_URIS__
+      cookie_secure: __GATEWAY_COOKIE_SECURE__
+      external_idp_alias: __GATEWAY_EXTERNAL_IDP_ALIAS__
+      broker_url_rewrites: __GATEWAY_BROKER_URL_REWRITES__
+      policy_file: /usr/local/apisix/conf/gateway-policies.json
+      redis_host: __REDIS_HOST__
+      redis_port: __REDIS_PORT__
+      redis_password: __REDIS_PASSWORD__
+      redis_database: __GATEWAY_REDIS_DB__
+      internal_service_token: __INTERNAL_SERVICE_TOKEN__
+- id: user-auth-session
+  name: user-auth-session
+  uris:
+  - /user-service/api/v1/auth/type
+  - /user-service/api/v1/auth/login
+  - /user-service/api/v1/auth/external/login
+  - /user-service/api/v1/auth/logout
+  - /user-service/api/v1/auth/refresh
+  - /user-service/api/v1/auth/oidc/authorize
+  - /user-service/api/v1/auth/oidc/callback
+  priority: 150
+  upstream_id: user-service
+  plugins:
+    gateway-auth:
+      mode: auth
+      issuer_url: __KEYCLOAK_ISSUER_URL__
+      keycloak_base_url: __GATEWAY_KEYCLOAK_REALM_URL__
+      login_client_id: __KEYCLOAK_CLIENT_ID__
+      login_client_secret: __KEYCLOAK_CLIENT_SECRET__
+      introspection_client_id: __GATEWAY_KEYCLOAK_CLIENT_ID__
+      introspection_client_secret: __GATEWAY_KEYCLOAK_CLIENT_SECRET__
+      allowed_redirect_uris: __GATEWAY_ALLOWED_REDIRECT_URIS__
+      cookie_secure: __GATEWAY_COOKIE_SECURE__
+      external_idp_alias: __GATEWAY_EXTERNAL_IDP_ALIAS__
+      broker_url_rewrites: __GATEWAY_BROKER_URL_REWRITES__
+      policy_file: /usr/local/apisix/conf/gateway-policies.json
+      redis_host: __REDIS_HOST__
+      redis_port: __REDIS_PORT__
+      redis_password: __REDIS_PASSWORD__
+      redis_database: __GATEWAY_REDIS_DB__
+      internal_service_token: __INTERNAL_SERVICE_TOKEN__
+- id: user-auth-register
+  name: user-auth-register
+  uri: /user-service/api/v1/auth/register
+  methods:
+  - POST
+  priority: 200
+  upstream_id: user-service
+  plugins:
+    proxy-rewrite:
+      uri: /api/v1/auth/register
+#END

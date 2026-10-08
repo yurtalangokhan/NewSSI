@@ -1,11 +1,20 @@
 "use client";
+import { integrationsEndpoints } from "@/lib/api/domains/integrations/endpoints";
+import { datasourcesEndpoints } from "@/lib/api/domains/datasources/endpoints";
+import { modelProvidersEndpoints } from "@/lib/api/domains/model-providers/endpoints";
 
 import { useState } from "react";
-import { ANONYMOUS_USER_NAME, LOGOUT_DISABLED } from "@/lib/constants";
-import { Notification } from "@/interfaces/settings";
-import useSWR, { preload } from "swr";
-import { errorHandlingFetcher } from "@/lib/fetcher";
-import { checkUserIsNoAuthUser, logout } from "@/lib/user";
+import { ANONYMOUS_USER_NAME } from "@/lib/constants";
+
+import { preload } from "swr";
+import { useNotifications } from "@/lib/api/domains/notifications/hooks";
+import { fetchOAuthStatus } from "@/lib/api/domains/integrations/api";
+
+import { fetchConnectorStatus } from "@/lib/api/domains/datasources/api";
+
+import { fetchLLMProviders } from "@/lib/api/domains/model-providers/api";
+
+import { checkUserIsNoAuthUser, logout } from "@/lib/api/domains/session/api";
 import { useUser } from "@/providers/UserProvider";
 import InputAvatar from "@/refresh-components/inputs/InputAvatar";
 import Text from "@/refresh-components/texts/Text";
@@ -28,6 +37,7 @@ import useAppFocus from "@/hooks/useAppFocus";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
+import { appSettings } from "@/lib/settings";
 
 function getDisplayName(email?: string, personalName?: string): string {
   // Prioritize custom personal name if set
@@ -68,11 +78,7 @@ function SettingsPopover({
 }: SettingsPopoverProps) {
   const { user } = useUser();
   const { t } = useTranslation();
-  const { data: notifications } = useSWR<Notification[]>(
-    "/api/notifications",
-    errorHandlingFetcher,
-    { revalidateOnFocus: false }
-  );
+  const { notifications } = useNotifications({ revalidateOnFocus: false });
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -80,7 +86,7 @@ function SettingsPopover({
     notifications?.filter((n) => !n.dismissed).length ?? 0;
   const isAnonymousUser =
     user?.is_anonymous_user || checkUserIsNoAuthUser(user?.id ?? "");
-  const showLogout = user && !isAnonymousUser && !LOGOUT_DISABLED;
+  const showLogout = user && !isAnonymousUser && !appSettings.LOGOUT_DISABLED;
   const showLogin = isAnonymousUser;
 
   const handleLogin = () => {
@@ -124,7 +130,7 @@ function SettingsPopover({
           <LineItem
             key="help-faq"
             icon={SvgExternalLink}
-            href="https://docs.onyx.app"
+            href="https://docs.atlas.app"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -175,10 +181,7 @@ export default function UserAvatarPopover({
 
   // Fetch notifications for display
   // The GET endpoint also triggers a refresh if release notes are stale
-  const { data: notifications } = useSWR<Notification[]>(
-    "/api/notifications",
-    errorHandlingFetcher
-  );
+  const { notifications } = useNotifications();
 
   const displayName = getPreferredName(user);
   const undismissedCount =
@@ -188,11 +191,17 @@ export default function UserAvatarPopover({
   const handlePopoverOpen = (state: boolean) => {
     if (state) {
       // Prefetch user settings data when popover opens for instant modal display
-      preload("/api/federated/oauth-status", errorHandlingFetcher);
+      preload(integrationsEndpoints.oauthStatus.browserPath, () =>
+        fetchOAuthStatus()
+      );
       if (vectorDbEnabled) {
-        preload("/api/manage/connector-status", errorHandlingFetcher);
+        preload(datasourcesEndpoints.connectorStatus.browserPath, () =>
+          fetchConnectorStatus()
+        );
       }
-      preload("/api/llm/provider", errorHandlingFetcher);
+      preload(modelProvidersEndpoints.getProviderSelection.browserPath, () =>
+        fetchLLMProviders()
+      );
       setPopupState("Settings");
     } else {
       setPopupState(undefined);
@@ -202,7 +211,7 @@ export default function UserAvatarPopover({
   return (
     <Popover open={!!popupState} onOpenChange={handlePopoverOpen}>
       <Popover.Trigger asChild>
-        <div id="onyx-user-dropdown">
+        <div id="atlas-user-dropdown">
           <SidebarTab
             leftIcon={({ className }) => (
               <InputAvatar

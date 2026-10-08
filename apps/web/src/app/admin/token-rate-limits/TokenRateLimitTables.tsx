@@ -1,4 +1,7 @@
 "use client";
+import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
+import useSWR from "swr";
+import Checkbox from "@/refresh-components/inputs/Checkbox";
 
 import {
   Table,
@@ -7,15 +10,20 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-import Title from "@/components/ui/title";
 import { DeleteButton } from "@/components/DeleteButton";
-import { deleteTokenRateLimit, updateTokenRateLimit } from "./lib";
-import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
-import { TokenRateLimitDisplay } from "./types";
-import { errorHandlingFetcher } from "@/lib/fetcher";
-import useSWR, { mutate } from "swr";
-import Checkbox from "@/refresh-components/inputs/Checkbox";
 import { TableHeader } from "@/components/ui/table";
+
+import Title from "@/components/ui/title";
+
+import {
+  deleteTokenRateLimit,
+  updateTokenRateLimit,
+} from "@/lib/api/domains/system/api";
+
+import { TokenRateLimitDisplay } from "@/lib/api/domains/system/token-rate-limit-types";
+
+import { mutate } from "swr";
+
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -24,7 +32,7 @@ type TokenRateLimitTableArgs = {
   tokenRateLimits: TokenRateLimitDisplay[];
   title?: string;
   description?: string;
-  fetchUrl: string;
+  requestKey: string;
   hideHeading?: boolean;
   isAdmin: boolean;
 };
@@ -33,7 +41,7 @@ export const TokenRateLimitTable = ({
   tokenRateLimits,
   title,
   description,
-  fetchUrl,
+  requestKey,
   hideHeading,
   isAdmin,
 }: TokenRateLimitTableArgs) => {
@@ -57,13 +65,13 @@ export const TokenRateLimitTable = ({
       period_hours: tokenRateLimit.period_hours,
       enabled: !tokenRateLimit.enabled,
     }).then(() => {
-      mutate(fetchUrl);
+      mutate(requestKey);
     });
   };
 
   const handleDelete = (id: number) =>
     deleteTokenRateLimit(id).then(() => {
-      mutate(fetchUrl);
+      mutate(requestKey);
     });
 
   if (tokenRateLimits.length === 0) {
@@ -181,14 +189,16 @@ export const TokenRateLimitTable = ({
 };
 
 export const GenericTokenRateLimitTable = ({
-  fetchUrl,
+  requestKey,
+  loadData,
   title,
   description,
   hideHeading,
   responseMapper,
   isAdmin = true,
 }: {
-  fetchUrl: string;
+  requestKey: string;
+  loadData: () => Promise<any>;
   title?: string;
   description?: string;
   hideHeading?: boolean;
@@ -197,8 +207,8 @@ export const GenericTokenRateLimitTable = ({
 }) => {
   const { t } = useTranslation();
   const { data, isLoading, error } = useSWR<TokenRateLimitDisplay[]>(
-    fetchUrl,
-    errorHandlingFetcher
+    requestKey,
+    loadData
   );
 
   if (isLoading) {
@@ -232,7 +242,7 @@ export const GenericTokenRateLimitTable = ({
   return (
     <TokenRateLimitTable
       tokenRateLimits={processedData ?? []}
-      fetchUrl={fetchUrl}
+      requestKey={requestKey}
       title={title}
       description={description}
       hideHeading={hideHeading}

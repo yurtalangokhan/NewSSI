@@ -1,5 +1,7 @@
 from typing import Any
 
+from config_manager import env
+
 from src.repository import PermissionRepository
 
 
@@ -41,12 +43,19 @@ class PermissionService:
         return {"features": features}
 
     def _permission_to_dict(self, permission) -> dict[str, Any]:
+        service_clients = {
+            "agent-service": env.KEYCLOAK_AGENT_SERVICE_CLIENT_ID,
+            "rag-service": env.KEYCLOAK_RAG_SERVICE_CLIENT_ID,
+            "tools-service": env.KEYCLOAK_TOOLS_SERVICE_CLIENT_ID,
+            "user-service": env.KEYCLOAK_USER_SERVICE_CLIENT_ID,
+        }
         return {
             "name": permission.name,
             "label": permission.label,
             "description": permission.description,
             "entity": permission.entity,
             "service": permission.service,
+            "service_client": service_clients.get(permission.service),
             "action": permission.action,
             "feature": permission.feature,
             "is_system": permission.is_system,

@@ -1,6 +1,6 @@
 import { FormikProps } from "formik";
 import { Label } from "@/components/Field";
-import { useUserGroups } from "@/lib/hooks";
+import { useUserGroups } from "@/lib/api/domains/access/hooks";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
 import { GenericMultiSelect } from "@/components/GenericMultiSelect";
 

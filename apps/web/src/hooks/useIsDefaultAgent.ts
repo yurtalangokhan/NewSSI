@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import { CombinedSettings } from "@/interfaces/settings";
-import { ChatSession } from "@/app/app/interfaces";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { ChatSession } from "@/lib/api/domains/chat/types";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import { DEFAULT_AGENT_ID } from "@/lib/constants";
 import useAppFocus from "@/hooks/useAppFocus";
 

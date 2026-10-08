@@ -1,4 +1,6 @@
+import { projectsEndpoints } from "@/lib/api/domains/projects/endpoints";
 import { proxyToBackend } from "@/lib/api/proxy";
+
 import { NextRequest } from "next/server";
 
 export async function GET(
@@ -8,6 +10,6 @@ export async function GET(
   const { sessionId } = await params;
   return proxyToBackend(
     request,
-    `/api/user/projects/session/${sessionId}/token-count`
+    projectsEndpoints.getSessionTokenCount(sessionId).backend
   );
 }

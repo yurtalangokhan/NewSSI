@@ -5,7 +5,6 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.core.settings import get_settings
 from src.core.trusted import TrustedToolContext
 from src.core.trusted_context import set_current_trusted_context
 from src.tools.connector_tools import (
@@ -23,24 +22,27 @@ from src.tools.connector_tools import (
 
 
 def test_supported_connector_catalog_is_explicit():
-    assert frozenset(
-        {
-            "source-elasticsearch",
-            "source-http-request",
-            "source-kafka",
-            "source-microsoft-sharepoint",
-            "source-mongodb",
-            "source-mongodb-v2",
-            "source-mssql",
-            "source-mysql",
-            "source-opensearch",
-            "source-oracle",
-            "source-outlook",
-            "source-postgres",
-            "source-s3",
-            "source-sftp-bulk",
-        }
-    ) == SUPPORTED_CONNECTOR_TYPES
+    assert (
+        frozenset(
+            {
+                "source-elasticsearch",
+                "source-http-request",
+                "source-kafka",
+                "source-microsoft-sharepoint",
+                "source-mongodb",
+                "source-mongodb-v2",
+                "source-mssql",
+                "source-mysql",
+                "source-opensearch",
+                "source-oracle",
+                "source-outlook",
+                "source-postgres",
+                "source-s3",
+                "source-sftp-bulk",
+            }
+        )
+        == SUPPORTED_CONNECTOR_TYPES
+    )
 
 
 def test_postgres_native_ssl_shape_and_tunnel_fail_closed():
@@ -57,12 +59,10 @@ def test_postgres_native_ssl_shape_and_tunnel_fail_closed():
     with pytest.raises(ConnectorAccessError):
         _postgres_config({**config, "ssl_mode": {"mode": "verify-full"}})
     with pytest.raises(ConnectorAccessError):
-        _postgres_config(
-            {**config, "tunnel_method": {"tunnel_method": "SSH_PASSWORD_AUTH"}}
-        )
+        _postgres_config({**config, "tunnel_method": {"tunnel_method": "SSH_PASSWORD_AUTH"}})
 
 
-def test_airbyte_globstar_matches_zero_or_more_directories():
+def test_stream_globstar_matches_zero_or_more_directories():
     assert _matches_globs("orders/one.jsonl", ["orders/**/*.jsonl"])
     assert _matches_globs("orders/2026/one.jsonl", ["orders/**/*.jsonl"])
     assert not _matches_globs("private/one.jsonl", ["orders/**/*.jsonl"])
@@ -100,6 +100,7 @@ def test_sftp_private_key_pem_is_imported_not_used_as_a_filename(monkeypatch):
 
 class _Response:
     def __init__(self, payload: dict):
+        self.status_code = 200
         self._payload = payload
 
     def raise_for_status(self) -> None:
@@ -115,23 +116,21 @@ def _env(monkeypatch) -> None:
         "MCP_PORT": "8003",
         "POSTGRES_HOST": "localhost",
         "POSTGRES_PORT": "5432",
-        "POSTGRES_USER": "tools",
-        "POSTGRES_PASSWORD": "tools",
-        "POSTGRES_DB": "tools",
-        "USER_SERVICE_URL": "http://user-service:8000",
-        "AGENT_SERVICE_URL": "http://agent-service:8001/",
+        "POSTGRES_TOOL_SERVICE_USER": "tools",
+        "POSTGRES_TOOL_SERVICE_PASSWORD": "tools",
+        "POSTGRES_TOOL_SERVICE_DB": "tools",
+        "INTERNAL_USER_SERVICE_URL": "http://user-service:8000",
+        "INTERNAL_AGENT_SERVICE_URL": "http://agent-service:8001/",
         "INTERNAL_SERVICE_TOKEN": "internal-secret",
     }
     for key, value in values.items():
         monkeypatch.setenv(key, value)
-    get_settings.cache_clear()
 
 
 @pytest.fixture(autouse=True)
 def _clear_context():
     yield
     set_current_trusted_context(None)
-    get_settings.cache_clear()
 
 
 @pytest.mark.asyncio
@@ -139,7 +138,7 @@ async def test_list_resources_resolves_binding_without_exposing_config(monkeypat
     calls = {}
 
     class Client:
-        def __init__(self, *, timeout):
+        def __init__(self, *, timeout, **kwargs):
             calls["timeout"] = timeout
 
         async def __aenter__(self):
@@ -152,11 +151,16 @@ async def test_list_resources_resolves_binding_without_exposing_config(monkeypat
             calls.update(url=url, payload=json, headers=headers)
             return _Response(
                 {
+                    "statusCode": 200,
+                    "message": None,
+                    "error": None,
+                    "data": {
                     "id": "ds-1",
                     "name": "Reporting",
                     "connector_type": "source-postgres",
                     "streams": ["public.orders", "public.customers"],
                     "config": {"password": "never-visible"},
+                    },
                 }
             )
 
@@ -187,6 +191,7 @@ async def test_list_resources_resolves_binding_without_exposing_config(monkeypat
     assert calls["headers"] == {
         "X-Internal-Service-Token": "internal-secret",
         "x-user-id": "user-1",
+        "X-Language": "en",
     }
     assert "never-visible" not in json.dumps(result)
 
@@ -220,8 +225,7 @@ async def test_file_listing_has_one_global_output_bound(monkeypatch):
 
     async def list_files(_config, resource):
         return [
-            {"path": f"{resource}/{'x' * 480}/{index}.jsonl", "size": 1}
-            for index in range(100)
+            {"path": f"{resource}/{'x' * 480}/{index}.jsonl", "size": 1} for index in range(100)
         ]
 
     monkeypatch.setattr("src.tools.connector_tools._resolve_connector", resolve)
@@ -267,8 +271,8 @@ async def test_postgres_read_is_bounded_and_restricted_to_selected_stream(monkey
     monkeypatch.setattr("src.tools.connector_tools._resolve_connector", resolve)
     monkeypatch.setattr("src.tools.connector_tools.asyncpg.connect", connect)
     monkeypatch.setattr(
-        "src.tools.connector_tools.get_settings",
-        lambda: SimpleNamespace(connector_postgres_endpoints="{}"),
+        "src.tools.connector_tools.env",
+        SimpleNamespace(CONNECTOR_POSTGRES_ENDPOINTS="{}"),
     )
 
     result = json.loads(
@@ -278,9 +282,7 @@ async def test_postgres_read_is_bounded_and_restricted_to_selected_stream(monkey
     assert result["success"] is True
     assert result["rows"] == [{"id": 1, "status": "paid"}]
     assert result["limit"] == 100
-    assert captured["statement"] == (
-        'SELECT * FROM "public"."orders" WHERE "status" = $1 LIMIT $2'
-    )
+    assert captured["statement"] == ('SELECT * FROM "public"."orders" WHERE "status" = $1 LIMIT $2')
     assert captured["values"] == ("paid", 100)
     assert captured["closed"] is True
 
@@ -306,18 +308,16 @@ async def test_read_rejects_query_and_hides_raw_connection_error(monkeypatch):
         }
 
     async def connect(**_config):
-        raise RuntimeError("password=top-secret host=db")
+        raise OSError("password=top-secret host=db")
 
     monkeypatch.setattr("src.tools.connector_tools._resolve_connector", resolve)
     monkeypatch.setattr("src.tools.connector_tools.asyncpg.connect", connect)
     monkeypatch.setattr(
-        "src.tools.connector_tools.get_settings",
-        lambda: SimpleNamespace(connector_postgres_endpoints="{}"),
+        "src.tools.connector_tools.env",
+        SimpleNamespace(CONNECTOR_POSTGRES_ENDPOINTS="{}"),
     )
 
-    rejected = json.loads(
-        await connector_read("ds-1", "public.orders", query="DROP TABLE orders")
-    )
+    rejected = json.loads(await connector_read("ds-1", "public.orders", query="DROP TABLE orders"))
     assert rejected["error_category"] == "validation"
 
     failed = await connector_read("ds-1", "public.orders")
@@ -416,9 +416,7 @@ async def test_http_request_read_uses_only_configured_resource_path(monkeypatch)
     monkeypatch.setattr("src.tools.connector_tools._resolve_connector", resolve)
     monkeypatch.setattr("src.tools.connector_tools.httpx.AsyncClient", Client)
 
-    result = json.loads(
-        await connector_read("ds", "orders", filter={"status": "paid"}, limit=4)
-    )
+    result = json.loads(await connector_read("ds", "orders", filter={"status": "paid"}, limit=4))
 
     assert result["rows"] == [{"id": 1}]
     assert calls["url"] == "https://api.internal/v1/reports/orders"
@@ -662,14 +660,10 @@ async def test_s3_lists_and_reads_only_keys_matching_selected_stream_globs(monke
     )
 
     listed = json.loads(await connector_list_resources("ds"))
-    assert listed["files"] == {
-        "orders": [{"path": "orders/2026/one.jsonl", "size": 9}]
-    }
+    assert listed["files"] == {"orders": [{"path": "orders/2026/one.jsonl", "size": 9}]}
 
     read = json.loads(
-        await connector_read(
-            "ds", "orders", query=json.dumps({"key": "orders/2026/one.jsonl"})
-        )
+        await connector_read("ds", "orders", query=json.dumps({"key": "orders/2026/one.jsonl"}))
     )
     assert read["rows"][0]["content"] == '{"id":1}\n'
 
@@ -759,3 +753,57 @@ async def test_sftp_lists_and_reads_only_paths_under_selected_stream_glob(monkey
         await connector_read("ds", "invoices", query=json.dumps({"path": "/etc/passwd"}))
     )
     assert denied["error_category"] == "authorization"
+
+
+@pytest.mark.parametrize(
+    ("status_code", "code", "category"),
+    [(403, "auth.forbidden", "authorization"), (504, "dependency.timeout", "timeout")],
+)
+async def test_connector_boundaries_preserve_application_failures(monkeypatch, status_code, code, category):
+    from error_contract import ApplicationError
+
+    async def fail_resolve(*_args):
+        raise ApplicationError(status_code=status_code, code=code, message="Yerelleştirilmiş hata", message_key=None)
+
+    monkeypatch.setattr("src.tools.connector_tools._resolve_connector", fail_resolve)
+    for result in [await connector_list_resources("ds-1"), await connector_read("ds-1", "orders")]:
+        payload = json.loads(result)
+        assert payload["error"] == "Yerelleştirilmiş hata"
+        assert payload["error_category"] == category
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("locale", ["en", "tr"])
+async def test_connector_resolution_forwards_locale_and_preserves_timeout(monkeypatch, locale):
+    import httpx
+    from error_contract import DependencyTimeoutError
+    from localization.core import reset_locale, set_locale
+    from src.tools.connector_tools import _resolve_connector
+
+    calls = {}
+
+    class Client:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def post(self, _url, *, json, headers):
+            calls.update(headers)
+            raise httpx.ReadTimeout("private upstream URL")
+
+    _env(monkeypatch)
+    monkeypatch.setattr("src.tools.connector_tools.httpx.AsyncClient", Client)
+    set_current_trusted_context(TrustedToolContext(user_id="user-1", binding_references={"connectors.persona_id": "42"}))
+    token = set_locale(locale)
+    try:
+        with pytest.raises(DependencyTimeoutError) as caught:
+            await _resolve_connector("ds-1", "read")
+    finally:
+        reset_locale(token)
+    assert calls["X-Language"] == locale
+    assert isinstance(caught.value.__cause__, httpx.ReadTimeout)

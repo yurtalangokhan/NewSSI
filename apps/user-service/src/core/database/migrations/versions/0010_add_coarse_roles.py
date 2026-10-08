@@ -6,11 +6,11 @@ Create Date: 2026-06-26
 
 """
 
-import json
 from collections.abc import Sequence
+import json
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
 
 revision: str = "0010"

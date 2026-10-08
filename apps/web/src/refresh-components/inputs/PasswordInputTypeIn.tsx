@@ -6,7 +6,8 @@ import InputTypeIn, {
 } from "@/refresh-components/inputs/InputTypeIn";
 import { Button } from "@opal/components";
 import { noProp } from "@/lib/utils";
-import { SvgEye, SvgEyeClosed } from "@opal/icons";
+import { SvgEye, SvgEyeClosed, SvgAlertTriangle } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 /**
  * Custom mask character for password display.
@@ -66,6 +67,12 @@ export function computeMaskedInputChange(
     return { newValue: "", cursorPosition: 0 };
   }
 
+  // When autofilled by the browser or pasted as plain text, no mask characters are present.
+  // In that case, the entire display value is the new raw password.
+  if (!newDisplayValue.includes(MASK_CHARACTER)) {
+    return { newValue: newDisplayValue, cursorPosition: newLength };
+  }
+
   // Text was selected and replaced/deleted
   if (hadSelection) {
     const selectionLength = previousSelection.end - previousSelection.start;
@@ -91,7 +98,7 @@ export function computeMaskedInputChange(
   // Characters were added (typed or pasted) without selection
   if (newLength > oldLength) {
     const charsAdded = newLength - oldLength;
-    const insertPos = cursorPosition - charsAdded;
+    const insertPos = Math.max(0, cursorPosition - charsAdded);
     const addedChars = newDisplayValue.slice(insertPos, cursorPosition);
 
     return {
@@ -151,14 +158,28 @@ export interface PasswordInputTypeInProps
   alwaysShowToggle?: boolean;
   /**
    * Tooltip/aria-label shown when the password is hidden (toggle reveals it).
-   * Defaults to "Show password".
+   * Defaults to the `common.showPassword` locale copy.
    */
   showPasswordLabel?: string;
   /**
    * Tooltip/aria-label shown when the password is revealed (toggle hides it).
-   * Defaults to "Hide password".
+   * Defaults to the `common.hidePassword` locale copy.
    */
   hidePasswordLabel?: string;
+  /**
+   * Tooltip/aria-label shown for the Caps Lock indicator.
+   * Defaults to the `common.capsLockOn` locale copy.
+   */
+  capsLockLabel?: string;
+  /**
+   * Whether to show a Caps Lock icon indicator in rightSection when Caps Lock is active.
+   * Defaults to true.
+   */
+  showCapsLockIndicator?: boolean;
+  /**
+   * Callback fired when Caps Lock modifier state changes.
+   */
+  onCapsLockChange?: (isCapsLockOn: boolean) => void;
 }
 
 /**
@@ -178,25 +199,48 @@ export default function PasswordInputTypeIn({
   ref,
   isNonRevealable = false,
   alwaysShowToggle = false,
-  showPasswordLabel = "Show password",
-  hidePasswordLabel = "Hide password",
+  showPasswordLabel,
+  hidePasswordLabel,
+  capsLockLabel,
+  showCapsLockIndicator = true,
+  onCapsLockChange,
   value,
   onChange,
   onFocus,
   onBlur,
+  onKeyDown,
+  onKeyUp,
+  onClick,
   disabled,
   error,
   showClearButton = false,
   ...props
 }: PasswordInputTypeInProps) {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
   const [isFocused, setIsFocused] = React.useState(false);
+  const [isCapsLockOn, setIsCapsLockOn] = React.useState(false);
 
   // Track selection range before changes occur
   const selectionRef = React.useRef<{ start: number; end: number }>({
     start: 0,
     end: 0,
   });
+
+  const checkCapsLock = React.useCallback(
+    (
+      e:
+        | React.KeyboardEvent<HTMLInputElement>
+        | React.MouseEvent<HTMLInputElement>
+    ) => {
+      if (typeof e.getModifierState === "function") {
+        const active = e.getModifierState("CapsLock");
+        setIsCapsLockOn(active);
+        onCapsLockChange?.(active);
+      }
+    },
+    [onCapsLockChange]
+  );
 
   const realValue = String(value || "");
   const hasValue = realValue.length > 0;
@@ -222,9 +266,11 @@ export default function PasswordInputTypeIn({
   const handleBlur = React.useCallback(
     (e: React.FocusEvent<HTMLInputElement>) => {
       setIsFocused(false);
+      setIsCapsLockOn(false);
+      onCapsLockChange?.(false);
       onBlur?.(e);
     },
-    [onBlur]
+    [onBlur, onCapsLockChange]
   );
 
   // Track selection before any change occurs (used by both onSelect and onKeyDown)
@@ -237,6 +283,31 @@ export default function PasswordInputTypeIn({
       };
     },
     []
+  );
+
+  const handleKeyDown = React.useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      captureSelection(e);
+      checkCapsLock(e);
+      onKeyDown?.(e);
+    },
+    [captureSelection, checkCapsLock, onKeyDown]
+  );
+
+  const handleKeyUp = React.useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      checkCapsLock(e);
+      onKeyUp?.(e);
+    },
+    [checkCapsLock, onKeyUp]
+  );
+
+  const handleClick = React.useCallback(
+    (e: React.MouseEvent<HTMLInputElement>) => {
+      checkCapsLock(e);
+      onClick?.(e);
+    },
+    [checkCapsLock, onClick]
   );
 
   const handleChange = React.useCallback(
@@ -284,11 +355,47 @@ export default function PasswordInputTypeIn({
 
   const showToggleButton = alwaysShowToggle || hasValue || isFocused;
   const isRevealed = isPasswordVisible && !effectiveNonRevealable;
+  // A caller-supplied label wins; otherwise the shared `common.*` copy keeps
+  // the tooltips in the active locale instead of a baked-in English string
+  // (the flow canvas' SecretField relies on those defaults).
   const toggleLabel = effectiveNonRevealable
-    ? "Value cannot be revealed"
+    ? t("valueCannotBeRevealed")
     : isPasswordVisible
-      ? hidePasswordLabel
-      : showPasswordLabel;
+      ? hidePasswordLabel ?? t("hidePassword")
+      : showPasswordLabel ?? t("showPassword");
+  const capsLockText = capsLockLabel ?? t("capsLockOn");
+
+  const showCapsLock = showCapsLockIndicator && isCapsLockOn && isFocused;
+  const showRightSection = showToggleButton || showCapsLock;
+
+  const rightSectionContent = showRightSection ? (
+    <div className="flex items-center gap-0.5">
+      {showCapsLock && (
+        <span
+          data-testid="caps-lock-indicator"
+          className="flex items-center justify-center p-1 text-amber-500 shrink-0"
+          title={capsLockText}
+          aria-label={capsLockText}
+        >
+          <SvgAlertTriangle className="size-4 stroke-amber-500" />
+        </span>
+      )}
+      {showToggleButton && (
+        <Button
+          icon={isRevealed ? SvgEye : SvgEyeClosed}
+          disabled={disabled || effectiveNonRevealable}
+          onClick={noProp(() => setIsPasswordVisible((v) => !v))}
+          type="button"
+          variant={isRevealed ? "action" : undefined}
+          prominence="tertiary"
+          size="sm"
+          tooltipSide="left"
+          tooltip={toggleLabel}
+          aria-label={toggleLabel}
+        />
+      )}
+    </div>
+  ) : undefined;
 
   return (
     <InputTypeIn
@@ -298,27 +405,14 @@ export default function PasswordInputTypeIn({
       onFocus={handleFocus}
       onBlur={handleBlur}
       onSelect={captureSelection}
-      onKeyDown={captureSelection}
+      onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
+      onClick={handleClick}
       variant={disabled ? "disabled" : error ? "error" : undefined}
       showClearButton={showClearButton}
       autoComplete="off"
       data-ph-no-capture
-      rightSection={
-        showToggleButton ? (
-          <Button
-            icon={isRevealed ? SvgEye : SvgEyeClosed}
-            disabled={disabled || effectiveNonRevealable}
-            onClick={noProp(() => setIsPasswordVisible((v) => !v))}
-            type="button"
-            variant={isRevealed ? "action" : undefined}
-            prominence="tertiary"
-            size="sm"
-            tooltipSide="left"
-            tooltip={toggleLabel}
-            aria-label={toggleLabel}
-          />
-        ) : undefined
-      }
+      rightSection={rightSectionContent}
       {...props}
     />
   );

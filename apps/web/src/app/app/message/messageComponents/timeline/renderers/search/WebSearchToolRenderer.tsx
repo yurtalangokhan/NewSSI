@@ -1,7 +1,6 @@
-import React from "react";
 import { SvgSearch, SvgGlobe } from "@opal/icons";
 import { useTranslation } from "react-i18next";
-import { SearchToolPacket } from "@/app/app/services/streamingModels";
+import { SearchToolPacket } from "@/lib/api/domains/chat/streaming-types";
 import {
   MessageRenderer,
   RenderType,

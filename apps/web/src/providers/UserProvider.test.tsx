@@ -1,9 +1,10 @@
 import React from "react";
+import { envelopeResponse } from "@tests/setup/responseModel";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { UserProvider, useUser } from "./UserProvider";
 import { User } from "@/lib/types";
 import { CombinedSettings } from "@/interfaces/settings";
-import { AuthTypeMetadata } from "@/lib/userSS";
+import type { AuthTypeMetadata } from "@/lib/api/domains/session/types";
 
 const mockUser: User = {
   id: "1",
@@ -35,7 +36,7 @@ describe("UserProvider updateUserDefaultModel", () => {
   beforeEach(() => {
     jest
       .spyOn(global, "fetch")
-      .mockResolvedValue(new Response(null, { status: 200 }));
+      .mockImplementation(async () => envelopeResponse(null));
   });
 
   afterEach(() => {
@@ -73,5 +74,18 @@ describe("UserProvider updateUserDefaultModel", () => {
       expect(result.current.user?.preferences?.default_model).toBeNull();
     });
     expect(result.current.user?.preferences?.default_provider_id).toBeNull();
+  });
+  it("optimistically updates chat_background and updates user preferences", async () => {
+    const { result } = renderHook(() => useUser(), { wrapper });
+
+    await act(async () => {
+      await result.current.updateUserChatBackground("mountains");
+    });
+
+    await waitFor(() => {
+      expect(result.current.user?.preferences?.chat_background).toBe(
+        "mountains"
+      );
+    });
   });
 });

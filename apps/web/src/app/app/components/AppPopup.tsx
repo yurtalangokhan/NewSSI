@@ -57,9 +57,9 @@ export function AppPopup() {
   const logoDisplayStyle = enterpriseSettings?.logo_display_style;
 
   // Header icon rules:
-  // - If neither app name nor custom logo exists -> show Onyx icon
+  // - If neither app name nor custom logo exists -> show Atlas icon
   // - If logo display is "name_only" -> show alert icon
-  // - Otherwise -> show uploaded custom logo (fallback to Onyx icon)
+  // - Otherwise -> show uploaded custom logo (fallback to Atlas icon)
   const headerIcon =
     !hasApplicationName && !hasCustomLogo
       ? (props: IconProps) => (

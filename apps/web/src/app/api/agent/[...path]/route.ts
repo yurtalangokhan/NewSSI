@@ -1,32 +1,35 @@
+import { agentsEndpoints } from "@/lib/api/domains/agents/endpoints";
 import { NextRequest, NextResponse } from "next/server";
 import { getCookieValue } from "@/lib/api/proxy";
-import { buildServiceUrl } from "@/lib/api/gatewayRouting";
-import { getAgentServiceUrl } from "@/lib/env.server";
+import { backendRequest } from "@/lib/api/http/server";
+import { stripTrustedContextHeaders } from "@/lib/api/proxySecurity";
 
-const AGENT_SERVICE_URL = getAgentServiceUrl();
+const MAX_PROXY_BODY_BYTES = 200 * 1024 * 1024;
 
 /**
  * Generic proxy to agent-service for all HTTP methods.
- * Maps /api/agent/<rest> → <AGENT_SERVICE_URL>/<rest>
+ * Maps /api/agent/<rest> through the domain endpoint to the configured service.
  */
 async function proxyToAgentService(
   request: NextRequest,
   path: string[]
 ): Promise<NextResponse> {
   try {
+    const declaredLength = request.headers.get("content-length");
+    if (declaredLength && Number(declaredLength) > MAX_PROXY_BODY_BYTES) {
+      return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+    }
+
     const url = new URL(request.url);
     const targetPath = path.join("/");
-    const targetUrl = buildServiceUrl(AGENT_SERVICE_URL, "agent", targetPath);
-
-    url.searchParams.forEach((value, key) => {
-      targetUrl.searchParams.append(key, value);
-    });
 
     const requestCookie = request.headers.get("cookie") || "";
+    // Streamed, not buffered: request.body is a ReadableStream forwarded
+    // straight through to agent-service.
     const requestBody =
       request.method === "GET" || request.method === "HEAD"
         ? undefined
-        : await request.arrayBuffer();
+        : request.body;
 
     const buildHeaders = (
       cookieHeader: string,
@@ -35,6 +38,7 @@ async function proxyToAgentService(
       const headers = new Headers(request.headers);
       headers.delete("host");
       headers.delete("content-length");
+      stripTrustedContextHeaders(headers);
 
       const accessToken =
         accessTokenOverride || getCookieValue(cookieHeader, "access_token");
@@ -52,7 +56,9 @@ async function proxyToAgentService(
       cookieHeader: string,
       accessTokenOverride?: string | null
     ) =>
-      fetch(targetUrl, {
+      backendRequest({
+        ...agentsEndpoints.agentProxyTarget(targetPath).backend,
+        query: url.searchParams,
         method: request.method,
         headers: buildHeaders(cookieHeader, accessTokenOverride),
         body: requestBody,

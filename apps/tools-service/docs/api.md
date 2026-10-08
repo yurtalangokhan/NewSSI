@@ -1,7 +1,7 @@
 # Tools Service (MCP Server) API
 
 **Service:** MCP (Model Context Protocol) tool server — code execution, file operations, git, search, Docker, and more.
-**Base URL:** `http://kong:8000/tools-service/mcp` (via Kong, JWT required) or `http://tools-service:8003/mcp` (direct)
+**Base URL:** `http://apisix:8000/tools-service/mcp` (via the gateway, bearer token required) or `http://tools-service:8003/mcp` (direct)
 **Auth:** 3-tier — JWT (Keycloak) > Internal Token > API Key. All tools require `tool:execute` scope.
 
 This is the human-maintained MCP transport and tool contract for tools-service.
@@ -12,10 +12,10 @@ Prefer generated API artifacts only when you need schema-level detail.
 ## Transport
 
 The service uses **FastMCP HTTP transport**. The MCP protocol endpoint is at `/mcp`.
-Kong forwards `/tools-service/mcp` to that transport. Internal callers use
-`/internal/tools-service/mcp`.
+The gateway forwards `/tools-service/mcp` to that transport. Internal callers
+use `/internal/tools-service/mcp`.
 
-`GET /tools-service/health` is public through Kong and forwards to the
+`GET /tools-service/health` is public through the gateway and forwards to the
 FastMCP custom `/health` route.
 
 | Endpoint      | Method | Auth         | Description                                   |
@@ -45,7 +45,8 @@ completed without replay so a retry cannot execute the same tool call again.
 
 ## Tool categories
 
-17 tool categories auto-discovered at startup via `ToolRegistry.discover_plugins()`.
+15 tool categories auto-discovered at startup via `ToolRegistry.discover_plugins()`.
+(Down from 17: docker and service_management were removed -- see spec TS-4.)
 
 ### Calculator
 
@@ -54,6 +55,10 @@ completed without replay so a retry cannot execute the same tool call again.
 | `calculate` | `expression: str` | Safely evaluate math expressions. Supports: `abs, round, min, max, sum, pow, sqrt, sin, cos, tan, log, log10, exp, pi, e`. Rejects dangerous characters. |
 
 ### Code Execution
+
+Every path parameter below (`file_path`, `test_path`, `project_dir`) is resolved
+relative to the service's workspace root and rejects `..` traversal, symlink
+escapes, and absolute paths.
 
 | Tool                 | Parameters                                                               | Description                                        |
 | -------------------- | ------------------------------------------------------------------------ | -------------------------------------------------- |
@@ -66,24 +71,18 @@ completed without replay so a retry cannot execute the same tool call again.
 | `validate_json_file` | `file_path: str`                                                         | Validate JSON file                                 |
 | `run_linter`         | `file_path: str`, `linter?: str = "auto"`                                | Run flake8/pylint (Python) or eslint (JS/TS)       |
 | `start_dev_server`   | `project_dir: str`, `port?: int = 3000`, `command?: str = "npm run dev"` | Validate project structure, suggest start commands |
-| `check_port`         | `port: int`                                                              | Check if TCP port is in use                        |
 
 ### Command Execution
 
-| Tool              | Parameters                                                | Description                                                                                  |
-| ----------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `execute_shell`   | `command: str`, `working_dir?: str`, `timeout?: int = 30` | Execute shell command (dangerous patterns blocked: `rm -rf /`, `mkfs`, `dd if=`, fork bombs) |
-| `get_system_info` | none                                                      | Return OS, arch, Python version, hostname                                                    |
+Free-form shell execution was removed (a blocklist over shell text is not a
+security boundary). `run_command` selects from a fixed, server-defined
+registry by id instead of accepting a command string.
 
-### Docker
-
-| Tool           | Parameters                                                                                         | Description          |
-| -------------- | -------------------------------------------------------------------------------------------------- | -------------------- |
-| `docker_build` | `dockerfile_path: str`, `image_name: str`, `build_args?: str`                                      | Build Docker image   |
-| `docker_run`   | `image_name: str`, `container_name?: str`, `ports?: str`, `env_vars?: str`, `detach?: bool = True` | Run Docker container |
-| `docker_stop`  | `container_name: str`                                                                              | Stop container       |
-| `docker_logs`  | `container_name: str`, `lines?: int = 100`                                                         | Get container logs   |
-| `docker_ps`    | `all_containers?: bool = False`                                                                    | List containers      |
+| Tool              | Parameters                          | Description                                              |
+| ----------------- | ------------------------------------ | --------------------------------------------------------- |
+| `run_command`     | `command_id: str`, `timeout?: int = 30` | Run one of the registered commands (see `list_commands`) |
+| `list_commands`   | none                                 | List the `command_id` values `run_command` accepts        |
+| `get_system_info` | none                                 | Return OS, architecture, Python version                   |
 
 ### Connector data
 
@@ -96,6 +95,16 @@ the connector configuration.
 | -------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | `connector_list_resources` | `datasource_id: str`                                                                        | List selected resources for an assigned instance |
 | `connector_read`           | `datasource_id: str`, `resource: str`, `query?: str`, `filter?: dict`, `limit?: int = 25` | Read up to 100 records from a selected resource  |
+
+The type names and configuration shapes below are this service's adapter
+contract. Datasources are configured with the in-process connectors of
+`packages/connector-py`; agent-service translates a saved configuration into the
+matching adapter shape when it resolves a read (`postgres` to `source-postgres`,
+`mongodb` to `source-mongodb-v2`, `minio` and `s3` to `source-s3`, `sftp` to
+`source-sftp-bulk`, `http_json` to `source-http-request`, and so on). A saved
+connector with no adapter here, or configured in a way the adapter cannot
+serve, is listed as unavailable. No current connector maps to `source-oracle`,
+`source-microsoft-sharepoint`, or `source-outlook`.
 
 Direct reads support these connector and configuration combinations:
 
@@ -219,12 +228,33 @@ rag-service `POST /api/v1/retrieval`. Agent-service supplies trusted user and
 tenant context through tools-service transport headers; model-visible arguments
 contain the query. Collection IDs are optional model-visible arguments because
 agent-service normally passes them through trusted binding references
-(`database_search.collection_ids` and `graph_search.collection_ids`).
+(`database_search.collection_ids` and `graph_search.collection_ids`). Each tool
+reads only its own key; `document_search` shares the `database_search` key.
+
+The RAG HTTP client validates `ResponseModel` and reads context from `data`.
+Failure JSON retains a localized `error`, stable `code`, and `error_category`.
+Missing arguments, missing configuration, transport failures, and RAG domain
+errors use shared error_contract classes. The MCP transport keeps its existing
+protocol; it does not return an HTTP response envelope as tool content.
 
 | Tool              | Parameters                                                   | Description                                               |
 | ----------------- | ------------------------------------------------------------ | --------------------------------------------------------- |
 | `database_search` | `query: str`, `collection_ids?: list[str]`, `limit?: int = 5`  | Retrieve document context from configured collections      |
+| `document_search` | `query: str`, `collection_ids?: list[str]`, `limit?: int = 5`  | Alias of `database_search` (same collections and results)  |
 | `graph_search`    | `query: str`, `collection_ids?: list[str]`, `limit?: int = 10` | Retrieve knowledge-graph context from configured collections |
+
+All three tools return an MCP result with two parts:
+
+- `content` is the text the model reads. `database_search` numbers chunks
+  across all searched collections as `[n] (document)` blocks; `graph_search`
+  returns rag-service's graph context.
+- `structuredContent` is a `KnowledgeEvidence` v1 payload
+  (`src/knowledge/evidence/`) with the chunks or the subgraph behind
+  that text. Agent-service persists it and renders it in the chat; it never
+  reaches the model.
+
+Errors (no collection, rag-service not configured, retrieval failure) return
+the standard error JSON in `content` and no `structuredContent`.
 
 ### PDF
 
@@ -235,12 +265,6 @@ agent-service normally passes them through trusted binding references
 | `get_pdf_info`       | `file_path: str`                                                      | Get PDF metadata (pages, title, author, etc.) |
 | `search_pdf`         | `file_path: str`, `search_text: str`, `case_sensitive?: bool = False` | Search text in PDF                            |
 | `extract_pdf_tables` | `file_path: str`, `page_number?: int`                                 | Extract tables from PDF                       |
-
-### Service Management
-
-| Tool              | Parameters                                      | Description                                 |
-| ----------------- | ----------------------------------------------- | ------------------------------------------- |
-| `service_restart` | `service_name: str`, `use_docker?: bool = True` | Restart Docker container or systemd service |
 
 ### Text Processing
 
@@ -315,9 +339,27 @@ Each category extends `BaseToolCategory` ABC (`src/core/base.py`), implementing 
 | ------------------------ | ----------------------- | ------------------------------ |
 | `MCP_PORT`               | `8001`                  | Server port (Docker: 8003)     |
 | `MCP_HOST`               | `0.0.0.0`               | Bind address                   |
-| `WORKSPACE_DIR`          | `/workspace`            | Base dir for file/code/git ops |
+| `WORKSPACE_DIR`          | `/workspace`            | Parent of the per-caller roots |
 | `POSTGRES_*`             | —                       | Database connection params     |
 | `KEYCLOAK_ISSUER_URL`    | —                       | Keycloak realm issuer          |
 | `INTERNAL_SERVICE_TOKEN` | —                       | Service-to-service auth        |
 | `VALID_API_KEYS`         | —                       | Comma-separated API keys       |
 | `USER_SERVICE_URL`       | `http://localhost:8090` | For permission resolution      |
+
+### Workspace layout
+
+File, code, git, java and pdf tools resolve every path against the calling
+principal's own root, not against `WORKSPACE_DIR` itself:
+
+```
+$WORKSPACE_DIR/<tenant>/<principal>/
+```
+
+`<principal>` is the end user when agent-service calls on their behalf (taken
+from the trusted context, which only a caller holding the internal service
+token can set), and otherwise `tok-<hash>` derived from the verified access
+token of the direct MCP connection. `<tenant>` is `_` when no tenant is
+known. Identities that are not already safe directory names are hashed rather
+than rewritten, so two different identities can never collapse into one
+workspace. A path argument that leaves the caller's own root — including one
+pointing into another principal's — is rejected as a workspace escape.

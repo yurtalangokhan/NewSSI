@@ -369,6 +369,7 @@ export function OrganizationFlowNode({
                   })}
                   className={cn("nodrag nopan")}
                   danger
+                  disabled={data.canDelete === false}
                   icon={SvgTrash}
                   small
                   tertiary

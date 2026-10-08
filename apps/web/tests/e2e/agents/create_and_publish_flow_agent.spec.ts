@@ -1,15 +1,14 @@
 import { test, expect } from "@playwright/test";
 import { loginAs } from "@tests/e2e/utils/auth";
-import { OnyxApiClient } from "@tests/e2e/utils/onyxApiClient";
-import { sendMessage } from "@tests/e2e/utils/chatActions";
+import { AtlasApiClient } from "@tests/e2e/utils/atlasApiClient";
 
 test.describe("Task 53 / Acceptance #1 — Create, Wire, Publish and Chat with Flow Agent", () => {
-  let apiClient: OnyxApiClient;
+  let apiClient: AtlasApiClient;
   let createdAgentId: number | null = null;
 
   test.beforeEach(async ({ page }) => {
     await loginAs(page, "admin");
-    apiClient = new OnyxApiClient(page.request);
+    apiClient = new AtlasApiClient(page.request);
   });
 
   test.afterEach(async () => {

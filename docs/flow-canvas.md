@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-The Visual Flow Canvas is a visual node-and-edge graph editor integrated into the Onyx platform, allowing developers and administrators to build, configure, test, and publish custom AI agent workflows compiled directly to LangGraph execution graphs.
+The Visual Flow Canvas is a visual node-and-edge graph editor integrated into the Atlas platform, allowing developers and administrators to build, configure, test, and publish custom AI agent workflows compiled directly to LangGraph execution graphs.
 
 ---
 

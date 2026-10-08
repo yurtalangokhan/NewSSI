@@ -4,7 +4,7 @@ import pytest
 
 
 def test_api_versioning_defaults_to_v1_when_config_is_missing(tmp_path: Path) -> None:
-    from langconnect.api_versioning import load_api_versioning_config
+    from src.shared.api_versioning import load_api_versioning_config
 
     config = load_api_versioning_config(
         "rag-service", config_path=tmp_path / "missing.toml"
@@ -19,7 +19,7 @@ def test_api_versioning_defaults_to_v1_when_config_is_missing(tmp_path: Path) ->
 
 
 def test_api_versioning_reads_service_override(tmp_path: Path) -> None:
-    from langconnect.api_versioning import load_api_versioning_config
+    from src.shared.api_versioning import load_api_versioning_config
 
     config_path = tmp_path / "api-versioning.toml"
     config_path.write_text(
@@ -47,7 +47,7 @@ deprecated_versions = ["v1"]
 def test_api_versioning_rejects_default_version_outside_supported_versions(
     tmp_path: Path,
 ) -> None:
-    from langconnect.api_versioning import load_api_versioning_config
+    from src.shared.api_versioning import load_api_versioning_config
 
     config_path = tmp_path / "api-versioning.toml"
     config_path.write_text(
@@ -64,7 +64,7 @@ supported_versions = ["v1"]
 
 
 def test_user_service_api_prefix_can_differ_from_local_service(tmp_path: Path) -> None:
-    from langconnect.api_versioning import load_api_prefix
+    from src.shared.api_versioning import load_api_prefix
 
     config_path = tmp_path / "api-versioning.toml"
     config_path.write_text(

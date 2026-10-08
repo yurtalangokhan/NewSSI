@@ -1,17 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { humanReadableFormat } from "@/lib/time";
-import { BackendChatSession } from "@/app/app/interfaces";
+import { BackendChatSession } from "@/lib/api/domains/chat/types";
 import { processRawChatHistory } from "@/app/app/services/lib";
+import TextSeparator from "@/refresh-components/TextSeparator";
+import { buildDaySeparators } from "@/app/app/message/utils/daySeparators";
 import { getLatestMessageChain } from "@/app/app/services/messageTree";
 import HumanMessage from "@/app/app/message/HumanMessage";
 import AgentMessage from "@/app/app/message/messageComponents/AgentMessage";
 import { Callout } from "@/components/ui/callout";
 import InitializingLoader from "@/components/InitializingLoader";
-import { Persona } from "@/app/admin/agents/interfaces";
-import { MinimalOnyxDocument } from "@/lib/search/interfaces";
+import { Persona } from "@/lib/api/domains/agents/types";
+import { MinimalAtlasDocument } from "@/lib/search/interfaces";
 import TextViewModal from "@/sections/modals/TextViewModal";
 import { UNNAMED_CHAT } from "@/lib/constants";
 import Text from "@/refresh-components/texts/Text";
@@ -28,9 +30,9 @@ export default function SharedChatDisplay({
   chatSession,
   persona,
 }: SharedChatDisplayProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [presentingDocument, setPresentingDocument] =
-    useState<MinimalOnyxDocument | null>(null);
+    useState<MinimalAtlasDocument | null>(null);
 
   const isMounted = useOnMount();
   const {
@@ -55,6 +57,10 @@ export default function SharedChatDisplay({
   const messages = getLatestMessageChain(
     processRawChatHistory(chatSession.messages, chatSession.packets)
   );
+
+  // Same day headings as the live transcript — a reader who was not there
+  // for the conversation has all the more reason to want them.
+  const daySeparators = buildDaySeparators(messages, i18n.language, t);
 
   const firstMessage = messages[0];
 
@@ -120,32 +126,40 @@ export default function SharedChatDisplay({
           {isMounted ? (
             <div className="w-[min(50rem,100%)]">
               {messages.map((message, i) => {
+                const daySeparator = daySeparators.get(message.nodeId);
+
                 if (message.type === "user") {
                   return (
-                    <HumanMessage
-                      key={message.messageId}
-                      content={message.message}
-                      files={message.files}
-                      nodeId={message.nodeId}
-                    />
+                    <Fragment key={message.messageId}>
+                      {daySeparator && <TextSeparator text={daySeparator} />}
+                      <HumanMessage
+                        content={message.message}
+                        files={message.files}
+                        nodeId={message.nodeId}
+                        timeSent={message.timeSent}
+                      />
+                    </Fragment>
                   );
                 } else if (message.type === "assistant") {
                   return (
-                    <AgentMessage
-                      key={message.messageId}
-                      rawPackets={message.packets}
-                      chatState={{
-                        agent: persona,
-                        docs: message.documents,
-                        citations: message.citations,
-                        setPresentingDocument: setPresentingDocument,
-                        overriddenModel: message.overridden_model,
-                      }}
-                      nodeId={message.nodeId}
-                      llmManager={null}
-                      otherMessagesCanSwitchTo={undefined}
-                      onMessageSelection={undefined}
-                    />
+                    <Fragment key={message.messageId}>
+                      {daySeparator && <TextSeparator text={daySeparator} />}
+                      <AgentMessage
+                        rawPackets={message.packets}
+                        chatState={{
+                          agent: persona,
+                          docs: message.documents,
+                          citations: message.citations,
+                          setPresentingDocument: setPresentingDocument,
+                          overriddenModel: message.overridden_model,
+                        }}
+                        nodeId={message.nodeId}
+                        llmManager={null}
+                        otherMessagesCanSwitchTo={undefined}
+                        onMessageSelection={undefined}
+                        timeSent={message.timeSent}
+                      />
+                    </Fragment>
                   );
                 } else {
                   // Error message case

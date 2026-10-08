@@ -1,0 +1,19 @@
+apisix:
+  node_listen: 8000
+  enable_ipv6: false
+  status:
+    ip: 0.0.0.0
+    port: 7085
+nginx_config:
+  error_log_level: warn
+  http_configuration_snippet: proxy_request_buffering off;
+deployment:
+  role: data_plane
+  role_data_plane:
+    config_provider: yaml
+plugins:
+- gateway-auth
+- request-id
+- proxy-rewrite
+- proxy-buffering
+- fault-injection

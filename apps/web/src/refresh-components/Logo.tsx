@@ -1,17 +1,13 @@
 "use client";
 
 import { useSettingsContext } from "@/providers/SettingsProvider";
-import {
-  LOGO_FOLDED_SIZE_PX,
-  LOGO_UNFOLDED_SIZE_PX,
-  NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED,
-} from "@/lib/constants";
+import { LOGO_FOLDED_SIZE_PX, LOGO_UNFOLDED_SIZE_PX } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import Text from "@/refresh-components/texts/Text";
 import Truncated from "@/refresh-components/texts/Truncated";
-import { useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useTheme } from "next-themes";
+import { appSettings } from "@/lib/settings";
 
 export interface LogoProps {
   folded?: boolean;
@@ -56,34 +52,43 @@ function TurksatMark({
 }
 
 function TurksatWordmark({
-  darkMode,
   size,
   className,
   alt,
 }: {
-  darkMode: boolean;
   size: number;
   className?: string;
   alt: string;
 }) {
-  const logoSrc = darkMode
-    ? `/logo.turksat.white.svg?${LOGO_CACHE_BUSTER}`
-    : `/logo.turksat.svg?${LOGO_CACHE_BUSTER}`;
+  const handleError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (!img.src.includes("logo.turksat.black.svg")) {
+      img.src = `/logo.turksat.black.svg?${LOGO_CACHE_BUSTER}`;
+    }
+  };
 
+  // Render both light and dark variants with CSS-based switching (dark:hidden and hidden dark:block).
+  // Because next-themes synchronously injects .dark on <html> before paint, CSS-based switching
+  // applies on frame 0 without FOUC (flash of wrong theme logo) or hydration mismatch.
   return (
-    <img
-      src={logoSrc}
-      alt={alt}
-      className={cn("flex-shrink-0", className)}
-      style={{ width: size, height: (size * 42) / 241 }}
-      draggable={false}
-      onError={(e) => {
-        const img = e.currentTarget;
-        if (!img.src.includes("logo.turksat.black.svg")) {
-          img.src = `/logo.turksat.black.svg?${LOGO_CACHE_BUSTER}`;
-        }
-      }}
-    />
+    <>
+      <img
+        src={`/logo.turksat.svg?${LOGO_CACHE_BUSTER}`}
+        alt={alt}
+        className={cn("flex-shrink-0 dark:hidden", className)}
+        style={{ width: size, height: (size * 42) / 241 }}
+        draggable={false}
+        onError={handleError}
+      />
+      <img
+        src={`/logo.turksat.white.svg?${LOGO_CACHE_BUSTER}`}
+        alt={alt}
+        className={cn("flex-shrink-0 hidden dark:block", className)}
+        style={{ width: size, height: (size * 42) / 241 }}
+        draggable={false}
+        onError={handleError}
+      />
+    </>
   );
 }
 
@@ -92,17 +97,8 @@ export default function Logo({ folded, size, className }: LogoProps) {
   const foldedSize = size ?? LOGO_FOLDED_SIZE_PX;
   const unfoldedSize = size ?? LOGO_UNFOLDED_SIZE_PX;
   const settings = useSettingsContext();
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
   const logoDisplayStyle = settings.enterpriseSettings?.logo_display_style;
   const applicationName = settings.enterpriseSettings?.application_name;
-
-  // `resolvedTheme` is `undefined` on the server and on the client's first
-  // render pass, then flips synchronously to the stored theme before
-  // hydration paints. Gate on `mounted` so both passes agree, avoiding a
-  // hydration mismatch on the logo's `src`.
-  const isDarkMode = mounted && resolvedTheme === "dark";
 
   const logo = useMemo(
     () =>
@@ -114,13 +110,12 @@ export default function Logo({ folded, size, className }: LogoProps) {
         />
       ) : (
         <TurksatWordmark
-          darkMode={isDarkMode}
           size={unfoldedSize}
           className={className}
           alt={t("turksatLogoAlt")}
         />
       ),
-    [className, folded, foldedSize, isDarkMode, unfoldedSize, t]
+    [className, folded, foldedSize, unfoldedSize, t]
   );
 
   const renderNameAndPoweredBy = (opts: {
@@ -136,14 +131,14 @@ export default function Logo({ folded, size, className }: LogoProps) {
             {opts.includeName && (
               <Truncated headingH3>{applicationName}</Truncated>
             )}
-            {!NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED && (
+            {!appSettings.NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED && (
               <Text
                 secondaryBody
                 text03
                 className={"line-clamp-1 truncate"}
                 nowrap
               >
-                {t("poweredByOnyx")}
+                {t("poweredByAtlas")}
               </Text>
             )}
           </div>

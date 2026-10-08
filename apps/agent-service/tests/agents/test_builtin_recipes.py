@@ -54,10 +54,14 @@ def fake_graph_builder(monkeypatch):
         def build(self, *_args, **_kwargs):
             raise AssertionError("DynamicAgent.load should not use sync build")
 
-    monkeypatch.setattr("agents.dynamic_agent.GraphBuilder", FakeBuilder)
-    monkeypatch.setattr("agents.dynamic_agent.get_model_from_config", lambda *a, **k: object())
+    monkeypatch.setattr("agents.implementations.dynamic_agent.GraphBuilder", FakeBuilder)
+    monkeypatch.setattr(
+        "agents.implementations.dynamic_agent.get_model_from_config", lambda *a, **k: object()
+    )
     # Avoid any real network gateway when the resolver builds without one.
-    monkeypatch.setattr("agents.dynamic_agent._build_default_gateway", lambda: FakeGateway())
+    monkeypatch.setattr(
+        "agents.implementations.dynamic_agent._build_default_gateway", lambda: FakeGateway()
+    )
     return FakeGraph
 
 
@@ -97,7 +101,7 @@ async def test_builtin_recipes_resolve_through_factory(fake_graph_builder):
 @pytest.mark.asyncio
 async def test_resolver_routes_recipe_through_composer(fake_graph_builder):
     """load_agent for a recipe-only key composes via AgentFactory."""
-    from agents.agents import agents, get_agent, load_agent
+    from agents.registry.registry import agents, get_agent, load_agent
 
     # Sanity: pipeline is not part of the legacy static registry.
     assert "pipeline" not in agents
@@ -113,7 +117,7 @@ async def test_resolver_routes_recipe_through_composer(fake_graph_builder):
 @pytest.mark.asyncio
 async def test_resolver_keeps_static_registry_for_backward_compat(fake_graph_builder):
     """chatbot remains served from the static registry (no composer routing)."""
-    from agents.agents import agents, load_agent
+    from agents.registry.registry import agents, load_agent
 
     # chatbot is present in the static registry and must stay there.
     assert "chatbot" in agents
@@ -124,7 +128,7 @@ async def test_resolver_keeps_static_registry_for_backward_compat(fake_graph_bui
 
 @pytest.mark.asyncio
 async def test_resolver_unknown_key_raises_key_error(fake_graph_builder):
-    from agents.agents import load_agent
+    from agents.registry.registry import load_agent
 
     with pytest.raises(KeyError):
         await load_agent("does-not-exist")

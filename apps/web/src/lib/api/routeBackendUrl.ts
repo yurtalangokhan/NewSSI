@@ -1,6 +1,7 @@
-import { getInternalUrl, getUserServiceUrl } from "@/lib/env.server";
-import { buildServiceUrl } from "@/lib/api/gatewayRouting";
+import { resolveBackendUrl } from "@/lib/api/http/server";
 import { isUserServiceCollectionPath } from "@/lib/api/userServicePath";
+import { accessEndpoints } from "@/lib/api/domains/access/endpoints";
+import { agentsEndpoints } from "@/lib/api/domains/agents/endpoints";
 
 const USER_PREFIXES = new Set([
   "users",
@@ -13,16 +14,14 @@ export function getBackendUrl(path: string[]): URL {
   const firstSegment = path[0] ?? "";
 
   if (USER_PREFIXES.has(firstSegment)) {
-    const base = getUserServiceUrl();
     const servicePath = firstSegment === "user-service" ? path.slice(1) : path;
-    const pathSuffix = isUserServiceCollectionPath(servicePath) ? "/" : "";
-    return buildServiceUrl(
-      base,
-      "user",
-      `/api/${servicePath.join("/")}${pathSuffix}`
+    return resolveBackendUrl(
+      accessEndpoints.userServiceProxy(
+        servicePath,
+        isUserServiceCollectionPath(servicePath)
+      ).backend
     );
   }
 
-  const base = getInternalUrl();
-  return buildServiceUrl(base, "agent", `/api/${path.join("/")}`);
+  return resolveBackendUrl(agentsEndpoints.apiProxy(path).backend);
 }

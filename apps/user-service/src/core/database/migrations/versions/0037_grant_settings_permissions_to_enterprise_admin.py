@@ -9,11 +9,11 @@ Revises: 0036
 Create Date: 2026-09-04
 """
 
-import json
 from collections.abc import Sequence
+import json
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
 
 revision: str = "0037"
 down_revision: str | None = "0036"

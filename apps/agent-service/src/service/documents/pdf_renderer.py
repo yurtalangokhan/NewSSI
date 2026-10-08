@@ -13,16 +13,17 @@ to whichever registered TTF bucket is closest).
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import io
 import re
 from typing import Any
 
-from core.logger import get_logger
-from service.documents import header_footer
+from core.observability.logger import get_logger
 from service.documents.blocks import (
     Block,
     BulletListBlock,
     CodeBlock,
+    DiagramBlock,
     FootnoteDefBlock,
     HeadingBlock,
     HorizontalRuleBlock,
@@ -36,6 +37,8 @@ from service.documents.blocks import (
     TableBlock,
     simple_table_block,
 )
+from service.documents.diagram_images import CSS_PX_TO_PT, diagram_display_width
+import service.documents.header_footer as header_footer
 from service.documents.image_loading import load_image_bytes
 from service.documents.numbering import prepare_blocks
 from service.documents.options import (
@@ -54,6 +57,10 @@ from service.documents.themes import EffectiveStyle, resolve_effective_style
 logger = get_logger(__name__)
 
 _IMAGE_TARGET_WIDTH_PT = 420
+# Frame height when a caller builds flowables without a page (reportlab's frame
+# keeps 6pt of padding above and below its content box).
+_FALLBACK_FRAME_HEIGHT_PT = 600
+_FRAME_PADDING_PT = 12
 _LIST_INDENT_STEP_PT = 14
 _LIST_BASE_INDENT_PT = 14
 _COVER_LOGO_WIDTH_PT = 115
@@ -67,9 +74,7 @@ def _escape_pdf_xml(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def _pdf_styles(
-    style: EffectiveStyle, table_options: TableStyleOptions | None = None
-) -> dict[str, Any]:
+def _pdf_styles(style: EffectiveStyle, table_options: TableStyleOptions | None = None) -> dict[str, Any]:
     from reportlab.lib.colors import HexColor
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 
@@ -123,9 +128,7 @@ def _pdf_styles(
         spaceBefore=4,
         spaceAfter=4,
     )
-    caption = ParagraphStyle(
-        "DocCaption", parent=body, fontSize=9, leading=12, textColor=HexColor(style.text_color)
-    )
+    caption = ParagraphStyle("DocCaption", parent=body, fontSize=9, leading=12, textColor=HexColor(style.text_color))
     return {
         "title": title,
         "body": body,
@@ -201,9 +204,7 @@ def _spans_to_markup(spans: list[InlineSpan], styles: dict[str, Any] | None = No
 # ---------------------------------------------------------------------------
 
 
-def _pdf_list_flowables(
-    items: list[ListItem], is_ordered: bool, styles: dict[str, Any] | None = None
-) -> list[Any]:
+def _pdf_list_flowables(items: list[ListItem], is_ordered: bool, styles: dict[str, Any] | None = None) -> list[Any]:
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.platypus import Paragraph
 
@@ -225,9 +226,7 @@ def _pdf_list_flowables(
             marker = "•" if item.level == 0 else "◦"
 
         indent = _LIST_BASE_INDENT_PT + item.level * _LIST_INDENT_STEP_PT
-        style = ParagraphStyle(
-            f"list-{is_ordered}-{item.level}-{id(item)}", parent=body_style, leftIndent=indent
-        )
+        style = ParagraphStyle(f"list-{is_ordered}-{item.level}-{id(item)}", parent=body_style, leftIndent=indent)
         flowables.append(Paragraph(f"{marker} {_spans_to_markup(item.spans, styles)}", style))
 
     return flowables
@@ -259,10 +258,10 @@ def _pdf_table_flowable(block: TableBlock, styles: dict[str, Any]) -> Any:
     if styles["table_style"] != "minimal":
         style_commands.append(("GRID", (0, 0), (-1, -1), 0.5, colors.grey))
     if styles["table_style"] == "zebra":
-        for row_index in range(2, len(data), 2):
-            style_commands.append(
-                ("BACKGROUND", (0, row_index), (-1, row_index), HexColor(styles["table_zebra_bg"]))
-            )
+        style_commands.extend(
+            ("BACKGROUND", (0, row_index), (-1, row_index), HexColor(styles["table_zebra_bg"]))
+            for row_index in range(2, len(data), 2)
+        )
     if block.alignments:
         for col, alignment in enumerate(block.alignments):
             style_commands.append(("ALIGN", (col, 0), (col, -1), align_map.get(alignment, "LEFT")))
@@ -270,7 +269,12 @@ def _pdf_table_flowable(block: TableBlock, styles: dict[str, Any]) -> Any:
     return table
 
 
-def _pdf_flowables_for_block(block: Block, styles: dict[str, Any]) -> list[Any]:
+def _pdf_flowables_for_block(
+    block: Block,
+    styles: dict[str, Any],
+    diagram_images: Mapping[str, bytes] | None = None,
+    attachment_images: Mapping[str, bytes] | None = None,
+) -> list[Any]:
     from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer
 
     if isinstance(block, HeadingBlock):
@@ -286,6 +290,8 @@ def _pdf_flowables_for_block(block: Block, styles: dict[str, Any]) -> list[Any]:
         return [*_pdf_list_flowables(block.items, is_ordered=False, styles=styles), Spacer(1, 6)]
     if isinstance(block, OrderedListBlock):
         return [*_pdf_list_flowables(block.items, is_ordered=True, styles=styles), Spacer(1, 6)]
+    if isinstance(block, DiagramBlock):
+        return _pdf_diagram_flowables(block, styles, diagram_images or {})
     if isinstance(block, CodeBlock):
         from reportlab.platypus import Preformatted
 
@@ -303,7 +309,7 @@ def _pdf_flowables_for_block(block: Block, styles: dict[str, Any]) -> list[Any]:
         flowables.append(Spacer(1, 6))
         return flowables
     if isinstance(block, ImageBlock):
-        return _pdf_image_flowables(block, styles)
+        return _pdf_image_flowables(block, styles, attachment_images or {})
     if isinstance(block, HorizontalRuleBlock):
         return [HRFlowable(width="100%", color="#999999", thickness=0.75), Spacer(1, 6)]
     if isinstance(block, PageBreakBlock):
@@ -314,20 +320,43 @@ def _pdf_flowables_for_block(block: Block, styles: dict[str, Any]) -> list[Any]:
     return []
 
 
-def _pdf_image_flowables(block: ImageBlock, styles: dict[str, Any]) -> list[Any]:
+def _pdf_diagram_flowables(block: DiagramBlock, styles: dict[str, Any], images: Mapping[str, bytes]) -> list[Any]:
+    from reportlab.lib.utils import ImageReader
+    from reportlab.platypus import Image, Paragraph, Preformatted, Spacer
+
+    png = images.get(block.digest)
+    flowables: list[Any]
+    if png is None:
+        flowables = [Preformatted(block.source, styles["code"])]
+    else:
+        width, height = ImageReader(io.BytesIO(png)).getSize()
+        width_pt = diagram_display_width(width, CSS_PX_TO_PT, _IMAGE_TARGET_WIDTH_PT)
+        # A tall narrow diagram can be taller than the frame, which reportlab
+        # cannot split; cap the height and shrink the width to keep the aspect.
+        max_height_pt = styles.get("frame_height_pt", _FALLBACK_FRAME_HEIGHT_PT) - _FRAME_PADDING_PT
+        ratio = min(width_pt / width, max_height_pt / height)
+        width_pt = width * ratio
+        flowables = [Image(io.BytesIO(png), width=width_pt, height=height * ratio)]
+    if block.caption:
+        flowables.append(Paragraph(_escape_pdf_xml(block.caption), styles["caption"]))
+    flowables.append(Spacer(1, 6))
+    return flowables
+
+
+def _pdf_image_flowables(
+    block: ImageBlock, styles: dict[str, Any], attachment_images: Mapping[str, bytes]
+) -> list[Any]:
     from reportlab.lib.utils import ImageReader
     from reportlab.platypus import Image, Paragraph, Spacer
 
-    data = load_image_bytes(block.src)
+    data = load_image_bytes(block.src, attachment_images)
     if data is None:
         return []
     try:
         reader = ImageReader(io.BytesIO(data))
         original_width, original_height = reader.getSize()
         ratio = _IMAGE_TARGET_WIDTH_PT / original_width
-        image = Image(
-            io.BytesIO(data), width=_IMAGE_TARGET_WIDTH_PT, height=original_height * ratio
-        )
+        image = Image(io.BytesIO(data), width=_IMAGE_TARGET_WIDTH_PT, height=original_height * ratio)
     except Exception as exc:
         logger.warning("Could not decode image %s for PDF output: %s", block.src, exc)
         return []
@@ -344,9 +373,7 @@ def _pdf_image_flowables(block: ImageBlock, styles: dict[str, Any]) -> list[Any]
 # ---------------------------------------------------------------------------
 
 
-def _pdf_cover_flowables(
-    cover: CoverOptions, title: str | None, styles: dict[str, Any]
-) -> list[Any]:
+def _pdf_cover_flowables(cover: CoverOptions, title: str | None, styles: dict[str, Any]) -> list[Any]:
     from reportlab.lib.enums import TA_CENTER
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.platypus import Image, PageBreak, Paragraph, Spacer
@@ -361,9 +388,7 @@ def _pdf_cover_flowables(
             reader = ImageReader(io.BytesIO(data))
             original_width, original_height = reader.getSize()
             ratio = _COVER_LOGO_WIDTH_PT / original_width
-            image = Image(
-                io.BytesIO(data), width=_COVER_LOGO_WIDTH_PT, height=original_height * ratio
-            )
+            image = Image(io.BytesIO(data), width=_COVER_LOGO_WIDTH_PT, height=original_height * ratio)
             image.hAlign = "CENTER"
             flowables.append(image)
             flowables.append(Spacer(1, 12))
@@ -374,23 +399,23 @@ def _pdf_cover_flowables(
         flowables.append(Spacer(1, 8))
 
     if cover.subtitle:
-        subtitle_style = ParagraphStyle(
-            "CoverSubtitle", parent=styles["body"], alignment=TA_CENTER, fontSize=14
-        )
+        subtitle_style = ParagraphStyle("CoverSubtitle", parent=styles["body"], alignment=TA_CENTER, fontSize=14)
         flowables.append(Paragraph(f"<i>{_escape_pdf_xml(cover.subtitle)}</i>", subtitle_style))
 
     flowables.append(Spacer(1, 48))
 
     meta_style = ParagraphStyle("CoverMeta", parent=styles["body"], alignment=TA_CENTER)
-    for value in (
-        cover.project,
-        f"v{cover.version}" if cover.version else "",
-        cover.date,
-        cover.author,
-        cover.organization,
-    ):
-        if value:
-            flowables.append(Paragraph(_escape_pdf_xml(value), meta_style))
+    flowables.extend(
+        Paragraph(_escape_pdf_xml(value), meta_style)
+        for value in (
+            cover.project,
+            f"v{cover.version}" if cover.version else "",
+            cover.date,
+            cover.author,
+            cover.organization,
+        )
+        if value
+    )
 
     if cover.classification:
         flowables.append(Spacer(1, 12))
@@ -400,9 +425,7 @@ def _pdf_cover_flowables(
     return flowables
 
 
-def _pdf_front_matter_flowables(
-    front_matter: FrontMatterOptions, styles: dict[str, Any]
-) -> list[Any]:
+def _pdf_front_matter_flowables(front_matter: FrontMatterOptions, styles: dict[str, Any]) -> list[Any]:
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.platypus import PageBreak, Paragraph, Spacer
 
@@ -507,9 +530,7 @@ def _draw_header_footer_line(
         (hf.center, content_center, "center"),
         (hf.right, content_right, "right"),
     ):
-        _draw_hf_segment(
-            canvas_obj, template, x, align, y, page_num, substitutions, font_name, 9, text_color
-        )
+        _draw_hf_segment(canvas_obj, template, x, align, y, page_num, substitutions, font_name, 9, text_color)
     if hf.rule:
         from reportlab.lib.colors import HexColor
 
@@ -517,9 +538,7 @@ def _draw_header_footer_line(
         canvas_obj.line(content_left, y + rule_offset, content_right, y + rule_offset)
 
 
-def _draw_watermark(
-    canvas_obj: Any, page_size: tuple[float, float], watermark: WatermarkOptions
-) -> None:
+def _draw_watermark(canvas_obj: Any, page_size: tuple[float, float], watermark: WatermarkOptions) -> None:
     from reportlab.lib.colors import HexColor
 
     canvas_obj.saveState()
@@ -600,14 +619,12 @@ def _make_on_page_callbacks(
     substitutions: dict[str, str],
     page_size: tuple[float, float],
 ) -> tuple[Any, Any]:
-    different_first = (
-        header_footer.has_content(options.header) and options.header.different_first_page
-    ) or (header_footer.has_content(options.footer) and options.footer.different_first_page)
+    different_first = (header_footer.has_content(options.header) and options.header.different_first_page) or (
+        header_footer.has_content(options.footer) and options.footer.different_first_page
+    )
 
     def on_first_page(canvas_obj: Any, _doc: Any) -> None:
-        _draw_page_furniture(
-            canvas_obj, options, style, substitutions, page_size, blank=different_first
-        )
+        _draw_page_furniture(canvas_obj, options, style, substitutions, page_size, blank=different_first)
 
     def on_later_pages(canvas_obj: Any, _doc: Any) -> None:
         _draw_page_furniture(canvas_obj, options, style, substitutions, page_size, blank=False)
@@ -646,7 +663,14 @@ def _toc_flowables(blocks: list[Block], toc_options: Any, styles: dict[str, Any]
     ]
 
 
-def render_pdf(title: str | None, markdown: str, options: DocumentOptions | None = None) -> bytes:
+def render_pdf(
+    title: str | None,
+    markdown: str,
+    options: DocumentOptions | None = None,
+    *,
+    diagram_images: Mapping[str, bytes] | None = None,
+    attachment_images: Mapping[str, bytes] | None = None,
+) -> bytes:
     from reportlab.lib.units import mm
     from reportlab.platypus import (
         BaseDocTemplate,
@@ -660,6 +684,8 @@ def render_pdf(title: str | None, markdown: str, options: DocumentOptions | None
     if not (markdown or "").strip():
         raise ValueError("render_pdf: content must not be empty")
 
+    diagram_images = diagram_images or {}
+    attachment_images = attachment_images or {}
     options = options or DocumentOptions()
     style = resolve_effective_style(options)
     blocks = prepare_blocks(markdown, options)
@@ -667,6 +693,7 @@ def render_pdf(title: str | None, markdown: str, options: DocumentOptions | None
     styles["heading_anchors"] = _heading_anchors(blocks)
     page_size = _resolve_page_size(options.page)
     margins = options.page.margins
+    styles["frame_height_pt"] = page_size[1] - (margins.top + margins.bottom) * mm
     substitutions = {
         "title": title or options.cover.project or "",
         "date": options.cover.date,
@@ -688,7 +715,7 @@ def render_pdf(title: str | None, markdown: str, options: DocumentOptions | None
         story.extend(_toc_flowables(blocks, options.toc, styles))
 
     for block in blocks:
-        story.extend(_pdf_flowables_for_block(block, styles))
+        story.extend(_pdf_flowables_for_block(block, styles, diagram_images, attachment_images))
 
     frame = Frame(
         margins.left * mm,
@@ -697,16 +724,14 @@ def render_pdf(title: str | None, markdown: str, options: DocumentOptions | None
         page_size[1] - (margins.top + margins.bottom) * mm,
         id="content",
     )
-    on_first_page, on_later_pages = _make_on_page_callbacks(
-        options, style, substitutions, page_size
-    )
+    on_first_page, on_later_pages = _make_on_page_callbacks(options, style, substitutions, page_size)
 
     heading_style_names = {f"DocHeading{level}" for level in range(1, 7)}
     bookmarks_enabled = options.pdf.bookmarks
     bookmark_counter = [0]
 
     class _DocTemplate(BaseDocTemplate):
-        def afterFlowable(self, flowable: Any) -> None:
+        def afterFlowable(self, flowable: Any) -> None:  # noqa: N802 -- ReportLab callback name.
             style_name = getattr(getattr(flowable, "style", None), "name", None)
             if style_name not in heading_style_names:
                 return

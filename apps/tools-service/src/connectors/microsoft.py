@@ -1,15 +1,23 @@
-"""Bounded read-only Microsoft Graph access for saved Airbyte sources."""
+"""Bounded read-only Microsoft Graph access for saved connector sources."""
 
 from __future__ import annotations
 
 import asyncio
-import json
-import re
 from collections.abc import Callable, Mapping
+import json
 from pathlib import PurePosixPath
+import re
 from typing import Any
 from urllib.parse import quote, urljoin, urlsplit
 
+from error_contract import render_error_message
+from error_contract.connectors import (
+    MicrosoftAuthenticationError,
+    MicrosoftConfigurationError,
+    MicrosoftConnectorError,
+    MicrosoftValidationError,
+)
+from error_contract.httpx_errors import from_httpx_error
 import httpx
 from wcmatch import glob
 
@@ -21,30 +29,48 @@ _MAX_CONTENT_BYTES = 65_536
 _TENANT = re.compile(r"^[A-Za-z0-9.-]+$")
 
 
-class MicrosoftConnectorError(Exception):
-    """Safe Microsoft adapter error that contains no saved credentials."""
+def _transport_error(error: httpx.HTTPError) -> MicrosoftConnectorError:
+    failure = from_httpx_error(error)
+    category = {502: "response", 503: "connection", 504: "timeout"}.get(failure.status_code, "response")
+    if failure.code == "dependency.authentication_failed":
+        category = "authentication"
+    if category == "authentication":
+        return MicrosoftAuthenticationError(render_error_message(failure))
+    return MicrosoftConnectorError(render_error_message(failure), category)
 
 
 def _required(config: Mapping[str, Any], key: str) -> str:
     value = config.get(key)
     if not isinstance(value, str) or not value.strip():
-        raise MicrosoftConnectorError("Microsoft connector configuration is incomplete.")
+        raise MicrosoftConfigurationError("Microsoft connector configuration is incomplete.")
     return value.strip()
+
+
+def _response_field(payload: Mapping[str, Any], key: str) -> str:
+    """Missing upstream data is a response failure, not saved configuration."""
+    try:
+        return _required(payload, key)
+    except MicrosoftConfigurationError as exc:
+        raise MicrosoftConnectorError("Microsoft response is incomplete.", "response") from exc
 
 
 def _limit(value: int) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
-        raise MicrosoftConnectorError("Limit must be an integer.")
+        raise MicrosoftValidationError("Limit must be an integer.")
     return min(max(value, 1), _MAX_LIMIT)
 
 
 def _sharepoint_site(config: Mapping[str, Any]) -> str:
     if config.get("search_scope", "ALL") != "ACCESSIBLE_DRIVES":
-        raise MicrosoftConnectorError("SharePoint search scope is not supported.")
+        raise MicrosoftConfigurationError("SharePoint search scope is not supported.")
     site_url = str(config.get("site_url") or "").strip()
     if not site_url:
         return f"{_GRAPH_ROOT}/sites/root"
-    parsed = urlsplit(site_url)
+    try:
+        parsed = urlsplit(site_url)
+        port = parsed.port
+    except ValueError as exc:
+        raise MicrosoftConfigurationError("SharePoint site URL is not supported.") from exc
     hostname = (parsed.hostname or "").lower()
     path = parsed.path.rstrip("/")
     if (
@@ -52,14 +78,14 @@ def _sharepoint_site(config: Mapping[str, Any]) -> str:
         or not hostname.endswith(".sharepoint.com")
         or parsed.username is not None
         or parsed.password is not None
-        or parsed.port not in {None, 443}
+        or port not in {None, 443}
         or parsed.query
         or parsed.fragment
         or not path.startswith("/sites/")
         or len(path) <= len("/sites/")
         or ".." in PurePosixPath(path).parts
     ):
-        raise MicrosoftConnectorError("SharePoint site URL is not supported.")
+        raise MicrosoftConfigurationError("SharePoint site URL is not supported.")
     return f"{_GRAPH_ROOT}/sites/{hostname}:{quote(path, safe='/')}"
 
 
@@ -73,15 +99,12 @@ def _sharepoint_stream(config: Mapping[str, Any], resource: str) -> list[str]:
                 isinstance(globs, list)
                 and globs
                 and all(
-                    isinstance(item, str)
-                    and item
-                    and not item.startswith("/")
-                    and ".." not in item.split("/")
+                    isinstance(item, str) and item and not item.startswith("/") and ".." not in item.split("/")
                     for item in globs
                 )
             ):
                 return globs
-    raise MicrosoftConnectorError("SharePoint stream is not configured.")
+    raise MicrosoftConfigurationError("SharePoint stream is not configured.")
 
 
 def _matches(path: str, globs: list[str]) -> bool:
@@ -90,9 +113,9 @@ def _matches(path: str, globs: list[str]) -> bool:
 
 def _relative_path(value: str) -> str:
     if not value or value.startswith("/") or "\\" in value:
-        raise MicrosoftConnectorError("SharePoint file path is invalid.")
+        raise MicrosoftValidationError("SharePoint file path is invalid.")
     if any(part in {"", ".", ".."} for part in value.split("/")):
-        raise MicrosoftConnectorError("SharePoint file path is invalid.")
+        raise MicrosoftValidationError("SharePoint file path is invalid.")
     return value
 
 
@@ -104,7 +127,7 @@ async def _access_token(
 ) -> str:
     tenant_id = str(credentials.get("tenant_id") or "common").strip()
     if not _TENANT.fullmatch(tenant_id):
-        raise MicrosoftConnectorError("Microsoft tenant ID is invalid.")
+        raise MicrosoftConfigurationError("Microsoft tenant ID is invalid.")
     client_id = _required(credentials, "client_id")
     client_secret = _required(credentials, "client_secret")
     auth_type = credentials.get("auth_type")
@@ -124,7 +147,7 @@ async def _access_token(
             "scope": "https://graph.microsoft.com/.default",
         }
     else:
-        raise MicrosoftConnectorError("Microsoft authentication variant is not supported.")
+        raise MicrosoftConfigurationError("Microsoft authentication variant is not supported.")
     try:
         response = await client.post(
             f"{_LOGIN_ROOT}/{tenant_id}/oauth2/v2.0/token",
@@ -132,11 +155,17 @@ async def _access_token(
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         response.raise_for_status()
-        return _required(response.json(), "access_token")
+        return _response_field(response.json(), "access_token")
     except MicrosoftConnectorError:
         raise
-    except Exception:
-        raise MicrosoftConnectorError("Microsoft authentication failed.") from None
+    except httpx.HTTPError as exc:
+        if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code in {400, 401, 403}:
+            raise MicrosoftAuthenticationError("Microsoft authentication failed.") from exc
+        raise _transport_error(exc) from exc
+    except TimeoutError as exc:
+        raise MicrosoftConnectorError("Microsoft authentication timed out.", "timeout") from exc
+    except (ValueError, TypeError) as exc:
+        raise MicrosoftConnectorError("Microsoft authentication response is invalid.", "response") from exc
 
 
 async def _graph_json(
@@ -157,8 +186,12 @@ async def _graph_json(
         if not isinstance(payload, dict):
             raise TypeError
         return payload
-    except Exception:
-        raise MicrosoftConnectorError("Microsoft Graph read failed.") from None
+    except httpx.HTTPError as exc:
+        raise _transport_error(exc) from exc
+    except TimeoutError as exc:
+        raise MicrosoftConnectorError("Microsoft Graph read timed out.", "timeout") from exc
+    except (ValueError, TypeError) as exc:
+        raise MicrosoftConnectorError("Microsoft Graph response is invalid.", "response") from exc
 
 
 def _graph_url(url: str) -> bool:
@@ -226,13 +259,11 @@ async def _sharepoint(
             if not _matches(path, globs):
                 raise ValueError
             _required(selector, "drive_id")
-        except (ValueError, TypeError):
-            raise MicrosoftConnectorError(
-                "SharePoint query requires an allowed drive_id and path."
-            ) from None
+        except (MicrosoftConfigurationError, ValueError, TypeError) as exc:
+            raise MicrosoftValidationError("SharePoint query requires an allowed drive_id and path.") from exc
     token = await _access_token(client, config.get("credentials") or {})
     site = await _graph_json(client, site_url, token)
-    site_id = _required(site, "id")
+    site_id = _response_field(site, "id")
     drives_payload = await _graph_json(
         client,
         f"{_GRAPH_ROOT}/sites/{quote(site_id, safe=',')}/drives",
@@ -242,14 +273,11 @@ async def _sharepoint(
     drives = list(drives_payload.get("value") or [])[:10]
     if selector:
         drive_id = _required(selector, "drive_id")
-        if drive_id not in {_required(drive, "id") for drive in drives}:
-            raise MicrosoftConnectorError("SharePoint drive is not assigned to this site.")
+        if drive_id not in {_response_field(drive, "id") for drive in drives}:
+            raise MicrosoftConnectorError("SharePoint drive is not assigned to this site.", "authorization")
         path = _required(selector, "path")
         full_path = "/".join(part for part in (folder, path) if part)
-        url = (
-            f"{_GRAPH_ROOT}/drives/{quote(drive_id, safe='')}/root:"
-            f"/{quote(full_path, safe='/')}:/content"
-        )
+        url = f"{_GRAPH_ROOT}/drives/{quote(drive_id, safe='')}/root:/{quote(full_path, safe='/')}:/content"
         content, truncated = await _download(client, url, token)
         return [
             {
@@ -264,7 +292,7 @@ async def _sharepoint(
     rows: list[dict[str, Any]] = []
     pending = []
     for drive in drives:
-        drive_id = _required(drive, "id")
+        drive_id = _response_field(drive, "id")
         suffix = f"/root:/{quote(folder, safe='/')}:/children" if folder else "/root/children"
         pending.append((f"{_GRAPH_ROOT}/drives/{quote(drive_id, safe='')}{suffix}", drive, "", 0))
     visited: set[str] = set()
@@ -275,9 +303,7 @@ async def _sharepoint(
         if not _graph_url(url):
             raise MicrosoftConnectorError("SharePoint pagination origin is invalid.")
         visited.add(url)
-        payload = await _graph_json(
-            client, url, token, params=None if "?" in url else {"$top": 100}
-        )
+        payload = await _graph_json(client, url, token, params=None if "?" in url else {"$top": 100})
         for item in (payload.get("value") or [])[:100]:
             name = str(item.get("name") or "")
             if not name or "/" in name or "\\" in name or name in {".", ".."}:
@@ -322,9 +348,7 @@ async def _outlook(
     token = await _access_token(
         client,
         config,
-        delegated_scope=(
-            "https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/User.Read"
-        ),
+        delegated_scope=("https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/User.Read"),
     )
     endpoints = {
         "profile": "/me",
@@ -334,12 +358,12 @@ async def _outlook(
     }
     if resource == "messages_details":
         if not query or "/" in query:
-            raise MicrosoftConnectorError("Outlook message ID is required.")
+            raise MicrosoftValidationError("Outlook message ID is required.")
         endpoint = f"/me/messages/{quote(query, safe='')}"
     else:
         endpoint = endpoints.get(resource)
         if endpoint is None or query:
-            raise MicrosoftConnectorError("Outlook stream or query is not supported.")
+            raise MicrosoftValidationError("Outlook stream or query is not supported.")
     params = None if resource in {"profile", "messages_details"} else {"$top": _limit(limit)}
     payload = await _graph_json(client, f"{_GRAPH_ROOT}{endpoint}", token, params=params)
     if resource in {"profile", "messages_details"}:
@@ -366,8 +390,12 @@ async def read_microsoft_connector(
                 return await _sharepoint(client, config, resource, query, limit)
             if connector_type == "source-outlook":
                 return await _outlook(client, config, resource, query, limit)
-            raise MicrosoftConnectorError("Microsoft connector type is not supported.")
+            raise MicrosoftConfigurationError("Microsoft connector type is not supported.")
     except MicrosoftConnectorError:
         raise
-    except Exception:
-        raise MicrosoftConnectorError("Microsoft connector read failed.") from None
+    except httpx.HTTPError as exc:
+        raise _transport_error(exc) from exc
+    except TimeoutError as exc:
+        raise MicrosoftConnectorError("Microsoft connector read timed out.", "timeout") from exc
+    except (ValueError, TypeError) as exc:
+        raise MicrosoftConnectorError("Microsoft connector response is invalid.", "response") from exc

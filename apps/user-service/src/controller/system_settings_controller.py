@@ -17,26 +17,20 @@ class SystemSettingsController(BaseController):
     async def update_keycloak_settings(self, payload: KeycloakConfigUpdate) -> dict[str, Any]:
         try:
             return await self.service.update_keycloak_settings(payload)
-        except ValueError as e:
-            self._raise_bad_request(str(e))
+        except ValueError:
+            self._raise_bad_request()
 
-    async def update_realm_session_settings(
-        self, payload: KeycloakRealmSessionUpdate
-    ) -> dict[str, Any]:
+    async def update_realm_session_settings(self, payload: KeycloakRealmSessionUpdate) -> dict[str, Any]:
         try:
             return await self.service.update_realm_session_settings(payload)
-        except ValueError as e:
-            self._raise_bad_request(str(e))
-        except Exception as e:
-            self._raise_bad_request("system_settings.keycloak_realm_update_failed", error=str(e))
+        except ValueError:
+            self._raise_bad_request()
 
     async def sync_external_identity_provider(self) -> dict[str, Any]:
         try:
             return await self.service.sync_external_identity_provider()
-        except ValueError as e:
-            self._raise_bad_request(str(e))
-        except Exception as e:
-            self._raise_bad_request("system_settings.external_keycloak_sync_failed", error=str(e))
+        except ValueError:
+            self._raise_bad_request()
 
 
 _system_settings_controller_instance: SystemSettingsController | None = None

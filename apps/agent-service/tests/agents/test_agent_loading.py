@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from agents.agents import agents, get_agent, load_agent
-from agents.lazy_agent import LazyLoadingAgent
+from agents.primitives.base import LazyLoadingAgent
+from agents.registry.registry import agents, get_agent, load_agent
 
 
 class TestAgentLoading:

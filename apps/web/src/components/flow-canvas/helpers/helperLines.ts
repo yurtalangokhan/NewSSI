@@ -1,7 +1,7 @@
 /**
  * Ported from Langflow (MIT) — src/frontend/src/pages/FlowPage/components/PageComponent/helpers/helper-lines.ts
  * Upstream: https://github.com/langflow-ai/langflow @ 3ec070e9
- * Adapted for Onyx: `Node` -> `CanvasNode`, otherwise verbatim — pure
+ * Adapted for Atlas: `Node` -> `CanvasNode`, otherwise verbatim — pure
  * geometry with no Langflow-specific coupling.
  *
  * Brief: .tmp/flow-canvas-task-24-brief.md

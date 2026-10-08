@@ -18,7 +18,7 @@ function withLeadingSlash(value: string): string {
 function isGatewayUrl(url: URL, service: BackendService): boolean {
   const firstSegment = trimSlashes(url.pathname).split("/")[0];
   return (
-    url.hostname === "kong" ||
+    url.hostname === "apisix" ||
     url.port === "8000" ||
     firstSegment === SERVICE_PREFIX[service]
   );
@@ -78,7 +78,11 @@ export function buildServiceUrl(
   const canonicalPath = canonicalServicePath(service, path);
   const hasTrailingSlash = canonicalPath.endsWith("/") && canonicalPath !== "/";
   const apiPath = trimSlashes(canonicalPath);
-  url.pathname = `/${[basePath, apiPath].filter(Boolean).join("/")}`;
+  const pathAlreadyIncluded =
+    service === "tools" && apiPath === "mcp" && basePath.endsWith("/mcp");
+  url.pathname = pathAlreadyIncluded
+    ? `/${basePath}`
+    : `/${[basePath, apiPath].filter(Boolean).join("/")}`;
   if (hasTrailingSlash && !url.pathname.endsWith("/")) {
     url.pathname += "/";
   }

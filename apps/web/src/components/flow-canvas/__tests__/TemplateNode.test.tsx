@@ -11,7 +11,7 @@
  * Brief: .tmp/flow-canvas-task-26-brief.md
  */
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { createFlowStore } from "../stores/flowStore";
 import { FlowCanvas } from "../FlowCanvas";
 import { createTemplateNode } from "../nodes/TemplateNode";
@@ -659,5 +659,202 @@ describe("TemplateNode — Phase 4.5 input ports", () => {
     // The field is editable on the port row, not stranded in the list below.
     expect(screen.getByDisplayValue("belgeler")).toBeInTheDocument();
     expect(screen.queryByTestId("port-state-items")).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * flow-canvas-connect-ux — palette hover glow. `paletteHoverOrigin` is a
+ * hover preview, not a connection in progress: no owning canvas node, so it
+ * must glow EVERY compatible node's matching input, never excluding one as
+ * "the origin" (unlike a real drag, which excludes the node it started on).
+ */
+const MODEL_CONSUMER_TEMPLATE: GroupedComponentTemplates = {
+  agents: [
+    {
+      type: "ModelConsumer",
+      category: "agents",
+      display_name: "Model Consumer",
+      description: "",
+      icon: null,
+      template_version: 1,
+      lifecycle: "stable",
+      kind: "execution",
+      inputs: {},
+      handles: {
+        inputs: [{ name: "model_in", types: ["Model"] }],
+        outputs: [],
+      },
+    },
+  ],
+};
+
+const TRIGGER_ONLY_TEMPLATE: GroupedComponentTemplates = {
+  logic: [
+    {
+      type: "TriggerOnly",
+      category: "logic",
+      display_name: "Trigger Only",
+      description: "",
+      icon: null,
+      template_version: 1,
+      lifecycle: "stable",
+      kind: "execution",
+      inputs: {},
+      handles: {
+        inputs: [{ name: "trigger_in", types: ["Trigger"] }],
+        outputs: [],
+      },
+    },
+  ],
+};
+
+describe("TemplateNode — palette hover glow (paletteHoverOrigin)", () => {
+  it("glows a placed node's compatible input handle while a matching palette output type is hovered", () => {
+    mockUseComponentTemplates.mockReturnValue({
+      data: MODEL_CONSUMER_TEMPLATE,
+      isLoading: false,
+      error: undefined,
+    });
+    const store = renderWithNode(node("n1", "ModelConsumer", {}));
+
+    act(() => {
+      store.getState().setPaletteHoverOrigin({
+        types: ["Model"],
+        handleType: "source",
+      });
+    });
+
+    expect(screen.getByTestId("div-handle-target-model_in")).toHaveClass(
+      "lf-handle-glow"
+    );
+  });
+
+  it("does not glow an incompatible input handle", () => {
+    mockUseComponentTemplates.mockReturnValue({
+      data: TRIGGER_ONLY_TEMPLATE,
+      isLoading: false,
+      error: undefined,
+    });
+    const store = renderWithNode(node("n1", "TriggerOnly", {}));
+
+    act(() => {
+      store.getState().setPaletteHoverOrigin({
+        types: ["Model"],
+        handleType: "source",
+      });
+    });
+
+    expect(screen.getByTestId("div-handle-target-trigger_in")).not.toHaveClass(
+      "lf-handle-glow"
+    );
+  });
+
+  it("stops glowing once the hover ends", () => {
+    mockUseComponentTemplates.mockReturnValue({
+      data: MODEL_CONSUMER_TEMPLATE,
+      isLoading: false,
+      error: undefined,
+    });
+    const store = renderWithNode(node("n1", "ModelConsumer", {}));
+
+    act(() => {
+      store.getState().setPaletteHoverOrigin({
+        types: ["Model"],
+        handleType: "source",
+      });
+    });
+    expect(screen.getByTestId("div-handle-target-model_in")).toHaveClass(
+      "lf-handle-glow"
+    );
+
+    act(() => {
+      store.getState().setPaletteHoverOrigin(null);
+    });
+    expect(screen.getByTestId("div-handle-target-model_in")).not.toHaveClass(
+      "lf-handle-glow"
+    );
+  });
+});
+
+function renderReadOnlyNode(canvasNode: CanvasNode) {
+  const store = createFlowStore();
+  store.getState().setNodes([canvasNode]);
+  store.getState().resetDirty();
+  const nodeTypes = { templateNode: createTemplateNode(store, true) };
+  render(
+    <div style={{ width: 800, height: 600 }}>
+      <FlowCanvas
+        store={store}
+        lookupHandleTypes={lookupAlwaysMessage}
+        nodeTypes={nodeTypes}
+        readOnly
+      />
+    </div>
+  );
+  return store;
+}
+
+describe("TemplateNode — read-only canvas never offers to start a connection", () => {
+  // Regression test for: opening a flow's read-only overview (AgentViewerModal
+  // → FlowAgentPreview) let you drag a connection from a handle — cursor
+  // turned into a crosshair and compatible targets glowed — even though the
+  // drop was silently discarded (`FlowCanvas`'s `onConnect` already no-ops
+  // under `readOnly`).
+  //
+  // Root cause: `NodeHandle` never forwarded `isConnectable` to xyflow's own
+  // `<Handle>`, which defaults it to `true`. `nodesConnectable={false}` on
+  // `<ReactFlow>` only ever reaches a node through that per-node prop — so
+  // without the forward, xyflow's `connectionindicator` class (the thing
+  // that flips a handle from `pointer-events: none` to `all` and shows the
+  // crosshair) was always applied, regardless of read-only.
+  it("does not mark handles connectable, so xyflow never starts a drag from them", () => {
+    mockUseComponentTemplates.mockReturnValue({
+      data: AGENT_TEMPLATE,
+      isLoading: false,
+      error: undefined,
+    });
+    renderReadOnlyNode(node("n1", "ZeroShotAgent", {}));
+
+    const source = screen.getByTestId("handle-source-message");
+    const target = screen.getByTestId("handle-target-message");
+    expect(source.className).not.toMatch(/\bconnectable\b/);
+    expect(target.className).not.toMatch(/\bconnectable\b/);
+  });
+
+  it("still marks handles connectable outside read-only mode", () => {
+    mockUseComponentTemplates.mockReturnValue({
+      data: AGENT_TEMPLATE,
+      isLoading: false,
+      error: undefined,
+    });
+    renderWithNode(node("n1", "ZeroShotAgent", {}));
+
+    expect(screen.getByTestId("handle-source-message").className).toMatch(
+      /\bconnectable\b/
+    );
+  });
+});
+
+describe("TemplateNode — field info tooltips stay hoverable when read-only", () => {
+  // Regression test for: the same read-only overview disables field editing
+  // by putting `pointer-events-none` on the whole fields block (correct —
+  // it must not be editable there), but that also silenced the info-icon
+  // tooltips next to field labels, which have nothing to do with editing.
+  it("gives the advanced field's info icon its own pointer-events-auto, overriding the read-only wrapper", () => {
+    mockUseComponentTemplates.mockReturnValue({
+      data: AGENT_TEMPLATE,
+      isLoading: false,
+      error: undefined,
+    });
+    renderReadOnlyNode(node("n1", "ZeroShotAgent", {}));
+
+    fireEvent.click(screen.getByText(/advanced/i));
+
+    // `max_iterations` is the only field carrying `info` text in this
+    // template, so its label row has exactly one `cursor-help` tooltip
+    // trigger — the info icon.
+    const infoIcon = document.querySelector(".cursor-help");
+    expect(infoIcon).not.toBeNull();
+    expect(infoIcon).toHaveClass("pointer-events-auto");
   });
 });

@@ -1,6 +1,11 @@
 """Tests for FlowAgent — mirrors dynamic_agent.py's shape deliberately: same
-cache pattern, same fallback-on-load-failure behavior, same LazyLoadingAgent
-base. A sibling class, not a subclass, per design spec section 6.2.
+cache pattern, same LazyLoadingAgent base. A sibling class, not a subclass,
+per design spec section 6.2.
+
+A failed load raises rather than falling back to a placeholder graph (spec
+T7/Task 36): silently degrading to a "helpful assistant" used to turn a
+transient failure into a permanent one that answered every future turn as
+if nothing were wrong.
 
 Spec: .tmp/flow-canvas-design.md sections 6.2, 9.1.
 Brief: .tmp/flow-canvas-task-13-brief.md
@@ -12,7 +17,12 @@ import pytest
 from langchain_core.messages import HumanMessage
 from langgraph.graph.state import CompiledStateGraph
 
-from agents.flow_agent import FlowAgent, cache_agent, get_cached_agent, invalidate_agent_cache
+from agents.implementations.flow_agent import (
+    FlowAgent,
+    cache_agent,
+    get_cached_agent,
+    invalidate_agent_cache,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -57,25 +67,24 @@ async def test_flow_agent_loads_and_compiles_a_valid_spec():
 
     await agent.load()
 
-    assert agent._load_failed is False
     assert isinstance(agent.get_graph(), CompiledStateGraph)
 
 
 # ---------------------------------------------------------------------------
-# 13.2 — falls back on invalid spec
+# 13.2 — raises on invalid spec instead of falling back
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_flow_agent_falls_back_on_invalid_spec():
+async def test_flow_agent_load_raises_on_invalid_spec():
     agent = FlowAgent({"nodes": "this is not a valid spec"}, definition_id="def-2")
 
-    await agent.load()  # must not raise
+    with pytest.raises(Exception):
+        await agent.load()
 
-    assert agent._load_failed is True
-    assert isinstance(agent.get_graph(), CompiledStateGraph)
-    result = await agent.get_graph().ainvoke({"messages": [HumanMessage(content="hi")]})
-    assert len(result["messages"]) >= 2  # a real, if apologetic, response
+    # No placeholder graph was cached in place of the real one.
+    assert agent._graph is None
+    assert agent._loaded is False
 
 
 # ---------------------------------------------------------------------------
@@ -111,10 +120,11 @@ async def test_flow_agent_refuses_a_structurally_invalid_spec():
     with pytest.raises(FlowValidationError):
         await agent._build_graph()
 
-    await agent.load()  # must not raise — falls back instead
+    with pytest.raises(FlowValidationError):
+        await agent.load()
 
-    assert agent._load_failed is True
-    assert isinstance(agent.get_graph(), CompiledStateGraph)
+    assert agent._graph is None
+    assert agent._loaded is False
 
 
 # ---------------------------------------------------------------------------
@@ -122,16 +132,18 @@ async def test_flow_agent_refuses_a_structurally_invalid_spec():
 # ---------------------------------------------------------------------------
 
 
-def test_flow_agent_caches_by_definition_id():
+@pytest.mark.asyncio
+async def test_flow_agent_caches_by_definition_id():
     agent = FlowAgent(_valid_flow_spec(), definition_id="def-3")
-    cache_agent("def-3", agent)
+    await cache_agent("def-3", agent)
 
     assert get_cached_agent("def-3") is agent
 
 
-def test_flow_agent_invalidate_cache_removes_entry():
+@pytest.mark.asyncio
+async def test_flow_agent_invalidate_cache_removes_entry():
     agent = FlowAgent(_valid_flow_spec(), definition_id="def-4")
-    cache_agent("def-4", agent)
+    await cache_agent("def-4", agent)
 
     invalidate_agent_cache("def-4")
 
@@ -183,14 +195,14 @@ def test_flow_agent_reports_flow_graph_schema():
 
 
 def test_flow_graph_schema_type_is_registered():
-    from agents.graphs.schemas import GraphSchemaType, get_all_schemas, get_schema
+    from schemas.agent_graphs import GraphSchemaType, get_all_schemas, get_schema
 
     schema = get_schema("flow")
     assert schema is not None
     assert schema.schema_type == GraphSchemaType.FLOW
 
     # Registering a new schema type must not perturb existing consumers
-    # (e.g. AgentDefinitionsRoute's schemas/list endpoint) — the six classic
+    # (e.g. agent_definitions_route's schemas/list endpoint) — the six classic
     # schemas are all still present alongside it.
     all_types = {s.schema_type.value for s in get_all_schemas()}
     assert all_types == {

@@ -12,12 +12,12 @@ from __future__ import annotations
 import pytest
 from langchain_core.messages import HumanMessage
 
-from agents.graphs.flow_builder import (
+from agents.graphs.flow import (
     FlowGraphBuilder,
     _make_prompt_template_node,
     _make_set_variable_node,
 )
-from models.flows import FlowNode, FlowSpec
+from schemas.flows import FlowNode, FlowSpec
 
 
 @pytest.fixture(autouse=True)

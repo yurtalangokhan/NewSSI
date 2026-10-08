@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import { SvgCheckCircle, SvgEdit, SvgUser } from "@opal/icons";
 import { useTranslation } from "react-i18next";
-import { APP_NAME } from "@/lib/appInfo";
+import { appSettings } from "@/lib/settings";
 
 export interface NameStepProps {
   state: OnboardingState;
@@ -49,7 +49,9 @@ const NameStep = React.memo(
           </div>
           <div>
             <Text as="p" text04 mainUiAction>
-              {t("nameStep.whatShouldAppCallYou", { appName: APP_NAME })}
+              {t("nameStep.whatShouldAppCallYou", {
+                appName: appSettings.APP_NAME,
+              })}
             </Text>
             <Text as="p" text03 secondaryBody>
               {t("nameStep.nameDisplayDesc")}

@@ -3,7 +3,7 @@
  * flowSidebarComponent/components/FlowVersionSidebar
  * Upstream: https://github.com/langflow-ai/langflow @ 3ec070e9
  *
- * Adapted for Onyx:
+ * Adapted for Atlas:
  * - Our version model is draft/published/archived (P3), not Langflow's flat
  *   checkpoint list: the pinned "Current" row is backed by the draft row,
  *   and the history rows are published/archived versions only.

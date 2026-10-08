@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Packet } from "@/app/app/services/streamingModels";
+import { Packet } from "@/lib/api/domains/chat/streaming-types";
 
 // Control the rate of packet streaming (packets per second)
 const PACKET_DELAY_MS = 10;

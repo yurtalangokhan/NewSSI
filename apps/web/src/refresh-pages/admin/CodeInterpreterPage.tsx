@@ -12,14 +12,14 @@ import {
   SvgUnplug,
   SvgXOctagon,
 } from "@opal/icons";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { Section } from "@/layouts/general-layouts";
 import { Button } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
 import Skeleton from "@/refresh-components/skeletons/Skeleton";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
-import useCodeInterpreter from "@/hooks/useCodeInterpreter";
-import { updateCodeInterpreter } from "@/lib/admin/code-interpreter/svc";
+import { useCodeInterpreter } from "@/lib/api/domains/tools/hooks";
+import { updateCodeInterpreter } from "@/lib/api/domains/tools/api";
 import { ContentAction } from "@opal/layouts";
 import { toast } from "@/hooks/useToast";
 import { useTranslation, Trans } from "react-i18next";

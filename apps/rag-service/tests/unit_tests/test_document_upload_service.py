@@ -1,26 +1,36 @@
 import hashlib
+import os
+import tempfile
+from pathlib import Path
 
 import pytest
 
-from langconnect.models.documents import FileUploadDTO, UploadStatus
-from langconnect.services import document_upload_service as svc
+from src.documents import upload_service as svc
+from src.documents.schemas import FileUploadDTO, UploadStatus
 
 
 def _make_dto(
     filename: str,
     content: bytes | None = None,
 ) -> FileUploadDTO:
-    """Build a minimal ``FileUploadDTO`` for tests.
+    """Build a minimal ``FileUploadDTO`` backed by a real temp file, for tests.
 
     Defaults *content* to something derived from the filename so distinct
-    fake files never accidentally collide on content hash.
+    fake files never accidentally collide on content hash. The caller does
+    not need to clean this up: run_upload_job always does, including on
+    every early-exit path (that guarantee is itself covered below).
     """
     data = content if content is not None else f"stub:{filename}".encode()
+    fd, raw_path = tempfile.mkstemp(prefix="test-upload-", suffix=".part")
+    path = Path(raw_path)
+    with os.fdopen(fd, "wb") as f:
+        f.write(data)
     return FileUploadDTO(
         filename=filename,
         content_type="text/plain",
         size=len(data),
-        content=data,
+        path=path,
+        content_hash=hashlib.sha256(data).hexdigest(),
     )
 
 
@@ -41,13 +51,9 @@ class FakeCollection:
         self._existing_content_hashes = existing_content_hashes or set()
         self.upsert_calls: list[int] = []
 
-    async def list_filenames(self) -> set[str]:
-        """Return the seeded set of existing filenames."""
-        return set(self._existing_filenames)
-
-    async def list_content_hashes(self) -> set[str]:
-        """Return the seeded set of existing content hashes."""
-        return set(self._existing_content_hashes)
+    async def list_upload_fingerprints(self) -> tuple[set[str], set[str]]:
+        """Return the seeded filenames and content hashes in one call."""
+        return set(self._existing_filenames), set(self._existing_content_hashes)
 
     async def upsert(self, documents: list) -> list[str]:
         """Record the batch size and return fake chunk ids."""
@@ -293,3 +299,115 @@ async def test_run_upload_job_embeds_in_batches_for_progress(monkeypatch):
     progress = svc.get_upload_progress("col-1")
     assert collection.upsert_calls == [2, 2, 1]
     assert progress.processed_chunks == 5
+
+
+class TestTempFileCleanup:
+    """Spec T4: run_upload_job owns cleaning up the temp files it was
+    handed, since it (a background task) is the only code that still
+    holds a reference to them once the request that spooled them has
+    already returned a response.
+    """
+
+    @pytest.mark.asyncio
+    async def test_a_successfully_processed_files_temp_file_is_removed(
+        self, monkeypatch
+    ):
+        """The common path: a file parses and embeds cleanly, then is cleaned up."""
+        svc._upload_progress.clear()
+        collection = FakeCollection(existing_filenames=set())
+        monkeypatch.setattr(
+            svc, "Collection", lambda collection_id, user_id: collection
+        )
+
+        async def fake_process_document(file, metadata=None):
+            return [FakeDoc()]
+
+        monkeypatch.setattr(svc, "process_document", fake_process_document)
+
+        dto = _make_dto("a.txt")
+        assert dto.path.exists()
+        svc.initialize_upload_progress("col-1", total_files=1)
+
+        await svc.run_upload_job("col-1", "user-1", [dto], [None])
+
+        assert not dto.path.exists()
+
+    @pytest.mark.asyncio
+    async def test_a_duplicate_files_temp_file_is_removed_even_though_it_was_never_parsed(
+        self, monkeypatch
+    ):
+        """A duplicate is skipped via `continue` before process_document runs, but
+        still owns a spooled temp file that must not be leaked.
+        """
+        svc._upload_progress.clear()
+        collection = FakeCollection(existing_filenames={"dup.txt"})
+        monkeypatch.setattr(
+            svc, "Collection", lambda collection_id, user_id: collection
+        )
+        monkeypatch.setattr(
+            svc,
+            "process_document",
+            lambda *a, **k: (_ for _ in ()).throw(AssertionError()),
+        )
+
+        dto = _make_dto("dup.txt")
+        svc.initialize_upload_progress("col-1", total_files=1)
+
+        await svc.run_upload_job("col-1", "user-1", [dto], [None])
+
+        assert not dto.path.exists()
+
+    @pytest.mark.asyncio
+    async def test_a_failed_files_temp_file_is_still_removed(self, monkeypatch):
+        """process_document raising must not leak the file that failed to process."""
+        svc._upload_progress.clear()
+        collection = FakeCollection(existing_filenames=set())
+        monkeypatch.setattr(
+            svc, "Collection", lambda collection_id, user_id: collection
+        )
+
+        async def fake_process_document(file, metadata=None):
+            raise ValueError("boom")
+
+        monkeypatch.setattr(svc, "process_document", fake_process_document)
+
+        dto = _make_dto("bad.txt")
+        svc.initialize_upload_progress("col-1", total_files=1)
+
+        await svc.run_upload_job("col-1", "user-1", [dto], [None])
+
+        assert not dto.path.exists()
+
+    @pytest.mark.asyncio
+    async def test_unprocessed_files_are_still_cleaned_up_when_an_earlier_file_aborts_the_job(
+        self, monkeypatch
+    ):
+        """A failure that isn't caught by the per-file try (e.g. the
+        vector-store upsert itself) aborts the whole loop -- every file
+        after the one that failed, never even reached, must still be
+        cleaned up rather than leaked on disk.
+        """
+        svc._upload_progress.clear()
+
+        class ExplodingCollection(FakeCollection):
+            async def upsert(self, documents: list) -> list[str]:
+                raise RuntimeError("vector store unavailable")
+
+        collection = ExplodingCollection(existing_filenames=set())
+        monkeypatch.setattr(
+            svc, "Collection", lambda collection_id, user_id: collection
+        )
+
+        async def fake_process_document(file, metadata=None):
+            return [FakeDoc()]
+
+        monkeypatch.setattr(svc, "process_document", fake_process_document)
+
+        dtos = [_make_dto("first.txt"), _make_dto("second.txt"), _make_dto("third.txt")]
+        svc.initialize_upload_progress("col-1", total_files=3)
+
+        await svc.run_upload_job("col-1", "user-1", dtos, [None, None, None])
+
+        progress = svc.get_upload_progress("col-1")
+        assert progress.status == UploadStatus.FAILED
+        assert all(not dto.path.exists() for dto in dtos)

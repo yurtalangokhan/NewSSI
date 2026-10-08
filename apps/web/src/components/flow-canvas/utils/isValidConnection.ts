@@ -2,7 +2,7 @@
  * Ported from Langflow (MIT) — src/frontend/src/utils/reactflowUtils.ts
  * (isValidConnection), concept only. Upstream: https://github.com/langflow-ai/langflow @ 3ec070e9
  *
- * Adapted for Onyx: Langflow's version reasons over its own
+ * Adapted for Atlas: Langflow's version reasons over its own
  * dataType/inputTypes/output_types handle-descriptor shape and additionally
  * implements loop-input cycle detection. Neither is ported:
  * - Type compatibility is Task 22's own handleTypes.ts, a direct mirror of

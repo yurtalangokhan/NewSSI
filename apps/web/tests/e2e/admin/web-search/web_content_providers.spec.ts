@@ -160,20 +160,23 @@ test.describe("Web Content Provider Configuration", () => {
       );
 
       // Switch to ATLAS Web Crawler
-      const onyxCrawlerCard = await findProviderCard(page, "ATLAS Web Crawler");
-      await onyxCrawlerCard.waitFor({ state: "visible", timeout: 10000 });
+      const atlasCrawlerCard = await findProviderCard(
+        page,
+        "ATLAS Web Crawler"
+      );
+      await atlasCrawlerCard.waitFor({ state: "visible", timeout: 10000 });
 
-      const onyxSetDefault = onyxCrawlerCard.getByRole("button", {
+      const atlasSetDefault = atlasCrawlerCard.getByRole("button", {
         name: "Set as Default",
       });
 
-      if (await onyxSetDefault.isVisible()) {
-        await onyxSetDefault.click();
+      if (await atlasSetDefault.isVisible()) {
+        await atlasSetDefault.click();
         await page.waitForLoadState("networkidle");
       }
 
       await expect(
-        onyxCrawlerCard.getByRole("button", { name: "Current Crawler" })
+        atlasCrawlerCard.getByRole("button", { name: "Current Crawler" })
       ).toBeVisible({ timeout: 15000 });
 
       console.log("[web-content-test] Switched back to ATLAS Web Crawler");

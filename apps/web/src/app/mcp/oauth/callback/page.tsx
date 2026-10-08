@@ -2,6 +2,7 @@
 
 import OAuthCallbackPage from "@/components/oauth/OAuthCallbackPage";
 import { useTranslation } from "react-i18next";
+import { completeMcpOAuthCallback } from "@/lib/api/domains/tools/api";
 
 export default function MCPOAuthCallbackPage() {
   const { t } = useTranslation("common", { keyPrefix: "auth" });
@@ -15,7 +16,7 @@ export default function MCPOAuthCallbackPage() {
     redirectingMessage: t("oauthCallback.mcpRedirecting"),
     autoRedirectDelay: 2000,
     defaultRedirectPath: "/app",
-    callbackApiUrl: "/api/mcp/oauth/callback",
+    callback: completeMcpOAuthCallback,
     errorMessageMap: {
       "server not found": t("oauthCallback.mcpErrorServerNotFound"),
       credentials: t("oauthCallback.mcpErrorCredentials"),

@@ -1,8 +1,7 @@
 """Graph schema and builder modules."""
 
 from agents.graphs.builder import GraphBuilder, GraphBuilderError, build_graph
-from agents.graphs.flow_builder import PASSTHROUGH_NODE_TYPES
-from agents.graphs.schemas import GraphSchema, GraphSchemaType, get_all_schemas, get_schema
+from agents.graphs.flow import PASSTHROUGH_NODE_TYPES
 from agents.graphs.strategies import (
     GraphSchemaStrategy,
     GraphSchemaStrategyRegistry,
@@ -15,25 +14,26 @@ from agents.graphs.strategies import (
     get_registry,
     get_strategy,
 )
+from schemas.agent_graphs import GraphSchema, GraphSchemaType, get_all_schemas, get_schema
 
 __all__ = [
-    "GraphSchemaType",
-    "GraphSchema",
-    "get_schema",
-    "get_all_schemas",
+    "PASSTHROUGH_NODE_TYPES",
     "GraphBuilder",
     "GraphBuilderError",
-    "build_graph",
-    "PASSTHROUGH_NODE_TYPES",
+    "GraphSchema",
     # Strategies
     "GraphSchemaStrategy",
-    "ZeroShotGraphStrategy",
-    "ReActGraphStrategy",
-    "SupervisorGraphStrategy",
+    "GraphSchemaStrategyRegistry",
+    "GraphSchemaType",
     "PipelineGraphStrategy",
     "PlanExecuteGraphStrategy",
+    "ReActGraphStrategy",
     "SelfReflectGraphStrategy",
-    "GraphSchemaStrategyRegistry",
+    "SupervisorGraphStrategy",
+    "ZeroShotGraphStrategy",
+    "build_graph",
+    "get_all_schemas",
     "get_registry",
+    "get_schema",
     "get_strategy",
 ]

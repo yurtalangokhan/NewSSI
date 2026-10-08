@@ -5,14 +5,21 @@ import * as AvatarPrimitive from "@radix-ui/react-avatar";
 import { cn } from "@/lib/utils";
 import { wrapperClasses } from "@/refresh-components/inputs/styles";
 
+export interface InputAvatarProps
+  extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root> {
+  variant?: "agent" | "flow";
+}
+
 const InputAvatar = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
->(({ className, ...props }, ref) => (
+  InputAvatarProps
+>(({ className, variant = "agent", ...props }, ref) => (
   <AvatarPrimitive.Root
     ref={ref}
+    data-variant={variant}
     className={cn(
-      "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full",
+      "relative flex h-10 w-10 shrink-0 overflow-hidden",
+      variant === "flow" ? "rounded-[28%]" : "rounded-full",
       wrapperClasses.primary,
       className
     )}

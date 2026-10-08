@@ -16,7 +16,7 @@ import { IndexAttemptSnapshot } from "@/lib/types";
 import { IndexAttemptStatus } from "@/components/Status";
 import { PageSelector } from "@/components/PageSelector";
 import { localizeAndPrettify } from "@/lib/time";
-import { getDocsProcessedPerMinute } from "@/lib/indexAttempt";
+import { getDocsProcessedPerMinute } from "@/lib/api/domains/datasources/indexing";
 import { InfoIcon } from "@/components/icons/icons";
 import ExceptionTraceModal from "@/components/modals/ExceptionTraceModal";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";

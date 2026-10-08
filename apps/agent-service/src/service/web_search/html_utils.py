@@ -1,13 +1,13 @@
-import re
 from copy import copy
 from dataclasses import dataclass
 from enum import Enum
 from io import BytesIO
+import re
 from typing import IO
 
 import bs4
 
-from core.logger import get_logger
+from core.observability.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -111,11 +111,7 @@ def strip_newlines(document: str) -> str:
 def format_element_text(element_text: str, link_href: str | None) -> str:
     element_text_no_newlines = strip_newlines(element_text)
 
-    if (
-        not link_href
-        or HTML_BASED_CONNECTOR_TRANSFORM_LINKS_STRATEGY
-        == HtmlBasedConnectorTransformLinksStrategy.STRIP
-    ):
+    if not link_href or HTML_BASED_CONNECTOR_TRANSFORM_LINKS_STRATEGY == HtmlBasedConnectorTransformLinksStrategy.STRIP:
         return element_text_no_newlines
 
     return f"[{element_text_no_newlines}]({link_href})"
@@ -172,16 +168,10 @@ def format_document_soup(document: bs4.BeautifulSoup, table_cell_separator: str 
                 last_added_newline = False
 
             if element_text:
-                content_to_add = (
-                    element_text
-                    if verbatim_output > 0
-                    else format_element_text(element_text, link_href)
-                )
+                content_to_add = element_text if verbatim_output > 0 else format_element_text(element_text, link_href)
 
                 # Don't join separate elements without any spacing
-                if (text and not text[-1].isspace()) and (
-                    content_to_add and not content_to_add[0].isspace()
-                ):
+                if (text and not text[-1].isspace()) and (content_to_add and not content_to_add[0].isspace()):
                     text += " "
 
                 text += content_to_add
@@ -211,20 +201,15 @@ def format_document_soup(document: bs4.BeautifulSoup, table_cell_separator: str 
             elif e.name in ["p", "div"]:
                 if not list_element_start:
                     text += "\n"
-            elif e.name in ["h1", "h2", "h3", "h4"]:
-                text += "\n"
-                list_element_start = False
-                last_added_newline = True
-            elif e.name == "br":
+            elif e.name in ["h1", "h2", "h3", "h4"] or e.name == "br":
                 text += "\n"
                 list_element_start = False
                 last_added_newline = True
             elif e.name == "li":
                 text += "\n- "
                 list_element_start = True
-            elif e.name == "pre":
-                if verbatim_output <= 0:
-                    verbatim_output = len(list(e.childGenerator()))
+            elif e.name == "pre" and verbatim_output <= 0:
+                verbatim_output = len(list(e.childGenerator()))
     return strip_excessive_newlines_and_spaces(text)
 
 
@@ -271,10 +256,7 @@ def web_html_cleanup(
     mintlify_cleanup_enabled: bool = True,
     additional_element_types_to_discard: list[str] | None = None,
 ) -> ParsedHTML:
-    if isinstance(page_content, str):
-        soup = bs4.BeautifulSoup(page_content, "lxml")
-    else:
-        soup = page_content
+    soup = bs4.BeautifulSoup(page_content, "lxml") if isinstance(page_content, str) else page_content
 
     title_tag = soup.find("title")
     title = None
@@ -287,10 +269,7 @@ def web_html_cleanup(
     if mintlify_cleanup_enabled:
         unwanted_classes.extend(MINTLIFY_UNWANTED)
     for undesired_element in unwanted_classes:
-        [
-            tag.extract()
-            for tag in soup.find_all(class_=lambda x: x and undesired_element in x.split())
-        ]
+        [tag.extract() for tag in soup.find_all(class_=lambda x, element=undesired_element: x and element in x.split())]
 
     for undesired_tag in WEB_CONNECTOR_IGNORED_ELEMENTS:
         [tag.extract() for tag in soup.find_all(undesired_tag)]
@@ -312,7 +291,7 @@ def web_html_cleanup(
             page_text = parse_html_with_trafilatura(str(soup))
             if not page_text:
                 raise ValueError("Empty content returned by trafilatura.")
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError) as e:
             logger.warning("Trafilatura parsing failed: %s. Falling back on bs4.", e)
             _remove_noise_elements(soup)
             content_root = _select_content_root(soup)

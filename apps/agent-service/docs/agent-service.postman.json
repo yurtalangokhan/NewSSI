@@ -188,52 +188,6 @@
         "method": "POST",
         "header": [],
         "url": {
-          "raw": "{{baseUrl}}/api/v1/agents/invoke",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "agents",
-            "invoke"
-          ],
-          "query": [
-            {
-              "key": "agent_id",
-              "value": "chatbot",
-              "required": false
-            }
-          ]
-        },
-        "description": "Invoke an agent with user input to retrieve a final response.If agent_id is not provided, the default agent will be used.Use thread_id to persist and continue a multi-turn conversation. run_id kwargis also attached to messages for recording feedback.Use user_id to persist and continue a conversation across multiple threads.The user_id can also be automatically extracted from the x-api-key header.",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"message\": \"Hello, world!\",\n  \"messages\": \"Hello, world!\",\n  \"model\": \"gpt-4\",\n  \"thread_id\": \"abc123def456\",\n  \"user_id\": \"abc123def456\",\n  \"agent_id\": \"abc123def456\",\n  \"agent_config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"file_content_blocks\": \"This is sample content text for the request.\",\n  \"files_metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  },\n  \"mail_attachments\": \"2024-01-15T10:30:00Z\",\n  \"is_regenerate\": false,\n  \"retry_target_message_id\": \"abc123def456\",\n  \"is_edit\": false,\n  \"edit_target_message_id\": \"abc123def456\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Invoke",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "url": {
           "raw": "{{baseUrl}}/api/v1/agents/{{agent_id}}/invoke",
           "host": [
             "{{baseUrl}}"
@@ -250,52 +204,6 @@
         "body": {
           "mode": "raw",
           "raw": "{\n  \"message\": \"Hello, world!\",\n  \"messages\": \"Hello, world!\",\n  \"model\": \"gpt-4\",\n  \"thread_id\": \"abc123def456\",\n  \"user_id\": \"abc123def456\",\n  \"agent_id\": \"abc123def456\",\n  \"agent_config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"file_content_blocks\": \"This is sample content text for the request.\",\n  \"files_metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  },\n  \"mail_attachments\": \"2024-01-15T10:30:00Z\",\n  \"is_regenerate\": false,\n  \"retry_target_message_id\": \"abc123def456\",\n  \"is_edit\": false,\n  \"edit_target_message_id\": \"abc123def456\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Stream",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/agents/stream",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "agents",
-            "stream"
-          ],
-          "query": [
-            {
-              "key": "agent_id",
-              "value": "chatbot",
-              "required": false
-            }
-          ]
-        },
-        "description": "Stream an agent's response to a user input, including intermediate messages and tokens.If agent_id is not provided, the default agent will be used.Use thread_id to persist and continue a multi-turn conversation.Set ``stream_tokens=false`` to return intermediate messages but not token-by-token.",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"message\": \"Hello, world!\",\n  \"messages\": \"Hello, world!\",\n  \"model\": \"gpt-4\",\n  \"thread_id\": \"abc123def456\",\n  \"user_id\": \"abc123def456\",\n  \"agent_id\": \"abc123def456\",\n  \"agent_config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"file_content_blocks\": \"This is sample content text for the request.\",\n  \"files_metadata\": {\n    \"key\": \"value\",\n    \"nested\": {\n      \"data\": \"example\"\n    }\n  },\n  \"mail_attachments\": \"2024-01-15T10:30:00Z\",\n  \"is_regenerate\": false,\n  \"retry_target_message_id\": \"abc123def456\",\n  \"is_edit\": false,\n  \"edit_target_message_id\": \"abc123def456\",\n  \"stream_tokens\": true\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -1406,116 +1314,6 @@
       }
     },
     {
-      "name": "Get Current User",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/auth/me",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "auth",
-            "me"
-          ]
-        },
-        "description": "",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Get Settings",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/auth/settings",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "auth",
-            "settings"
-          ]
-        },
-        "description": "",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Get Enterprise Settings",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/auth/enterprise-settings",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "auth",
-            "enterprise-settings"
-          ]
-        },
-        "description": "",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Health Check",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/auth/health",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "auth",
-            "health"
-          ]
-        },
-        "description": ""
-      }
-    },
-    {
       "name": "Get Mcp Servers",
       "request": {
         "method": "GET",
@@ -1552,43 +1350,6 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{baseUrl}}/api/v1/chat/get-user-chat-sessions",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "chat",
-            "get-user-chat-sessions"
-          ],
-          "query": [
-            {
-              "key": "page_size",
-              "value": 100,
-              "required": false
-            }
-          ]
-        },
-        "description": "",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Get Chat Sessions",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
           "raw": "{{baseUrl}}/api/v1/chat/sessions",
           "host": [
             "{{baseUrl}}"
@@ -1651,67 +1412,6 @@
       }
     },
     {
-      "name": "Create Chat Session",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/chat/create-chat-session",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "chat",
-            "create-chat-session"
-          ]
-        },
-        "description": "",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Get Chat Session",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/chat/get-chat-session/{{chat_session_id}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "chat",
-            "get-chat-session",
-            "{{chat_session_id}}"
-          ]
-        },
-        "description": "",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
       "name": "Get Chat Session",
       "request": {
         "method": "GET",
@@ -1758,98 +1458,6 @@
             "chat",
             "sessions",
             "{{chat_session_id}}"
-          ]
-        },
-        "description": "",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Delete Chat Session",
-      "request": {
-        "method": "DELETE",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/chat/delete-chat-session/{{chat_session_id}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "chat",
-            "delete-chat-session",
-            "{{chat_session_id}}"
-          ]
-        },
-        "description": "",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Delete Chat Session",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/chat/delete-chat-session/{{chat_session_id}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "chat",
-            "delete-chat-session",
-            "{{chat_session_id}}"
-          ]
-        },
-        "description": "",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Delete All Chat Sessions",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/chat/delete-all-chat-sessions",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "chat",
-            "delete-all-chat-sessions"
           ]
         },
         "description": "",
@@ -1899,36 +1507,6 @@
       "name": "Rename Chat Session",
       "request": {
         "method": "PUT",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/chat/rename-chat-session",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "chat",
-            "rename-chat-session"
-          ]
-        },
-        "description": "",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Rename Chat Session",
-      "request": {
-        "method": "PATCH",
         "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/v1/chat/rename-chat-session",
@@ -2108,36 +1686,6 @@
       }
     },
     {
-      "name": "Get Available Context Tokens",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/chat/available-context-tokens",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "chat",
-            "available-context-tokens"
-          ]
-        },
-        "description": "",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
       "name": "Get Session Token Count",
       "request": {
         "method": "GET",
@@ -2251,36 +1799,6 @@
           ]
         },
         "description": "",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Send Chat Message",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/chat/send-chat-message",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "chat",
-            "send-chat-message"
-          ]
-        },
-        "description": "Send chat message with streaming - uses message_generator.",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -3625,7 +3143,7 @@
             "schedule"
           ]
         },
-        "description": "Create a sync schedule by setting cron on the Airbyte connection.",
+        "description": "Create a cron sync schedule for a datasource.",
         "body": {
           "mode": "raw",
           "raw": "{\n  \"cron_expression\": \"0 0 * * *\",\n  \"preset\": \"string\",\n  \"enabled\": true,\n  \"update_graph_rag\": false,\n  \"timezone\": \"UTC\"\n}",
@@ -3736,7 +3254,7 @@
             "schedule"
           ]
         },
-        "description": "Remove the sync schedule (set Airbyte connection to manual).",
+        "description": "Remove the sync schedule; the datasource then syncs only on demand.",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -3782,45 +3300,6 @@
       }
     },
     {
-      "name": "Ingest Batch",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/ingest/batch",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "ingest",
-            "batch"
-          ]
-        },
-        "description": "Receive a batch of records from destination-embedding, embed immediately.Called by the custom Airbyte destination connector during sync.Each call processes one batch:  records \u2192 Documents \u2192 chunks \u2192 embed \u2192 vector DBOn ``batch_index == 0`` (first batch), existing embeddings are clearedso the full-refresh semantic is preserved.On ``is_last_batch == True``, sync status is marked completed andoptional Graph RAG rebuild is triggered.",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"datasource_id\": \"abc123def456\",\n  \"records\": [\n    {\n      \"key\": \"value\"\n    }\n  ],\n  \"connector_type\": \"postgres\",\n  \"stream_name\": \"unknown\",\n  \"batch_id\": \"\",\n  \"batch_index\": 0,\n  \"is_last_batch\": false\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{token}}",
-              "type": "string"
-            }
-          ]
-        }
-      }
-    },
-    {
       "name": "Source Preview",
       "request": {
         "method": "POST",
@@ -3837,7 +3316,7 @@
             "source-preview"
           ]
         },
-        "description": "Fetch sample records from the original Airbyte source.Used by the frontend documents tab to show raw source datawithout storing it locally.  Queries via Airbyte read API.",
+        "description": "Describe the streams the datasource's connector can read right now.This connects to the source with the datasource's stored credentials, soit takes the permission that editing the connection takes.",
         "body": {
           "mode": "raw",
           "raw": "{\n  \"datasource_id\": \"abc123def456\",\n  \"stream\": \"users\",\n  \"limit\": 20\n}",
@@ -3946,7 +3425,7 @@
             "collections"
           ]
         },
-        "description": "Proxy endpoint to get RAG collections from langconnect-api.",
+        "description": "Proxy endpoint to get RAG collections from rag-service.",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -4161,7 +3640,7 @@
             "connectors"
           ]
         },
-        "description": "List all available Airbyte source connectors.",
+        "description": "List all available source connectors.",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -4193,7 +3672,7 @@
             "spec"
           ]
         },
-        "description": "Get the raw JSON Schema configuration specification for a connector.Returns the native connectionSpecification \u2014 NO flattening.The frontend renders it via the recursive SchemaForm.",
+        "description": "Get the JSON Schema the configuration form of a connector is rendered from.",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -4225,7 +3704,7 @@
             "validate"
           ]
         },
-        "description": "Validate a connector configuration by testing the connection.Config is the native nested JSON structure from the SchemaForm.",
+        "description": "Validate a connector configuration by testing the connection.",
         "body": {
           "mode": "raw",
           "raw": "{}",
@@ -4333,7 +3812,7 @@
             "datasources"
           ]
         },
-        "description": "Create a new data source.1. Create Airbyte source + connection + destination2. Store config in PG collection3. Store Airbyte IDs in mapping table",
+        "description": "Create a new data source.The connector configuration is validated, stored encrypted for the callinguser in user-service, and referenced by the datasource's connection.",
         "body": {
           "mode": "raw",
           "raw": "{\n  \"name\": \"Sample Name\",\n  \"config\": {\n    \"connector_type\": \"postgres\",\n    \"connector_config\": {\n      \"setting\": \"value\",\n      \"enabled\": true\n    },\n    \"streams\": \"users\",\n    \"content_fields\": \"This is sample content text for the request.\"\n  }\n}",
@@ -4385,7 +3864,7 @@
             }
           ]
         },
-        "description": "Get detailed information about a data source with paginated documents.",
+        "description": "Get detailed information about a data source with paginated documents.``config`` (the connection settings, secrets masked) is filled in only forcallers who may edit the datasource (``datasource:update``); for everyoneelse it is empty. ``last_error`` gives the reason of a failed sync only tocallers who may run one (``datasource:sync``); everyone else reads that thesync did not complete.",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -4415,7 +3894,7 @@
             "{{id}}"
           ]
         },
-        "description": "Update a data source's name, configuration, streams, and/or sync mode.Updates the Airbyte source config, connection streams/sync mode, and local metadata.",
+        "description": "Update a data source's name, configuration, streams, and/or sync mode.",
         "body": {
           "mode": "raw",
           "raw": "{\n  \"name\": \"Sample Name\",\n  \"connector_config\": {\n    \"setting\": \"value\",\n    \"enabled\": true\n  },\n  \"streams\": \"users\",\n  \"sync_mode\": \"sample text\",\n  \"destination_sync_mode\": \"sample text\"\n}",
@@ -4454,7 +3933,7 @@
             "{{id}}"
           ]
         },
-        "description": "Delete a data source, its embeddings, and Airbyte objects.",
+        "description": "Delete a data source, its embeddings, and its stored connector configuration.",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -4485,7 +3964,7 @@
             "sync"
           ]
         },
-        "description": "Trigger synchronization for a data source.If the datasource has an Airbyte connection, triggers via Airbyte API.Falls back to sync queue for manual extraction.",
+        "description": "Start a sync of a data source in the background.At most ``CONNECTOR_MAX_CONCURRENT_SYNCS`` syncs run at once; a furtherone waits as a pending job.",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -4516,7 +3995,7 @@
             "status"
           ]
         },
-        "description": "Get current sync status for real-time progress tracking.",
+        "description": "Get current sync status for real-time progress tracking.``last_error`` gives the reason of a failed sync only to callers who may runone (``datasource:sync``); everyone else reads that the sync did not complete.",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -4554,7 +4033,7 @@
             }
           ]
         },
-        "description": "Return recent sync job history for a data source from Airbyte.",
+        "description": "Return recent sync job history for a data source.``error_message`` gives the reason of a failed job only to callers who mayrun a sync (``datasource:sync``); everyone else reads that it did not complete.",
         "auth": {
           "type": "bearer",
           "bearer": [

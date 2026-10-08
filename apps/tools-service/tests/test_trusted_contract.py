@@ -189,6 +189,25 @@ class TestBuildTransportHeaders:
         assert headers["x-attachment-handle-0"] == "att-1"
         assert headers[f"{BINDING_REF_HEADER}-mail"] == "mbind_abc"
 
+    def test_dotted_binding_key_travels_under_one_header_safe_name(self) -> None:
+        ctx = TrustedToolContext(
+            binding_references={"database_search.collection_ids": '["c1"]'},
+        )
+        headers = build_transport_headers(ctx, "svc_token")
+        binding_headers = {k: v for k, v in headers.items() if k.startswith(BINDING_REF_HEADER)}
+        assert binding_headers == {
+            f"{BINDING_REF_HEADER}-database_search__collection_ids": '["c1"]'
+        }
+
+    def test_binding_keys_round_trip_through_transport_headers(self) -> None:
+        refs = {
+            "database_search.collection_ids": '["c1"]',
+            "connectors.persona_id": "7",
+            "mail": "mbind_abc",
+        }
+        headers = build_transport_headers(TrustedToolContext(binding_references=refs), "svc_token")
+        assert extract_trusted_context_from_headers(headers).binding_references == refs
+
 
 class TestValidateInvocation:
     def test_validate_invocation_ok(self) -> None:

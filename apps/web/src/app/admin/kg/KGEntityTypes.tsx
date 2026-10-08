@@ -1,4 +1,5 @@
-import { authenticatedFetch } from "@/lib/fetcher";
+import { updateKnowledgeEntityTypes } from "@/lib/api/domains/knowledge/api";
+
 import { useEffect, useState } from "react";
 import { SourceIcon } from "@/components/SourceIcon";
 import Switch from "@/refresh-components/inputs/Switch";
@@ -46,11 +47,9 @@ function TableRow({ entityType }: { entityType: EntityType }) {
   const [hasMounted, setHasMounted] = useState(false);
 
   const handleToggle = async (checked: boolean) => {
-    const response = await authenticatedFetch("/api/admin/kg/entity-types", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify([{ ...entityType, active: checked }]),
-    });
+    const response = await updateKnowledgeEntityTypes([
+      { ...entityType, active: checked },
+    ]);
 
     if (!response.ok) return;
 
@@ -59,11 +58,9 @@ function TableRow({ entityType }: { entityType: EntityType }) {
 
   const handleDescriptionChange = async (description: string) => {
     try {
-      const response = await authenticatedFetch("/api/admin/kg/entity-types", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify([{ ...entityType, description }]),
-      });
+      const response = await updateKnowledgeEntityTypes([
+        { ...entityType, description },
+      ]);
       if (response.ok) {
         setDescriptionSavingState("saved");
         setCheckmarkVisible(true);

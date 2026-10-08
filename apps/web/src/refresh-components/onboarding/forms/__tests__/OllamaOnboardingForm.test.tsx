@@ -60,8 +60,8 @@ const mockFetchModels = jest.fn().mockResolvedValue({
   error: null,
 });
 
-jest.mock("@/app/admin/configuration/llm/utils", () => ({
-  canProviderFetchModels: jest.fn().mockReturnValue(true),
+jest.mock("@/lib/api/domains/model-providers/api", () => ({
+  ...jest.requireActual("@/lib/api/domains/model-providers/api"),
   fetchModels: (...args: any[]) => mockFetchModels(...args),
 }));
 
@@ -144,7 +144,9 @@ describe("OllamaOnboardingForm", () => {
     test("renders API Base URL field", () => {
       render(<OllamaOnboardingForm {...defaultProps} />);
 
-      expect(screen.getByText(apiBaseUrlText)).toBeInTheDocument();
+      expect(
+        screen.getByRole("textbox", { name: apiBaseUrlText })
+      ).toBeInTheDocument();
     });
 
     test("shows default API base URL placeholder", () => {

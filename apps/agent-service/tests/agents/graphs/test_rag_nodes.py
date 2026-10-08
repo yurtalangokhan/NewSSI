@@ -11,8 +11,9 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from langchain_core.messages import HumanMessage
 
-from agents.graphs.flow_builder import FlowGraphBuilder
-from models.flows import FlowSpec
+from agents.graphs.flow import FlowGraphBuilder
+from integrations.rag_client import RagChunk
+from schemas.flows import FlowSpec
 
 
 @pytest.mark.asyncio
@@ -48,15 +49,15 @@ async def test_document_search_execution_node_calls_rag_service():
         }
     )
 
-    mock_results = [
-        {"content": "Chunk 1 content", "score": 0.85, "metadata": {"source": "doc1.pdf"}},
-        {"content": "Chunk 2 content", "score": 0.78, "metadata": {"source": "doc2.pdf"}},
+    mock_chunks = [
+        RagChunk(text="Chunk 1 content", score=0.85, metadata={"source": "doc1.pdf"}),
+        RagChunk(text="Chunk 2 content", score=0.78, metadata={"source": "doc2.pdf"}),
     ]
 
     with patch(
-        "agents.graphs.flow_builder._execute_document_search", new_callable=AsyncMock
+        "agents.graphs.flow.nodes.retrieval._execute_document_search", new_callable=AsyncMock
     ) as mock_search:
-        mock_search.return_value = mock_results
+        mock_search.return_value = mock_chunks
         builder = FlowGraphBuilder()
         graph = await builder.build(spec)
 
@@ -65,7 +66,10 @@ async def test_document_search_execution_node_calls_rag_service():
 
         assert "scratch" in res
         assert "search-1" in res["scratch"]
-        assert res["scratch"]["search-1"] == mock_results
+        # the node stores normalised dicts (guaranteed `content` key) so any
+        # downstream consumer reads one shape.
+        assert res["scratch"]["search-1"] == [c.as_dict() for c in mock_chunks]
+        assert res["scratch"]["search-1_context"] == "Chunk 1 content\n\nChunk 2 content"
 
 
 @pytest.mark.asyncio

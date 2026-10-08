@@ -3,7 +3,7 @@ import * as Yup from "yup";
 import { toast } from "@/hooks/useToast";
 import { ConnectorStatus, User, UserGroup } from "@/lib/types";
 import { TextFormField } from "@/components/Field";
-import { createUserGroup } from "./lib";
+import { createUserGroup } from "@/lib/api/domains/access/api";
 import { UserEditor } from "./UserEditor";
 import { ConnectorEditor } from "./ConnectorEditor";
 import Modal from "@/refresh-components/Modal";

@@ -21,7 +21,7 @@ from agent_composition.domain.ports import (
     RuntimePolicyRequest,
     RuntimePolicyResult,
 )
-from core.logger import get_logger
+from core.observability.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -58,7 +58,7 @@ class SafetyPolicy:
     def is_enabled(self) -> bool:
         return self._config.enabled
 
-    async def before_run(self, request: RuntimePolicyRequest) -> RuntimePolicyDecision:
+    async def before_run(self, request: RuntimePolicyRequest) -> RuntimePolicyDecision:  # noqa: ARG002
         """Moderate the input before agent execution.
 
         Currently a no-op stub. Real implementation requires a guard model
@@ -86,7 +86,7 @@ class SafetyPolicy:
                 metadata={"error": str(exc)},
             )
 
-    async def after_run(self, request: RuntimePolicyRequest, result: Any) -> RuntimePolicyResult:
+    async def after_run(self, request: RuntimePolicyRequest, result: Any) -> RuntimePolicyResult:  # noqa: ARG002
         """Moderate the output after agent execution.
 
         Currently a no-op stub. Real implementation requires a guard model
@@ -106,4 +106,3 @@ class SafetyPolicy:
 
     async def close(self) -> None:
         """Safety policy has no persistent resources to close."""
-        pass

@@ -1,11 +1,11 @@
 """Resource permission model for granular access control."""
 
-import uuid
 from datetime import datetime
+import uuid
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, String, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Index, String, text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
 
@@ -30,21 +30,17 @@ class ResourcePermissionModel(Base):
     # Permission target (either organization OR user, not both)
     organization_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("organizations.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
     )
     user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
     )
 
     # Permission level
-    permission_level: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="read", index=True
-    )
+    permission_level: Mapped[str] = mapped_column(String(20), nullable=False, default="read", index=True)
     # Levels: "owner", "admin", "write", "read", "execute"
 
     # Metadata
@@ -53,18 +49,10 @@ class ResourcePermissionModel(Base):
 
     # Timestamps
     granted_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
-    granted_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=False
-    )
+    granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    organization: Mapped["OrganizationModel | None"] = relationship(
-        "OrganizationModel", back_populates="resource_permissions", lazy="selectin"
-    )
-    user: Mapped["UserModel | None"] = relationship(
-        "UserModel", back_populates="resource_permissions", lazy="selectin"
-    )
 
     __table_args__ = (
         # Unique constraint: one permission per resource per organization
@@ -88,8 +76,7 @@ class ResourcePermissionModel(Base):
         Index("idx_resource_type_id", "resource_type", "resource_id"),
         # Either organization_id or user_id must be set (not both, not neither)
         CheckConstraint(
-            "(organization_id IS NOT NULL AND user_id IS NULL) OR "
-            "(organization_id IS NULL AND user_id IS NOT NULL)",
+            "(organization_id IS NOT NULL AND user_id IS NULL) OR (organization_id IS NULL AND user_id IS NOT NULL)",
             name="check_exclusive_org_or_user",
         ),
     )

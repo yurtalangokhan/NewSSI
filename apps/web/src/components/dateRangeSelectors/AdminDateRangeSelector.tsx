@@ -1,4 +1,5 @@
-import React, { memo, useState } from "react";
+import type { DateRange } from "@/lib/api/domains/knowledge/types";
+import { memo, useState } from "react";
 import Calendar from "@/refresh-components/Calendar";
 import Popover from "@/refresh-components/Popover";
 import Button from "@/refresh-components/buttons/Button";
@@ -7,17 +8,6 @@ import { format } from "date-fns";
 import { getXDaysAgo } from "./dateUtils";
 import { SvgCalendar } from "@opal/icons";
 export const THIRTY_DAYS = "30d";
-
-export type DateRangePickerValue = DateRange & {
-  selectValue: string;
-};
-
-export type DateRange =
-  | {
-      from: Date;
-      to: Date;
-    }
-  | undefined;
 
 export const AdminDateRangeSelector = memo(function AdminDateRangeSelector({
   value,

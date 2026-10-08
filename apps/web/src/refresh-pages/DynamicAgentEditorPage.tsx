@@ -1,12 +1,19 @@
 "use client";
+import { agentsEndpoints } from "@/lib/api/domains/agents/endpoints";
+
+import {
+  createDynamicDefinitionResponse,
+  fetchAgentBrains,
+  fetchAgentGraphSchemas,
+  fetchAgentMemoryTypes,
+} from "@/lib/api/domains/agents/api";
 
 import { useMemo, useState } from "react";
 import useSWR from "swr";
-import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
-import { useAvailableTools } from "@/hooks/useAvailableTools";
-import useBuiltInTools from "@/hooks/useBuiltInTools";
-import useMcpServersForAgentEditor from "@/hooks/useMcpServersForAgentEditor";
-import { useAgents } from "@/hooks/useAgents";
+import { useAvailableTools } from "@/lib/api/domains/tools/hooks";
+import { useBuiltInTools } from "@/lib/api/domains/tools/hooks";
+import { useMcpServersForAgentEditor } from "@/lib/api/domains/tools/hooks";
+import { useAgents } from "@/lib/api/domains/agents/hooks";
 import { useAppRouter } from "@/hooks/appNavigation";
 import { toast } from "@/hooks/useToast";
 import Button from "@/refresh-components/buttons/Button";
@@ -83,16 +90,16 @@ export default function DynamicAgentEditorPage() {
   const appRouter = useAppRouter();
 
   const { data: schemas } = useSWR<GraphSchemaInfo[]>(
-    "/api/agent-definitions/schemas/list",
-    errorHandlingFetcher
+    agentsEndpoints.agentGraphSchemas.browserPath,
+    () => fetchAgentGraphSchemas<GraphSchemaInfo[]>()
   );
   const { data: brains } = useSWR<BrainTypeInfo[]>(
-    "/api/agent-definitions/brains/list",
-    errorHandlingFetcher
+    agentsEndpoints.agentBrains.browserPath,
+    () => fetchAgentBrains<BrainTypeInfo[]>()
   );
   const { data: memoryTypes } = useSWR<MemoryTypeInfo[]>(
-    "/api/agent-definitions/memory/list",
-    errorHandlingFetcher
+    agentsEndpoints.agentMemoryTypes.browserPath,
+    () => fetchAgentMemoryTypes<MemoryTypeInfo[]>()
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -173,38 +180,32 @@ export default function DynamicAgentEditorPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await authenticatedFetch("/api/agent-definitions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          description: description.trim() || null,
-          graph_schema: graphSchema,
-          brain_type: brainType,
-          memory_type: memoryType,
-          system_prompt: systemPrompt.trim() || null,
-          model: model.trim() || null,
-          mcp_tools: Object.entries(selectedTools)
-            .filter(([, enabled]) => enabled)
-            .map(([toolName]) => toolName),
-          sub_agents: parseJsonArray(
-            subAgentsJson,
-            t("agentEditor.dynamic.subAgentsField"),
-            t
-          ),
-          supervisor_prompt: supervisorPrompt.trim() || null,
-          stages: parseJsonArray(
-            stagesJson,
-            t("agentEditor.dynamic.stagesField"),
-            t
-          ),
-          pipeline_prompt: pipelinePrompt.trim() || null,
-          reflection_prompt: reflectionPrompt.trim() || null,
-          max_iterations: Number.parseInt(maxIterations, 10) || 3,
-          tags: [],
-        }),
+      const response = await createDynamicDefinitionResponse({
+        name: name.trim(),
+        description: description.trim() || null,
+        graph_schema: graphSchema,
+        brain_type: brainType,
+        memory_type: memoryType,
+        system_prompt: systemPrompt.trim() || null,
+        model: model.trim() || null,
+        mcp_tools: Object.entries(selectedTools)
+          .filter(([, enabled]) => enabled)
+          .map(([toolName]) => toolName),
+        sub_agents: parseJsonArray(
+          subAgentsJson,
+          t("agentEditor.dynamic.subAgentsField"),
+          t
+        ),
+        supervisor_prompt: supervisorPrompt.trim() || null,
+        stages: parseJsonArray(
+          stagesJson,
+          t("agentEditor.dynamic.stagesField"),
+          t
+        ),
+        pipeline_prompt: pipelinePrompt.trim() || null,
+        reflection_prompt: reflectionPrompt.trim() || null,
+        max_iterations: Number.parseInt(maxIterations, 10) || 3,
+        tags: [],
       });
 
       if (!response.ok) {

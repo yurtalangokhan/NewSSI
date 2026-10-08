@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import ErrorPageLayout from "@/components/errorPages/ErrorPageLayout";
 import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
+import { logout } from "@/lib/api/domains/session/api";
 import {
   SvgAlertCircle,
   SvgAlertTriangle,
@@ -75,6 +76,11 @@ export default function HttpErrorPage({
           <Button secondary href="/">
             {t("errors.errorPages.homeButton")}
           </Button>
+          {validCode === 403 && (
+            <Button secondary onClick={() => void logout()}>
+              {t("errors.errorPages.logOutButton")}
+            </Button>
+          )}
         </div>
       </div>
     </ErrorPageLayout>

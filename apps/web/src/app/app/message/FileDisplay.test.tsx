@@ -1,8 +1,8 @@
 import { render, screen } from "@tests/setup/test-utils";
 import userEvent from "@testing-library/user-event";
 import FileDisplay from "@/app/app/message/FileDisplay";
-import { ChatFileType, FileDescriptor } from "@/app/app/interfaces";
-import { MinimalOnyxDocument } from "@/lib/search/interfaces";
+import { ChatFileType, FileDescriptor } from "@/lib/api/domains/chat/types";
+import { MinimalAtlasDocument } from "@/lib/search/interfaces";
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -20,7 +20,7 @@ const textViewModalSpy = jest.fn();
 jest.mock("@/sections/modals/TextViewModal", () => ({
   __esModule: true,
   default: (props: {
-    presentingDocument: MinimalOnyxDocument;
+    presentingDocument: MinimalAtlasDocument;
     onClose: () => void;
   }) => {
     textViewModalSpy(props);

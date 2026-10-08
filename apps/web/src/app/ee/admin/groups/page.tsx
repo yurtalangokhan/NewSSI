@@ -4,11 +4,12 @@ import { UserGroupsTable } from "./UserGroupsTable";
 import UserGroupCreationForm from "./UserGroupCreationForm";
 import { useState } from "react";
 import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
-import { useConnectorStatus, useUserGroups } from "@/lib/hooks";
-import useUsers from "@/hooks/useUsers";
+import { useConnectorStatus } from "@/lib/api/domains/datasources/hooks";
+import { useUserGroups } from "@/lib/api/domains/access/hooks";
+import { useUsers } from "@/lib/api/domains/access/hooks";
 import { useUser } from "@/providers/UserProvider";
 import CreateButton from "@/refresh-components/buttons/CreateButton";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { useTranslation } from "react-i18next";
 

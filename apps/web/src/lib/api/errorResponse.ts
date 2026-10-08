@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { ApiRequestError } from "@/lib/api/errors";
+import { getRequestLanguage } from "@/i18n/locales";
+import { tServer } from "@/i18n/server";
 
 interface ApiErrorResponseOptions {
   status: number;
@@ -45,4 +48,34 @@ export function internalServerErrorResponse(
     message,
     details,
   });
+}
+
+export function errorResponseFromException(
+  error: unknown,
+  request: Request
+): NextResponse {
+  if (
+    (error instanceof Error || error instanceof DOMException) &&
+    error.name === "AbortError"
+  )
+    throw error;
+  const locale = getRequestLanguage(request);
+  const response =
+    error instanceof ApiRequestError
+      ? apiErrorResponse({
+          status: error.status ?? 500,
+          code: error.code,
+          message: error.userMessage,
+          details: error.details,
+          fieldErrors: error.fieldErrors,
+          requestId: error.requestId ?? request.headers.get("x-request-id"),
+        })
+      : apiErrorResponse({
+          status: 500,
+          code: "internal.server_error",
+          message: tServer("common.apiErrors.internal", { lng: locale }),
+          requestId: request.headers.get("x-request-id"),
+        });
+  response.headers.set("Content-Language", locale);
+  return response;
 }

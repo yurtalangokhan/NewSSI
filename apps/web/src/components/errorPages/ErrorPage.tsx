@@ -4,8 +4,8 @@ import ErrorPageLayout from "@/components/errorPages/ErrorPageLayout";
 import Text from "@/refresh-components/texts/Text";
 import { DOCS_BASE_URL } from "@/lib/constants";
 import { SvgAlertCircle } from "@opal/icons";
-import { APP_NAME } from "@/lib/appInfo";
 import { useTranslation } from "react-i18next";
+import { appSettings } from "@/lib/settings";
 
 export default function Error() {
   const { t } = useTranslation();
@@ -19,7 +19,7 @@ export default function Error() {
       </div>
 
       <Text as="p" text03>
-        {t("errors.errorPages.generalBody1", { appName: APP_NAME })}
+        {t("errors.errorPages.generalBody1", { appName: appSettings.APP_NAME })}
       </Text>
 
       <Text as="p" text03>

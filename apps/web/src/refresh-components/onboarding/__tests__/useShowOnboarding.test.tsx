@@ -230,7 +230,7 @@ describe("useShowOnboarding", () => {
 
       expect(result.current.showOnboarding).toBe(false);
       expect(result.current.onboardingDismissed).toBe(true);
-      expect(localStorage.getItem("onyx:onboardingCompleted:user-1")).toBe(
+      expect(localStorage.getItem("atlas:onboardingCompleted:user-1")).toBe(
         "true"
       );
     });
@@ -246,13 +246,13 @@ describe("useShowOnboarding", () => {
       });
 
       expect(result.current.onboardingDismissed).toBe(true);
-      expect(localStorage.getItem("onyx:onboardingCompleted:user-1")).toBe(
+      expect(localStorage.getItem("atlas:onboardingCompleted:user-1")).toBe(
         "true"
       );
     });
 
     it("showOnboarding stays false when localStorage flag is set", () => {
-      localStorage.setItem("onyx:onboardingCompleted:user-1", "true");
+      localStorage.setItem("atlas:onboardingCompleted:user-1", "true");
 
       const { result } = renderUseShowOnboarding({
         hasAnyProvider: false,
@@ -280,7 +280,7 @@ describe("useShowOnboarding", () => {
         result1.current.finishOnboarding();
       });
       expect(result1.current.onboardingDismissed).toBe(true);
-      expect(localStorage.getItem("onyx:onboardingCompleted:1")).toBe("true");
+      expect(localStorage.getItem("atlas:onboardingCompleted:1")).toBe("true");
 
       // user-2 should still see onboarding
       const { result: result2 } = renderUseShowOnboarding({
@@ -290,7 +290,7 @@ describe("useShowOnboarding", () => {
       });
       expect(result2.current.showOnboarding).toBe(true);
       expect(result2.current.onboardingDismissed).toBe(false);
-      expect(localStorage.getItem("onyx:onboardingCompleted:2")).toBeNull();
+      expect(localStorage.getItem("atlas:onboardingCompleted:2")).toBeNull();
     });
   });
 });

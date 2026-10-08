@@ -1,6 +1,6 @@
 """Tests for AgentFlowVersionModel — the version-history table P3 versioning
 is built on. Model tests are schema-declaration checks (always run, no DB);
-constraint tests use a real SQLite engine (tests/agents/storage/conftest.py)
+constraint tests use a in-memory test engine (tests/agents/storage/conftest.py)
 so "duplicate version_no raises" and "delete cascades" are proven, not
 assumed.
 
@@ -15,7 +15,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from core.db.models.agent_definition import (
+from infrastructure.db.models.agent_definition import (
     AgentDefinitionModel,
     AgentFlowVersionModel,
     FlowVersionStatus,

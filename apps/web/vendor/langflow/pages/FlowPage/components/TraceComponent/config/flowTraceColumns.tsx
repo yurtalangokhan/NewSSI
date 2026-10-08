@@ -18,7 +18,7 @@ export function createFlowTracesColumns({
 } = {}): ColDef[] {
   return [
     {
-      headerName: i18n.t("trace.run"),
+      headerName: localization.t("trace.run"),
       field: "run",
       flex: 1.0,
       minWidth: 240,
@@ -28,7 +28,7 @@ export function createFlowTracesColumns({
       valueGetter: () => formatRunValue(flowName, flowId),
     },
     {
-      headerName: i18n.t("trace.traceId"),
+      headerName: localization.t("trace.traceId"),
       field: "id",
       flex: 0.3,
       minWidth: 240,
@@ -38,7 +38,7 @@ export function createFlowTracesColumns({
     },
 
     {
-      headerName: i18n.t("trace.timestamp"),
+      headerName: localization.t("trace.timestamp"),
       field: "startTime",
       flex: 0.5,
       minWidth: 70,
@@ -48,7 +48,7 @@ export function createFlowTracesColumns({
       valueGetter: (params) => formatSmartTimestamp(params.data?.startTime),
     },
     {
-      headerName: i18n.t("trace.input"),
+      headerName: localization.t("trace.input"),
       field: "input",
       flex: 1,
       minWidth: 150,
@@ -58,7 +58,7 @@ export function createFlowTracesColumns({
       valueGetter: (params) => formatObjectValue(params.data?.input),
     },
     {
-      headerName: i18n.t("trace.output"),
+      headerName: localization.t("trace.output"),
       field: "output",
       flex: 1,
       minWidth: 150,
@@ -79,7 +79,7 @@ export function createFlowTracesColumns({
       },
     },
     {
-      headerName: i18n.t("trace.token"),
+      headerName: localization.t("trace.token"),
       field: "totalTokens",
       flex: 0.5,
       minWidth: 50,
@@ -95,7 +95,7 @@ export function createFlowTracesColumns({
       },
     },
     {
-      headerName: i18n.t("trace.latency"),
+      headerName: localization.t("trace.latency"),
       field: "totalLatencyMs",
       flex: 0.6,
       minWidth: 50,
@@ -111,7 +111,7 @@ export function createFlowTracesColumns({
       },
     },
     {
-      headerName: i18n.t("trace.status"),
+      headerName: localization.t("trace.status"),
       field: "status",
       flex: 0.6,
       minWidth: 100,

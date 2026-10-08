@@ -27,22 +27,23 @@ function responseWithCookies(
   return response;
 }
 
+jest.mock("@/lib/settings", () => ({
+  appSettings: {
+    ...jest.requireActual("@/lib/settings").appSettings,
+    GATEWAY_URL: "http://localhost:8000",
+    USER_SERVICE_URL: "http://localhost:8000/user-service",
+  },
+}));
+
 describe("OIDC browser auth routes", () => {
-  const originalUserServiceUrl = process.env.USER_SERVICE_URL;
   let fetchSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    process.env.USER_SERVICE_URL = "http://localhost:8000";
     fetchSpy = jest.spyOn(global, "fetch");
   });
 
   afterEach(() => {
     fetchSpy.mockRestore();
-    if (originalUserServiceUrl === undefined) {
-      delete process.env.USER_SERVICE_URL;
-    } else {
-      process.env.USER_SERVICE_URL = originalUserServiceUrl;
-    }
   });
 
   it("uses the canonical public auth route for authorize requests", async () => {
@@ -117,6 +118,38 @@ describe("OIDC browser auth routes", () => {
     expect(response.headers.get("location")).toBe("http://localhost:3000/app");
     expect(response.headers.get("set-cookie")).toContain(
       "access_token=access-token"
+    );
+  });
+
+  it("forwards the OIDC binding cookie on authorize redirects", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      responseWithCookies(
+        { authorization_url: "http://keycloak/realms/agenticai/auth" },
+        ["gateway_oidc_binding=binding; Path=/; HttpOnly; SameSite=Lax"]
+      )
+    );
+    const response = await authorizeGET(
+      new NextRequest(
+        "http://localhost:3000/api/auth/oidc/authorize?redirect=true"
+      )
+    );
+    expect(response.headers.get("set-cookie")).toContain(
+      "gateway_oidc_binding=binding"
+    );
+  });
+
+  it("forwards the OIDC binding cookie with authorize JSON", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      responseWithCookies(
+        { authorization_url: "http://keycloak/realms/agenticai/auth" },
+        ["gateway_oidc_binding=binding; Path=/; HttpOnly; SameSite=Lax"]
+      )
+    );
+    const response = await authorizeGET(
+      new NextRequest("http://localhost:3000/api/auth/oidc/authorize")
+    );
+    expect(response.headers.get("set-cookie")).toContain(
+      "gateway_oidc_binding=binding"
     );
   });
 });

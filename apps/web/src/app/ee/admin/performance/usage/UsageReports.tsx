@@ -1,8 +1,11 @@
 "use client";
+import { systemEndpoints } from "@/lib/api/domains/system/endpoints";
+
+import { requestUsageReport } from "@/lib/api/domains/system/api";
 
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
-import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
+import { fetchUsageReports } from "@/lib/api/domains/system/api";
 
 import { FiDownload, FiDownloadCloud } from "react-icons/fi";
 import {
@@ -25,7 +28,7 @@ import { humanReadableFormat, humanReadableFormatWithTime } from "@/lib/time";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { PageSelector } from "@/components/PageSelector";
 import Separator from "@/refresh-components/Separator";
-import { DateRangePickerValue } from "../../../../../components/dateRangeSelectors/AdminDateRangeSelector";
+import { DateRangePickerValue } from "@/lib/api/domains/knowledge/types";
 import Popover from "@/refresh-components/Popover";
 import Calendar from "@/refresh-components/Calendar";
 import { cn } from "@/lib/utils";
@@ -58,16 +61,9 @@ function GenerateReportInput({
         period_to = dateRange?.to?.toISOString() ?? new Date().toISOString();
       }
 
-      const res = await authenticatedFetch("/api/admin/usage-report", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          period_from: period_from,
-          period_to: period_to,
-        }),
+      const res = await requestUsageReport({
+        period_from: period_from,
+        period_to: period_to,
       });
 
       if (!res.ok) {
@@ -222,7 +218,7 @@ function GenerateReportInput({
   );
 }
 
-const USAGE_REPORT_URL = "/api/admin/usage-report";
+const USAGE_REPORT_URL = systemEndpoints.usageReport.browserPath;
 
 function UsageReportsTable({
   refreshTrigger,
@@ -245,9 +241,13 @@ function UsageReportsTable({
     error: usageReportsError,
     isLoading: usageReportsIsLoading,
     mutate,
-  } = useSWR<UsageReport[]>(USAGE_REPORT_URL, errorHandlingFetcher, {
-    refreshInterval: isWaitingForReport ? 3000 : 0, // Poll every 3 seconds when waiting
-  });
+  } = useSWR<UsageReport[]>(
+    USAGE_REPORT_URL,
+    () => fetchUsageReports<UsageReport[]>(),
+    {
+      refreshInterval: isWaitingForReport ? 3000 : 0, // Poll every 3 seconds when waiting
+    }
+  );
 
   // Refresh when refreshTrigger changes
   React.useEffect(() => {
@@ -335,7 +335,10 @@ function UsageReportsTable({
                   </TableCell>
                   <TableCell>
                     <Link
-                      href={`/api/admin/usage-report/${r.report_name}`}
+                      href={
+                        systemEndpoints.usageReportDownload(r.report_name)
+                          .browserPath
+                      }
                       className="flex justify-center"
                     >
                       <FiDownload color="primary" />

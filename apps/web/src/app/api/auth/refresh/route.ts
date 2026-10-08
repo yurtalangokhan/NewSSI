@@ -1,10 +1,10 @@
+import { sessionEndpoints } from "@/lib/api/domains/session/endpoints";
 import { NextRequest } from "next/server";
+
 import { proxyToBackend } from "@/lib/api/proxy";
-import { USER_SERVICE_URL } from "@/lib/constants";
 
 export async function POST(request: NextRequest) {
-  return proxyToBackend(request, "/api/auth/refresh", {
+  return proxyToBackend(request, sessionEndpoints.refresh.backend, {
     method: "POST",
-    backendUrl: USER_SERVICE_URL,
   });
 }

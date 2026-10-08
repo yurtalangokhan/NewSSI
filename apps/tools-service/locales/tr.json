@@ -3,12 +3,14 @@
     "file_not_found": "Dosya bulunamadı: {file_path}",
     "invalid_page": "Geçersiz sayfa numarası. PDF {total_pages} sayfaya sahiptir.",
     "search_empty": "Arama metni boş olamaz",
-    "pymupdf_not_installed": "PyMuPDF (fitz) kütüphanesi kurulu değil. Kurmak için: pip install pymupdf"
+    "pymupdf_not_installed": "PyMuPDF (fitz) kütüphanesi kurulu değil. Kurmak için: pip install pymupdf",
+    "file_too_large": "PDF, {limit} bayt sınırını aşıyor"
   },
   "web": {
     "no_results": "'{query}' için sonuç bulunamadı",
     "fetch_error": "Web sayfası alınırken hata oluştu: {error}",
-    "search_error": "Arama hatası: {error}"
+    "search_error": "Arama hatası: {error}",
+    "url_not_allowed": "URL'ye izin verilmiyor: {error}"
   },
   "mail": {
     "recipient_subject_body_required": "E-posta göndermeden önce alıcı, konu ve gövde gereklidir.",
@@ -17,26 +19,24 @@
     "auth_failed": "SMTP kimlik doğrulaması başarısız oldu.",
     "connection_failed": "SMTP sunucusuna ulaşılamadı.",
     "recipient_rejected": "SMTP sunucusu alıcılardan birini veya daha fazlasını reddetti.",
-    "message_rejected": "SMTP sunucusu mesajı reddetti."
+    "message_rejected": "SMTP sunucusu mesajı reddetti.",
+    "host_not_allowed": "Yapılandırılan SMTP sunucusuna bu kurulumda izin verilmiyor."
   },
   "knowledge": {
-    "collection_required": "Yapılandırılmış bir bilgi koleksiyonu gereklidir.",
-    "rag_service_not_configured": "RAG servisi yapılandırılmamış."
+    "collection_required": "En az bir bilgi koleksiyonu belirtilmelidir.",
+    "rag_service_not_configured": "Bilgi erişim servisi yapılandırılmamış.",
+    "retrieval_failed": "Bilgi erişimi başarısız oldu."
   },
   "common": {
     "error": "Hata: {error}"
   },
   "calculator": {
-    "invalid_character": "İfadede geçersiz karakter: {char}",
     "calculation_error": "Hesaplama hatası: {error}"
   },
   "json": {
     "invalid_json": "Geçersiz JSON: {error}",
     "cannot_navigate": "'{key}' konumunda daha ileri gidilemiyor",
     "query_error": "Sorgu hatası: {error}"
-  },
-  "service": {
-    "restart_error": "Servis yeniden başlatma hatası: {error}"
   },
   "time": {
     "error": "Hata: {error}"
@@ -46,16 +46,9 @@
     "unknown_algorithm": "Bilinmeyen algoritma. Desteklenenler: {algorithms}"
   },
   "command": {
-    "blocked_pattern": "Hata: Engellenen komut kalıbı tespit edildi: {pattern}",
     "timeout": "Hata: Komut {seconds} saniye sonra zaman aşımına uğradı",
-    "execution_error": "Komut çalıştırma hatası: {error}"
-  },
-  "docker": {
-    "build_error": "Docker build hatası: {error}",
-    "run_error": "Docker run hatası: {error}",
-    "stop_error": "Docker stop hatası: {error}",
-    "logs_error": "Docker logs hatası: {error}",
-    "ps_error": "Docker ps hatası: {error}"
+    "not_allowed": "İzin verilmeyen komut: {command}",
+    "execution_error": "Komut çalıştırılamadı: {error}"
   },
   "file": {
     "read_error": "Dosya okuma hatası: {error}",
@@ -94,7 +87,8 @@
     "invalid_scope": "Hata: scope 'global' veya 'local' olmalıdır, alınan: '{scope}'",
     "repo_dir_required": "Hata: scope 'local' olduğunda repo_dir gereklidir",
     "config_error": "Git config hatası: {error}",
-    "diff_error": "Git diff hatası: {error}"
+    "diff_error": "Git diff hatası: {error}",
+    "invalid_argument": "Geçersiz git argümanı: {error}"
   },
   "java": {
     "jar_not_found": "Hata: JAR dosyası bulunamadı: {path}",
@@ -114,33 +108,34 @@
     "file_has_errors": "✗ {name} hatalar içeriyor:\n{errors}",
     "jar_unzip_not_found": "Hata: jar/unzip komutu bulunamadı",
     "list_error": "JAR listeleme hatası: {error}",
-    "inspect_error": "JAR inceleme hatası: {error}"
+    "inspect_error": "JAR inceleme hatası: {error}",
+    "invalid_class_name": "Hata: Geçersiz Java sınıf adı: {class_name}"
   },
   "code": {
     "execution_timeout": "Hata: Kod çalıştırması {seconds} saniye sonra zaman aşımına uğradı",
-    "python_execution_error": "Python kodu çalıştırma hatası: {error}",
     "file_not_found": "Hata: Dosya bulunamadı: {path}",
     "file_execution_timeout": "Hata: Çalıştırma {seconds} saniye sonra zaman aşımına uğradı",
-    "python_file_error": "Python dosyası çalıştırma hatası: {error}",
     "python_syntax_error": "✗ Satır {lineno}, sütun {offset} konumunda Söz Dizimi Hatası:\n{msg}\n\nSorunlu satır:\n{text}",
     "validation_error": "✗ Doğrulama hatası: {error}",
     "node_not_installed": "Hata: Node.js kurulu değil veya PATH içinde değil",
-    "node_execution_error": "Node.js kodu çalıştırma hatası: {error}",
     "test_path_not_found": "Hata: Test yolu bulunamadı: {path}",
     "test_timeout": "Hata: Testler {seconds} saniye sonra zaman aşımına uğradı",
-    "pytest_error": "pytest çalıştırma hatası: {error}",
     "directory_not_found": "Hata: Dizin bulunamadı: {path}",
     "package_json_not_found": "Hata: {path} içinde package.json bulunamadı",
     "npm_not_installed": "Hata: npm kurulu değil veya PATH içinde değil",
     "command_timeout": "Hata: Komut {seconds} saniye sonra zaman aşımına uğradı",
-    "npm_error": "npm çalıştırma hatası: {error}",
     "json_syntax_error": "✗ Satır {lineno}, sütun {colno} konumunda JSON Hatası:\n{msg}",
     "json_validate_error": "✗ JSON doğrulama hatası: {error}",
     "no_linter_for_extension": "{ext} dosyaları için linter bulunmuyor",
     "unknown_linter": "Bilinmeyen linter: {linter}",
     "linter_not_installed": "Hata: {linter} kurulu değil",
-    "linter_error": "Linter çalıştırma hatası: {error}",
-    "port_check_error": "Port kontrol hatası: {error}"
+    "linter_timeout": "{linter} zaman aşımına uğradı",
+    "python_execution_error": "Python kodu çalıştırılamadı: {error}",
+    "python_file_error": "Python dosyası çalıştırılamadı: {error}",
+    "node_execution_error": "Node.js kodu çalıştırılamadı: {error}",
+    "pytest_error": "pytest çalıştırılamadı: {error}",
+    "npm_error": "npm komutu çalıştırılamadı: {error}",
+    "linter_error": "Linter çalıştırılırken hata oluştu: {error}"
   },
   "categories": {
     "calculator": {
@@ -149,7 +144,7 @@
     },
     "command_execution": {
       "label": "Komut Çalıştırma",
-      "description": "Kabuk komutu çalıştırma ve sistem bilgisi"
+      "description": "İzin verilen, sunucu tarafında tanımlı, salt-okunur komutları çalıştırın ve sistem bilgisi alın"
     },
     "code_execution": {
       "label": "Kod Çalıştırma",
@@ -162,10 +157,6 @@
     "java": {
       "label": "Java",
       "description": "JAR dosyalarını çalıştırma, Java kodunu derleme ve çalıştırma, söz dizimi kontrolü"
-    },
-    "service_management": {
-      "label": "Servis Yönetimi",
-      "description": "Docker ve systemd servis yeniden başlatma işlemleri"
     },
     "utilities": {
       "label": "Yardımcı Araçlar",
@@ -183,10 +174,6 @@
       "label": "Dosya İşlemleri",
       "description": "Dosya okuma, yazma ve dizin listeleme"
     },
-    "docker": {
-      "label": "Docker",
-      "description": "Docker konteyner oluşturma, çalıştırma ve yönetimi"
-    },
     "git": {
       "label": "Git",
       "description": "Git clone, pull, push, commit ve dal (branch) işlemleri"
@@ -199,9 +186,13 @@
       "label": "E-posta",
       "description": "SMTP e-posta gönderimi"
     },
-    "knowledge": {
+    "knowledge_retrieval": {
       "label": "Bilgi",
       "description": "Bilgi erişimi"
+    },
+    "connector": {
+      "label": "Bağlayıcı Verileri",
+      "description": "Etkin ajana atanmış bağlayıcı örneklerinden sınırlı veri okuyun"
     },
     "web_search": {
       "label": "Web",
@@ -216,13 +207,17 @@
       }
     },
     "command_execution": {
-      "execute_shell": {
-        "name": "Kabuk Komutu Çalıştır",
-        "description": "Korumalı bir ortamda kabuk (shell) komutu çalıştırın."
-      },
       "get_system_info": {
         "name": "Sistem Bilgilerini Al",
-        "description": "Sistem bilgilerini (İşletim sistemi, CPU, bellek, disk) alın."
+        "description": "Sistem bilgilerini alın (İşletim sistemi, mimari, Python sürümü)."
+      },
+      "run_command": {
+        "name": "Komut Çalıştır",
+        "description": "İzin verilen, sunucu tarafında tanımlı komutlardan birini çalıştırın."
+      },
+      "list_commands": {
+        "name": "Komutları Listele",
+        "description": "run_command'ın kabul ettiği command_id değerlerini listeleyin."
       }
     },
     "code_execution": {
@@ -261,10 +256,6 @@
       "start_dev_server": {
         "name": "Geliştirme Sunucusu Başlat",
         "description": "Arka planda bir geliştirme sunucusu başlatın."
-      },
-      "check_port": {
-        "name": "Port Kontrol Et",
-        "description": "Bir ağ bağlantı noktasının (port) açık/dinlemede olup olmadığını kontrol edin."
       }
     },
     "json_data": {
@@ -303,12 +294,6 @@
         "description": "Bir JAR dosyasının içeriğini inceleyin (sınıfları ve girdileri listeleyin)."
       }
     },
-    "service_management": {
-      "service_restart": {
-        "name": "Servisi Yeniden Başlat",
-        "description": "Bir servisi yeniden başlatın (docker konteyneri veya systemd servisi)."
-      }
-    },
     "knowledge_retrieval": {
       "database_search": {
         "name": "Belgelerde Ara",
@@ -317,6 +302,20 @@
       "graph_search": {
         "name": "Bilgi Grafiğinde Ara",
         "description": "Yapılandırılmış bilgi koleksiyonlarından grafik bağlamı alın."
+      },
+      "document_search": {
+        "name": "Belgelerde Ara",
+        "description": "Yapılandırılmış bilgi koleksiyonlarından belge bağlamı alın."
+      }
+    },
+    "connector": {
+      "connector_list_resources": {
+        "name": "Bağlayıcı Kaynaklarını Listele",
+        "description": "Atanmış bir veri kaynağının seçili akışlarını listeleyin. Bağlayıcı kimlik bilgileri döndürülmez."
+      },
+      "connector_read": {
+        "name": "Bağlayıcı Verisi Oku",
+        "description": "Seçili bir bağlayıcı akışından sınırlı veri okuyun."
       }
     },
     "utilities": {
@@ -381,28 +380,6 @@
       "file_delete": {
         "name": "Dosya Sil",
         "description": "Bir dosyayı veya dizini silin."
-      }
-    },
-    "docker": {
-      "docker_build": {
-        "name": "Docker Görüntüsü İnşa Et",
-        "description": "Dockerfile'dan bir Docker görüntüsü (image) oluşturun."
-      },
-      "docker_run": {
-        "name": "Docker Konteyneri Çalıştır",
-        "description": "Bir Docker konteyneri çalıştırın."
-      },
-      "docker_ps": {
-        "name": "Docker Konteynerlerini Listele",
-        "description": "Çalışan Docker konteynerlerini listeleyin."
-      },
-      "docker_stop": {
-        "name": "Docker Konteynerini Durdur",
-        "description": "Çalışan bir Docker konteynerini durdurun."
-      },
-      "docker_logs": {
-        "name": "Docker Konteyner Günlüklerini Al",
-        "description": "Bir Docker konteynerinin günlüklerini (logs) alın."
       }
     },
     "git": {
@@ -489,5 +466,8 @@
         "description": "Bir web sayfasının içeriğini alın ve temiz metni çıkarın."
       }
     }
+  },
+  "workspace": {
+    "path_escape_error": "Yol workspace sınırının dışına çıkıyor: {error}"
   }
 }

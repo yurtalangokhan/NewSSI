@@ -1,5 +1,8 @@
+import { toolsEndpoints } from "@/lib/api/domains/tools/endpoints";
 import { NextRequest, NextResponse } from "next/server";
 import { deriveIdempotencyKey } from "@/lib/api/idempotency";
+import { backendRequest } from "@/lib/api/http/server";
+import { validateInternalRedirect } from "@/lib/auth/redirectValidation";
 
 // Proxies browser callback to backend OAuth callback endpoint and then
 // redirects back to the chat UI.
@@ -20,30 +23,27 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const resp = await fetch(
-      `${
-        process.env.NEXT_PUBLIC_ONYX_BACKEND_URL || ""
-      }/api/mcp/oauth/callback`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Idempotency-Key": await deriveIdempotencyKey(
-            code,
-            "mcp-oauth-callback"
-          ),
-        },
-        body: JSON.stringify({
-          server_id: serverId,
+    const resp = await backendRequest({
+      ...toolsEndpoints.oauthCallback().backend,
+      request: req,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": await deriveIdempotencyKey(
           code,
-          state,
-          code_verifier: codeVerifier,
-          transport: "streamable-http",
-        }),
-        // Ensure cookies/auth forwarded if needed
-        credentials: "include",
-      }
-    );
+          "mcp-oauth-callback"
+        ),
+      },
+      body: JSON.stringify({
+        server_id: serverId,
+        code,
+        state,
+        code_verifier: codeVerifier,
+        transport: "streamable-http",
+      }),
+      credentials: "include",
+      deriveAuthorizationFromCookie: true,
+    });
 
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}) as any);
@@ -56,8 +56,12 @@ export async function GET(req: NextRequest) {
     // Check if this is an admin OAuth flow
     const isAdminFlow = url.searchParams.get("admin") === "true";
 
-    // Redirect back to appropriate page
-    let redirectTo = url.searchParams.get("redirect_to");
+    // Redirect back to appropriate page. redirect_to is caller-supplied, so
+    // it goes through validateInternalRedirect the same way logout's next=
+    // does -- an unvalidated value here is a GET-triggerable open redirect.
+    let redirectTo = validateInternalRedirect(
+      url.searchParams.get("redirect_to")
+    );
     if (!redirectTo) {
       if (isAdminFlow) {
         // For admin flow, redirect back to the MCP edit page

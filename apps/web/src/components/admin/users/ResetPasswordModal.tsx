@@ -1,4 +1,5 @@
-import { authenticatedFetch } from "@/lib/fetcher";
+import { resetDirectoryUserPassword } from "@/lib/api/domains/access/api";
+
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Modal from "@/refresh-components/Modal";
@@ -26,15 +27,7 @@ export default function ResetPasswordModal({
   const handleResetPassword = async () => {
     setIsLoading(true);
     try {
-      const response = await authenticatedFetch(
-        `/api/user-service/users/${user.id}/reset-password`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await resetDirectoryUserPassword(user.id);
 
       if (response.ok) {
         const data = await response.json();

@@ -1,5 +1,5 @@
 /**
- * Mirrors apps/agent-service/src/models/flows.py's ComponentTemplate exactly
+ * Mirrors apps/agent-service/src/schemas/flows.py's ComponentTemplate exactly
  * — string enum values included (backend serializes "stable"/"execution",
  * lowercase). This is the server-owned registry entry the sidebar (Task 25)
  * and node renderer (Task 26) both read; the canvas never invents or

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import {
   ADMIN_PATHS,
   getAdminRouteConfigForPathname,
-} from "@/lib/admin-routes";
+} from "@/lib/navigation/admin-routes";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
 import { useUser } from "@/providers/UserProvider";
@@ -39,6 +39,7 @@ const SETTINGS_LAYOUT_PREFIXES = [
   ADMIN_PATHS.WEB_SEARCH,
   ADMIN_PATHS.CODE_INTERPRETER,
   ADMIN_PATHS.MAIL_CONFIGS,
+  ADMIN_PATHS.MCP_CONFIG,
   ADMIN_PATHS.SEARCH_SETTINGS,
   ADMIN_PATHS.DOCUMENT_PROCESSING,
   ADMIN_PATHS.MCP_ACTIONS,
@@ -76,8 +77,10 @@ export function ClientLayout({
   const routeConfig = getAdminRouteConfigForPathname(pathname);
   const requiredPermissions = routeConfig?.requiredPermissions ?? [];
   const hasRoutePermissions =
-    requiredPermissions.length === 0 || hasAllPermissions(requiredPermissions);
-  const canViewRoute = isPermissionsLoading || hasRoutePermissions;
+    Boolean(routeConfig) &&
+    requiredPermissions.length > 0 &&
+    hasAllPermissions(requiredPermissions);
+  const canViewRoute = hasRoutePermissions;
 
   useEffect(() => {
     if (!isPermissionsLoading && !canViewRoute) {

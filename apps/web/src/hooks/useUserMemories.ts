@@ -1,6 +1,10 @@
 "use client";
-
-import { authenticatedFetch } from "@/lib/fetcher";
+import { throwParsedApiError } from "@/lib/api/http/errors";
+import { fetchMemories as requestMemories } from "@/lib/api/domains/preferences/api";
+import { createMemory as requestCreateMemory } from "@/lib/api/domains/preferences/api";
+import { updateMemory as requestUpdateMemory } from "@/lib/api/domains/preferences/api";
+import { deleteMemory as requestDeleteMemory } from "@/lib/api/domains/preferences/api";
+import { deleteAllMemories as requestDeleteAllMemories } from "@/lib/api/domains/preferences/api";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MemoryItem } from "@/lib/types";
@@ -30,10 +34,8 @@ export default function useUserMemories(options?: UseUserMemoriesOptions) {
     setIsLoading(true);
     try {
       const page = Math.floor(offset / limit) + 1;
-      const res = await fetch(
-        `/api/user-service/users/me/memories?page=${page}&page_size=${limit}`
-      );
-      if (!res.ok) throw new Error("Failed to fetch memories");
+      const res = await requestMemories(page, limit);
+      if (!res.ok) await throwParsedApiError(res, "Failed to fetch memories");
       const data: MemoryListResponse = await res.json();
       setMemories(data.items);
       setTotal(data.total);
@@ -52,15 +54,8 @@ export default function useUserMemories(options?: UseUserMemoriesOptions) {
     async (content: string): Promise<MemoryItem | null> => {
       setIsMutating(true);
       try {
-        const res = await authenticatedFetch(
-          "/api/user-service/users/me/memories",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content }),
-          }
-        );
-        if (!res.ok) throw new Error("Failed to create memory");
+        const res = await requestCreateMemory(content);
+        if (!res.ok) await throwParsedApiError(res, "Failed to create memory");
         const item: MemoryItem = await res.json();
         setMemories((prev) => [...prev, item]);
         setTotal((prev) => prev + 1);
@@ -79,15 +74,8 @@ export default function useUserMemories(options?: UseUserMemoriesOptions) {
     async (id: string, content: string): Promise<MemoryItem | null> => {
       setIsMutating(true);
       try {
-        const res = await authenticatedFetch(
-          `/api/user-service/users/me/memories/${id}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content }),
-          }
-        );
-        if (!res.ok) throw new Error("Failed to update memory");
+        const res = await requestUpdateMemory(id, content);
+        if (!res.ok) await throwParsedApiError(res, "Failed to update memory");
         const item: MemoryItem = await res.json();
         setMemories((prev) => prev.map((m) => (m.id === id ? item : m)));
         return item;
@@ -104,13 +92,8 @@ export default function useUserMemories(options?: UseUserMemoriesOptions) {
   const deleteMemory = useCallback(async (id: string): Promise<boolean> => {
     setIsMutating(true);
     try {
-      const res = await authenticatedFetch(
-        `/api/user-service/users/me/memories/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
-      if (!res.ok) throw new Error("Failed to delete memory");
+      const res = await requestDeleteMemory(id);
+      if (!res.ok) await throwParsedApiError(res, "Failed to delete memory");
       setMemories((prev) => prev.filter((m) => m.id !== id));
       setTotal((prev) => prev - 1);
       return true;
@@ -125,11 +108,9 @@ export default function useUserMemories(options?: UseUserMemoriesOptions) {
   const deleteAllMemories = useCallback(async (): Promise<number> => {
     setIsMutating(true);
     try {
-      const res = await authenticatedFetch(
-        "/api/user-service/users/me/memories",
-        { method: "DELETE" }
-      );
-      if (!res.ok) throw new Error("Failed to delete all memories");
+      const res = await requestDeleteAllMemories();
+      if (!res.ok)
+        await throwParsedApiError(res, "Failed to delete all memories");
       const data: { deleted: number } = await res.json();
       setMemories([]);
       setTotal(0);

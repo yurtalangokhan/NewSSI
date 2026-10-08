@@ -10,20 +10,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agents.graphs.flow_builder import (
+from agents.graphs.flow import (
     FlowGraphBuilder,
     FlowNode,
     ResolvedResources,
     make_node,
     resolve_resources,
 )
-from domain.flows.registry import get_registry
-from models.flows import FlowEdge, FlowSpec
+from schemas.flows import FlowEdge, FlowSpec
+from service.flow_model.registry import get_registry
 
 
-def test_resolve_resources_accepts_airbyte_datasource():
-    """47.4 — resolve_resources accepts AirbyteDatasource without error."""
-    nodes = [FlowNode(id="ds_1", type="AirbyteDatasource", values={"datasource_id": "ds-123"})]
+def test_resolve_resources_accepts_connector_datasource():
+    """47.4 — resolve_resources accepts ConnectorDatasource without error."""
+    nodes = [FlowNode(id="ds_1", type="ConnectorDatasource", values={"datasource_id": "ds-123"})]
     resolved = resolve_resources(nodes)
     assert resolved.datasource_ids.get("ds_1") == "ds-123"
 
@@ -35,8 +35,8 @@ def test_resolved_resources_carries_datasource_ids_by_node_id():
 
 
 @pytest.mark.asyncio
-async def test_sync_trigger_calls_data_controller_trigger_sync():
-    """47.8 — SyncTrigger node calls DataController.trigger_sync with datasource_id."""
+async def test_sync_trigger_calls_datasource_service_trigger_sync():
+    """47.8 — SyncTrigger node calls DatasourceService.trigger_sync with datasource_id."""
     node = FlowNode(
         id="st_1",
         type="SyncTrigger",
@@ -45,14 +45,16 @@ async def test_sync_trigger_calls_data_controller_trigger_sync():
     resources = ResolvedResources()
     runnable = await make_node(node, resources)
 
-    mock_ctrl = MagicMock()
-    mock_ctrl.trigger_sync = AsyncMock(return_value={"status": "Sync started", "id": "ds-999"})
+    mock_service = MagicMock()
+    mock_service.trigger_sync = AsyncMock(return_value={"status": "Sync started", "id": "ds-999"})
 
-    with patch("controller.get_data_controller", return_value=mock_ctrl):
+    with patch(
+        "service.datasources.datasource_service.get_datasource_service", return_value=mock_service
+    ):
         state = {"scratch": {}}
         res = await runnable(state, {})
 
-    mock_ctrl.trigger_sync.assert_awaited_once_with("ds-999", triggered_by="flow")
+    mock_service.trigger_sync.assert_awaited_once_with("ds-999", triggered_by="flow")
     assert res["scratch"]["st_1"] == {"status": "Sync started", "id": "ds-999"}
 
 
@@ -67,12 +69,14 @@ async def test_sync_trigger_in_flight_sync_returns_already_queued_not_an_error()
     resources = ResolvedResources()
     runnable = await make_node(node, resources)
 
-    mock_ctrl = MagicMock()
-    mock_ctrl.trigger_sync = AsyncMock(
+    mock_service = MagicMock()
+    mock_service.trigger_sync = AsyncMock(
         return_value={"status": "Already syncing or queued", "id": "ds-999"}
     )
 
-    with patch("controller.get_data_controller", return_value=mock_ctrl):
+    with patch(
+        "service.datasources.datasource_service.get_datasource_service", return_value=mock_service
+    ):
         state = {"scratch": {}}
         res = await runnable(state, {})
 

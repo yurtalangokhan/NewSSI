@@ -1,13 +1,12 @@
 "use client";
 
-import { authenticatedFetch } from "@/lib/fetcher";
-
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import useSWR from "swr";
+import { saveScopedPermissions } from "@/lib/api/domains/access/api";
+import { useScopedPermissions } from "@/lib/api/domains/access/hooks";
 
-import { usePersonaOptions } from "@/hooks/usePersonaOptions";
-import { useCollections } from "@/lib/langconnect";
+import { usePersonaOptions } from "@/lib/api/domains/agents/hooks";
+import { useCollections } from "@/lib/api/domains/knowledge/hooks";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import Tabs from "@/refresh-components/Tabs";
 import Text from "@/refresh-components/texts/Text";
@@ -41,32 +40,8 @@ interface OrganizationAccessPanelProps {
   onLoadingChange?: (resourceType: ResourceType, loading: boolean) => void;
 }
 
-interface ScopedPermissionsResponse {
-  permissions: DirectResourcePermission[];
-  count: number;
-}
-
 type TargetType = "organization" | "user";
 export type ResourceType = "agent" | "rag_collection";
-
-async function readErrorDetail(response: Response, fallback: string) {
-  const data = (await response.json().catch(() => null)) as {
-    detail?: string;
-    message?: string;
-  } | null;
-  return data?.detail || data?.message || fallback;
-}
-
-async function permissionFetcher(
-  url: string,
-  fallback: string
-): Promise<ScopedPermissionsResponse> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(await readErrorDetail(response, fallback));
-  }
-  return response.json();
-}
 
 function memberLabel(member: OrganizationAccessMember) {
   const fullName = [member.user?.first_name, member.user?.last_name]
@@ -92,11 +67,7 @@ function ScopedResourcePanel({
   targetId,
   resourceType,
   title,
-  resources,
   editable,
-  resourcesLoading,
-  resourcesError,
-  onRetryResources,
   onSaveComplete,
   onLoadingChange,
 }: {
@@ -105,41 +76,32 @@ function ScopedResourcePanel({
   targetId: string;
   resourceType: ResourceType;
   title: string;
-  resources: AssignableResource[];
   editable: boolean;
-  resourcesLoading: boolean;
-  resourcesError?: string;
-  onRetryResources?: () => void;
   onSaveComplete?: () => void | Promise<void>;
   onLoadingChange?: (loading: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const endpoint = `/api/user-service/permissions/organizations/${organizationId}/targets/${targetType}/${targetId}/resources/${resourceType}`;
-  const { data, error, isLoading, mutate } = useSWR<ScopedPermissionsResponse>(
-    endpoint,
-    (url: string) =>
-      permissionFetcher(
-        url,
-        t("admin.organizations.access.directPermissionsLoadFailed")
-      )
+  const { data, error, isLoading, mutate } = useScopedPermissions(
+    organizationId,
+    targetType,
+    targetId,
+    resourceType,
+    t("admin.organizations.access.directPermissionsLoadFailed")
   );
 
   async function save(permissions: DirectResourcePermission[]) {
-    const response = await authenticatedFetch(endpoint, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ permissions }),
-    });
-    if (!response.ok) {
-      throw new Error(
-        await readErrorDetail(
-          response,
-          t("admin.organizations.access.accessSaveFailed", { resource: title })
-        )
-      );
-    }
-    const saved = (await response.json()) as ScopedPermissionsResponse;
-    await mutate(saved, { revalidate: false });
+    const saved = await saveScopedPermissions(
+      organizationId,
+      targetType,
+      targetId,
+      resourceType,
+      permissions,
+      t("admin.organizations.access.accessSaveFailed", { resource: title })
+    );
+    await mutate(
+      (workspace) => (workspace ? { ...workspace, ...saved } : workspace),
+      { revalidate: false }
+    );
     try {
       await onSaveComplete?.();
     } catch {
@@ -153,28 +115,25 @@ function ScopedResourcePanel({
         error,
         t("admin.organizations.access.accessLoadFailed", { resource: title })
       )
-    : resourcesError;
-
-  const isPanelLoading = isLoading || resourcesLoading;
+    : undefined;
 
   useEffect(() => {
-    onLoadingChange?.(isPanelLoading);
+    onLoadingChange?.(isLoading);
     return () => {
       onLoadingChange?.(false);
     };
-  }, [isPanelLoading, onLoadingChange]);
+  }, [isLoading, onLoadingChange]);
 
   return (
     <ResourceAssignmentPanel
       title={title}
-      resources={resources}
+      resources={data?.resources ?? []}
       permissions={data?.permissions ?? []}
       editable={editable && !loadError}
-      isLoading={isPanelLoading}
+      isLoading={isLoading}
       error={loadError}
       onRetry={() => {
         void mutate();
-        onRetryResources?.();
       }}
       onSave={save}
     />
@@ -192,12 +151,6 @@ interface ResourceWorkspaceProps {
 
 function AgentAccessWorkspace(props: ResourceWorkspaceProps) {
   const { t } = useTranslation();
-  const { personas, isLoading, error, refresh } = usePersonaOptions();
-  const resources = personas.map((persona) => ({
-    id: String(persona.id),
-    name: persona.name,
-    description: persona.description,
-  }));
 
   return (
     <ScopedResourcePanel
@@ -205,30 +158,12 @@ function AgentAccessWorkspace(props: ResourceWorkspaceProps) {
       resourceType="agent"
       title={t("admin.organizations.access.agents")}
       onLoadingChange={props.onLoadingChange}
-      resources={resources}
-      resourcesLoading={isLoading}
-      resourcesError={
-        error
-          ? errorMessage(
-              error,
-              t("admin.organizations.access.resourceLoadFailed", {
-                resource: t("admin.organizations.access.agents"),
-              })
-            )
-          : undefined
-      }
-      onRetryResources={() => void refresh()}
     />
   );
 }
 
 function CollectionAccessWorkspace(props: ResourceWorkspaceProps) {
   const { t } = useTranslation();
-  const { collections, isLoading, error, mutate } = useCollections();
-  const resources = collections.map((collection) => ({
-    id: collection.uuid,
-    name: collection.name,
-  }));
 
   return (
     <ScopedResourcePanel
@@ -236,19 +171,6 @@ function CollectionAccessWorkspace(props: ResourceWorkspaceProps) {
       resourceType="rag_collection"
       title={t("admin.organizations.access.collections")}
       onLoadingChange={props.onLoadingChange}
-      resources={resources}
-      resourcesLoading={isLoading}
-      resourcesError={
-        error
-          ? errorMessage(
-              error,
-              t("admin.organizations.access.resourceLoadFailed", {
-                resource: t("admin.organizations.access.collections"),
-              })
-            )
-          : undefined
-      }
-      onRetryResources={() => void mutate()}
     />
   );
 }
@@ -262,6 +184,14 @@ export function OrganizationAccessPanel({
   onLoadingChange,
 }: OrganizationAccessPanelProps) {
   const { t } = useTranslation();
+  const handleAgentLoadingChange = useCallback(
+    (loading: boolean) => onLoadingChange?.("agent", loading),
+    [onLoadingChange]
+  );
+  const handleCollectionLoadingChange = useCallback(
+    (loading: boolean) => onLoadingChange?.("rag_collection", loading),
+    [onLoadingChange]
+  );
   const [targetType, setTargetType] = useState<TargetType>("organization");
   const activeMembers = useMemo(
     () => members.filter((member) => member.is_active !== false),
@@ -338,9 +268,7 @@ export function OrganizationAccessPanel({
               targetId={targetId}
               editable={editable}
               onLoadingChange={
-                resourceType === "agent"
-                  ? (loading) => onLoadingChange?.("agent", loading)
-                  : undefined
+                resourceType === "agent" ? handleAgentLoadingChange : undefined
               }
               onSaveComplete={onSaveComplete}
             />
@@ -353,7 +281,7 @@ export function OrganizationAccessPanel({
               editable={editable}
               onLoadingChange={
                 resourceType === "rag_collection"
-                  ? (loading) => onLoadingChange?.("rag_collection", loading)
+                  ? handleCollectionLoadingChange
                   : undefined
               }
               onSaveComplete={onSaveComplete}

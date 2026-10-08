@@ -1,3 +1,5 @@
+import { chatEndpoints } from "@/lib/api/domains/chat/endpoints";
+
 interface ChatSessionActivityFields {
   id?: string | null;
   time_created?: string | null;
@@ -80,30 +82,53 @@ export function mergeChatSessionsByFreshness<
   return Array.from(byId.values()).sort(compareChatSessionsByActivityDesc);
 }
 
+export interface ChatSessionsPageFilters {
+  /** Case-insensitive text matched against session names by the backend. */
+  query?: string;
+  /** Drop plain-model chats, keeping agent and flow sessions. */
+  agentsOnly?: boolean;
+}
+
 export function getChatSessionsPageKey<
   TSession extends ChatSessionActivityFields,
 >(
   pageIndex: number,
   previousPageData: ChatSessionsPage<TSession> | null,
-  pageSize: number
+  pageSize: number,
+  filters: ChatSessionsPageFilters = {}
 ): string | null {
   if (previousPageData && !previousPageData.has_more) {
     return null;
   }
 
-  if (pageIndex === 0) {
-    return `/api/chat/get-user-chat-sessions?page_size=${pageSize}`;
+  const query = filters.query?.trim();
+  const hasFilters = Boolean(query) || Boolean(filters.agentsOnly);
+
+  if (pageIndex === 0 && !hasFilters) {
+    return chatEndpoints.chatHistory(pageSize).browserPath;
   }
 
   const params = new URLSearchParams({
     page_size: pageSize.toString(),
   });
+  if (query) {
+    params.set("q", query);
+  }
+  if (filters.agentsOnly) {
+    params.set("agents_only", "true");
+  }
+
+  if (pageIndex === 0) {
+    return chatEndpoints.chatSessionHistoryQueryKey(params.toString())
+      .browserPath;
+  }
 
   const cursor = previousPageData?.next_cursor;
   if (cursor?.before_activity && cursor.before_id) {
     params.set("before_activity", cursor.before_activity);
     params.set("before_id", cursor.before_id);
-    return `/api/chat/get-user-chat-sessions?${params.toString()}`;
+    return chatEndpoints.chatSessionHistoryQueryKey(params.toString())
+      .browserPath;
   }
 
   const lastSession =
@@ -114,5 +139,6 @@ export function getChatSessionsPageKey<
 
   params.set("before_activity", getChatSessionActivityTime(lastSession));
   params.set("before_id", lastSession.id);
-  return `/api/chat/get-user-chat-sessions?${params.toString()}`;
+  return chatEndpoints.chatSessionHistoryQueryKey(params.toString())
+    .browserPath;
 }

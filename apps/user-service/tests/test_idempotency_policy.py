@@ -18,9 +18,8 @@ def test_user_idempotency_config_uses_settings_values() -> None:
         REDIS_PASSWORD="secret",
         IDEMPOTENCY_TTL=120,
         IDEMPOTENCY_ENABLED=True,
-        IDEMPOTENCY_ENFORCE_REQUIRED_KEYS=True,
-        IDEMPOTENCY_LOCK_TTL=7,
-        IDEMPOTENCY_WAIT_TIMEOUT=3.5,
+        IDEMPOTENCY_LOCK_TTL=10,
+        IDEMPOTENCY_WAIT_TIMEOUT=10.0,
     )
 
     config = build_idempotency_config(settings)
@@ -31,8 +30,8 @@ def test_user_idempotency_config_uses_settings_values() -> None:
     assert config.redis_password == "secret"
     assert config.idempotency_ttl == 120
     assert config.enforce_required_keys is True
-    assert config.lock_ttl == 7
-    assert config.wait_timeout == 3.5
+    assert config.lock_ttl == 10
+    assert config.wait_timeout == 10.0
     assert config.service_name == "user-service"
 
 

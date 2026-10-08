@@ -1,6 +1,6 @@
-import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
-import { hasPaidSubscription } from "@/lib/billing/interfaces";
-import { useBillingInformation } from "@/hooks/useBillingInformation";
+import { hasPaidSubscription } from "@/lib/api/domains/billing/types";
+import { useBillingInformation } from "@/lib/api/domains/billing/hooks";
+import { appSettings } from "@/lib/settings";
 
 /**
  * Returns whether the current tenant has an active paid subscription on cloud.
@@ -12,7 +12,7 @@ import { useBillingInformation } from "@/hooks/useBillingInformation";
 export function useCloudSubscription(): boolean {
   const { data: billingData, isLoading } = useBillingInformation();
 
-  if (!NEXT_PUBLIC_CLOUD_ENABLED) {
+  if (!appSettings.NEXT_PUBLIC_CLOUD_ENABLED) {
     return true;
   }
 

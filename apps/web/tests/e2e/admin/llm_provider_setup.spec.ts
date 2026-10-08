@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 import { loginAs } from "@tests/e2e/utils/auth";
-import { OnyxApiClient } from "@tests/e2e/utils/onyxApiClient";
+import { AtlasApiClient } from "@tests/e2e/utils/atlasApiClient";
 
 const LLM_SETUP_URL = "/admin/configuration/llm";
 const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
@@ -125,7 +125,7 @@ test.describe("LLM Provider Setup @exclusive", () => {
   });
 
   test.afterEach(async ({ page }) => {
-    const apiClient = new OnyxApiClient(page.request);
+    const apiClient = new AtlasApiClient(page.request);
     const uniqueIds = Array.from(new Set(providersToCleanup));
 
     for (const providerId of uniqueIds) {
@@ -209,7 +209,7 @@ test.describe("LLM Provider Setup @exclusive", () => {
   test("admin can switch the default model via the default model dropdown", async ({
     page,
   }) => {
-    const apiClient = new OnyxApiClient(page.request);
+    const apiClient = new AtlasApiClient(page.request);
     const initialDefault = await getDefaultTextModel(page);
 
     const firstProviderName = uniqueName("PW Baseline Provider");

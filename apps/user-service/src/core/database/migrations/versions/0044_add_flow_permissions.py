@@ -27,8 +27,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
 
 revision: str = "0044"
 down_revision: str | None = "0043"
@@ -168,6 +168,4 @@ def downgrade() -> None:
 
     conn = op.get_bind()
     for perm in FLOW_PERMISSIONS:
-        conn.execute(
-            sa.text("DELETE FROM permissions WHERE name = :name").bindparams(name=perm["name"])
-        )
+        conn.execute(sa.text("DELETE FROM permissions WHERE name = :name").bindparams(name=perm["name"]))

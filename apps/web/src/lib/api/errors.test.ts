@@ -6,6 +6,62 @@ import {
 } from "@/lib/api/errors";
 
 describe("api error parser", () => {
+  it.each([
+    [413, "request.payload_too_large"],
+    [415, "request.unsupported_media_type"],
+    [502, "dependency.invalid_response"],
+    [504, "dependency.timeout"],
+  ])("classifies HTTP %s without an error body", (status, code) => {
+    expect(parseApiErrorPayload(null, status)).toMatchObject({ status, code });
+  });
+
+  it("localizes fallback text without translating stable codes or backend messages", () => {
+    expect(parseApiErrorPayload(null, 504, "tr")).toMatchObject({
+      code: "dependency.timeout",
+      userMessage: "İstek zaman aşımına uğradı. Lütfen tekrar deneyin.",
+    });
+    expect(
+      parseApiErrorPayload(
+        {
+          error: {
+            code: "database.connection_failed",
+            message: "Veritabanına ulaşılamıyor.",
+          },
+        },
+        503,
+        "en"
+      )
+    ).toMatchObject({
+      code: "database.connection_failed",
+      userMessage: "Veritabanına ulaşılamıyor.",
+    });
+  });
+
+  it("preserves backend error metadata when throwing a domain request failure", async () => {
+    const response = new Response(
+      JSON.stringify({
+        error: {
+          code: "dependency.timeout",
+          message: "Bağımlılık zaman aşımına uğradı.",
+          details: { dependency: "rag" },
+          field_errors: [],
+          request_id: "req-timeout",
+        },
+      }),
+      { status: 504 }
+    );
+    await expect(
+      throwParsedApiError(response, "Fallback")
+    ).rejects.toMatchObject({
+      name: "ApiRequestError",
+      status: 504,
+      code: "dependency.timeout",
+      message: "Bağımlılık zaman aşımına uğradı.",
+      requestId: "req-timeout",
+      details: { dependency: "rag" },
+      fieldErrors: [],
+    });
+  });
   it("parses the standard error envelope", () => {
     expect(
       parseApiErrorPayload(
@@ -102,6 +158,33 @@ describe("api error parser", () => {
       status: 503,
       code: "dependency.unavailable",
       userMessage: "Gateway timeout",
+    });
+  });
+
+  it("replaces the gateway's HTML error page with the status message", async () => {
+    // APISIX answers a dead or slow upstream with nginx's own page, not the envelope.
+    const page =
+      "<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n" +
+      "<center><h1>502 Bad Gateway</h1></center>\r\n<hr><center>openresty</center>\r\n" +
+      "</body>\r\n</html>\r\n";
+    expect(parseApiErrorPayload(page, 502, "en")).toMatchObject({
+      status: 502,
+      code: "dependency.invalid_response",
+      userMessage: "The service is currently unavailable. Please try again.",
+      raw: page,
+    });
+
+    const response = new Response(
+      page.replace(/502 Bad Gateway/g, "504 Gateway Time-out"),
+      {
+        status: 504,
+        headers: { "content-type": "text/html" },
+      }
+    );
+    await expect(parseApiErrorResponse(response, "tr")).resolves.toMatchObject({
+      status: 504,
+      code: "dependency.timeout",
+      userMessage: "İstek zaman aşımına uğradı. Lütfen tekrar deneyin.",
     });
   });
 

@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, memo, useMemo, useState, useEffect, useRef } from "react";
-import useSWR from "swr";
 import { useRouter } from "next/navigation";
 import { useSettingsContext } from "@/providers/SettingsProvider";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import Text from "@/refresh-components/texts/Text";
 import ChatButton from "@/sections/sidebar/ChatButton";
 import AgentButton from "@/sections/sidebar/AgentButton";
@@ -32,16 +31,20 @@ import {
   restrictToVerticalAxis,
 } from "@dnd-kit/modifiers";
 import SidebarSection from "@/sections/sidebar/SidebarSection";
-import useChatSessions from "@/hooks/useChatSessions";
-import { useProjects } from "@/lib/hooks/useProjects";
-import { useAgents, useCurrentAgent, usePinnedAgents } from "@/hooks/useAgents";
+import { useChatSessions } from "@/lib/api/domains/chat/hooks";
+import { useProjects } from "@/lib/api/domains/projects/hooks";
+import {
+  useAgents,
+  useCurrentAgent,
+  usePinnedAgents,
+} from "@/lib/api/domains/agents/hooks";
 import { useAppSidebarContext } from "@/providers/AppSidebarProvider";
 import ProjectFolderButton from "@/sections/sidebar/ProjectFolderButton";
 import CreateProjectModal from "@/components/modals/CreateProjectModal";
 import MoveCustomAgentChatModal from "@/components/modals/MoveCustomAgentChatModal";
 import { useProjectsContext } from "@/providers/ProjectsContext";
-import { removeChatSessionFromProject } from "@/app/app/projects/projectsService";
-import type { Project } from "@/app/app/projects/projectsService";
+import { removeChatSessionFromProject } from "@/lib/api/domains/projects/api";
+import type { Project } from "@/lib/api/domains/projects/types";
 import SidebarWrapper from "@/sections/sidebar/SidebarWrapper";
 import { Button as OpalButton } from "@opal/components";
 import { cn } from "@/lib/utils";
@@ -53,42 +56,44 @@ import {
 } from "@/sections/sidebar/constants";
 import { showErrorNotification, handleMoveOperation } from "./sidebarUtils";
 import SidebarTab from "@/refresh-components/buttons/SidebarTab";
-import { ChatSession } from "@/app/app/interfaces";
+import { ChatSession } from "@/lib/api/domains/chat/types";
 import SidebarBody from "@/sections/sidebar/SidebarBody";
+import NewSessionTab from "@/sections/sidebar/NewSessionTab";
 import { useUser } from "@/providers/UserProvider";
 import useAppFocus from "@/hooks/useAppFocus";
+import useTurksatSidebarTheme from "@/hooks/useTurksatSidebarTheme";
 import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
 import { useModalContext } from "@/components/context/ModalContext";
 import useScreenSize from "@/hooks/useScreenSize";
 import {
   SvgDevKit,
-  SvgEditBig,
   SvgFolderPlus,
   SvgMoreHorizontal,
-  SvgOnyxOctagon,
+  SvgAtlasOctagon,
   SvgSearchMenu,
   SvgSettings,
 } from "@opal/icons";
 import SidebarTabSkeleton from "@/refresh-components/skeletons/SidebarTabSkeleton";
-import AppSidebarContentSkeleton from "@/refresh-components/skeletons/AppSidebarContentSkeleton";
+import AppSidebarContentSkeleton, {
+  AppSidebarActionButtonsSkeleton,
+} from "@/refresh-components/skeletons/AppSidebarContentSkeleton";
 import BuildModeIntroBackground from "@/app/craft/components/IntroBackground";
 import BuildModeIntroContent from "@/app/craft/components/IntroContent";
 import { CRAFT_PATH } from "@/app/craft/v1/constants";
 import { usePostHog } from "posthog-js/react";
 import { motion, AnimatePresence } from "motion/react";
-import { Notification, NotificationType } from "@/interfaces/settings";
-import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
+import { NotificationType } from "@/interfaces/settings";
+import { useNotifications } from "@/lib/api/domains/notifications/hooks";
+import { dismissNotification } from "@/lib/api/domains/notifications/api";
 import UserAvatarPopover from "@/sections/sidebar/UserAvatarPopover";
 import ChatSearchCommandMenu from "@/sections/sidebar/ChatSearchCommandMenu";
-import { useAppMode } from "@/providers/AppModeProvider";
 import { buildAppPath } from "@/hooks/appNavigation";
-import { useQueryController } from "@/providers/QueryControllerProvider";
 import { useTranslation } from "react-i18next";
 import {
   ADMIN_PATHS,
   canAccessAdminPanel,
   getFirstAccessibleAdminPath,
-} from "@/lib/admin-routes";
+} from "@/lib/navigation/admin-routes";
 
 // Visible-agents = pinned-agents + current-agent (if current-agent not in pinned-agents)
 // OR Visible-agents = pinned-agents (if current-agent in pinned-agents)
@@ -213,8 +218,7 @@ const MemoizedAppSidebarInner = memo(
     const combinedSettings = useSettingsContext();
     const posthog = usePostHog();
     const { newTenantInfo, invitationInfo } = useModalContext();
-    const { setAppMode } = useAppMode();
-    const { reset } = useQueryController();
+    const turksatTheme = useTurksatSidebarTheme();
 
     // Use SWR hooks for data fetching
     const {
@@ -263,17 +267,15 @@ const MemoizedAppSidebarInner = memo(
       useState(false);
 
     // Fetch notifications for build mode intro
-    const { data: notifications, mutate: mutateNotifications } = useSWR<
-      Notification[]
-    >("/api/notifications", errorHandlingFetcher);
+    const { notifications, mutate } = useNotifications();
 
-    // Check if Onyx Craft is enabled via settings (backed by PostHog feature flag)
+    // Check if Atlas Craft is enabled via settings (backed by PostHog feature flag)
     // Only explicit true enables the feature; false or undefined = disabled
-    const isOnyxCraftEnabled =
-      combinedSettings?.settings?.onyx_craft_enabled === true;
+    const isAtlasCraftEnabled =
+      combinedSettings?.settings?.atlas_craft_enabled === true;
 
-    // Find build_mode feature announcement notification (only if Onyx Craft is enabled)
-    const buildModeNotification = isOnyxCraftEnabled
+    // Find build_mode feature announcement notification (only if Atlas Craft is enabled)
+    const buildModeNotification = isAtlasCraftEnabled
       ? notifications?.find(
           (n) =>
             n.notif_type === NotificationType.FEATURE_ANNOUNCEMENT &&
@@ -296,7 +298,7 @@ const MemoizedAppSidebarInner = memo(
     const hasTenantModal = !!(newTenantInfo || invitationInfo);
     useEffect(() => {
       if (
-        isOnyxCraftEnabled &&
+        isAtlasCraftEnabled &&
         buildModeNotification &&
         !hasAutoTriggeredRef.current &&
         !hasTenantModal &&
@@ -307,7 +309,7 @@ const MemoizedAppSidebarInner = memo(
       }
     }, [
       buildModeNotification,
-      isOnyxCraftEnabled,
+      isAtlasCraftEnabled,
       hasTenantModal,
       isCraftAnimationDisabled,
     ]);
@@ -316,17 +318,12 @@ const MemoizedAppSidebarInner = memo(
     const dismissBuildModeNotification = useCallback(async () => {
       if (!buildModeNotification) return;
       try {
-        await authenticatedFetch(
-          `/api/notifications/${buildModeNotification.id}/dismiss`,
-          {
-            method: "POST",
-          }
-        );
-        mutateNotifications();
+        await dismissNotification(buildModeNotification.id);
+        mutate();
       } catch (error) {
         console.error("Error dismissing notification:", error);
       }
-    }, [buildModeNotification, mutateNotifications]);
+    }, [buildModeNotification, mutate]);
 
     const [visibleAgents, currentAgentIsPinned] = useMemo(
       () => buildVisibleAgents(pinnedAgents, currentAgent),
@@ -514,16 +511,12 @@ const MemoizedAppSidebarInner = memo(
       ]
     );
 
-    const { isCurator, permissions, user } = useUser();
+    const { isCurator, permissions } = useUser();
     const canViewAdminPanel = canAccessAdminPanel(permissions);
     const { t, i18n } = useTranslation();
     const activeLanguage = i18n.resolvedLanguage ?? i18n.language;
     const activeSidebarTab = useAppFocus();
     const createProjectModal = useCreateModal();
-    const defaultAppMode =
-      (user?.preferences?.default_app_mode?.toLowerCase() as
-        | "chat"
-        | "search") ?? "chat";
     const newSessionButton = useMemo(() => {
       const currentRouteAgentId = currentAgent?.external_id ?? currentAgent?.id;
       const href = (() => {
@@ -551,21 +544,11 @@ const MemoizedAppSidebarInner = memo(
         return query ? `${path}?${query}` : path;
       })();
       return (
-        <div data-testid="AppSidebar/new-session">
-          <SidebarTab
-            leftIcon={SvgEditBig}
-            folded={folded}
-            href={href}
-            transient={activeSidebarTab.isNewSession()}
-            onClick={() => {
-              if (!activeSidebarTab.isNewSession()) return;
-              setAppMode(defaultAppMode);
-              reset();
-            }}
-          >
-            {t("sidebar.newSession")}
-          </SidebarTab>
-        </div>
+        <NewSessionTab
+          href={href}
+          folded={folded}
+          isNewSession={activeSidebarTab.isNewSession()}
+        />
       );
     }, [
       folded,
@@ -573,9 +556,6 @@ const MemoizedAppSidebarInner = memo(
       combinedSettings,
       currentAgent,
       currentProjectId,
-      defaultAppMode,
-      reset,
-      setAppMode,
       activeLanguage,
     ]);
 
@@ -614,7 +594,7 @@ const MemoizedAppSidebarInner = memo(
           <SidebarTab
             leftIcon={
               folded || visibleAgents.length === 0
-                ? SvgOnyxOctagon
+                ? SvgAtlasOctagon
                 : SvgMoreHorizontal
             }
             href="/app/agents"
@@ -679,7 +659,7 @@ const MemoizedAppSidebarInner = memo(
           <UserAvatarPopover
             folded={folded}
             onShowBuildIntro={
-              isOnyxCraftEnabled ? handleShowBuildIntro : undefined
+              isAtlasCraftEnabled ? handleShowBuildIntro : undefined
             }
           />
         </div>
@@ -689,7 +669,7 @@ const MemoizedAppSidebarInner = memo(
         canViewAdminPanel,
         isCurator,
         handleShowBuildIntro,
-        isOnyxCraftEnabled,
+        isAtlasCraftEnabled,
         adminDefaultHref,
         activeLanguage,
       ]
@@ -757,16 +737,24 @@ const MemoizedAppSidebarInner = memo(
           )}
         </AnimatePresence>
 
-        <SidebarWrapper folded={folded} onFoldClick={onFoldClick}>
+        <SidebarWrapper
+          turksatTheme={turksatTheme}
+          folded={folded}
+          onFoldClick={onFoldClick}
+        >
           <SidebarBody
             scrollKey="app-sidebar"
             footer={settingsButton}
             actionButtons={
-              <div className="flex flex-col gap-0.5">
-                {newSessionButton}
-                {searchChatsButton}
-                {isOnyxCraftEnabled && buildButton}
-              </div>
+              isLoadingDynamicContent && !folded ? (
+                <AppSidebarActionButtonsSkeleton />
+              ) : (
+                <div className="flex flex-col gap-0.5">
+                  {newSessionButton}
+                  {searchChatsButton}
+                  {isAtlasCraftEnabled && buildButton}
+                </div>
+              )
             }
           >
             {/* When folded, show icons immediately without waiting for data */}

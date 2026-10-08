@@ -27,7 +27,7 @@ import {
 } from "./formUtils";
 import { AdvancedOptions } from "./components/AdvancedOptions";
 import { DisplayModels } from "./components/DisplayModels";
-import { fetchBedrockModels } from "@/app/admin/configuration/llm/utils";
+import { fetchBedrockModels } from "@/lib/api/domains/model-providers/api";
 import Separator from "@/refresh-components/Separator";
 import Text from "@/refresh-components/texts/Text";
 import Tabs from "@/refresh-components/Tabs";

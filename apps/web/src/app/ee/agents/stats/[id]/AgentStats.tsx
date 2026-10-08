@@ -1,14 +1,14 @@
 "use client";
+import { fetchAgentUsageStats } from "@/lib/api/domains/system/api";
 
 import { useTranslation } from "react-i18next";
+
 import ChartSkeleton from "@/refresh-components/skeletons/ChartSkeleton";
 import { getDatesList } from "@/app/ee/admin/performance/lib";
 import { useEffect, useState, useMemo } from "react";
-import {
-  AdminDateRangeSelector,
-  DateRange,
-} from "@/components/dateRangeSelectors/AdminDateRangeSelector";
-import { useAgents } from "@/hooks/useAgents";
+import { AdminDateRangeSelector } from "@/components/dateRangeSelectors/AdminDateRangeSelector";
+import { DateRange } from "@/lib/api/domains/knowledge/types";
+import { useAgents } from "@/lib/api/domains/agents/hooks";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { AreaChartDisplay } from "@/components/ui/areaChart";
@@ -47,10 +47,10 @@ export function AgentStats({ agentId }: { agentId: number }) {
         setIsLoading(true);
         setError(null);
 
-        const res = await fetch(
-          `/api/analytics/assistant/${agentId}/stats?start=${
-            dateRange?.from?.toISOString() || ""
-          }&end=${dateRange?.to?.toISOString() || ""}`
+        const res = await fetchAgentUsageStats(
+          agentId,
+          dateRange?.from?.toISOString() || "",
+          dateRange?.to?.toISOString() || ""
         );
 
         if (!res.ok) {

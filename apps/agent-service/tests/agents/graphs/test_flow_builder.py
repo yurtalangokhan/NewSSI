@@ -16,10 +16,9 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph.message import add_messages
 
-from agents.graphs.flow_builder import FlowState, partition_nodes
+from agents.graphs.flow import FlowState, partition_nodes
 from core.exceptions import UnknownComponentError
-from domain.flows.registry import ComponentRegistry
-from models.flows import (
+from schemas.flows import (
     ComponentHandles,
     ComponentKind,
     ComponentTemplate,
@@ -27,6 +26,7 @@ from models.flows import (
     Handle,
     PortType,
 )
+from service.flow_model.registry import ComponentRegistry
 
 
 def _registry() -> ComponentRegistry:
@@ -148,8 +148,8 @@ def test_partition_raises_for_unknown_component_type():
 def test_a_tool_mode_node_is_partitioned_as_a_resource():
     """A node used as a tool must not also become a graph node: the agent
     calls it, the flow does not run it."""
-    from agents.graphs.flow_builder import partition_nodes
-    from domain.flows.registry import get_registry
+    from agents.graphs.flow import partition_nodes
+    from service.flow_model.registry import get_registry
 
     nodes = [
         FlowNode(id="in-1", type="ChatInput"),
@@ -162,8 +162,8 @@ def test_a_tool_mode_node_is_partitioned_as_a_resource():
 
 
 def test_the_same_node_without_tool_mode_stays_an_execution_node():
-    from agents.graphs.flow_builder import partition_nodes
-    from domain.flows.registry import get_registry
+    from agents.graphs.flow import partition_nodes
+    from service.flow_model.registry import get_registry
 
     nodes = [FlowNode(id="ws-1", type="WebSearch", values={"tool_mode": False})]
     resources, executions = partition_nodes(nodes, get_registry())
@@ -174,9 +174,9 @@ def test_the_same_node_without_tool_mode_stays_an_execution_node():
 def test_a_template_that_declares_no_tool_mode_field_ignores_the_value():
     """Decision 6.2: the capability is declared by the template. A stray
     `tool_mode: true` on a control-flow node must change nothing."""
-    from agents.graphs.flow_builder import partition_nodes
-    from domain.flows.registry import get_registry
+    from agents.graphs.flow import partition_nodes
+    from service.flow_model.registry import get_registry
 
     nodes = [FlowNode(id="m-1", type="Merge", values={"tool_mode": True, "strategy": "concat"})]
-    resources, executions = partition_nodes(nodes, get_registry())
+    _resources, executions = partition_nodes(nodes, get_registry())
     assert [n.id for n in executions] == ["m-1"]

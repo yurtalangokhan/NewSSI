@@ -22,11 +22,10 @@ import Switch from "@/refresh-components/inputs/Switch";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Play, AlertCircle, CheckCircle } from "lucide-react";
 import { ToolWithCategory } from "@/lib/tools/builtInToolUtils";
-import {
-  executeBuiltInTool,
-  ToolExecuteResponse,
-} from "@/lib/tools/mcpService";
-import { MailConfig, useMailConfigs } from "@/lib/mailConfigs";
+import { ToolExecuteResponse } from "@/lib/api/domains/tools/mcp-types";
+import { executeBuiltInTool } from "@/lib/api/domains/tools/api";
+import type { MailConfig } from "@/lib/api/domains/system/types";
+import { useMailConfigs } from "@/lib/api/domains/system/hooks";
 import { toast } from "@/hooks/useToast";
 import _ from "lodash";
 import { useTranslation } from "react-i18next";

@@ -10,14 +10,14 @@ add one last safety net around the whole thing.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import json
 import re
-from collections.abc import Callable
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
-from core.logger import get_logger
+from core.observability.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -43,9 +43,7 @@ def _clean_fields(model_name: str, raw: Any, checkers: dict[str, Callable[[Any],
         if checker(value):
             cleaned[key] = value
         else:
-            logger.warning(
-                "Invalid value for document option '%s.%s'; using default", model_name, key
-            )
+            logger.warning("Invalid value for document option '%s.%s'; using default", model_name, key)
     return cleaned
 
 
@@ -390,9 +388,7 @@ class RequirementIdOptions(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def _tolerant(cls, data: Any) -> dict:
-        return _clean_fields(
-            "requirement_ids", data, {"enabled": _is_bool, "pattern": _is_valid_regex}
-        )
+        return _clean_fields("requirement_ids", data, {"enabled": _is_bool, "pattern": _is_valid_regex})
 
 
 class WatermarkOptions(BaseModel):
@@ -431,9 +427,7 @@ class PdfOptions(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def _tolerant(cls, data: Any) -> dict:
-        return _clean_fields(
-            "pdf", data, {"bookmarks": _is_bool, "metadata": lambda v: isinstance(v, dict)}
-        )
+        return _clean_fields("pdf", data, {"bookmarks": _is_bool, "metadata": lambda v: isinstance(v, dict)})
 
 
 # ---------------------------------------------------------------------------
@@ -593,11 +587,7 @@ class ConditionalFormatRule(BaseModel):
             return {}
         column = data.get("column")
         rule = data.get("rule")
-        if (
-            not isinstance(column, int)
-            or isinstance(column, bool)
-            or rule not in _CONDITIONAL_RULES
-        ):
+        if not isinstance(column, int) or isinstance(column, bool) or rule not in _CONDITIONAL_RULES:
             return {}
         color = normalize_color(data.get("color")) or "#FFFFFF"
         return {"column": column, "rule": rule, "value": data.get("value"), "color": color}
@@ -652,18 +642,13 @@ class SpreadsheetOptions(BaseModel):
 
         widths = cleaned.get("column_widths")
         if widths is not None and not (
-            isinstance(widths, list)
-            and all(isinstance(w, int) and not isinstance(w, bool) for w in widths)
+            isinstance(widths, list) and all(isinstance(w, int) and not isinstance(w, bool) for w in widths)
         ):
             cleaned.pop("column_widths")
 
-        if "column_formats" in cleaned and not _is_str_list_of(_COLUMN_FORMATS)(
-            cleaned["column_formats"]
-        ):
+        if "column_formats" in cleaned and not _is_str_list_of(_COLUMN_FORMATS)(cleaned["column_formats"]):
             cleaned.pop("column_formats")
-        if "column_alignments" in cleaned and not _is_str_list_of(_COLUMN_ALIGNMENTS)(
-            cleaned["column_alignments"]
-        ):
+        if "column_alignments" in cleaned and not _is_str_list_of(_COLUMN_ALIGNMENTS)(cleaned["column_alignments"]):
             cleaned.pop("column_alignments")
 
         conditional_formats = cleaned.get("conditional_formats")

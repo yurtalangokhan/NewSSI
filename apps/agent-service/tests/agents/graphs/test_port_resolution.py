@@ -14,8 +14,8 @@ from __future__ import annotations
 
 from langchain_core.messages import HumanMessage
 
-from agents.graphs.flow_builder import _handle_source_id, _resolve_port_value
-from models.flows import FlowEdge
+from agents.graphs.flow import _handle_source_id, _resolve_port_value
+from schemas.flows import FlowEdge
 
 
 def _edges() -> list[FlowEdge]:

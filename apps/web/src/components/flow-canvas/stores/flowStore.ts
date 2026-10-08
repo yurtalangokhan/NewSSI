@@ -4,7 +4,7 @@ import type { NodeExecutionData } from "../types/execution";
  * src/frontend/src/stores/flowsManagerStore.ts
  * Upstream: https://github.com/langflow-ai/langflow @ 3ec070e9
  *
- * Adapted for Onyx:
+ * Adapted for Atlas:
  * - Node data is values-only (FlowNodeData) — see types/flow.ts's header
  *   for why. This is the single biggest divergence from upstream.
  * - Undo/redo (Langflow: flowsManagerStore, keyed per flowId because many
@@ -34,6 +34,7 @@ import { createStore, type StoreApi } from "zustand";
 import type {
   CanvasEdge,
   CanvasNode,
+  PortType,
   ValidationIssue,
   Viewport,
 } from "../types/flow";
@@ -153,6 +154,18 @@ export type FlowStore = {
     } | null
   ) => void;
 
+  /** The output-port types of a component the user is currently hovering in
+   * the palette sidebar — not an in-progress connection, no owning canvas
+   * node. `TemplateNode`'s `dragOrigin` reads this as its lowest-priority
+   * source so every placed node's compatible input handles glow the same
+   * way they do for an in-progress edge drag, purely as a hover preview
+   * (design spec: flow-canvas-connect-ux, decision 1 — no drag-to-connect
+   * gesture originates from the palette). */
+  paletteHoverOrigin: { types: PortType[]; handleType: "source" } | null;
+  setPaletteHoverOrigin: (
+    origin: { types: PortType[]; handleType: "source" } | null
+  ) => void;
+
   /** Shared by FlowCanvas's mod+c/mod+v hotkeys and NodeToolbar's Copy
    * button (Task 27) — kept in the store, not a component-local ref, for
    * the same reason `lastSelection` is: two call sites reading/writing
@@ -227,6 +240,8 @@ type CanvasChromeSlice = Pick<
   | "toggleMinimized"
   | "activeClickHandle"
   | "setActiveClickHandle"
+  | "paletteHoverOrigin"
+  | "setPaletteHoverOrigin"
   | "clipboard"
   | "setClipboard"
 >;
@@ -255,6 +270,9 @@ function createCanvasChromeSlice(
 
     activeClickHandle: null,
     setActiveClickHandle: (handle) => set({ activeClickHandle: handle }),
+
+    paletteHoverOrigin: null,
+    setPaletteHoverOrigin: (origin) => set({ paletteHoverOrigin: origin }),
 
     clipboard: null,
     setClipboard: (selection) => set({ clipboard: selection }),

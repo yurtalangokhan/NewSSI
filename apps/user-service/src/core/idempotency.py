@@ -1,14 +1,20 @@
+import json
 from typing import Any
 
+from fastapi import Request
 from idempotency import (
     IdempotencyConfig,
+    IdempotencyMiddleware,
     IdempotencyMode,
     IdempotencyPolicy,
     IdempotencyPolicyConfig,
 )
+from metrics import install_idempotency_recorder
+from starlette.responses import Response
 
 from src.core.api_versioning import API_PREFIX
-from src.core.idempotency_principal import extract_principal_from_jwt
+from src.core.idempotency_principal import extract_principal_from_gateway
+from src.core.response_models import ErrorModel, ResponseModel
 
 
 def build_idempotency_config(settings: Any) -> IdempotencyConfig:
@@ -16,14 +22,14 @@ def build_idempotency_config(settings: Any) -> IdempotencyConfig:
         redis_host=settings.REDIS_HOST,
         redis_port=settings.REDIS_PORT,
         redis_db=settings.REDIS_DB,
-        redis_password=settings.REDIS_PASSWORD,
+        redis_password=settings.REDIS_PASSWORD or "",
         idempotency_ttl=settings.IDEMPOTENCY_TTL,
         idempotency_enabled=settings.IDEMPOTENCY_ENABLED,
+        lock_ttl=settings.IDEMPOTENCY_LOCK_TTL,
+        wait_timeout=settings.IDEMPOTENCY_WAIT_TIMEOUT,
         service_name="user-service",
-        enforce_required_keys=getattr(settings, "IDEMPOTENCY_ENFORCE_REQUIRED_KEYS", False),
-        lock_ttl=getattr(settings, "IDEMPOTENCY_LOCK_TTL", 10),
-        wait_timeout=getattr(settings, "IDEMPOTENCY_WAIT_TIMEOUT", 10.0),
-        principal_extractor=extract_principal_from_jwt,
+        decision_recorder=install_idempotency_recorder("user-service"),
+        principal_extractor=extract_principal_from_gateway,
         policy=build_idempotency_policy(),
     )
 
@@ -56,7 +62,6 @@ def build_idempotency_policy(api_prefix: str = API_PREFIX) -> IdempotencyPolicyC
             "/users/{target_id}/password",
             # Permission sync
             "/permissions/sync",
-            "/roles/sync-keycloak",
             "/system-settings/keycloak/external-idp/sync",
             "/auth/sync-users",
             # API keys
@@ -100,6 +105,8 @@ def build_idempotency_policy(api_prefix: str = API_PREFIX) -> IdempotencyPolicyC
             "/users/me/memories/",
             "/internal/users/{target_id}/memories",
             "/internal/users/{target_id}/memories/bulk",
+            # Connector configurations
+            "/internal/users/{user_id}/connector-configs",
             # Settings
             "/users/me/settings/prompt-shortcuts",
             "/internal/users/{target_id}/settings/prompt-shortcuts",
@@ -115,15 +122,14 @@ def build_idempotency_policy(api_prefix: str = API_PREFIX) -> IdempotencyPolicyC
         ],
         "PUT": [
             # Role permission updates
-            "/roles/{role_name}/permissions",
-            "/roles/{role_name}/role-ids",
-            "/roles/{role_name}/inherited-roles",
-            "/coarse-roles/{role_name}/permissions",
-            # Organization layout
-            "/organizations/layout",
+            "/roles/{role_id}/permissions",
+            "/roles/{role_id}/role-ids",
+            "/coarse-roles/{role_id}/permissions",
             # Resource permissions
             "/permissions/",
             "/permissions/organizations/{org_id}/targets/{target_type}/{target_id}/resources/{resource_type}",
+            # Connector configurations
+            "/internal/users/{user_id}/connector-configs/{config_id}",
         ],
         "PATCH": [
             # User profile updates
@@ -133,8 +139,8 @@ def build_idempotency_policy(api_prefix: str = API_PREFIX) -> IdempotencyPolicyC
             # Organization updates
             "/organizations/{org_id}",
             # Role updates
-            "/coarse-roles/{role_name}",
-            "/roles/{role_name}",
+            "/coarse-roles/{role_id}",
+            "/roles/{role_id}",
             # Settings
             "/users/me/settings/",
             "/users/me/settings/prompt-shortcuts/{shortcut_id}",
@@ -156,8 +162,8 @@ def build_idempotency_policy(api_prefix: str = API_PREFIX) -> IdempotencyPolicyC
             "/users/{target_id}",
             "/users/{target_id}/roles/{role_id}",
             # Role deletion
-            "/coarse-roles/{role_name}",
-            "/roles/{role_name}",
+            "/coarse-roles/{role_id}",
+            "/roles/{role_id}",
             # Organization deletion
             "/organizations/{org_id}",
             # Organization membership
@@ -168,6 +174,8 @@ def build_idempotency_policy(api_prefix: str = API_PREFIX) -> IdempotencyPolicyC
             "/users/me/memories/",
             "/internal/users/{target_id}/memories/{memory_id}",
             "/internal/users/{target_id}/memories",
+            # Connector configurations
+            "/internal/users/{user_id}/connector-configs/{config_id}",
             # Settings
             "/users/me/settings/prompt-shortcuts/{shortcut_id}",
             "/settings/prompt-shortcuts/{shortcut_id}",
@@ -218,3 +226,25 @@ def build_route_policies(
         for method, paths in routes_by_method.items()
         for path in paths
     ]
+
+
+class UserResponseIdempotencyMiddleware(IdempotencyMiddleware):
+    """Retain idempotency policy and headers with service-local JSON errors."""
+
+    @staticmethod
+    def _error_response(status_code: int, code: str, message: str, *, request: Request | None = None) -> Response:
+        original = IdempotencyMiddleware._error_response(status_code, code, message, request=request)
+        error = json.loads(original.body)["error"]
+        model = ResponseModel[None](
+            statusCode=status_code,
+            message=error["message"],
+            error=ErrorModel(code=error["code"], message=error["message"]),
+        )
+        headers = dict(original.headers)
+        headers.pop("content-length", None)
+        return Response(
+            model.model_dump_json(),
+            status_code=status_code,
+            headers=headers,
+            media_type="application/json",
+        )

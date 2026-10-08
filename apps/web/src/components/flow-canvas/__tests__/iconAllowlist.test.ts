@@ -20,6 +20,7 @@ const BACKEND_ICON_ALLOWLIST = [
   "SvgGlobe",
   "SvgHardDrive",
   "SvgHash",
+  "SvgHourglass",
   "SvgLinkedDots",
   "SvgMcp",
   "SvgNetworkGraph",

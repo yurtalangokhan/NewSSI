@@ -1,18 +1,13 @@
+import { datasourcesEndpoints } from "@/lib/api/domains/datasources/endpoints";
 import { NextRequest, NextResponse } from "next/server";
-import { proxyToBackend } from "@/lib/api/proxy";
-import { getRagServiceUrl } from "@/lib/env.server";
 
-const LANGCONNECT_URL = getRagServiceUrl();
+import { proxyToBackend } from "@/lib/api/proxy";
 
 export async function GET(request: NextRequest) {
   try {
     const response = await proxyToBackend(
       request,
-      "/datasources/knowledge-selector",
-      {
-        backendUrl: LANGCONNECT_URL,
-        backendService: "rag",
-      }
+      datasourcesEndpoints.getKnowledgeSelector().backend
     );
     response.headers.set("Cache-Control", "no-store");
     return response;

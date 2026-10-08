@@ -7,9 +7,9 @@ import { getErrorMsg } from "@/lib/fetchUtils";
 import { RequestNewVerificationEmail } from "../waiting-on-verification/RequestNewVerificationEmail";
 import { User } from "@/lib/types";
 import Logo from "@/refresh-components/Logo";
-import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
 import { useTranslation } from "react-i18next";
-import { idempotentFetch } from "@/lib/api/idempotency";
+import { verifyEmail } from "@/lib/api/domains/session/api";
+import { appSettings } from "@/lib/settings";
 
 export interface VerifyProps {
   user: User | null;
@@ -24,19 +24,14 @@ export default function Verify({ user }: VerifyProps) {
   const verify = useCallback(async () => {
     const token = searchParams?.get("token");
     const firstUser =
-      searchParams?.get("first_user") === "true" && NEXT_PUBLIC_CLOUD_ENABLED;
+      searchParams?.get("first_user") === "true" &&
+      appSettings.NEXT_PUBLIC_CLOUD_ENABLED;
     if (!token) {
       setError(t("auth.verifyEmail.missingToken"));
       return;
     }
 
-    const response = await idempotentFetch("/api/auth/verify", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ token }),
-    });
+    const response = await verifyEmail(token);
 
     if (response.ok) {
       const loginUrl = firstUser

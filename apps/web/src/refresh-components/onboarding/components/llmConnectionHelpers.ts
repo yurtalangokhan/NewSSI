@@ -1,4 +1,5 @@
-import { idempotentFetch } from "@/lib/api/idempotency";
+import { testProviderConfiguration } from "@/lib/api/domains/model-providers/api";
+
 import { ModelConfiguration } from "@/interfaces/llm";
 import { parseAzureTargetUri } from "@/lib/azureTargetUri";
 import { getErrorMsg } from "@/lib/fetchUtils";
@@ -37,11 +38,7 @@ const submitLlmTestRequest = async (
   fallbackErrorMessage: string
 ): Promise<TestApiKeyResult> => {
   try {
-    const response = await idempotentFetch("/api/admin/llm/test", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const response = await testProviderConfiguration(payload);
 
     if (!response.ok) {
       const errorMsg = (await getErrorMsg(response)) ?? fallbackErrorMessage;

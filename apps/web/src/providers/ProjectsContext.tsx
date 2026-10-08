@@ -17,38 +17,42 @@ import type {
   Project,
   ProjectFile,
   UserFileDeleteResult,
-} from "@/app/app/projects/projectsService";
+} from "@/lib/api/domains/projects/types";
+import {
+  ProjectDetails,
+  UserFileStatus,
+} from "@/lib/api/domains/projects/types";
+import { fetchProjectDetails as svcGetProjectDetails } from "@/lib/api/domains/projects/api";
+import { uploadFiles as svcUploadFiles } from "@/lib/api/domains/projects/api";
 import {
   createProject as svcCreateProject,
-  uploadFiles as svcUploadFiles,
   getRecentFiles as svcGetRecentFiles,
   getFilesInProject as svcGetFilesInProject,
   upsertProjectInstructions as svcUpsertProjectInstructions,
-  getProjectDetails as svcGetProjectDetails,
-  ProjectDetails,
   renameProject as svcRenameProject,
   deleteProject as svcDeleteProject,
   deleteUserFile as svcDeleteUserFile,
   getUserFileStatuses as svcGetUserFileStatuses,
   unlinkFileFromProject as svcUnlinkFileFromProject,
   linkFileToProject as svcLinkFileToProject,
-  UserFileStatus,
-} from "@/app/app/projects/projectsService";
+} from "@/lib/api/domains/projects/api";
 import { useSearchParams } from "next/navigation";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import { useAppRouter } from "@/hooks/appNavigation";
 import useAppFocus from "@/hooks/useAppFocus";
-import { ChatFileType } from "@/app/app/interfaces";
+import { ChatFileType } from "@/lib/api/domains/chat/types";
+import { useTranslation } from "react-i18next";
+import { errorMessageFromUnknown } from "@/lib/api/http/errors";
 import { toast } from "@/hooks/useToast";
-import { useProjects } from "@/lib/hooks/useProjects";
+import { useProjects } from "@/lib/api/domains/projects/hooks";
 import { resolveCurrentProjectId } from "@/lib/projects/resolveProjectContext";
 import {
   generateUUID,
   mimeTypeToChatFileType,
   fileToProjectFile,
-} from "@/lib/multimodal-utils";
+} from "@/lib/api/domains/chat/files";
 
-export type { Project, ProjectFile } from "@/app/app/projects/projectsService";
+export type { Project, ProjectFile } from "@/lib/api/domains/projects/types";
 
 // Helper to generate unique temp IDs
 const generateTempId = () => {
@@ -138,6 +142,7 @@ interface ProjectsProviderProps {
 }
 
 export function ProjectsProvider({ children }: ProjectsProviderProps) {
+  const { t } = useTranslation();
   // Use SWR hook for projects list - no more SSR initial data
   const { projects, refreshProjects } = useProjects();
   const [recentFiles, setRecentFiles] = useState<ProjectFile[]>([]);
@@ -412,7 +417,7 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
             const detailsParts = Array.from(uniqueReasons);
 
             toast.warning(
-              `Some files were not uploaded. ${detailsParts.join(" | ")}`
+              t("common.uploadRejected", { reasons: detailsParts.join(" | ") })
             );
 
             const failedNameSet = new Set<string>(
@@ -449,10 +454,10 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
 
           removeOptimisticFilesByTempIds(optimisticTempIds, projectId);
 
-          const errorMsg =
-            err instanceof Error && err.message
-              ? err.message
-              : "Failed to upload files";
+          const errorMsg = errorMessageFromUnknown(
+            err,
+            t("admin.addConnectorForm.uploadFilesError")
+          );
           toast.error(errorMsg);
 
           onFailure?.(Array.from(optimisticTempIds));
@@ -470,6 +475,7 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
       refreshCurrentProjectDetails,
       refreshRecentFiles,
       removeOptimisticFilesByTempIds,
+      t,
     ]
   );
 

@@ -24,7 +24,7 @@ import {
 import { AdvancedOptions } from "./components/AdvancedOptions";
 import { DisplayModels } from "./components/DisplayModels";
 import { useEffect, useState } from "react";
-import { fetchOllamaModels } from "@/app/admin/configuration/llm/utils";
+import { fetchConfiguredOllamaModels as fetchOllamaModels } from "@/lib/api/domains/model-providers/api";
 import { useTranslation } from "react-i18next";
 
 export const OLLAMA_PROVIDER_NAME = "ollama_chat";

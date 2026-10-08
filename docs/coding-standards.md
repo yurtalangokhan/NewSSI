@@ -6,7 +6,7 @@
 
 | Tool | Config location | Line length | Command |
 |------|----------------|-------------|---------|
-| ruff (linter) | `pyproject.toml` or `ruff.toml` | 100 (88 for rag-service) | `make lint` / `make fix` |
+| ruff (linter) | `ruff.toml` (identical in every Python service) | 120 | `make lint` / `make fix` |
 | ruff (formatter) | same file | same | `make format` |
 | mypy (type checker) | `pyproject.toml` | — | `make typecheck` |
 
@@ -14,7 +14,7 @@
 - `ruff` replaces `black` + `isort` + `flake8`. Never use those tools.
 - `make fix` auto-fixes what ruff can fix. Run it before `make lint`.
 - `make validate` runs lint → typecheck → test in that order.
-- Rag-service uses `ruff select = ["ALL"]` — the strictest ruleset. Many per-file ignores in `pyproject.toml`.
+- Every Python service shares one base `ruff.toml` (15 rule groups: E, W, F, I, B, UP, SIM, C4, ARG, N, S, ASYNC, PERF, FAST, RUF). Keep the four files byte-identical; service-specific exceptions go through targeted `# noqa` with a justification comment, or through the shared per-file-ignores block (`__init__.py` re-exports, Alembic migrations).
 
 ### Layered architecture
 
@@ -32,9 +32,10 @@ api/routes/*.py  →  controller/*.py  →  service/*.py  →  repository/*.py
 ### Architecture & code-quality gate
 
 A deterministic, **blocking** gate enforces the architecture principles on every
-commit and push. It is implemented by `scripts/quality/check_architecture.py`
-and wired into `scripts/quality/check.sh` (which the pre-commit and pre-push git
-hooks call). Committed and pushed code must obey these objective rules.
+push and on `make quality-staged`. It is implemented by
+`scripts/quality/check_architecture.py` and wired into `scripts/quality/check.sh`
+(which the pre-push git hook calls; the pre-commit hook only auto-fixes
+formatting). Pushed code must obey these objective rules.
 
 The philosophical basis is `docs/oop-solid-architecture.md` (SOLID, OOP
 fundamentals, clean architecture). Read that before coding or reviewing.
@@ -53,7 +54,7 @@ fundamentals, clean architecture). Read that before coding or reviewing.
 |---|------|-----------|
 | 1 | No HTTP-framework imports (`fastapi`, `starlette`, `UploadFile`, `HTTPException`, `status`, `Request`, `Response`) in `service/` or `domain/` | Python services |
 | 2 | No `Repository`/`Client`/`Gateway` class defined outside its layer (`service/`, `controller/`, `api/`, `core/` are not repository/integration layers) | Python services |
-| 3 | No `domain/` → `integrations`/`core.db`/`repository` dependency (inversion); no `langconnect/database/` → `services` import | Python services |
+| 3 | No `domain/` → `integrations`/`core.db`/`repository` dependency (inversion); no `shared/` → domain import | Python services |
 | 4 | No generic bucket module names (`Utils`, `Helpers`) unless a documented shim | Python services |
 | 5 | No raw HTML/UI primitives (`<p>`, `<h1>`–`<h6>`, `<input>`, `<textarea>`, `<button>`, `<img>`) outside `@/refresh-components`/`@opal` | Web (excludes tests/snapshots) |
 | 6 | No banned icon imports (`lucide-react`, `react-icons`, `@phosphor-icons/react`); use `@/icons` | Web (excludes tests/snapshots) |
@@ -291,7 +292,7 @@ src/
 ├── lib/           # Utilities
 ├── providers/     # React context providers
 ├── layouts/       # Layout components
-├── refresh-components/  # Onyx design system
+├── refresh-components/  # Atlas design system
 └── refresh-pages/       # Page-level components
 ```
 

@@ -61,24 +61,14 @@ def upgrade() -> None:
         )
         """
     )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_user_organizations_user_id ON user_organizations (user_id)")
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_user_organizations_user_id ON user_organizations (user_id)"
+        "CREATE INDEX IF NOT EXISTS ix_user_organizations_organization_id ON user_organizations (organization_id)"
     )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_user_organizations_role_in_org ON user_organizations (role_in_org)")
+    op.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_org_unique ON user_organizations (user_id, organization_id)")
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_user_organizations_organization_id "
-        "ON user_organizations (organization_id)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_user_organizations_role_in_org "
-        "ON user_organizations (role_in_org)"
-    )
-    op.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_user_org_unique "
-        "ON user_organizations (user_id, organization_id)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS idx_user_org_role "
-        "ON user_organizations (user_id, organization_id, role_in_org)"
+        "CREATE INDEX IF NOT EXISTS idx_user_org_role ON user_organizations (user_id, organization_id, role_in_org)"
     )
 
     op.execute(
@@ -103,29 +93,17 @@ def upgrade() -> None:
         """
     )
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_resource_permissions_resource_type "
-        "ON resource_permissions (resource_type)"
+        "CREATE INDEX IF NOT EXISTS ix_resource_permissions_resource_type ON resource_permissions (resource_type)"
     )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_resource_permissions_resource_id ON resource_permissions (resource_id)")
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_resource_permissions_resource_id "
-        "ON resource_permissions (resource_id)"
+        "CREATE INDEX IF NOT EXISTS ix_resource_permissions_organization_id ON resource_permissions (organization_id)"
     )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_resource_permissions_user_id ON resource_permissions (user_id)")
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_resource_permissions_organization_id "
-        "ON resource_permissions (organization_id)"
+        "CREATE INDEX IF NOT EXISTS ix_resource_permissions_permission_level ON resource_permissions (permission_level)"
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_resource_permissions_user_id "
-        "ON resource_permissions (user_id)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_resource_permissions_permission_level "
-        "ON resource_permissions (permission_level)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS idx_resource_type_id "
-        "ON resource_permissions (resource_type, resource_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS idx_resource_type_id ON resource_permissions (resource_type, resource_id)")
     op.execute(
         """
         CREATE UNIQUE INDEX IF NOT EXISTS idx_resource_perm_org_unique
@@ -163,25 +141,14 @@ def upgrade() -> None:
         )
         """
     )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_permission_audit_logs_action ON permission_audit_logs (action)")
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_permission_audit_logs_action "
-        "ON permission_audit_logs (action)"
+        "CREATE INDEX IF NOT EXISTS ix_permission_audit_logs_resource_type ON permission_audit_logs (resource_type)"
     )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_permission_audit_logs_resource_id ON permission_audit_logs (resource_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_permission_audit_logs_target_id ON permission_audit_logs (target_id)")
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_permission_audit_logs_resource_type "
-        "ON permission_audit_logs (resource_type)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_permission_audit_logs_resource_id "
-        "ON permission_audit_logs (resource_id)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_permission_audit_logs_target_id "
-        "ON permission_audit_logs (target_id)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_permission_audit_logs_performed_at "
-        "ON permission_audit_logs (performed_at)"
+        "CREATE INDEX IF NOT EXISTS ix_permission_audit_logs_performed_at ON permission_audit_logs (performed_at)"
     )
 
     op.execute(

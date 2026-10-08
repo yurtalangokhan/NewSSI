@@ -1,3 +1,6 @@
+import { fetchFederatedConnectorDetail } from "@/lib/api/domains/integrations/api";
+import { fetchFederatedCredentialSchema } from "@/lib/api/domains/integrations/api";
+
 import { useState, useEffect } from "react";
 import {
   ConfigurableSources,
@@ -33,7 +36,8 @@ export function useFederatedConnector(
         setError(null);
 
         // First, fetch connector details to get the source type
-        const connectorResponse = await fetch(`/api/federated/${connectorId}`);
+        const connectorResponse =
+          await fetchFederatedConnectorDetail(connectorId);
 
         if (!connectorResponse.ok) {
           throw new Error(
@@ -51,9 +55,8 @@ export function useFederatedConnector(
         ) as ConfigurableSources;
 
         // Now fetch credential schema and set state in parallel
-        const schemaPromise = fetch(
-          `/api/federated/sources/federated_${extractedSourceType}/credentials/schema`
-        );
+        const schemaPromise =
+          fetchFederatedCredentialSchema(extractedSourceType);
 
         // Set the data we already have
         setConnectorData(connectorData);

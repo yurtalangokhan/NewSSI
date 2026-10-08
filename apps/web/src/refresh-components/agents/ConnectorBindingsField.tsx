@@ -9,9 +9,9 @@ import Checkbox from "@/refresh-components/inputs/Checkbox";
 import Text from "@/refresh-components/texts/Text";
 import {
   CONNECTOR_OPERATIONS,
-  ConnectorBinding,
   ConnectorToolOption,
-} from "@/hooks/useConnectorToolOptions";
+} from "@/lib/api/domains/datasources/types";
+import type { ConnectorBinding } from "@/lib/api/domains/agents/types";
 
 interface ConnectorBindingsFieldProps {
   options: ConnectorToolOption[] | undefined;

@@ -2,7 +2,7 @@ import pytest
 from langchain_core.messages import AIMessage
 from pydantic_core import ValidationError
 
-from service.ai_message import _create_ai_message
+from service.stream.ai_message import _create_ai_message
 
 
 @pytest.mark.parametrize(

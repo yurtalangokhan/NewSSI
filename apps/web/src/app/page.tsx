@@ -1,5 +1,8 @@
 import { redirect } from "next/navigation";
-import { getAuthTypeMetadataSS, getCurrentUserSS } from "@/lib/userSS";
+import {
+  getAuthTypeMetadataSS,
+  getCurrentUserSS,
+} from "@/lib/api/domains/session/server";
 import { getLoginPath } from "@/lib/auth/loginRoute";
 
 export default async function Page() {

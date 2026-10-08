@@ -9,20 +9,24 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def _fernet_key(monkeypatch):
-    """Give the encryption module a real, disposable Fernet key per test."""
+def _scope_key(monkeypatch):
+    """A real, disposable key for this test's scope.
+
+    Set in the environment: config_manager reads the environment on every access, and reset_ciphers
+    drops the cached cipher so the new key takes effect.
+    """
     from cryptography.fernet import Fernet
 
     import core.security.encryption as enc
 
-    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
-    enc._fernet = None
+    monkeypatch.setenv("MCP_CREDENTIAL_ENCRYPTION_KEY", Fernet.generate_key().decode())
+    enc.reset_ciphers()
     yield
-    enc._fernet = None
+    enc.reset_ciphers()
 
 
 def _service(auth_repo):
-    from service.MCPCredentialService import MCPCredentialService
+    from service.mcp.mcp_credential_service import MCPCredentialService
 
     return MCPCredentialService(auth_repo=auth_repo)
 
@@ -62,7 +66,7 @@ async def test_resolve_headers_admin_api_token_is_bearer():
 
 @pytest.mark.asyncio
 async def test_resolve_headers_per_user_template_missing_field_raises():
-    from service.MCPCredentialService import MCPAuthError
+    from service.mcp.mcp_credential_service import MCPAuthError
 
     svc = _service(AsyncMock())
     svc.get_credentials = AsyncMock(return_value={})
@@ -133,7 +137,7 @@ async def test_resolve_headers_oauth_refreshes_when_expiring(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_resolve_headers_oauth_without_tokens_raises():
-    from service.MCPCredentialService import MCPAuthError
+    from service.mcp.mcp_credential_service import MCPAuthError
 
     svc = _service(AsyncMock())
     svc.get_oauth_tokens = AsyncMock(return_value=None)
@@ -150,3 +154,12 @@ def test_masked_credentials_keeps_client_id_visible():
     assert masked["client_id"] == "public-id"
     assert masked["client_secret"].endswith("cret")
     assert masked["client_secret"] != "supersecret"
+
+
+@pytest.mark.asyncio
+async def test_clear_credentials_removes_every_row_for_the_provider():
+    repo = AsyncMock()
+
+    await _service(repo).clear_credentials("p1")
+
+    repo.delete_all_for_provider.assert_awaited_once_with("p1")

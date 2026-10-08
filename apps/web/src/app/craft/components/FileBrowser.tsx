@@ -20,11 +20,8 @@ import {
   SvgHardDrive,
   SvgLoader,
 } from "@opal/icons";
-import {
-  listDirectory,
-  getArtifactUrl,
-  FileSystemEntry,
-} from "@/lib/build/client";
+import { FileSystemEntry } from "@/lib/build/client";
+import { listDirectory, getArtifactUrl } from "@/lib/api/domains/craft/api";
 import FilePreviewModal from "@/app/craft/components/FilePreviewModal";
 
 interface FileBrowserProps {

@@ -1,4 +1,5 @@
 "use client";
+import { impersonateTenantUser } from "@/lib/api/domains/session/api";
 
 import AuthFlowContainer from "@/components/auth/AuthFlowContainer";
 
@@ -12,7 +13,6 @@ import { TextFormField } from "@/components/Field";
 import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
 import { useTranslation } from "react-i18next";
-import { idempotentFetch } from "@/lib/api/idempotency";
 
 const ImpersonateSchema = Yup.object().shape({
   email: Yup.string().email("Invalid email").required("Required"),
@@ -36,15 +36,13 @@ export default function ImpersonatePage() {
     helpers: FormikHelpers<{ email: string; apiKey: string }>
   ) => {
     try {
-      const response = await idempotentFetch("/api/tenants/impersonate", {
-        method: "POST",
-        headers: {
+      const response = await impersonateTenantUser(
+        {
           "Content-Type": "application/json",
           Authorization: `Bearer ${values.apiKey}`,
         },
-        body: JSON.stringify({ email: values.email }),
-        credentials: "same-origin",
-      });
+        { email: values.email }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();

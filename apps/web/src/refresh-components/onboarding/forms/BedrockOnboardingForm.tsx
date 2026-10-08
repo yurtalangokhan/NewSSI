@@ -23,7 +23,7 @@ import InlineExternalLink from "@/refresh-components/InlineExternalLink";
 import { DOCS_ADMINS_PATH } from "@/lib/constants";
 import { ProviderIcon } from "@/app/admin/configuration/llm/ProviderIcon";
 import { useTranslation } from "react-i18next";
-import { APP_NAME } from "@/lib/appInfo";
+import { appSettings } from "@/lib/settings";
 
 // AWS Bedrock regions
 const AWS_REGION_OPTIONS = [
@@ -204,7 +204,7 @@ function BedrockFormFields(props: OnboardingFormChildProps<BedrockFormValues>) {
             <SvgAlertCircle className="h-4 w-4 stroke-text-03" />
           </div>
           <Text as="p" text04 mainUiBody>
-            {t("llmOnboarding.iamDesc", { appName: APP_NAME })}
+            {t("llmOnboarding.iamDesc", { appName: appSettings.APP_NAME })}
           </Text>
         </div>
       )}

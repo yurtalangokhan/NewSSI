@@ -18,7 +18,6 @@ const COMPILER_PASSTHROUGH_NODE_TYPES = [
   "ChatInput",
   "ChatOutput",
   "ConditionalRouter",
-  "FileInput",
   "HumanInput",
   "Loop",
   "Merge",

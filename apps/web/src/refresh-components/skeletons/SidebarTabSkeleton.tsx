@@ -12,7 +12,7 @@ export default function SidebarTabSkeleton({
       <div className="h-[1.5rem] flex flex-row items-center px-1 py-0.5">
         <div
           className={cn(
-            "h-3 rounded bg-background-tint-04 animate-pulse",
+            "h-3 rounded bg-background-tint-03 animate-pulse",
             textWidth
           )}
         />

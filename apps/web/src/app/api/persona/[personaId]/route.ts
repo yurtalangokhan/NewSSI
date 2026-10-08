@@ -1,4 +1,6 @@
+import { agentsEndpoints } from "@/lib/api/domains/agents/endpoints";
 import { proxyToBackend } from "@/lib/api/proxy";
+
 import { NextRequest } from "next/server";
 
 export async function GET(
@@ -6,7 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ personaId: string }> }
 ) {
   const { personaId } = await params;
-  return proxyToBackend(request, `/api/persona/${personaId}`);
+  return proxyToBackend(request, agentsEndpoints.getPersona(personaId).backend);
 }
 
 export async function PATCH(
@@ -14,9 +16,13 @@ export async function PATCH(
   { params }: { params: Promise<{ personaId: string }> }
 ) {
   const { personaId } = await params;
-  return proxyToBackend(request, `/api/persona/${personaId}`, {
-    method: "PATCH",
-  });
+  return proxyToBackend(
+    request,
+    agentsEndpoints.updatePersona(personaId).backend,
+    {
+      method: "PATCH",
+    }
+  );
 }
 
 export async function DELETE(
@@ -24,7 +30,11 @@ export async function DELETE(
   { params }: { params: Promise<{ personaId: string }> }
 ) {
   const { personaId } = await params;
-  return proxyToBackend(request, `/api/persona/${personaId}`, {
-    method: "DELETE",
-  });
+  return proxyToBackend(
+    request,
+    agentsEndpoints.deletePersona(personaId).backend,
+    {
+      method: "DELETE",
+    }
+  );
 }

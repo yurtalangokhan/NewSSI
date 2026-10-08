@@ -1,6 +1,9 @@
-import { createPersona } from "@/app/admin/agents/lib";
-import { flowApi } from "@/components/flow-canvas/api/flowApi";
+import { saveMutableFlowDraft as persistNewFlowDraft } from "@/lib/api/domains/agents/api";
+
+import { createPersona } from "@/lib/api/domains/agents/api";
+
 import { buildSeedFlowSpec } from "@/lib/flows/seedFlow";
+import { fetchAgentDetail } from "@/lib/api/domains/agents/api";
 
 export type FlowMetadataInput = {
   name: string;
@@ -87,11 +90,10 @@ export async function createFlow(
   if (!definitionId) {
     // The catalog merges this id in; a create response that omits it means
     // the definition row exists but wasn't serialized — read it back.
-    const detail = await fetch(`/api/agents/${persona.id}`, {
-      credentials: "include",
-    });
-    const merged = await detail.json();
-    definitionId = merged.agent_definition_id;
+    const merged = await fetchAgentDetail<{ agent_definition_id?: string }>(
+      persona.id
+    );
+    definitionId = merged?.agent_definition_id;
     if (!definitionId) {
       throw new FlowCreationError(
         "Flow was created without a definition id",
@@ -100,12 +102,7 @@ export async function createFlow(
     }
   }
 
-  await fetch(flowApi.draft(definitionId), {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ flow_spec: buildSeedFlowSpec() }),
-  });
+  await persistNewFlowDraft(definitionId, { flow_spec: buildSeedFlowSpec() });
 
   return { personaId: persona.id, definitionId };
 }

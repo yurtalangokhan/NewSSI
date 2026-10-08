@@ -8,7 +8,7 @@ frontend keeps a skeleton up forever.
 
 import json
 
-from service.DocumentProgressTracker import (
+from service.storage.document_progress_tracker import (
     PHASE_RENDERING,
     PHASE_WRITING,
     STATUS_ERROR,
@@ -16,6 +16,7 @@ from service.DocumentProgressTracker import (
     STATUS_SUCCESS,
     DocumentProgressTracker,
     is_document_tool,
+    is_document_workspace_tool,
 )
 
 
@@ -288,3 +289,115 @@ def test_a_lone_file_packet_does_not_open_a_skeleton():
     tracker = DocumentProgressTracker()
 
     assert tracker.adopt_live_packet({"type": "generated_file", "filename": "r.pdf"}) == []
+
+
+# -- versioned document drafts ---------------------------------------------
+
+
+def test_edit_tool_start_packet_carries_operation_and_document_id() -> None:
+    tracker = DocumentProgressTracker()
+    chunk = _Chunk(
+        [{"name": "edit_document", "id": "c1", "index": 0, "args": '{"document_id": "d-1", "base_revision_no": 2'}]
+    )
+
+    start = tracker.on_chunk(chunk)[0]
+
+    assert start["type"] == "document_generation_start"
+    assert start["operation"] == "edit"
+    assert start["document_id"] == "d-1"
+
+
+def test_rewrite_tool_completed_call_reads_document_id_from_args() -> None:
+    tracker = DocumentProgressTracker()
+
+    packets = tracker.on_tool_calls(
+        [{"name": "rewrite_document", "id": "c2", "args": {"document_id": "d-2", "content": "# body"}}]
+    )
+
+    assert _types(packets) == ["document_generation_start", "document_generation_progress"]
+    assert packets[1]["operation"] == "rewrite"
+    assert packets[1]["document_id"] == "d-2"
+
+
+def test_create_tool_packets_report_create_operation_without_document_id() -> None:
+    tracker = DocumentProgressTracker()
+
+    start = tracker.on_chunk(_start_chunk())[0]
+
+    assert start["operation"] == "create"
+    assert start["document_id"] is None
+
+
+def test_read_document_is_not_a_generation() -> None:
+    tracker = DocumentProgressTracker()
+    chunk = _Chunk([{"name": "read_document", "id": "r1", "index": 0, "args": "{}"}])
+
+    assert tracker.on_chunk(chunk) == []
+    assert tracker.on_tool_calls([{"name": "list_documents", "id": "l1", "args": {}}]) == []
+    assert not tracker.active
+
+
+def test_workspace_tool_covers_generation_and_quiet_tools() -> None:
+    for name in ("create_document", "create_spreadsheet", "edit_document", "rewrite_document"):
+        assert is_document_tool(name)
+        assert is_document_workspace_tool(name)
+    for name in ("list_documents", "list_attachments", "read_document"):
+        assert not is_document_tool(name)
+        assert is_document_workspace_tool(name)
+    assert not is_document_workspace_tool("Calculator")
+    assert not is_document_workspace_tool(None)
+
+
+def test_adopted_live_packet_keeps_operation_and_document_id() -> None:
+    tracker = DocumentProgressTracker()
+
+    packets = tracker.adopt_live_packet(
+        {
+            "type": "document_generation_progress",
+            "tool_name": "edit_document",
+            "operation": "edit",
+            "document_id": "d-3",
+            "filename": "rapor.md",
+            "format": "md",
+            "phase": "applying",
+            "applied": 1,
+            "total": 3,
+        }
+    )
+
+    assert packets[0]["operation"] == "edit"
+    assert packets[0]["document_id"] == "d-3"
+    assert packets[0]["phase"] == "applying"
+
+
+def test_single_chunk_create_call_still_reports_writing_progress() -> None:
+    """Providers such as Gemini send the name and the whole body in one chunk;
+    the start packet must not swallow the progress packet that chunk earns."""
+    tracker = DocumentProgressTracker()
+    args = json.dumps({"filename": "rapor.pdf", "format": "pdf", "content": "x" * 2000})
+    chunk = _Chunk([{"name": "create_document", "id": "c1", "index": 0, "args": args}])
+
+    packets = tracker.on_chunk(chunk)
+
+    assert _types(packets) == ["document_generation_start", "document_generation_progress"]
+    assert packets[0]["filename"] == "rapor.pdf"
+    assert packets[1]["phase"] == PHASE_WRITING
+    assert packets[1]["chars"] == len(args)
+
+
+def test_parallel_edit_calls_keep_the_first_calls_document_id() -> None:
+    """A second edit in the same AI message extends the in-flight generation;
+    it must not retarget it at another draft."""
+    tracker = DocumentProgressTracker()
+
+    packets = tracker.on_tool_calls(
+        [
+            {"name": "edit_document", "id": "e1", "args": {"document_id": "A", "edits": []}},
+            {"name": "edit_document", "id": "e2", "args": {"document_id": "B", "edits": []}},
+        ]
+    )
+    end = tracker.flush()[0]
+
+    progress = [packet for packet in packets if packet["type"] == "document_generation_progress"]
+    assert [packet["document_id"] for packet in progress] == ["A", "A"]
+    assert end["document_id"] == "A"

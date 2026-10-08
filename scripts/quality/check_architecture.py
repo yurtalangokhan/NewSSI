@@ -5,9 +5,9 @@ This is a deterministic, blocking gate that enforces the architecture
 principles documented in ``docs/oop-solid-architecture.md`` and
 ``docs/coding-standards.md`` (section "Architecture & code-quality gate").
 
-It runs on commit and push via ``scripts/quality/check.sh`` (which is wired
-into the pre-commit and pre-push git hooks). Committed and pushed code MUST
-obey the objective rules below.
+It runs via ``scripts/quality/check.sh``: on push (pre-push git hook) and on
+demand through ``make quality-staged``. The pre-commit hook only auto-fixes
+formatting. Pushed code MUST obey the objective rules below.
 
 Modes
 -----
@@ -43,6 +43,11 @@ PY_SERVICE_RE = re.compile(
     r"^apps/(agent-service|rag-service|user-service|tools-service)/(src|tests|alembic|migrations)/.*\.py$"
 )
 WEB_RE = re.compile(r"^apps/web/(src|tests)/.*\.(ts|tsx|js|jsx)$")
+# Shared packages under packages/*/src are first-party Python too. They are
+# scanned report-only unless they are in the enforced list below, so the gate
+# widens without coupling to other work streams' pre-existing findings.
+PACKAGE_SRC_RE = re.compile(r"^packages/[^/]+/src/.*\.py$")
+ENFORCED_PACKAGES = ("packages/idempotency/", "packages/metrics/")
 
 # --- Objective (hard) rule patterns ----------------------------------------
 # Bare name imports that are almost always HTTP-framework leakage.
@@ -65,7 +70,7 @@ REPOSITORY_BAD_LAYER_RE = re.compile(r"/(service|controller)/")
 # Client/Gateway infrastructure classes must not live in service/api folders.
 CLIENT_BAD_LAYER_RE = re.compile(r"/(service|api)/")
 INTEGRATIONS_RE = re.compile(r"/integrations/")
-RAG_DATABASE_RE = re.compile(r"langconnect/database/")
+RAG_DATABASE_RE = re.compile(r"src/shared/postgres/")
 
 # Dependency inversion (domain must not import concrete outer layers).
 # Persistence-layer modules (repository/storage/migrations) legitimately import
@@ -78,7 +83,7 @@ DOMAIN_IMPORTS_OUTER_RE = re.compile(
     r"^\s*from\s+(integrations|core\.db\.(repositories|models)(?!\.base)|repository)(\.\w+)*\s+import\b"
 )
 RAG_DATABASE_IMPORTS_SERVICES_RE = re.compile(
-    r"^\s*from\s+langconnect\.services(\.\w+)*\s+import\b"
+    r"^\s*from\s+src\.(?!shared)\w+\.(service|router)(\.\w+)*\s+import\b"
 )
 
 # Banned bucket module names (only the truly generic ones; models/schemas are
@@ -104,8 +109,13 @@ WEB_PRIMITIVE_LIB_RE = re.compile(
 # A primitive named in a doc comment is documentation, not markup: JSDoc usage
 # examples and prose like "a plain `<input>`" are not violations.
 COMMENT_LINE_RE = re.compile(r"^\s*(//|/\*|\*|\{/\*)")
+# A banned module specifier (or a subpath such as `react-icons/fa`) after
+# `from`, a bare/dynamic `import`, or `require(`. Matching the specifier rather
+# than the `import` keyword also catches the closing `} from "..."` line of a
+# multi-line import and `export ... from` re-exports.
 BANNED_ICON_IMPORT_RE = re.compile(
-    r"^\s*import\s+.*\b(from\s+['\"](lucide-react|react-icons|@phosphor-icons/react|phosphor-icons)['\"])\b"
+    r"(?:\bfrom|\bimport\s*\(?|\brequire\s*\()\s*"
+    r"['\"](?:lucide-react|react-icons|@phosphor-icons/react|phosphor-icons)(?:/[^'\"]*)?['\"]"
 )
 TEST_FILE_RE = re.compile(r"\.(test|spec)\.(ts|tsx)$|\.stories\.tsx$")
 
@@ -271,6 +281,7 @@ def check_python(path: str, lines: list[str], hard_enabled: bool) -> list[tuple[
         if (
             CLIENT_CLASS_RE.search(ln)
             and CLIENT_BAD_LAYER_RE.search(path)
+            and not is_test
             and not is_rag_db
             and not is_domain
             and not INTEGRATIONS_RE.search(path)
@@ -393,6 +404,12 @@ def main() -> int:
     for path in files:
         if PY_SERVICE_RE.match(path):
             findings = check_python(path, read_lines(ROOT / path), hard_enabled)
+        elif PACKAGE_SRC_RE.match(path):
+            # Enforced only for the packages named above; everything else is
+            # report-only so widening discovery cannot fail someone else's
+            # commit on debt this gate never used to see.
+            package_hard = hard_enabled and path.startswith(ENFORCED_PACKAGES)
+            findings = check_python(path, read_lines(ROOT / path), package_hard)
         elif WEB_RE.match(path):
             findings = check_web(path, read_lines(ROOT / path), hard_enabled)
         else:

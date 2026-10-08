@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useBuildSessionStore } from "./useBuildSessionStore";
-import { checkPreProvisionedSession } from "../services/apiServices";
+import { checkPreProvisionedSession } from "@/lib/api/domains/craft/api";
 
 /** Polling interval in milliseconds (5 seconds) */
 const POLLING_INTERVAL_MS = 5000;

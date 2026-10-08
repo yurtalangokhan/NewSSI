@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { getUserOAuthTokenStatus, initiateOAuthFlow } from "@/lib/oauth/api";
+import {
+  getUserOAuthTokenStatus,
+  initiateOAuthFlow,
+} from "@/lib/api/domains/integrations/api";
 import { OAuthTokenStatus, ToolSnapshot } from "@/lib/tools/interfaces";
 
 export interface ToolAuthStatus {

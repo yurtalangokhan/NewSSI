@@ -4,7 +4,7 @@ export interface AppDraftCommand {
   submitOnLoad: boolean;
 }
 
-const APP_DRAFT_COMMAND_KEY = "onyx:app:draft-command";
+const APP_DRAFT_COMMAND_KEY = "atlas:app:draft-command";
 
 function getSessionStorage() {
   if (typeof sessionStorage === "undefined") {

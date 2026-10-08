@@ -1,65 +1,56 @@
+import { forwardBackendResponse } from "@/lib/api/backendResponse";
+import { chatEndpoints } from "@/lib/api/domains/chat/endpoints";
+import { errorResponseFromException } from "@/lib/api/errorResponse";
 import {
-  apiErrorResponse,
-  internalServerErrorResponse,
-} from "@/lib/api/errorResponse";
-import { buildServiceUrl } from "@/lib/api/gatewayRouting";
-import { getInternalUrl } from "@/lib/env.server";
-import { NextRequest, NextResponse } from "next/server";
+  ApiRequestError,
+  parseApiErrorPayload,
+  throwTransportError,
+} from "@/lib/api/errors";
+import { backendRequest } from "@/lib/api/http/server";
+import { getRequestLanguage } from "@/i18n/locales";
 
-const INTERNAL_URL = getInternalUrl();
+import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
-    const cookie = request.headers.get("cookie") || "";
-    const authorization = request.headers.get("authorization");
-    const idempotencyKey = request.headers.get("idempotency-key");
-
     // Call the backend send-chat-message endpoint which handles:
     // 1. Session creation/updates
     // 2. Thread creation in LangGraph store
     // 3. Message storage
     // 4. Streaming response
-    const url = buildServiceUrl(
-      INTERNAL_URL,
-      "agent",
-      "/api/chat/send-chat-message"
-    );
-
-    const response = await fetch(url.toString(), {
+    const response = await backendRequest({
+      ...chatEndpoints.sendMessage.backend,
+      request,
       method: "POST",
       body,
       headers: {
         "Content-Type": "application/json",
         Accept: "text/event-stream",
-        ...(cookie ? { Cookie: cookie } : {}),
-        ...(authorization ? { Authorization: authorization } : {}),
-        ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
       },
-    });
+      deriveAuthorizationFromCookie: true,
+    }).catch((error: unknown) => throwTransportError(error, request));
 
     if (!response.ok) {
-      const errorText = await response.text();
-      const contentType = response.headers.get("content-type") || "";
-      if (contentType.includes("application/json") && errorText.trim()) {
-        return new NextResponse(errorText, {
-          status: response.status,
-          headers: { "Content-Type": "application/json" },
-        });
+      if (response.headers.get("content-type")?.includes("application/json")) {
+        return forwardBackendResponse(response);
       }
-
-      return apiErrorResponse({
-        status: response.status,
-        code:
-          response.status >= 500 ? "internal.server_error" : "request.invalid",
-        message: `Backend error: ${response.status}`,
-      });
+      return errorResponseFromException(
+        new ApiRequestError(
+          parseApiErrorPayload(
+            null,
+            response.status,
+            getRequestLanguage(request)
+          )
+        ),
+        request
+      );
     }
 
     // Stream the response back to the client
     const stream = response.body;
     if (!stream) {
-      return internalServerErrorResponse("No response body");
+      return errorResponseFromException(undefined, request);
     }
 
     // Return the streaming response with proper headers
@@ -74,6 +65,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Chat proxy error:", error);
-    return internalServerErrorResponse("Failed to send chat message");
+    return errorResponseFromException(error, request);
   }
 }

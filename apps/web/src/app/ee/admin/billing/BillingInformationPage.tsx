@@ -2,11 +2,9 @@
 
 import { useEffect } from "react";
 import { toast } from "@/hooks/useToast";
-import {
-  createCustomerPortalSession,
-  useBillingInformation,
-  hasActiveSubscription,
-} from "@/lib/billing";
+import { createCustomerPortalSession } from "@/lib/api/domains/billing/api";
+import { useBillingInformation } from "@/lib/api/domains/billing/hooks";
+import { hasActiveSubscription } from "@/lib/api/domains/billing/types";
 
 import {
   Card,

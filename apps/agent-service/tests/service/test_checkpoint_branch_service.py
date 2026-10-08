@@ -9,7 +9,7 @@ readable in its own branch. See
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
-from service.CheckpointBranchService import find_fork_point, find_fork_point_with_message
+from service.runtime.checkpoint_branch_service import find_fork_point, find_fork_point_with_message
 
 
 class _FakeSnapshot:

@@ -1,6 +1,8 @@
+import { chatEndpoints } from "@/lib/api/domains/chat/endpoints";
 import { proxyToBackend } from "@/lib/api/proxy";
+
 import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
-  return proxyToBackend(request, "/api/chat/get-user-chat-sessions");
+  return proxyToBackend(request, chatEndpoints.sessions.backend);
 }

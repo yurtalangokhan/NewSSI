@@ -1,6 +1,6 @@
 import { test, expect, Page, Browser } from "@playwright/test";
 import { loginAs, loginAsWorkerUser } from "@tests/e2e/utils/auth";
-import { OnyxApiClient } from "@tests/e2e/utils/onyxApiClient";
+import { AtlasApiClient } from "@tests/e2e/utils/atlasApiClient";
 import { expectScreenshot } from "@tests/e2e/utils/visualRegression";
 
 // --- Locator Helper Functions ---
@@ -128,7 +128,7 @@ test.describe("Assistant Creation and Edit Verification", () => {
           storageState: "admin_auth.json",
         });
         const page = await context.newPage();
-        const cleanupClient = new OnyxApiClient(page.request);
+        const cleanupClient = new AtlasApiClient(page.request);
         await cleanupClient.deleteAgent(userFilesAssistantId);
         await context.close();
         console.log(
@@ -200,7 +200,7 @@ test.describe("Assistant Creation and Edit Verification", () => {
         storageState: "admin_auth.json",
       });
       const page = await context.newPage();
-      const cleanupClient = new OnyxApiClient(page.request);
+      const cleanupClient = new AtlasApiClient(page.request);
 
       if (knowledgeAssistantId !== null) {
         await cleanupClient.deleteAgent(knowledgeAssistantId);
@@ -224,9 +224,9 @@ test.describe("Assistant Creation and Edit Verification", () => {
       await loginAs(page, "admin");
 
       // Create a connector and document set to enable the Knowledge toggle
-      const onyxApiClient = new OnyxApiClient(page.request);
-      ccPairId = await onyxApiClient.createFileConnector("Test Connector");
-      documentSetId = await onyxApiClient.createDocumentSet(
+      const atlasApiClient = new AtlasApiClient(page.request);
+      ccPairId = await atlasApiClient.createFileConnector("Test Connector");
+      documentSetId = await atlasApiClient.createDocumentSet(
         "Test Document Set",
         [ccPairId]
       );

@@ -1,4 +1,4 @@
-import { FileDescriptor, Message } from "../interfaces";
+import { FileDescriptor, Message } from "@/lib/api/domains/chat/types";
 
 export const SYSTEM_MESSAGE_ID = -3;
 export const SYSTEM_NODE_ID = -3;
@@ -82,7 +82,19 @@ export function upsertMessages(
   makeLatestChildMessage: boolean = false
 ): MessageTreeState {
   let newMessages = new Map(currentMessages);
-  let messagesToAddClones = messagesToAdd.map((msg) => ({ ...msg })); // Clone all incoming messages
+  // Clone all incoming messages, stamping any that arrive without a time.
+  // Messages built during a live send carry none — the backend only stamps
+  // them once they reach a checkpoint, long after the transcript has shown
+  // them. The stored stamp wins over a fresh one so that streaming, which
+  // re-upserts the same node on every packet, doesn't make the displayed
+  // clock crawl forward while the answer is still being written.
+  let messagesToAddClones = messagesToAdd.map((msg) => ({
+    ...msg,
+    timeSent:
+      msg.timeSent ??
+      currentMessages.get(msg.nodeId)?.timeSent ??
+      new Date().toISOString(),
+  })); // Clone all incoming messages
 
   if (newMessages.size === 0 && messagesToAddClones.length > 0) {
     const firstMessage = messagesToAddClones[0];

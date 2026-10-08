@@ -1,0 +1,67 @@
+# Outbound HTTP policy shared by every platform service.
+# Read by packages/security (resilience); edit here, not in code.
+# Startup dependency retries (packages/observability) read the same file: the
+# `postgres` and `redis` sections below are the startup retry policy, which is
+# deliberately more patient than the request path.
+#
+# Resolution order per dependency: `dependencies.<name>` overrides `defaults`.
+# Every key here is consumed by security.resilience or observability.retry —
+# nothing in this file exists to satisfy a scanner.
+defaults:
+  timeoutSeconds: 15
+  retry:
+    maxAttempts: 3          # total attempts including the first
+    backoff:
+      initialSeconds: 0.2   # wait before the first retry
+      multiplier: 2.0       # growth factor applied to each subsequent wait
+      maxSeconds: 2.0       # ceiling for any single wait
+  circuitBreaker:
+    failureThreshold: 5     # consecutive failures before the circuit opens
+    resetTimeoutSeconds: 30 # how long the circuit stays open before a trial call
+
+dependencies:
+  user-service: {}
+  rag-service: {}
+  # Connector ingestion into rag-service: a batch of synced records is split and
+  # embedded inside the request, which takes minutes on a local embedding model.
+  # Its own pool, budget and breaker keep a slow ingest from opening the circuit
+  # chat retrieval shares. The sync runner already retries a failed batch under
+  # its idempotency key, so the transport sends each request once: a second
+  # attempt would only queue behind the first on rag-service's idempotency lock.
+  rag-service-ingest:
+    timeoutSeconds: 900
+    retry:
+      maxAttempts: 1
+  tools-service: {}
+  # Startup dependencies. These values are the pre-consolidation hardcoded
+  # startup policy (5 attempts, 0.5s -> 8s backoff); declared here so the
+  # startup retry reads the same file as everything else.
+  postgres:
+    retry:
+      maxAttempts: 5
+      backoff:
+        initialSeconds: 0.5
+        multiplier: 2.0
+        maxSeconds: 8.0
+  redis:
+    retry:
+      maxAttempts: 5
+      backoff:
+        initialSeconds: 0.5
+        multiplier: 2.0
+        maxSeconds: 8.0
+  # Local runtimes on the compose network: reachable, no TLS, and a restart is
+  # seconds long, so the default 15s read budget is already generous.
+  ollama:
+    timeoutSeconds: 20
+  vllm:
+    timeoutSeconds: 20
+  keycloak:
+    # Keycloak failures are usually configuration, not transient: retry once less
+    # so a misconfigured realm surfaces quickly instead of being masked by waits.
+    retry:
+      maxAttempts: 2
+  minio:
+    # Object storage sits on the request path during file upload; a short budget
+    # keeps an unreachable MinIO from parking the worker.
+    timeoutSeconds: 10

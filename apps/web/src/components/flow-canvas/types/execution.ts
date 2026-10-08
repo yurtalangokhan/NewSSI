@@ -1,3 +1,5 @@
+import type { KnowledgeEvidence } from "@/lib/api/domains/chat/knowledge-evidence-types";
+
 export interface ToolInvocationDetail {
   index: number;
   callId?: string | null;
@@ -22,6 +24,8 @@ export interface NodeIterationData {
   thinkingDurationMs?: number | null;
   tools?: NodeToolExecution[];
   output?: string;
+  /** What this iteration's knowledge searches retrieved. */
+  evidence?: KnowledgeEvidence[];
   status: "running" | "done" | "error";
   durationMs: number | null;
 }
@@ -36,5 +40,7 @@ export interface NodeExecutionData {
   thinkingDurationMs?: number | null;
   tools: NodeToolExecution[];
   output?: string;
+  /** What the node's knowledge searches retrieved, across iterations. */
+  evidence?: KnowledgeEvidence[];
   iterations?: NodeIterationData[];
 }

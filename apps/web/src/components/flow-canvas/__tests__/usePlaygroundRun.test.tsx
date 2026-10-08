@@ -474,4 +474,41 @@ describe("usePlaygroundRun", () => {
       expect(result.current.messages).toEqual([]);
     });
   });
+
+  describe("unmount cancellation", () => {
+    it("aborts the in-flight fetch when the hook unmounts", () => {
+      let capturedSignal: AbortSignal | undefined;
+      global.fetch = jest.fn().mockImplementation((_url, init) => {
+        capturedSignal = init?.signal;
+        // Never resolves — stands in for a long-running SSE stream.
+        return new Promise(() => {});
+      });
+
+      const { result, unmount } = renderHook(() => usePlaygroundRun("def-1"));
+
+      act(() => {
+        void result.current.send("Hello");
+      });
+
+      expect(capturedSignal?.aborted).toBe(false);
+      unmount();
+      expect(capturedSignal?.aborted).toBe(true);
+    });
+
+    it("does not surface a deliberate abort as a run error", async () => {
+      const abortError = new DOMException(
+        "The operation was aborted.",
+        "AbortError"
+      );
+      global.fetch = jest.fn().mockRejectedValue(abortError);
+
+      const { result } = renderHook(() => usePlaygroundRun("def-1"));
+
+      await act(async () => {
+        await result.current.send("Hello");
+      });
+
+      expect(result.current.error).toBeNull();
+    });
+  });
 });

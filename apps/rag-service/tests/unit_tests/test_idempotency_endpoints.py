@@ -10,9 +10,9 @@ idempotency mode is enforced on the endpoints it is configured for:
 - DOMAIN_REQUIRED: mutating routes reject a missing key (400) and replay.
 """
 
-from tests.unit_tests.fixtures import get_async_test_client
+from tests.unit_tests.fixtures import gateway_headers, get_async_test_client
 
-USER_1_HEADERS = {"Authorization": "Bearer user1"}
+USER_1_HEADERS = gateway_headers("user1")
 
 
 def _keyed(headers: dict[str, str], key: str) -> dict[str, str]:
@@ -110,8 +110,22 @@ async def test_domain_required_upload_jobs_rejects_missing_key() -> None:
         assert r.json()["error"]["code"] == "idempotency_key_required"
 
 
-async def test_optional_replay_search_accepts_missing_key() -> None:
+async def test_optional_replay_search_accepts_missing_key(monkeypatch) -> None:
     """OPTIONAL_REPLAY POST /graph/search accepts a missing key."""
+    from unittest.mock import AsyncMock
+
+    from src.graph.schemas import GraphSearchResult
+
+    monkeypatch.setattr(
+        "src.graph.api_service.Collection.ensure_exists",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "src.graph.service.GraphRAGService.hybrid_search",
+        AsyncMock(
+            return_value=GraphSearchResult(nodes=[], edges=[], rrf_score=0.0, query="q")
+        ),
+    )
     async with get_async_test_client() as client:
         r = await client.post(
             "/api/v1/graph/search",
@@ -126,8 +140,22 @@ async def test_optional_replay_search_accepts_missing_key() -> None:
         assert "Idempotency-Replayed" not in r.headers
 
 
-async def test_optional_replay_search_replays_with_same_key() -> None:
+async def test_optional_replay_search_replays_with_same_key(monkeypatch) -> None:
     """OPTIONAL_REPLAY POST /graph/search replays a cached response."""
+    from unittest.mock import AsyncMock
+
+    from src.graph.schemas import GraphSearchResult
+
+    monkeypatch.setattr(
+        "src.graph.api_service.Collection.ensure_exists",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "src.graph.service.GraphRAGService.hybrid_search",
+        AsyncMock(
+            return_value=GraphSearchResult(nodes=[], edges=[], rrf_score=0.0, query="q")
+        ),
+    )
     async with get_async_test_client() as client:
         payload = {
             "query": "q",

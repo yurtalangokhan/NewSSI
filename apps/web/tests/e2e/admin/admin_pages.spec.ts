@@ -48,7 +48,7 @@ const ADMIN_PAGES: AdminPageSnapshot[] = [
     pageTitle: "Document Sets",
     options: {
       paragraphText:
-        "Document Sets allow you to group logically connected documents into a single bundle. These can then be used as a filter when performing searches to control the scope of information Onyx searches over.",
+        "Document Sets allow you to group logically connected documents into a single bundle. These can then be used as a filter when performing searches to control the scope of information Atlas searches over.",
     },
   },
   {
@@ -57,7 +57,7 @@ const ADMIN_PAGES: AdminPageSnapshot[] = [
     pageTitle: "Slack Bots",
     options: {
       paragraphText:
-        "Setup Slack bots that connect to Onyx. Once setup, you will be able to ask questions to Onyx directly from Slack. Additionally, you can:",
+        "Setup Slack bots that connect to Atlas. Once setup, you will be able to ask questions to Atlas directly from Slack. Additionally, you can:",
     },
   },
   {

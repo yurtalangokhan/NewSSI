@@ -6,21 +6,13 @@ import Button from "@/refresh-components/buttons/Button";
 import { ValidSources } from "@/lib/types";
 import { SettingsContext } from "@/providers/SettingsProvider";
 import { getSourceMetadata } from "@/lib/sources";
-import useFederatedOAuthStatus from "@/hooks/useFederatedOAuthStatus";
+import { useFederatedOAuthStatus } from "@/lib/api/domains/integrations/hooks";
 import { SvgLink } from "@opal/icons";
 import { Card } from "@/refresh-components/cards";
 import { ContentAction } from "@opal/layouts";
 import { useTranslation } from "react-i18next";
 import { getAppName } from "@/lib/appInfo";
-
-export interface FederatedConnectorOAuthStatus {
-  federated_connector_id: number;
-  source: string;
-  name: string;
-  has_oauth_token: boolean;
-  oauth_token_expires_at?: string;
-  authorize_url?: string;
-}
+import type { FederatedConnectorOAuthStatus } from "@/lib/api/domains/integrations/types";
 
 const MAX_SKIP_COUNT = 2;
 

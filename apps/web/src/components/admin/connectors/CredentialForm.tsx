@@ -1,4 +1,8 @@
-import React, { JSX } from "react";
+import {
+  errorMessageFromUnknown,
+  parseApiErrorResponse,
+} from "@/lib/api/errors";
+import { JSX } from "react";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { toast } from "@/hooks/useToast";
@@ -7,13 +11,14 @@ import { ValidSources } from "@/lib/types";
 import {
   createCredential,
   createCredentialWithPrivateKey,
-} from "@/lib/credential";
+} from "@/lib/api/domains/datasources/api";
 import {
   CredentialBase,
   Credential,
   CredentialWithPrivateKey,
 } from "@/lib/connectors/credentials";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n/config";
 
 const PRIVATE_KEY_FIELD_KEY = "private_key";
 
@@ -38,13 +43,19 @@ export async function submitCredential<T>(
       const parsed_response = await response.json();
       const credential = parsed_response.credential;
       isSuccess = true;
-      return { credential, message: "Success!", isSuccess: true };
+      return {
+        credential,
+        message: i18n.t("credentialForm.successMessage"),
+        isSuccess: true,
+      };
     } else {
-      const errorData = await response.json();
-      return { message: `Error: ${errorData.detail}`, isSuccess: false };
+      return {
+        message: (await parseApiErrorResponse(response)).userMessage,
+        isSuccess: false,
+      };
     }
   } catch (error) {
-    return { message: `Error: ${error}`, isSuccess: false };
+    return { message: errorMessageFromUnknown(error), isSuccess: false };
   }
 }
 

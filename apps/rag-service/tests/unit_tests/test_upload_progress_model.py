@@ -1,4 +1,4 @@
-from langconnect.models.documents import UploadProgress, UploadStatus
+from src.documents.schemas import UploadProgress, UploadStatus
 
 
 def test_progress_percent_is_zero_when_total_chunks_unknown() -> None:

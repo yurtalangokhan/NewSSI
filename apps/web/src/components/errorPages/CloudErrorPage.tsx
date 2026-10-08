@@ -2,8 +2,8 @@
 
 import Text from "@/refresh-components/texts/Text";
 import ErrorPageLayout from "@/components/errorPages/ErrorPageLayout";
-import { APP_NAME } from "@/lib/appInfo";
 import { useTranslation } from "react-i18next";
+import { appSettings } from "@/lib/settings";
 
 export default function CloudError() {
   const { t } = useTranslation();
@@ -14,7 +14,9 @@ export default function CloudError() {
       </Text>
 
       <Text as="p" text03>
-        {t("errors.errorPages.cloudErrorBody1", { appName: APP_NAME })}
+        {t("errors.errorPages.cloudErrorBody1", {
+          appName: appSettings.APP_NAME,
+        })}
       </Text>
 
       <Text as="p" text03>

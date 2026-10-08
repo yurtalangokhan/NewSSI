@@ -1,4 +1,10 @@
 "use client";
+import { accessEndpoints } from "@/lib/api/domains/access/endpoints";
+
+import {
+  fetchDirectoryRoleCatalog,
+  fetchDirectoryAssignableUsers,
+} from "@/lib/api/domains/access/api";
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -7,20 +13,18 @@ import useSWR from "swr";
 import type { OrganizationMember } from "@/components/organization/organizationTypes";
 import { toast } from "@/hooks/useToast";
 import Button from "@/refresh-components/buttons/Button";
+import { OrganizationUserPicker } from "./OrganizationUserPicker";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
-
-interface AvailableUser {
-  id: string;
-  email: string;
-}
 
 interface RoleCatalogResponse {
   roles: Array<{ name: string }>;
 }
 
 interface OrganizationUserAssignmentsPanelProps {
+  organizationId: string;
+  globalAccess: boolean;
   assignments: OrganizationMember[];
   onAdd: (userId: string, role: string) => Promise<void>;
   onRoleChange: (userId: string, role: string) => Promise<void>;
@@ -28,8 +32,8 @@ interface OrganizationUserAssignmentsPanelProps {
   editable: boolean;
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
+async function fetchJson<T>(request: Promise<Response>): Promise<T> {
+  const response = await request;
   if (!response.ok) throw new Error("Request failed");
   return response.json();
 }
@@ -42,6 +46,8 @@ function memberLabel(member: OrganizationMember) {
 }
 
 export function OrganizationUserAssignmentsPanel({
+  organizationId,
+  globalAccess,
   assignments,
   onAdd,
   onRoleChange,
@@ -51,35 +57,59 @@ export function OrganizationUserAssignmentsPanel({
   const { t } = useTranslation();
   const [showAddUser, setShowAddUser] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
-  const [selectedRole, setSelectedRole] = useState("unit_manager");
+  const [selectedRole, setSelectedRole] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: rolesData, isLoading: rolesLoading } =
-    useSWR<RoleCatalogResponse>("/api/user-service/roles", fetchJson);
-  const { data: usersData } = useSWR<{ users: AvailableUser[]; total: number }>(
-    showAddUser ? "/api/user-service/users/" : null,
-    fetchJson
-  );
-  const roleOptions = [
-    ...(rolesData?.roles ?? [])
-      .filter((role) => role.name !== "unit_manager")
-      .map((role) => ({
-        value: role.name,
-        label: t(`admin.users.roles.${role.name}`),
-      })),
-    {
+    useSWR<RoleCatalogResponse>(
+      globalAccess ? accessEndpoints.userServiceRoles.browserPath : null,
+      () => fetchJson<RoleCatalogResponse>(fetchDirectoryRoleCatalog())
+    );
+  const normalizeRole = (name: string | null | undefined) =>
+    (name ?? "").toLowerCase().replace(/[\s_-]/g, "");
+  const catalog = rolesData?.roles ?? [];
+  const endUser =
+    catalog.find((role) => role.name === "enduser") ??
+    catalog.find((role) => normalizeRole(role.name) === "enduser");
+  const catalogOptions = catalog
+    .filter(
+      (role) => normalizeRole(role.name) !== "enduser" || role === endUser
+    )
+    .filter(
+      (role) =>
+        !["systemadmin", "enterpriseadmin", "unitmanager"].includes(
+          normalizeRole(role.name)
+        )
+    )
+    .map((role) => ({
+      value: role.name,
+      label:
+        normalizeRole(role.name) === "enduser"
+          ? t("admin.users.roles.enduser")
+          : t(`admin.users.roles.${role.name}`, { defaultValue: role.name }),
+    }));
+  const roleOptions = globalAccess
+    ? catalogOptions
+    : [{ value: "enduser", label: t("admin.users.roles.enduser") }];
+  if (globalAccess && rolesData)
+    roleOptions.push({
       value: "unit_manager",
       label: t("admin.organizations.users.unitManager"),
-    },
-  ];
+    });
+  const effectiveRole =
+    roleOptions.length === 1
+      ? roleOptions[0]!.value
+      : roleOptions.some((role) => role.value === selectedRole)
+        ? selectedRole
+        : "";
 
   async function submitUser() {
-    if (!selectedUserId) return;
+    if (!selectedUserId || !effectiveRole || !editable) return;
     setIsSubmitting(true);
     try {
-      await onAdd(selectedUserId, selectedRole);
+      await onAdd(selectedUserId, effectiveRole);
       setShowAddUser(false);
       setSelectedUserId("");
-      setSelectedRole("unit_manager");
+      setSelectedRole("");
       toast.success(t("admin.organizations.users.memberAdded"));
     } catch (error) {
       toast.error(
@@ -107,8 +137,12 @@ export function OrganizationUserAssignmentsPanel({
           action
           primary
           size="md"
-          disabled={!editable}
-          onClick={() => setShowAddUser(true)}
+          disabled={!editable || showAddUser}
+          onClick={() => {
+            setSelectedRole("");
+            setSelectedUserId("");
+            setShowAddUser(true);
+          }}
         >
           {t("admin.organizations.users.addUser")}
         </Button>
@@ -124,34 +158,23 @@ export function OrganizationUserAssignmentsPanel({
             <Text secondaryAction text03>
               {t("admin.organizations.users.user")}
             </Text>
-            <InputSelect
-              value={selectedUserId}
-              onValueChange={setSelectedUserId}
-            >
-              <InputSelect.Trigger
-                aria-label={t("admin.organizations.users.user")}
-                placeholder={t("admin.organizations.users.selectUser")}
-              />
-              <InputSelect.Content>
-                {(usersData?.users ?? []).map((user) => (
-                  <InputSelect.Item key={user.id} value={user.id}>
-                    {user.email}
-                  </InputSelect.Item>
-                ))}
-              </InputSelect.Content>
-            </InputSelect>
+            <OrganizationUserPicker
+              organizationId={organizationId}
+              onSelect={setSelectedUserId}
+            />
           </div>
           <div className={cn("flex flex-col gap-2")}>
             <Text secondaryAction text03>
               {t("admin.organizations.users.role")}
             </Text>
             <InputSelect
-              value={selectedRole}
+              value={effectiveRole}
               onValueChange={setSelectedRole}
-              disabled={rolesLoading}
+              disabled={rolesLoading || !roleOptions.length}
             >
               <InputSelect.Trigger
                 aria-label={t("admin.organizations.users.newMemberRole")}
+                placeholder={t("admin.organizations.users.selectRole")}
               />
               <InputSelect.Content>
                 {roleOptions.map((role) => (
@@ -170,7 +193,9 @@ export function OrganizationUserAssignmentsPanel({
               action
               primary
               size="md"
-              disabled={!selectedUserId || isSubmitting}
+              disabled={
+                !selectedUserId || !effectiveRole || isSubmitting || !editable
+              }
               onClick={submitUser}
             >
               {isSubmitting
@@ -193,6 +218,32 @@ export function OrganizationUserAssignmentsPanel({
         <div className={cn("flex flex-col gap-2")}>
           {assignments.map((assignment) => {
             const label = memberLabel(assignment);
+            const currentRole = roleOptions.find(
+              (role) =>
+                normalizeRole(role.value) ===
+                normalizeRole(assignment.role_in_org)
+            );
+            const assignedCatalogRole = catalog.find(
+              (role) =>
+                normalizeRole(role.name) ===
+                normalizeRole(assignment.role_in_org)
+            );
+            const assignedName = assignment.role_in_org ?? "";
+            const normalizedAssignedName = normalizeRole(assignedName);
+            let currentRoleLabel: string | undefined;
+            if (normalizedAssignedName === "unitmanager") {
+              currentRoleLabel = t("admin.organizations.users.unitManager");
+            } else if (assignedCatalogRole) {
+              currentRoleLabel = t(`admin.users.roles.${assignedCatalogRole.name}`, {
+                defaultValue: assignedCatalogRole.name,
+              });
+            } else if (
+              ["systemadmin", "enterpriseadmin"].includes(normalizedAssignedName)
+            ) {
+              currentRoleLabel = t(`admin.users.roles.${assignedName}`, {
+                defaultValue: assignedName,
+              });
+            }
             return (
               <div
                 key={assignment.id}
@@ -209,17 +260,20 @@ export function OrganizationUserAssignmentsPanel({
                   </Text>
                 </div>
                 <InputSelect
-                  value={assignment.role_in_org}
+                  value={currentRole?.value ?? ""}
                   disabled={!editable}
                   onValueChange={(value) =>
                     void onRoleChange(assignment.user_id, value)
                   }
                 >
                   <InputSelect.Trigger
+                    placeholder={t("admin.organizations.users.selectRole")}
                     aria-label={t("admin.organizations.users.roleFor", {
                       name: label,
                     })}
-                  />
+                  >
+                    {!currentRole ? currentRoleLabel : undefined}
+                  </InputSelect.Trigger>
                   <InputSelect.Content>
                     {roleOptions.map((role) => (
                       <InputSelect.Item key={role.value} value={role.value}>

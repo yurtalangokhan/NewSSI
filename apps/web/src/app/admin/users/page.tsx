@@ -1,25 +1,34 @@
 "use client";
+import {
+  errorMessageFromUnknown,
+  parseApiErrorResponse,
+} from "@/lib/api/errors";
+import { downloadDirectoryUsers } from "@/lib/api/domains/access/api";
 
 import { useMemo, useState } from "react";
 import SimpleTabs from "@/refresh-components/SimpleTabs";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import SignedUpUserTable from "@/components/admin/users/SignedUpUserTable";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { errorHandlingFetcher } from "@/lib/fetcher";
-import useSWR from "swr";
+import {
+  useDirectoryRoles,
+  useDirectoryUserStatusCount,
+  usePendingDirectoryUsers,
+} from "@/lib/api/domains/access/hooks";
 import { InvitedUserSnapshot } from "@/lib/types";
-import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
 import PendingUsersTable from "@/components/admin/users/PendingUsersTable";
 import Button from "@/refresh-components/buttons/Button";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
 import { SvgDownloadCloud, SvgPlus } from "@opal/icons";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 import { formatRoleName } from "@/lib/auth/roles";
+import useRoleDistribution from "@/hooks/useRoleDistribution";
+import { appSettings } from "@/lib/settings";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.USERS]!;
 
@@ -47,9 +56,9 @@ function UsersTables({
     const startTime = Date.now();
     const minDurationMsForSpinner = 1000;
     try {
-      const response = await fetch("/api/user-service/users/download/csv");
+      const response = await downloadDirectoryUsers();
       if (!response.ok) {
-        throw new Error(t("admin.users.downloadFailedError", { error: "" }));
+        throw new Error((await parseApiErrorResponse(response)).userMessage);
       }
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -62,7 +71,9 @@ function UsersTables({
       document.body.removeChild(anchor_tag);
     } catch (error) {
       toast.error(
-        t("admin.users.downloadFailedError", { error: String(error) })
+        t("admin.users.downloadFailedError", {
+          error: errorMessageFromUnknown(error),
+        })
       );
     } finally {
       const endTime = Date.now();
@@ -79,35 +90,41 @@ function UsersTables({
     error: pendingUsersError,
     isLoading: pendingUsersLoading,
     mutate: pendingUsersMutate,
-  } = useSWR<InvitedUserSnapshot[]>(
-    NEXT_PUBLIC_CLOUD_ENABLED ? "/api/tenants/users/pending" : null,
-    errorHandlingFetcher
+  } = usePendingDirectoryUsers<InvitedUserSnapshot>(
+    appSettings.NEXT_PUBLIC_CLOUD_ENABLED
   );
   const pendingUsersCount =
     pendingUsers === undefined ? null : pendingUsers.length;
-  const { data: rolesData, isLoading: rolesLoading } = useSWR<{
-    roles: { name: string }[];
-  }>("/api/user-service/roles", errorHandlingFetcher);
-  const { data: roleDistributionData, isLoading: roleDistributionLoading } =
-    useSWR<{ distribution: { role: string; count: number }[] }>(
-      "/api/user-service/users/role-distribution",
-      errorHandlingFetcher
-    );
-  const distribution = roleDistributionData?.distribution ?? [];
+  const { data: rolesData, isLoading: rolesLoading } = useDirectoryRoles();
+  const { distribution, state: roleDistributionState } = useRoleDistribution();
   const roleCarouselValues = useMemo(
     () =>
-      distribution
-        .slice(0, 8)
-        .map((r) => ({ value: `${formatRoleName(r.role)} · ${r.count}` })),
-    [distribution]
+      distribution.slice(0, 8).map((r) => ({
+        value: `${t(`admin.users.roles.${r.role}`, {
+          defaultValue: formatRoleName(r.role),
+        })} · ${r.count}`,
+      })),
+    [distribution, t]
   );
 
-  const { data: activeUsersData, isLoading: activeUsersLoading } = useSWR<{
-    total_items: number;
-  }>("/api/user-service/users?is_active=true&limit=1", errorHandlingFetcher);
-  const { data: inactiveUsersData, isLoading: inactiveUsersLoading } = useSWR<{
-    total_items: number;
-  }>("/api/user-service/users?is_active=false&limit=1", errorHandlingFetcher);
+  const roleDistributionSummary =
+    roleDistributionState === "loading"
+      ? "..."
+      : roleDistributionState === "calculating"
+        ? t("admin.users.roleDistributionCalculating", {
+            defaultValue: "Calculating…",
+          })
+        : roleDistributionState === "unavailable"
+          ? t("admin.users.roleDistributionUnavailable", {
+              defaultValue: "Unavailable",
+            })
+          : roleCarouselValues[0]?.value ??
+            t("admin.users.noRoleData", { defaultValue: "No data" });
+
+  const { data: activeUsersData, isLoading: activeUsersLoading } =
+    useDirectoryUserStatusCount(true);
+  const { data: inactiveUsersData, isLoading: inactiveUsersLoading } =
+    useDirectoryUserStatusCount(false);
   const userStatusLoading = activeUsersLoading || inactiveUsersLoading;
 
   const currentUsersContent = (
@@ -163,7 +180,7 @@ function UsersTables({
       name: t("admin.users.currentUsersTab"),
       content: currentUsersContent,
     },
-    ...(NEXT_PUBLIC_CLOUD_ENABLED && {
+    ...(appSettings.NEXT_PUBLIC_CLOUD_ENABLED && {
       pending: {
         name: t("admin.users.pendingUsersTab"),
         content: (
@@ -211,14 +228,10 @@ function UsersTables({
     }),
   });
 
-  const isOverviewLoading =
-    rolesLoading || roleDistributionLoading || userStatusLoading;
-
   return (
     <>
       <AdminOverviewPanel
         icon={route.icon}
-        isLoading={isOverviewLoading}
         title={t("admin.users.workspaceTitle")}
         description={t("admin.users.workspaceDescription")}
         metrics={[
@@ -242,25 +255,16 @@ function UsersTables({
             label: t("admin.users.roleDistributionLabel", {
               defaultValue: "Role distribution",
             }),
-            isLoading: roleDistributionLoading,
-            value: roleDistributionLoading
-              ? "..."
-              : roleCarouselValues[0]?.value ??
-                t("admin.users.noRoleData", { defaultValue: "No data" }),
+            isLoading: roleDistributionState === "loading",
+            value: roleDistributionSummary,
             values:
               roleCarouselValues.length > 0
                 ? roleCarouselValues
-                : [
-                    {
-                      value: t("admin.users.noRoleData", {
-                        defaultValue: "No data",
-                      }),
-                    },
-                  ],
+                : [{ value: roleDistributionSummary }],
           },
         ]}
       />
-      {NEXT_PUBLIC_CLOUD_ENABLED ? (
+      {appSettings.NEXT_PUBLIC_CLOUD_ENABLED ? (
         <SimpleTabs tabs={tabs} defaultValue="current" />
       ) : (
         currentUsersContent
@@ -292,7 +296,7 @@ function SearchableTables() {
 export default function Page() {
   const { t } = useTranslation();
   return (
-    <SettingsLayouts.Root>
+    <SettingsLayouts.Root width="full">
       <SettingsLayouts.Header
         title={t(route.titleKey || "", { defaultValue: route.title })}
         description={

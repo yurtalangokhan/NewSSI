@@ -1,0 +1,146 @@
+[project]
+name = "connector-py"
+version = "0.1.0"
+description = "Generic, pluggable data connector framework (source/destination/sync) for Agentic AI Platform services"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.4",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+scheduler = ["croniter>=5.0", "tzdata>=2024.1"]
+postgres = ["asyncpg>=0.29"]
+mysql = ["aiomysql>=0.2"]
+mongodb = ["pymongo>=4.9"]
+s3 = ["boto3>=1.34"]
+minio = ["boto3>=1.34"]
+google = ["cryptography>=42.0"]
+encryption = ["cryptography>=42.0"]
+sql = ["sqlalchemy[asyncio]>=2.0"]
+sftp = ["paramiko>=3.4"]
+smb = ["smbprotocol>=1.13"]
+mssql = ["pyodbc>=5.0"]
+kafka = ["aiokafka>=0.11"]
+spark = ["pyspark[connect]>=3.4"]
+spark-thrift = ["pyhive[hive_pure_sasl]>=0.7", "thrift>=0.16"]
+yaml = ["pyyaml>=6.0"]
+all = [
+    "connector-py[scheduler,postgres,mysql,mongodb,s3,google,sql,sftp,smb,mssql,kafka,spark,spark-thrift,yaml]",
+]
+
+[project.entry-points."connector.sources"]
+jsonl_file = "connector.sources.jsonl_file:JsonlFileSource"
+http_json = "connector.sources.http_json:HttpJsonSource"
+postgres = "connector.sources.postgres:PostgresSource"
+mysql = "connector.sources.mysql:MySqlSource"
+mongodb = "connector.sources.mongodb:MongoDbSource"
+s3 = "connector.sources.s3:S3Source"
+minio = "connector.sources.minio:MinioSource"
+confluence = "connector.sources.confluence:ConfluenceSource"
+jira = "connector.sources.jira:JiraSource"
+gitlab = "connector.sources.gitlab:GitLabSource"
+outlook = "connector.sources.outlook:OutlookSource"
+sharepoint = "connector.sources.sharepoint:SharePointSource"
+clickhouse = "connector.sources.clickhouse:ClickHouseSource"
+notion = "connector.sources.notion:NotionSource"
+bookstack = "connector.sources.bookstack:BookStackSource"
+canvas = "connector.sources.canvas:CanvasSource"
+coda = "connector.sources.coda:CodaSource"
+document360 = "connector.sources.document360:Document360Source"
+discourse = "connector.sources.discourse:DiscourseSource"
+gitbook = "connector.sources.gitbook:GitBookSource"
+slab = "connector.sources.slab:SlabSource"
+lumapps = "connector.sources.lumapps:LumAppsSource"
+outline = "connector.sources.outline:OutlineSource"
+axero = "connector.sources.axero:AxeroSource"
+mediawiki = "connector.sources.mediawiki:MediaWikiSource"
+wikipedia = "connector.sources.wikipedia:WikipediaSource"
+loopio = "connector.sources.loopio:LoopioSource"
+google_sites = "connector.sources.google_sites:GoogleSitesSource"
+guru = "connector.sources.guru:GuruSource"
+google_drive = "connector.sources.google_drive:GoogleDriveSource"
+dropbox = "connector.sources.dropbox:DropboxSource"
+box = "connector.sources.box:BoxSource"
+google_storage = "connector.sources.google_storage:GoogleStorageSource"
+egnyte = "connector.sources.egnyte:EgnyteSource"
+oracle_storage = "connector.sources.oracle_storage:OracleStorageSource"
+cloudflare_r2 = "connector.sources.cloudflare_r2:CloudflareR2Source"
+zendesk = "connector.sources.zendesk:ZendeskSource"
+airtable = "connector.sources.airtable:AirtableSource"
+linear = "connector.sources.linear:LinearSource"
+freshdesk = "connector.sources.freshdesk:FreshdeskSource"
+asana = "connector.sources.asana:AsanaSource"
+testrail = "connector.sources.testrail:TestRailSource"
+clickup = "connector.sources.clickup:ClickUpSource"
+productboard = "connector.sources.productboard:ProductboardSource"
+slack = "connector.sources.slack:SlackSource"
+microsoft_teams = "connector.sources.microsoft_teams:MicrosoftTeamsSource"
+gmail = "connector.sources.gmail:GmailSource"
+imap = "connector.sources.imap:ImapSource"
+discord = "connector.sources.discord:DiscordSource"
+xenforo = "connector.sources.xenforo:XenForoSource"
+zulip = "connector.sources.zulip:ZulipSource"
+salesforce = "connector.sources.salesforce:SalesforceSource"
+hubspot = "connector.sources.hubspot:HubSpotSource"
+gong = "connector.sources.gong:GongSource"
+fireflies = "connector.sources.fireflies:FirefliesSource"
+highspot = "connector.sources.highspot:HighspotSource"
+github = "connector.sources.github:GitHubSource"
+bitbucket = "connector.sources.bitbucket:BitbucketSource"
+file_upload = "connector.sources.file_upload:FileUploadSource"
+ftp = "connector.sources.ftp:FtpSource"
+sftp = "connector.sources.sftp:SftpSource"
+file_server = "connector.sources.file_server:FileServerSource"
+braintrust = "connector.sources.braintrust:BraintrustSource"
+mssql = "connector.sources.mssql:MssqlSource"
+microsoft365 = "connector.sources.microsoft365:Microsoft365Source"
+kafka = "connector.sources.kafka:KafkaSource"
+elasticsearch = "connector.sources.elasticsearch:ElasticsearchSource"
+opensearch = "connector.sources.opensearch:OpenSearchSource"
+spark = "connector.sources.spark:SparkSource"
+
+[project.entry-points."connector.destinations"]
+http_batch = "connector.destinations.http_batch:HttpBatchDestination"
+memory = "connector.destinations.memory:InMemoryDestination"
+s3 = "connector.destinations.s3:S3Destination"
+minio = "connector.destinations.minio:MinioDestination"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.8",
+    "mypy>=1.11",
+    "croniter>=5.0",
+    "tzdata>=2024.1",
+    "sqlalchemy[asyncio]>=2.0",
+    "aiosqlite>=0.20",
+    "cryptography>=42.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/connector"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+pythonpath = ["src"]

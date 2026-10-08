@@ -16,7 +16,7 @@ import {
   validateToolDefinition,
   createCustomTool,
   updateCustomTool,
-} from "@/lib/tools/openApiService";
+} from "@/lib/api/domains/tools/api";
 import ToolItem from "@/sections/actions/ToolItem";
 import debounce from "lodash/debounce";
 import { DOCS_ADMINS_PATH } from "@/lib/constants";

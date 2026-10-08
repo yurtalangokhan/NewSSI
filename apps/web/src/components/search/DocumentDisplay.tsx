@@ -1,11 +1,11 @@
 "use client";
-import React, { JSX } from "react";
-import { MinimalOnyxDocument, OnyxDocument } from "@/lib/search/interfaces";
+import { JSX } from "react";
+import { MinimalAtlasDocument, AtlasDocument } from "@/lib/search/interfaces";
 import { SourceIcon } from "../SourceIcon";
 import { WebResultIcon } from "../WebResultIcon";
 import Text from "@/refresh-components/texts/Text";
 import { openDocument } from "@/lib/search/utils";
-import { SubQuestionDetail } from "@/app/app/interfaces";
+import { SubQuestionDetail } from "@/lib/api/domains/chat/types";
 import { ValidSources } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
@@ -123,8 +123,8 @@ export const buildDocumentSummaryDisplay = (
 };
 
 interface CompactDocumentCardProps {
-  document: OnyxDocument;
-  updatePresentingDocument: (document: MinimalOnyxDocument) => void;
+  document: AtlasDocument;
+  updatePresentingDocument: (document: MinimalAtlasDocument) => void;
 }
 
 export function CompactDocumentCard({

@@ -1,11 +1,20 @@
+from collections.abc import Awaitable
 import html
-import secrets
 from html.parser import HTMLParser
+import secrets
 from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
 
+from error_contract import (
+    BadRequestError,
+    ConfigurationError,
+    DependencyResponseError,
+    UnauthorizedError,
+    from_httpx_error,
+)
 import httpx
-from i18n import t
+from localization import t
+from observability import correlation_event_hooks
 
 from src.core.observability import get_logger
 
@@ -46,30 +55,21 @@ class _KeycloakLoginFormParser(HTMLParser):
             self.form_inputs = dict(self._current_inputs)
 
 
+async def _broker_http(request: Awaitable[httpx.Response]) -> httpx.Response:
+    """Translate broker transport failures without masking input failures."""
+    try:
+        return await request
+    except httpx.HTTPError as exc:
+        raise from_httpx_error(exc) from exc
+
+
 class KeycloakBrokerMixin:
-    def _default_oidc_redirect_uri(self) -> str:
-        configured_redirect_uri = getattr(self, "get_oidc_redirect_uri", None)
-        if callable(configured_redirect_uri):
-            redirect_uri = configured_redirect_uri()
-            if redirect_uri:
-                return redirect_uri
-
-        redirect_uris = self._login_client_redirect_uris()
-        for redirect_uri in redirect_uris:
-            if "*" not in redirect_uri:
-                return redirect_uri
-            parsed = urlparse(redirect_uri)
-            if parsed.scheme and parsed.netloc:
-                wildcard_base = redirect_uri.split("*", 1)[0].rstrip("/")
-                return f"{wildcard_base}/auth/oidc/callback"
-        raise ValueError(t("keycloak.redirect_uri_not_absolute"))
-
     def _rewrite_keycloak_url_for_backend(self, url: str) -> str:
         rewritten = html.unescape(url)
         try:
             external_issuer = self._external_issuer_url()
             external_backend_issuer = self._external_backend_issuer_url()
-        except ValueError:
+        except ConfigurationError:
             return rewritten
         if external_backend_issuer != external_issuer and rewritten.startswith(external_issuer):
             return external_backend_issuer + rewritten[len(external_issuer) :]
@@ -98,7 +98,9 @@ class KeycloakBrokerMixin:
         parser = _KeycloakLoginFormParser()
         parser.feed(response.text)
         if not parser.form_action:
-            raise ValueError(t("keycloak.login_form_not_found"))
+            raise DependencyResponseError(
+                message_key="errors.user_service.keycloak.login_form_not_found", message_params={}
+            )
 
         action = urljoin(str(response.url), html.unescape(parser.form_action))
         return action, dict(parser.form_inputs)
@@ -110,7 +112,7 @@ class KeycloakBrokerMixin:
         parsed = urlparse(str(response.url))
         try:
             external_issuer_url = self.get_external_issuer_url()
-        except ValueError:
+        except ConfigurationError:
             return None
         if not str(response.url).startswith(external_issuer_url):
             return None
@@ -190,16 +192,18 @@ class KeycloakBrokerMixin:
                         expected_state,
                     )
                     if error:
-                        raise ValueError(error)
+                        raise UnauthorizedError()
                     if code:
                         return code, current
 
                 if absolute_location.startswith(("http://localhost", "https://localhost")):
                     return None, current
 
-                current = await client.get(
-                    self._rewrite_keycloak_url_for_backend(absolute_location),
-                    follow_redirects=False,
+                current = await _broker_http(
+                    client.get(
+                        self._rewrite_keycloak_url_for_backend(absolute_location),
+                        follow_redirects=False,
+                    )
                 )
                 continue
 
@@ -209,7 +213,7 @@ class KeycloakBrokerMixin:
                     expected_state,
                 )
                 if error:
-                    raise ValueError(error)
+                    raise UnauthorizedError()
                 if code:
                     return code, current
 
@@ -218,17 +222,17 @@ class KeycloakBrokerMixin:
 
             redirect_uri_error = self._sp_redirect_uri_error(current)
             if redirect_uri_error:
-                raise ValueError(redirect_uri_error)
+                raise BadRequestError()
 
             redirect_uri_error = self._external_redirect_uri_error(current)
             if redirect_uri_error:
-                raise ValueError(redirect_uri_error)
+                raise BadRequestError()
 
             break
 
         detail = self._response_error_detail(current)
         logger.warning("External IdP login flow did not complete (%s)", detail)
-        raise ValueError(t("auth.external_login_failed"))
+        raise UnauthorizedError(message_key="errors.user_service.auth.external_login_failed", message_params={})
 
     async def external_broker_password_login(
         self,
@@ -238,10 +242,13 @@ class KeycloakBrokerMixin:
     ) -> dict[str, Any]:
         """Authenticate on the configured IdP through the SP broker."""
         if not self.is_external_keycloak():
-            raise ValueError(t("keycloak.external_not_configured"))
+            raise ConfigurationError(
+                message_key="errors.user_service.keycloak.external_not_configured",
+                message_params={},
+            )
 
         if not redirect_uri:
-            raise ValueError(t("keycloak.redirect_uri_required"))
+            raise BadRequestError(message_key="errors.user_service.keycloak.redirect_uri_required", message_params={})
 
         callback_uri = redirect_uri
         ensure_login_redirect_uri = getattr(self, "ensure_login_client_redirect_uri", None)
@@ -259,10 +266,13 @@ class KeycloakBrokerMixin:
             follow_redirects=False,
             timeout=httpx.Timeout(30.0),
             headers={"User-Agent": "AgenticAI-UserService/1.0"},
+            event_hooks=correlation_event_hooks(),
         ) as client:
-            response = await client.get(
-                self._rewrite_keycloak_url_for_backend(authorize_url),
-                follow_redirects=False,
+            response = await _broker_http(
+                client.get(
+                    self._rewrite_keycloak_url_for_backend(authorize_url),
+                    follow_redirects=False,
+                )
             )
             code, login_response = await self._follow_broker_redirects(
                 client,
@@ -276,12 +286,14 @@ class KeycloakBrokerMixin:
             form_action, form_data = self._extract_login_form(login_response)
             form_data.update({"username": username, "password": password})
 
-            response = await client.post(
-                self._rewrite_keycloak_url_for_backend(form_action),
-                data=form_data,
-                follow_redirects=False,
+            response = await _broker_http(
+                client.post(
+                    self._rewrite_keycloak_url_for_backend(form_action),
+                    data=form_data,
+                    follow_redirects=False,
+                )
             )
-            code, final_response = await self._follow_broker_redirects(
+            code, _final_response = await self._follow_broker_redirects(
                 client,
                 response,
                 callback_uri,
@@ -291,7 +303,14 @@ class KeycloakBrokerMixin:
                 # _follow_broker_redirects only returns without a code when the
                 # response status was 200 (the login form was re-rendered, e.g.
                 # after a wrong password); any other status raises there first.
-                raise ValueError(t("auth.external_credentials_rejected"))
+                raise UnauthorizedError(
+                    message_key="errors.user_service.auth.external_credentials_rejected",
+                    message_params={},
+                )
 
-        assert code is not None
+        if not code:
+            raise UnauthorizedError(
+                message_key="errors.user_service.auth.external_credentials_rejected",
+                message_params={},
+            )
         return await self.handle_oidc_callback(code, callback_uri)

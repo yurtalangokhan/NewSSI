@@ -8,7 +8,7 @@ import ToolCallPill from "@/app/craft/components/ToolCallPill";
 import TodoListCard from "@/app/craft/components/TodoListCard";
 import WorkingPill from "@/app/craft/components/WorkingPill";
 import UserMessage from "@/app/craft/components/UserMessage";
-import { BuildMessage } from "@/app/craft/types/streamingTypes";
+import { BuildMessage } from "@/lib/api/domains/craft/streaming-types";
 import {
   StreamItem,
   GroupedStreamItem,
@@ -127,7 +127,13 @@ export default function BuildMessageList({
     return grouped.map((item, index) => {
       switch (item.type) {
         case "text":
-          return <TextChunk key={item.id} content={item.content} />;
+          return (
+            <TextChunk
+              key={item.id}
+              content={item.content}
+              isStreaming={isCurrentStream && item.isStreaming}
+            />
+          );
         case "thinking":
           return (
             <ThinkingCard

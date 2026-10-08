@@ -1,6 +1,6 @@
 "use client";
 
-import { MemoryToolPacket } from "@/app/app/services/streamingModels";
+import { MemoryToolPacket } from "@/lib/api/domains/chat/streaming-types";
 import {
   MessageRenderer,
   RenderType,

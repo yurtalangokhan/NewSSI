@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@/providers/UserProvider";
-import { getAgentPageAccess } from "@/lib/agentPageAccess";
-import { useAgents } from "@/hooks/useAgents";
+import { getAgentPageAccess } from "@/lib/api/domains/agents/page-access";
+import { useAgents } from "@/lib/api/domains/agents/hooks";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import Tabs from "@/refresh-components/Tabs";
 import { Button } from "@opal/components";
-import { SvgOnyxOctagon, SvgPlus } from "@opal/icons";
+import { SvgAtlasOctagon, SvgPlus } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
 import AgentsTabContent from "@/refresh-pages/agents/AgentsTabContent";
@@ -93,7 +93,7 @@ export default function AgentsNavigationPage() {
       </createFlowModal.Provider>
 
       <SettingsLayouts.Header
-        icon={SvgOnyxOctagon}
+        icon={SvgAtlasOctagon}
         title={t("agentsPage.title")}
         description={t("agentsPage.description")}
         rightChildren={

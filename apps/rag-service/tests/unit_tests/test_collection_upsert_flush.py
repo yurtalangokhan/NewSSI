@@ -1,6 +1,6 @@
 import pytest
 
-from langconnect.services.collections import Collection
+from src.documents.service import Collection
 
 
 class FakeMilvusCollection:
@@ -33,7 +33,7 @@ class FakeVectorStore:
 async def _make_collection(monkeypatch, store: FakeVectorStore) -> Collection:
     collection = Collection(collection_id="collection-id", user_id="user-id")
 
-    async def fake_details():
+    async def fake_details(required_permission="read"):
         return {"table_id": "milvus-table"}
 
     monkeypatch.setattr(collection, "_get_details_or_raise", fake_details)
@@ -42,21 +42,25 @@ async def _make_collection(monkeypatch, store: FakeVectorStore) -> Collection:
 
 
 @pytest.mark.asyncio
-async def test_upsert_flushes_after_add_documents_so_reads_see_new_rows(
-    monkeypatch,
-) -> None:
-    """A dedup check issued right after upsert() must see the just-added rows.
+async def test_upsert_does_not_flush_after_every_batch(monkeypatch) -> None:
+    """flush() forces a segment seal -- real work, paid on every single batch
+    an upload job writes, whether or not anything reads the collection again
+    soon after.
 
-    Milvus doesn't guarantee a just-inserted row is visible to a later query
-    from a different request unless the collection is flushed, which is
-    exactly the read-after-write gap the duplicate-filename check depends on.
+    A dedup check issued right after upsert() still needs to see the
+    just-added rows, but that guarantee now belongs to the *read* --
+    _fetch_milvus_rows asks Milvus for consistency_level="Strong", which is
+    the mechanism Milvus documents for exactly this "see all completed
+    writes" requirement (see test_collection_chunk_fetch.py). That moves the
+    cost from every write to only the reads that actually need it, instead
+    of paying it unconditionally on the write side.
     """
     store = FakeVectorStore(ids=["1", "2"])
     collection = await _make_collection(monkeypatch, store)
 
     await collection.upsert([object(), object()])
 
-    assert store.col.flush_called is True
+    assert store.col.flush_called is False
 
 
 @pytest.mark.asyncio

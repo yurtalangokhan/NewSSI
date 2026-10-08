@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
 import { SvgLock, SvgArrowRight } from "@opal/icons";
-import { logout } from "@/lib/user";
+import { logout } from "@/lib/api/domains/session/api";
 import { cn } from "@/lib/utils";
 
 interface NoLlmProvidersModalProps {

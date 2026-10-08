@@ -1,18 +1,18 @@
 "use client";
+import { verifyCurrentSession } from "@/lib/api/domains/session/api";
+import { refreshEnterpriseSession } from "@/lib/api/domains/session/api";
 
 import {
   AUTH_SESSION_REFRESHED_EVENT,
-  authenticatedFetch,
-  errorHandlingFetcher,
-  RedirectError,
   refreshSessionProactively,
-} from "@/lib/fetcher";
+} from "@/lib/api/http/browser";
+import { RedirectError } from "@/lib/api/http/errors";
+import { fetchAppHealth } from "@/lib/api/domains/system/api";
 import useSWR from "swr";
 import Modal from "@/refresh-components/Modal";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { getSecondsUntilExpiration } from "@/lib/time";
-import { refreshToken } from "@/lib/user";
-import { NEXT_PUBLIC_CUSTOM_REFRESH_URL } from "@/lib/constants";
+import { refreshToken } from "@/lib/api/domains/session/api";
 import Button from "@/refresh-components/buttons/Button";
 import { usePathname, useRouter } from "next/navigation";
 import { SvgAlertTriangle, SvgLogOut } from "@opal/icons";
@@ -21,6 +21,7 @@ import { useUser } from "@/providers/UserProvider";
 
 import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
+import { appSettings } from "@/lib/settings";
 
 /** Renew this long before the access token expires. */
 const PROACTIVE_REFRESH_LEAD_SECONDS = 60;
@@ -31,7 +32,7 @@ const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 export default function AppHealthBanner() {
   const router = useRouter();
   const { t } = useTranslation("common", { keyPrefix: "appHealth" });
-  const { error } = useSWR("/api/health", errorHandlingFetcher);
+  const { error } = useSWR("app-health", fetchAppHealth);
   const [expired, setExpired] = useState(false);
   const [showLoggedOutModal, setShowLoggedOutModal] = useState(false);
   const pathname = usePathname();
@@ -65,9 +66,7 @@ export default function AppHealthBanner() {
       // could never detect an expired session. `/api/me` is authenticated, and
       // `redirectOnAuthError: false` keeps the decision here instead of hard
       // navigating out from under the user.
-      const response = await authenticatedFetch("/api/me", {
-        redirectOnAuthError: false,
-      });
+      const response = await verifyCurrentSession();
       if (response.ok) {
         await synchronizeRefreshedSession();
         return;
@@ -97,6 +96,31 @@ export default function AppHealthBanner() {
       );
     };
   }, [synchronizeRefreshedSession]);
+
+  // The proactive renewal above is scheduled with setTimeout, which
+  // browsers throttle heavily for backgrounded tabs -- a tab minimized
+  // past the token's lifetime can miss its scheduled renewal entirely.
+  // Checking again the moment the tab regains focus catches that instead
+  // of waiting for the user's next request to discover the session died.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+      void (async () => {
+        if (await refreshSessionProactively()) {
+          await synchronizeRefreshedSession();
+          return;
+        }
+        await verifySession();
+      })();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [synchronizeRefreshedSession, verifySession]);
 
   // Renew slightly before the access token actually dies, so the user never
   // makes a request with an expired token in the first place.
@@ -153,8 +177,8 @@ export default function AppHealthBanner() {
     // Set up expiration timeout based on current user data
     setupExpirationTimeout(secondsUntilExpiration);
 
-    if (NEXT_PUBLIC_CUSTOM_REFRESH_URL) {
-      const refreshUrl = NEXT_PUBLIC_CUSTOM_REFRESH_URL;
+    if (appSettings.NEXT_PUBLIC_CUSTOM_REFRESH_URL) {
+      const refreshUrl = appSettings.NEXT_PUBLIC_CUSTOM_REFRESH_URL;
 
       const attemptTokenRefresh = async () => {
         let retryCount = 0;
@@ -167,16 +191,7 @@ export default function AppHealthBanner() {
               throw new Error("Failed to refresh token");
             }
 
-            const response = await authenticatedFetch(
-              "/api/enterprise-settings/refresh-token",
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(refreshTokenData),
-              }
-            );
+            const response = await refreshEnterpriseSession(refreshTokenData);
             if (!response.ok) {
               throw new Error(`HTTP error! status: ${response.status}`);
             }

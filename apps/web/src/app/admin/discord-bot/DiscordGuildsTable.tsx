@@ -1,4 +1,5 @@
 "use client";
+import { errorMessageFromUnknown } from "@/lib/api/errors";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -16,11 +17,11 @@ import Button from "@/refresh-components/buttons/Button";
 import Switch from "@/refresh-components/inputs/Switch";
 import { SvgEdit, SvgServer } from "@opal/icons";
 import EmptyMessage from "@/refresh-components/EmptyMessage";
-import { DiscordGuildConfig } from "@/app/admin/discord-bot/types";
+import { DiscordGuildConfig } from "@/lib/api/domains/integrations/discord-types";
 import {
   deleteGuildConfig,
   updateGuildConfig,
-} from "@/app/admin/discord-bot/lib";
+} from "@/lib/api/domains/integrations/api";
 import { toast } from "@/hooks/useToast";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
 import { useTranslation } from "react-i18next";
@@ -47,9 +48,10 @@ export function DiscordGuildsTable({ guilds, onRefresh }: Props) {
       toast.success(t("admin.discord.serverConfigDeleted"));
     } catch (err) {
       toast.error(
-        err instanceof Error
-          ? err.message
-          : t("admin.discord.deleteServerConfigFailed")
+        errorMessageFromUnknown(
+          err,
+          t("admin.discord.deleteServerConfigFailed")
+        )
       );
     } finally {
       setGuildToDelete(null);
@@ -69,10 +71,16 @@ export function DiscordGuildsTable({ guilds, onRefresh }: Props) {
         default_persona_id: guild.default_persona_id,
       });
       onRefresh();
-      toast.success(`Server ${!guild.enabled ? "enabled" : "disabled"}`);
+      toast.success(
+        t(
+          !guild.enabled
+            ? "admin.discord.serverEnabled"
+            : "admin.discord.serverDisabled"
+        )
+      );
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to update server"
+        errorMessageFromUnknown(err, t("admin.discord.updateServerFailed"))
       );
     } finally {
       setUpdatingGuildIds((prev) => {

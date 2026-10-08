@@ -78,5 +78,5 @@ def test_batch_route_requires_internal_auth_and_returns_matching_users(monkeypat
     response = TestClient(app).post("/internal/users/batch", json={"user_ids": [str(user_id)]})
 
     assert response.status_code == 200
-    assert response.json() == [{"id": str(user_id), "email": "user@example.com"}]
+    assert response.json()["data"] == [{"id": str(user_id), "email": "user@example.com"}]
     controller.get_users_by_ids.assert_awaited_once_with([user_id])

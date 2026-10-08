@@ -2,20 +2,36 @@
 Java Tools Category.
 Provides tools for running JAR files, compiling Java code,
 and performing syntax/compilation checks.
+
+Every path-taking tool in this module resolves its argument through
+resolve_in_workspace before touching the filesystem or setting a
+subprocess cwd — see spec TS-2. run_java/validate_java additionally
+validate class_name as a Java identifier before using it to build a file
+name (f"{class_name}.java"): an unchecked value like "../../etc/pwned"
+would otherwise let the source file land outside the temp compile
+directory.
 """
 
 import os
+import re
 import subprocess
 import tempfile
-from pathlib import Path
 from typing import Any
 
-from i18n import t
+from localization import t
 
 from ..core.base import BaseToolCategory
-from ..core.settings import optional_env
+from ..core.sandbox import run_capped
+from ..core.schema import BoundedTimeout, LongText, ShortText
+from ..core.workspace import (
+    WorkspacePath,
+    guard_workspace_escape,
+    resolve_in_workspace,
+    workspace_root,
+)
+from .response import tool_error_message
 
-WORKSPACE_DIR = optional_env("WORKSPACE_DIR", "/workspace")
+_JAVA_IDENTIFIER = re.compile(r"^[A-Za-z_$][A-Za-z0-9_$]*$")
 
 
 def normalize_code(code: str) -> str:
@@ -52,18 +68,19 @@ class JavaTools(BaseToolCategory):
         # 1) JAR Execution
         # ----------------------------------------------------------------
         @mcp.tool()
+        @guard_workspace_escape
         def run_jar(
-            jar_path: str,
-            args: str | None = None,
-            main_class: str | None = None,
-            jvm_args: str | None = None,
-            timeout: int = 120,
+            jar_path: WorkspacePath,
+            args: ShortText | None = None,
+            main_class: ShortText | None = None,
+            jvm_args: ShortText | None = None,
+            timeout: BoundedTimeout = 120,
         ) -> str:
             """
-            Execute a JAR file and return the output.
+            Execute a JAR file inside the workspace and return the output.
 
             Args:
-                jar_path: Path to the JAR file (relative to workspace or absolute)
+                jar_path: Path to the JAR file, relative to the workspace
                 args: Application arguments (optional, space-separated)
                 main_class: Main class to run with -cp instead of -jar (optional)
                 jvm_args: Extra JVM arguments like -Xmx512m (optional, space-separated)
@@ -72,14 +89,13 @@ class JavaTools(BaseToolCategory):
             Returns:
                 Program output (stdout + stderr) or error message
             """
-            # Resolve path
-            if not os.path.isabs(jar_path):
-                jar_path = os.path.join(WORKSPACE_DIR, jar_path)
+            root = workspace_root()
+            path = resolve_in_workspace(jar_path, root=root)
 
-            if not os.path.exists(jar_path):
+            if not path.exists():
                 return t("java.jar_not_found", path=jar_path)
 
-            if not jar_path.endswith(".jar"):
+            if path.suffix != ".jar":
                 return t("java.not_a_jar", path=jar_path)
 
             try:
@@ -91,21 +107,21 @@ class JavaTools(BaseToolCategory):
 
                 if main_class:
                     # Run a specific class from the JAR classpath
-                    cmd.extend(["-cp", jar_path, main_class])
+                    cmd.extend(["-cp", str(path), main_class])
                 else:
                     # Standard executable JAR
-                    cmd.extend(["-jar", jar_path])
+                    cmd.extend(["-jar", str(path)])
 
                 # Application arguments
                 if args:
                     cmd.extend(args.split())
 
-                result = subprocess.run(
+                result = run_capped(
                     cmd,
                     capture_output=True,
                     text=True,
                     timeout=timeout,
-                    cwd=WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None,
+                    cwd=str(root) if root.exists() else None,
                 )
 
                 output = ""
@@ -124,14 +140,14 @@ class JavaTools(BaseToolCategory):
                 return t("java.jdk_not_installed")
             except subprocess.TimeoutExpired:
                 return t("java.jar_timeout", seconds=timeout)
-            except Exception as e:
-                return t("java.jar_execution_error", error=str(e))
+            except (subprocess.SubprocessError, OSError, UnicodeError, ValueError) as e:
+                return t("java.jar_execution_error", error=tool_error_message(e))
 
         # ----------------------------------------------------------------
         # 2) Compile & Run Java source code
         # ----------------------------------------------------------------
         @mcp.tool()
-        def run_java(code: str, class_name: str = "Main", timeout: int = 60) -> str:
+        def run_java(code: LongText, class_name: ShortText = "Main", timeout: BoundedTimeout = 60) -> str:
             """
             Compile and execute Java source code.
             Use \\n for newlines when writing multi-line code.
@@ -144,19 +160,27 @@ class JavaTools(BaseToolCategory):
             Returns:
                 Program output or compilation errors
             """
+            if not _JAVA_IDENTIFIER.match(class_name):
+                return t(
+                    "java.invalid_class_name",
+                    class_name=class_name,
+                    default=f"Invalid class name: {class_name!r}",
+                )
+
+            root = workspace_root()
             try:
                 code = normalize_code(code)
 
-                # Create a temp directory for compilation
-                with tempfile.TemporaryDirectory(
-                    dir=WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None
-                ) as tmp_dir:
+                # Create a temp directory for compilation, inside the
+                # workspace so the compiled program's own relative file
+                # access stays within the same boundary as every other tool.
+                with tempfile.TemporaryDirectory(dir=str(root) if root.exists() else None) as tmp_dir:
                     src_file = os.path.join(tmp_dir, f"{class_name}.java")
                     with open(src_file, "w", encoding="utf-8") as f:
                         f.write(code)
 
                     # Compile
-                    compile_result = subprocess.run(
+                    compile_result = run_capped(
                         ["javac", src_file],
                         capture_output=True,
                         text=True,
@@ -169,7 +193,7 @@ class JavaTools(BaseToolCategory):
                         return t("java.compilation_failed", errors=errors)
 
                     # Run
-                    run_result = subprocess.run(
+                    run_result = run_capped(
                         ["java", "-cp", tmp_dir, class_name],
                         capture_output=True,
                         text=True,
@@ -193,57 +217,55 @@ class JavaTools(BaseToolCategory):
                 return t("java.jdk_javac_not_installed")
             except subprocess.TimeoutExpired:
                 return t("java.run_timeout", seconds=timeout)
-            except Exception as e:
-                return t("common.error", error=str(e))
+            except (subprocess.SubprocessError, OSError, UnicodeError, ValueError) as e:
+                return t("common.error", error=tool_error_message(e))
 
         # ----------------------------------------------------------------
         # 3) Compile a Java file (no execution)
         # ----------------------------------------------------------------
         @mcp.tool()
+        @guard_workspace_escape
         def compile_java_file(
-            file_path: str,
-            output_dir: str | None = None,
-            timeout: int = 60,
+            file_path: WorkspacePath,
+            output_dir: WorkspacePath | None = None,
+            timeout: BoundedTimeout = 60,
         ) -> str:
             """
-            Compile a Java source file without running it.
+            Compile a Java source file inside the workspace without running it.
 
             Args:
-                file_path: Path to .java file (relative to workspace or absolute)
-                output_dir: Directory for compiled .class files (optional)
+                file_path: Path to .java file, relative to the workspace
+                output_dir: Directory for compiled .class files, relative to
+                    the workspace (optional)
                 timeout: Timeout in seconds (default: 60)
 
             Returns:
                 Compilation result (success or error details)
             """
-            if not os.path.isabs(file_path):
-                file_path = os.path.join(WORKSPACE_DIR, file_path)
+            root = workspace_root()
+            path = resolve_in_workspace(file_path, root=root)
 
-            if not os.path.exists(file_path):
+            if not path.exists():
                 return t("java.file_not_found", path=file_path)
 
             try:
                 cmd = ["javac"]
                 if output_dir:
-                    out = (
-                        output_dir
-                        if os.path.isabs(output_dir)
-                        else os.path.join(WORKSPACE_DIR, output_dir)
-                    )
-                    os.makedirs(out, exist_ok=True)
-                    cmd.extend(["-d", out])
-                cmd.append(file_path)
+                    out = resolve_in_workspace(output_dir, root=root)
+                    out.mkdir(parents=True, exist_ok=True)
+                    cmd.extend(["-d", str(out)])
+                cmd.append(str(path))
 
-                result = subprocess.run(
+                result = run_capped(
                     cmd,
                     capture_output=True,
                     text=True,
                     timeout=timeout,
-                    cwd=WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None,
+                    cwd=str(root) if root.exists() else None,
                 )
 
                 if result.returncode == 0:
-                    return f"✓ Compilation successful: {Path(file_path).name}"
+                    return f"✓ Compilation successful: {path.name}"
                 else:
                     errors = result.stderr or result.stdout
                     return t("java.compilation_failed", errors=errors)
@@ -252,14 +274,14 @@ class JavaTools(BaseToolCategory):
                 return t("java.javac_not_found")
             except subprocess.TimeoutExpired:
                 return t("java.compile_timeout", seconds=timeout)
-            except Exception as e:
-                return t("common.error", error=str(e))
+            except (subprocess.SubprocessError, OSError, UnicodeError, ValueError) as e:
+                return t("common.error", error=tool_error_message(e))
 
         # ----------------------------------------------------------------
         # 4) Java Syntax Check (compile-only, no .class output)
         # ----------------------------------------------------------------
         @mcp.tool()
-        def validate_java(code: str, class_name: str = "Main") -> str:
+        def validate_java(code: LongText, class_name: ShortText = "Main") -> str:
             """
             Validate Java code syntax without producing class files.
             Uses javac with a temp file to catch all compile-time errors.
@@ -270,19 +292,25 @@ class JavaTools(BaseToolCategory):
                 class_name: Public class name in the code (default: Main)
 
             Returns:
-                Validation result – OK or detailed error list
+                Validation result - OK or detailed error list
             """
+            if not _JAVA_IDENTIFIER.match(class_name):
+                return t(
+                    "java.invalid_class_name",
+                    class_name=class_name,
+                    default=f"Invalid class name: {class_name!r}",
+                )
+
+            root = workspace_root()
             try:
                 code = normalize_code(code)
 
-                with tempfile.TemporaryDirectory(
-                    dir=WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None
-                ) as tmp_dir:
+                with tempfile.TemporaryDirectory(dir=str(root) if root.exists() else None) as tmp_dir:
                     src_file = os.path.join(tmp_dir, f"{class_name}.java")
                     with open(src_file, "w", encoding="utf-8") as f:
                         f.write(code)
 
-                    result = subprocess.run(
+                    result = run_capped(
                         ["javac", "-Xlint:all", src_file],
                         capture_output=True,
                         text=True,
@@ -294,7 +322,7 @@ class JavaTools(BaseToolCategory):
                         warnings = result.stderr.strip() if result.stderr else ""
                         if warnings:
                             return f"✓ Java syntax is valid (with warnings):\n{warnings}"
-                        return "✓ Java syntax is valid – no errors or warnings"
+                        return "✓ Java syntax is valid - no errors or warnings"
                     else:
                         errors = result.stderr or result.stdout
                         return t("java.syntax_errors", errors=errors)
@@ -303,48 +331,48 @@ class JavaTools(BaseToolCategory):
                 return t("java.javac_not_found_validate")
             except subprocess.TimeoutExpired:
                 return t("java.validation_timeout")
-            except Exception as e:
-                return t("common.error", error=str(e))
+            except (subprocess.SubprocessError, OSError, UnicodeError, ValueError) as e:
+                return t("common.error", error=tool_error_message(e))
 
         # ----------------------------------------------------------------
         # 5) Validate a Java file on disk
         # ----------------------------------------------------------------
         @mcp.tool()
-        def validate_java_file(file_path: str) -> str:
+        @guard_workspace_escape
+        def validate_java_file(file_path: WorkspacePath) -> str:
             """
-            Validate syntax of an existing Java file without producing class files.
+            Validate syntax of a Java file inside the workspace without
+            producing class files.
 
             Args:
-                file_path: Path to .java file (relative to workspace or absolute)
+                file_path: Path to .java file, relative to the workspace
 
             Returns:
-                Validation result – OK or detailed error list
+                Validation result - OK or detailed error list
             """
-            if not os.path.isabs(file_path):
-                file_path = os.path.join(WORKSPACE_DIR, file_path)
+            root = workspace_root()
+            path = resolve_in_workspace(file_path, root=root)
 
-            if not os.path.exists(file_path):
+            if not path.exists():
                 return t("java.file_not_found", path=file_path)
 
             try:
-                name = Path(file_path).name
+                name = path.name
 
-                with tempfile.TemporaryDirectory(
-                    dir=WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None
-                ) as tmp_dir:
-                    result = subprocess.run(
-                        ["javac", "-Xlint:all", "-d", tmp_dir, file_path],
+                with tempfile.TemporaryDirectory(dir=str(root) if root.exists() else None) as tmp_dir:
+                    result = run_capped(
+                        ["javac", "-Xlint:all", "-d", tmp_dir, str(path)],
                         capture_output=True,
                         text=True,
                         timeout=30,
-                        cwd=WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None,
+                        cwd=str(root) if root.exists() else None,
                     )
 
                     if result.returncode == 0:
                         warnings = result.stderr.strip() if result.stderr else ""
                         if warnings:
                             return f"✓ {name} is valid (with warnings):\n{warnings}"
-                        return f"✓ {name} – no syntax errors"
+                        return f"✓ {name} - no syntax errors"
                     else:
                         errors = result.stderr or result.stdout
                         return t("java.file_has_errors", name=name, errors=errors)
@@ -353,34 +381,35 @@ class JavaTools(BaseToolCategory):
                 return t("java.javac_not_found")
             except subprocess.TimeoutExpired:
                 return t("java.validation_timeout")
-            except Exception as e:
-                return t("common.error", error=str(e))
+            except (subprocess.SubprocessError, OSError, UnicodeError, ValueError) as e:
+                return t("common.error", error=tool_error_message(e))
 
         # ----------------------------------------------------------------
         # 6) Inspect JAR contents
         # ----------------------------------------------------------------
         @mcp.tool()
-        def inspect_jar(jar_path: str, show_manifest: bool = True) -> str:
+        @guard_workspace_escape
+        def inspect_jar(jar_path: WorkspacePath, show_manifest: bool = True) -> str:
             """
-            List contents of a JAR file and optionally show its manifest.
+            List contents of a JAR file inside the workspace and optionally
+            show its manifest.
 
             Args:
-                jar_path: Path to the JAR file (relative to workspace or absolute)
+                jar_path: Path to the JAR file, relative to the workspace
                 show_manifest: Whether to display META-INF/MANIFEST.MF (default: True)
 
             Returns:
                 JAR contents listing
             """
-            if not os.path.isabs(jar_path):
-                jar_path = os.path.join(WORKSPACE_DIR, jar_path)
+            path = resolve_in_workspace(jar_path, root=workspace_root())
 
-            if not os.path.exists(jar_path):
+            if not path.exists():
                 return t("java.jar_not_found", path=jar_path)
 
             try:
                 # List contents
-                list_result = subprocess.run(
-                    ["jar", "tf", jar_path],
+                list_result = run_capped(
+                    ["jar", "tf", str(path)],
                     capture_output=True,
                     text=True,
                     timeout=30,
@@ -390,13 +419,13 @@ class JavaTools(BaseToolCategory):
                     return t("java.list_error", error=list_result.stderr)
 
                 entries = list_result.stdout.strip().split("\n")
-                output = f"📦 JAR: {Path(jar_path).name}\n"
+                output = f"📦 JAR: {path.name}\n"
                 output += f"   Entries: {len(entries)}\n\n"
 
                 # Show manifest if requested
                 if show_manifest:
-                    manifest_result = subprocess.run(
-                        ["unzip", "-p", jar_path, "META-INF/MANIFEST.MF"],
+                    manifest_result = run_capped(
+                        ["unzip", "-p", str(path), "META-INF/MANIFEST.MF"],
                         capture_output=True,
                         text=True,
                         timeout=10,
@@ -427,5 +456,5 @@ class JavaTools(BaseToolCategory):
 
             except FileNotFoundError:
                 return t("java.jar_unzip_not_found")
-            except Exception as e:
-                return t("java.inspect_error", error=str(e))
+            except (subprocess.SubprocessError, OSError, UnicodeError, ValueError) as e:
+                return t("java.inspect_error", error=tool_error_message(e))

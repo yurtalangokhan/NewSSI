@@ -8,8 +8,8 @@ Create Date: 2026-06-19
 
 from collections.abc import Sequence
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
 from sqlalchemy import inspect
 from sqlalchemy.dialects import postgresql
 
@@ -58,8 +58,7 @@ def upgrade() -> None:
             ["user_id", "time_created"],
         )
     op.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_user_memory_user_content_lower "
-        "ON user_memory (user_id, lower(content))"
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_user_memory_user_content_lower ON user_memory (user_id, lower(content))"
     )
 
 

@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from controller.session_controller import AGENT_TO_PERSONA_ID
-from service.AssistantSchemasService import AssistantSchemasService
+from service.orchestration.assistant_schemas_service import AssistantSchemasService
+from service.personas.constants import BUILTIN_AGENT_TO_PERSONA_ID
 
 AGENTS_SRC = Path(__file__).parents[2] / "src" / "agents"
 
@@ -30,7 +30,7 @@ def test_unreachable_legacy_agent_modules_are_removed() -> None:
 
 def test_session_persona_mapping_lists_only_public_runtime_agents() -> None:
     """Legacy numeric persona aliases must not advertise missing agent modules."""
-    assert AGENT_TO_PERSONA_ID == {
+    assert BUILTIN_AGENT_TO_PERSONA_ID == {
         "chatbot": 0,
         "configurable-mcp-agent": 1,
     }

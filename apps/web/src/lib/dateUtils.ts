@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useState } from "react";
-import i18n from "i18next";
+import i18n from "@/i18n/config";
 
 export const useNightTime = () => {
   const [isNight, setIsNight] = useState(false);
@@ -176,3 +176,94 @@ export const getFormattedDateTime = (date: Date | null) => {
     });
   }
 };
+
+/**
+ * Chat-transcript timestamps.
+ *
+ * These take `locale` and `t` as arguments rather than reading the i18next
+ * singleton the helpers above use: that singleton (`import i18n from
+ * "i18next"`) is never initialised in this app, so it neither translates nor
+ * carries a language. Callers pass what `useTranslation()` gives them, which
+ * is the instance the user's language actually lives on.
+ *
+ * Every one of them returns `null` rather than a placeholder for a missing or
+ * unparseable timestamp, so a message the backend could not stamp renders no
+ * timestamp at all instead of an "Invalid Date".
+ */
+
+function parseTimestamp(timestamp: string | null | undefined): Date | null {
+  if (!timestamp) return null;
+  const date = new Date(timestamp);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * Identifies the local calendar day a timestamp falls on, for deciding where
+ * a day separator belongs. Built from local parts (not `toISOString`) so a
+ * late-evening message doesn't land on the next day for users east of UTC.
+ */
+export function dayKey(timestamp: string | null | undefined): string | null {
+  const date = parseTimestamp(timestamp);
+  if (!date) return null;
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+}
+
+/** The short clock reading shown under a message, e.g. "16:06" / "4:06 PM". */
+export function formatMessageTime(
+  timestamp: string | null | undefined,
+  locale: string
+): string | null {
+  const date = parseTimestamp(timestamp);
+  if (!date) return null;
+  // No `hour12` override: whether a locale reads the clock in 12 or 24 hours
+  // is exactly what the locale is there to decide.
+  return date.toLocaleTimeString(locale, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+/** The unabbreviated date and time, shown on hover over a message timestamp. */
+export function formatFullTimestamp(
+  timestamp: string | null | undefined,
+  locale: string
+): string | null {
+  const date = parseTimestamp(timestamp);
+  if (!date) return null;
+  return date.toLocaleString(locale, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+/**
+ * The heading on a day separator: "Today"/"Yesterday" for the two days a
+ * reader thinks of by name, an explicit date otherwise — with the year left
+ * off within the current year, where it carries no information.
+ */
+export function formatDaySeparatorLabel(
+  timestamp: string | null | undefined,
+  locale: string,
+  t: (key: string) => string,
+  now: Date = new Date()
+): string | null {
+  const date = parseTimestamp(timestamp);
+  if (!date) return null;
+
+  const key = dayKey(date.toISOString());
+  if (key === dayKey(now.toISOString())) return t("dates.today");
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (key === dayKey(yesterday.toISOString())) return t("dates.yesterday");
+
+  return date.toLocaleDateString(locale, {
+    day: "numeric",
+    month: "long",
+    ...(date.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
+  });
+}

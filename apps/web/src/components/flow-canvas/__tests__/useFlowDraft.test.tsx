@@ -9,6 +9,7 @@
  * Brief: .tmp/flow-canvas-task-28-brief.md
  */
 
+import { envelopeResponse } from "@tests/setup/responseModel";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createFlowStore } from "../stores/flowStore";
 import {
@@ -35,6 +36,19 @@ function specFixture(): WireFlowSpec {
     edges: [],
     viewport: { x: 5, y: 5, zoom: 1.5 },
   };
+}
+
+/** The ResponseModel failure agent-service sends for a missing draft. */
+function notFoundResponse() {
+  return new Response(
+    JSON.stringify({
+      statusCode: 404,
+      message: "Flow draft not found.",
+      data: null,
+      error: { code: "flow.draft_not_found", message: "Flow draft not found." },
+    }),
+    { status: 404, headers: { "Content-Type": "application/json" } }
+  );
 }
 
 describe("useFlowDraft — 28.3, loads the draft into the canvas on mount", () => {
@@ -151,9 +165,9 @@ describe("useFlowDraft — 28.5, autosave never calls publish", () => {
       .fn()
       .mockImplementation(async (url: string, init?: RequestInit) => {
         if (init?.method === "PUT") {
-          return { ok: true, status: 200, json: async () => ({}) };
+          return envelopeResponse({});
         }
-        return { ok: false, status: 404, json: async () => ({}) };
+        return notFoundResponse();
       });
     global.fetch = mockFetch as unknown as typeof fetch;
 
@@ -205,10 +219,10 @@ describe("useFlowDraft — a published flow with no draft row", () => {
     const store = createFlowStore();
     const mockFetch = jest.fn().mockImplementation(async (url: string) => {
       if (String(url).endsWith("/flow/draft")) {
-        return { ok: false, status: 404, json: async () => ({}) };
+        return notFoundResponse();
       }
       if (String(url).endsWith("/flow/published")) {
-        return { ok: true, status: 200, json: async () => specFixture() };
+        return envelopeResponse(specFixture());
       }
       throw new Error(`unexpected url ${url}`);
     });
@@ -227,11 +241,11 @@ describe("useFlowDraft — a published flow with no draft row", () => {
 
   it("reports no draft when neither a draft nor a published version exists", async () => {
     const store = createFlowStore();
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-      json: async () => ({}),
-    }) as unknown as typeof fetch;
+    global.fetch = jest
+      .fn()
+      .mockImplementation(async () =>
+        notFoundResponse()
+      ) as unknown as typeof fetch;
 
     const { result } = renderHook(() => useFlowDraft(DEFINITION_ID, store));
 
@@ -281,7 +295,7 @@ describe("useFlowDraft — an empty canvas never overwrites a stored draft", () 
     const store = createFlowStore();
     const mockFetch = jest
       .fn()
-      .mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+      .mockImplementation(async () => envelopeResponse({}));
     global.fetch = mockFetch as unknown as typeof fetch;
 
     await saveDraftNow(DEFINITION_ID, store);
@@ -293,7 +307,7 @@ describe("useFlowDraft — an empty canvas never overwrites a stored draft", () 
     const store = createFlowStore();
     const mockFetch = jest
       .fn()
-      .mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+      .mockImplementation(async () => envelopeResponse({}));
     global.fetch = mockFetch as unknown as typeof fetch;
 
     act(() => {

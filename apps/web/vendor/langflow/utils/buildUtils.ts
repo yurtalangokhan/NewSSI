@@ -125,7 +125,7 @@ export async function updateVerticesOrder(
     } catch (error: any) {
       logFlowLoad("Error getting vertices order:", error);
       setErrorData({
-        title: i18n.t("errors.missedFields"),
+        title: localization.t("errors.missedFields"),
         list: [error.response?.data?.detail ?? "Unknown Error"],
       });
       useFlowStore.getState().setIsBuilding(false);

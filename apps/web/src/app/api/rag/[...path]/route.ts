@@ -1,16 +1,14 @@
+import { knowledgeEndpoints } from "@/lib/api/domains/knowledge/endpoints";
 import { NextRequest, NextResponse } from "next/server";
 import { proxyToBackend } from "@/lib/api/proxy";
-import { getRagServiceUrl } from "@/lib/env.server";
 
-// LANGCONNECT_URL is the canonical env var for the RAG service (see configs/.env)
-const LANGCONNECT_URL = getRagServiceUrl();
 type ProxyMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 /**
- * Proxy to LangConnect RAG service.
+ * Proxy to the RAG service.
  * Handles all HTTP methods including multipart/form-data file uploads.
  *
- * Maps /api/rag/<rest> → <RAG_SERVICE_URL>/<rest>
+ * Maps /api/rag/<rest> through the domain endpoint to the configured service.
  *
  * IMPORTANT: Do NOT override Content-Type for POST requests —
  * multipart/form-data requires the browser-set boundary to pass through.
@@ -20,11 +18,13 @@ async function proxyToRagService(
   path: string[],
   method: ProxyMethod
 ): Promise<NextResponse> {
-  return proxyToBackend(request, `/${path.join("/")}`, {
-    method,
-    backendUrl: LANGCONNECT_URL,
-    backendService: "rag",
-  });
+  return proxyToBackend(
+    request,
+    knowledgeEndpoints.ragProxyTarget(path).backend,
+    {
+      method,
+    }
+  );
 }
 
 export async function GET(

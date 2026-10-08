@@ -1,33 +1,19 @@
-import { getInternalUrl } from "@/lib/env.server";
-import { buildServiceUrl } from "@/lib/api/gatewayRouting";
-import { getIncomingIdempotencyHeaders } from "@/lib/api/idempotency";
+import { chatEndpoints } from "@/lib/api/domains/chat/endpoints";
+import { backendRequest } from "@/lib/api/http/server";
+
 import { forwardBackendResponse } from "@/lib/api/backendResponse";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-const INTERNAL_URL = getInternalUrl();
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
-    const cookie = request.headers.get("cookie") || "";
-    const authorization = request.headers.get("authorization");
-    const response = await fetch(
-      buildServiceUrl(
-        INTERNAL_URL,
-        "agent",
-        "/api/chat/create-chat-message-feedback"
-      ).toString(),
-      {
-        method: "POST",
-        body,
-        headers: {
-          "Content-Type": "application/json",
-          ...getIncomingIdempotencyHeaders(request),
-          ...(cookie ? { Cookie: cookie } : {}),
-          ...(authorization ? { Authorization: authorization } : {}),
-        },
-      }
-    );
+    const response = await backendRequest({
+      ...chatEndpoints.createFeedback.backend,
+      request,
+      method: "POST",
+      body,
+      deriveAuthorizationFromCookie: true,
+    });
     return await forwardBackendResponse(response);
   } catch (error) {
     return NextResponse.json(

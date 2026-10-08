@@ -1,3 +1,5 @@
+import { knowledgeEndpoints } from "@/lib/api/domains/knowledge/endpoints";
+
 export type WebSearchProviderType =
   | "google_pse"
   | "serper"
@@ -5,7 +7,8 @@ export type WebSearchProviderType =
   | "searxng"
   | "brave";
 
-export const SEARCH_PROVIDERS_URL = "/api/admin/web-search/search-providers";
+export const SEARCH_PROVIDERS_URL =
+  knowledgeEndpoints.searchProviders.browserPath;
 
 export const SEARCH_PROVIDER_DETAILS: Record<
   WebSearchProviderType,

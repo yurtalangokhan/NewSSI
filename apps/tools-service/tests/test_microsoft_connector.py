@@ -179,8 +179,80 @@ async def test_outlook_native_refresh_token_and_fixed_endpoint():
 @pytest.mark.asyncio
 async def test_remote_errors_are_sanitized():
     def dispatch(request):
-        raise RuntimeError("client-secret refresh-secret")
+        raise httpx.ConnectError("client-secret refresh-secret")
 
     with pytest.raises(MicrosoftConnectorError) as error:
         await run(config(), handler=dispatch)
     assert "secret" not in str(error.value)
+
+
+@pytest.mark.parametrize(
+    "cfg",
+    [config(search_scope="ALL"), config(site_url="https://example.com/sites/Finance"), config(site_url="https://tenant.sharepoint.com:invalid/sites/Finance")],
+)
+def test_invalid_sharepoint_configuration_has_configuration_category(cfg):
+    from error_contract.connectors import MicrosoftConfigurationError
+
+    from src.connectors.microsoft import _sharepoint_site
+
+    with pytest.raises(MicrosoftConfigurationError) as caught:
+        _sharepoint_site(cfg)
+    assert caught.value.category == "configuration"
+
+
+@pytest.mark.parametrize("path", ["../secret.txt", "/secret.txt"])
+def test_invalid_sharepoint_file_path_has_validation_category(path):
+    from error_contract.connectors import MicrosoftValidationError
+
+    from src.connectors.microsoft import _relative_path
+
+    with pytest.raises(MicrosoftValidationError) as caught:
+        _relative_path(path)
+    assert caught.value.status_code == 400
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", [httpx.ReadTimeout("private URL"), httpx.ConnectError("private URL")])
+async def test_graph_transport_failures_preserve_category_and_cause(failure):
+    def response(request):
+        if request.method == "GET":
+            raise failure
+        return None
+
+    with pytest.raises(MicrosoftConnectorError) as caught:
+        await run(config(), handler=response)
+    assert caught.value.category == ("timeout" if isinstance(failure, httpx.TimeoutException) else "connection")
+    assert caught.value.__cause__ is failure
+
+
+@pytest.mark.asyncio
+async def test_invalid_sharepoint_query_is_validation_error():
+    with pytest.raises(MicrosoftConnectorError) as caught:
+        await run(config(), query="not json")
+    assert caught.value.category == "validation"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [400, 401, 403])
+async def test_token_rejection_is_authentication_error(status):
+    def response(request):
+        if request.method == "POST":
+            return httpx.Response(status, json={"error": "invalid_grant"})
+        return None
+
+    with pytest.raises(MicrosoftConnectorError) as caught:
+        await run(config(), handler=response)
+    assert caught.value.category == "authentication"
+    assert isinstance(caught.value.__cause__, httpx.HTTPStatusError)
+
+
+@pytest.mark.asyncio
+async def test_missing_graph_field_is_response_error():
+    def response(request):
+        if "/sites/tenant" in str(request.url):
+            return httpx.Response(200, json={})
+        return None
+
+    with pytest.raises(MicrosoftConnectorError) as caught:
+        await run(config(), handler=response)
+    assert caught.value.category == "response"

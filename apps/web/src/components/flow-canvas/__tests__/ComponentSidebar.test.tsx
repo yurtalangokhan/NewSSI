@@ -9,6 +9,7 @@
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { GroupedComponentTemplates } from "../types/componentTemplate";
+import { recordRecentComponent } from "../hooks/useRecentComponents";
 
 const mockUseComponentTemplates = jest.fn();
 jest.mock("../hooks/useComponentTemplates", () => ({
@@ -159,23 +160,35 @@ describe("ComponentSidebar — 25.6, collapse/expand", () => {
 });
 
 describe("ComponentSidebar — 25.7, recents", () => {
-  it("surfaces a used component under Recently used and persists it", () => {
+  it("does not surface a component under Recently used from dragstart alone — a native drag that never lands must not fake a successful add", () => {
     mockUseComponentTemplates.mockReturnValue({
       data: FIXTURE,
       isLoading: false,
       error: undefined,
     });
-    const { unmount } = render(<ComponentSidebar />);
+    render(<ComponentSidebar />);
 
     fireEvent.dragStart(screen.getByTestId("sidebar-item-ZeroShotAgent"), {
       dataTransfer: { setData: jest.fn(), effectAllowed: "" },
     });
 
-    expect(screen.getByText("Recently used")).toBeInTheDocument();
+    expect(screen.queryByText("Recently Used")).not.toBeInTheDocument();
+  });
+
+  it("surfaces a used component under Recently used once recorded (e.g. by a confirmed drop) and persists it", () => {
+    mockUseComponentTemplates.mockReturnValue({
+      data: FIXTURE,
+      isLoading: false,
+      error: undefined,
+    });
+    recordRecentComponent("ZeroShotAgent");
+    const { unmount } = render(<ComponentSidebar />);
+
+    expect(screen.getByText("Recently Used")).toBeInTheDocument();
     unmount();
 
     // Persisted across remounts (localStorage). ZeroShotAgent now renders
-    // twice — once under "Recently used", once under its own category —
+    // twice — once under "Recently Used", once under its own category —
     // so the presence check is a count, not a single-match query.
     mockUseComponentTemplates.mockReturnValue({
       data: FIXTURE,
@@ -183,8 +196,24 @@ describe("ComponentSidebar — 25.7, recents", () => {
       error: undefined,
     });
     render(<ComponentSidebar />);
-    expect(screen.getByText("Recently used")).toBeInTheDocument();
+    expect(screen.getByText("Recently Used")).toBeInTheDocument();
     expect(screen.getAllByTestId("sidebar-item-ZeroShotAgent")).toHaveLength(2);
+  });
+
+  it("still records usage on keyboard activation (Enter) — a complete, atomic action unlike a native drag", () => {
+    mockUseComponentTemplates.mockReturnValue({
+      data: FIXTURE,
+      isLoading: false,
+      error: undefined,
+    });
+    render(<ComponentSidebar />);
+
+    screen.getByTestId("sidebar-item-ZeroShotAgent").focus();
+    fireEvent.keyDown(screen.getByTestId("sidebar-item-ZeroShotAgent"), {
+      key: "Enter",
+    });
+
+    expect(screen.getByText("Recently Used")).toBeInTheDocument();
   });
 });
 

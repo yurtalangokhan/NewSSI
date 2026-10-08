@@ -5,7 +5,7 @@ import Text from "@/refresh-components/texts/Text";
 import Button from "@/refresh-components/buttons/Button";
 import Separator from "@/refresh-components/Separator";
 import { UserGroup } from "@/lib/types";
-import { useUserGroups } from "@/lib/hooks";
+import { useUserGroups } from "@/lib/api/domains/access/hooks";
 import {
   AccessType,
   ValidAutoSyncSource,

@@ -24,15 +24,17 @@ import anything from agent-service.
 
 from __future__ import annotations
 
+import hmac
 import json
 from typing import Any
 
+from config_manager import env
+from error_contract import BadRequestError, render_error_message
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
 from .observability import get_logger
-from .settings import optional_env
 from .trusted import (
     INTERNAL_AUTH_HEADER,
     RESERVED_MODEL_ARGUMENT_KEYS,
@@ -95,9 +97,15 @@ def _body_contains_reserved_keys(body: Any) -> bool:
 
 
 def _valid_internal_token(headers: dict[str, str]) -> bool:
-    configured = optional_env("INTERNAL_SERVICE_TOKEN").strip()
+    # File-first, read fresh on every request — see the identical reasoning
+    # in core/auth.py._get_internal_service_token.
+    configured = (env.INTERNAL_SERVICE_TOKEN or "").strip()
     supplied = headers.get(INTERNAL_AUTH_HEADER, "").strip()
-    return bool(configured and supplied and supplied == configured)
+    if not configured or not supplied:
+        return False
+    # Constant-time: a plain `==` here leaks timing information proportional
+    # to the length of the matching prefix.
+    return hmac.compare_digest(supplied, configured)
 
 
 async def _redact_json_response(response: Response) -> Response:
@@ -145,7 +153,7 @@ class TrustedContextMiddleware(BaseHTTPMiddleware):
                     {
                         "error": {
                             "code": "forbidden_trusted_field",
-                            "message": "Request contains reserved trusted-field keys.",
+                            "message": render_error_message(BadRequestError()),
                             "details": {},
                         }
                     }
@@ -156,10 +164,8 @@ class TrustedContextMiddleware(BaseHTTPMiddleware):
 
         if is_internal:
             try:
-                trusted_ctx = extract_trusted_context_from_headers(
-                    _extract_trusted_headers(request)
-                )
-            except Exception as exc:  # pragma: no cover — defensive
+                trusted_ctx = extract_trusted_context_from_headers(_extract_trusted_headers(request))
+            except (ValueError, TypeError) as exc:
                 logger.warning("Failed to extract trusted context: %s", exc)
                 trusted_ctx: TrustedToolContext | None = None
 

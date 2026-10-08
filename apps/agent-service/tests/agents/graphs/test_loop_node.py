@@ -19,8 +19,8 @@ import pytest
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 
-from agents.graphs.flow_builder import FlowGraphBuilder
-from models.flows import FlowSpec
+from agents.graphs.flow import FlowGraphBuilder
+from schemas.flows import FlowSpec
 
 
 @pytest.fixture(autouse=True)

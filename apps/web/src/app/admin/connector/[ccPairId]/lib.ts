@@ -1,18 +1,8 @@
-import { runConnector } from "@/lib/connector";
-import { ValidSources } from "@/lib/types";
+import { datasourcesEndpoints } from "@/lib/api/domains/datasources/endpoints";
+
+import { runConnector } from "@/lib/api/domains/datasources/api";
+
 import { mutate } from "swr";
-
-export function buildCCPairInfoUrl(ccPairId: string | number) {
-  return `/api/manage/admin/cc-pair/${ccPairId}`;
-}
-
-export function buildSimilarCredentialInfoURL(
-  source_type: ValidSources,
-  get_editable: boolean = false
-) {
-  const base = `/api/manage/admin/similar-credentials/${source_type}`;
-  return get_editable ? `${base}?get_editable=True` : base;
-}
 
 export async function triggerIndexing(
   fromBeginning: boolean,
@@ -26,7 +16,7 @@ export async function triggerIndexing(
     fromBeginning
   );
 
-  mutate(buildCCPairInfoUrl(ccPairId));
+  mutate(datasourcesEndpoints.ccPairInfoWithQuery(ccPairId).browserPath);
 
   if (errorMsg) {
     return {

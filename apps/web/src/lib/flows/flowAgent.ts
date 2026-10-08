@@ -1,4 +1,4 @@
-import type { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import type { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 
 /** A persona backed by the visual canvas rather than the classic form. */
 export function isFlowAgent(agent: MinimalPersonaSnapshot): boolean {

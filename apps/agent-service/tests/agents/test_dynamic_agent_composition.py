@@ -6,7 +6,7 @@ import pytest
 @pytest.mark.asyncio
 async def test_dynamic_agent_load_uses_async_builder_for_sub_agent_ids(monkeypatch):
     """DynamicAgent.load should use GraphBuilder.build_async for referenced sub-agents."""
-    from agents.dynamic_agent import DynamicAgent
+    from agents.implementations.dynamic_agent import DynamicAgent
 
     calls = {}
 
@@ -30,7 +30,7 @@ async def test_dynamic_agent_load_uses_async_builder_for_sub_agent_ids(monkeypat
     async def fake_load_mcp_tools(self):
         self._mcp_tools_map = {}
 
-    monkeypatch.setattr("agents.dynamic_agent.GraphBuilder", FakeBuilder)
+    monkeypatch.setattr("agents.implementations.dynamic_agent.GraphBuilder", FakeBuilder)
     monkeypatch.setattr(DynamicAgent, "_load_mcp_tools", fake_load_mcp_tools)
 
     class FakeRepository:
@@ -54,7 +54,7 @@ async def test_dynamic_agent_load_uses_async_builder_for_sub_agent_ids(monkeypat
 
 def test_dynamic_agent_runtime_system_prompt_overrides_definition(monkeypatch):
     """Project/runtime instructions should replace the stored prompt for a run."""
-    from agents.dynamic_agent import DynamicAgent
+    from agents.implementations.dynamic_agent import DynamicAgent
 
     calls = {}
 
@@ -62,8 +62,10 @@ def test_dynamic_agent_runtime_system_prompt_overrides_definition(monkeypatch):
         def __init__(self, **kwargs):
             calls["builder_kwargs"] = kwargs
 
-    monkeypatch.setattr("agents.dynamic_agent.GraphBuilder", FakeBuilder)
-    monkeypatch.setattr("agents.dynamic_agent.get_model_from_config", lambda *_args: object())
+    monkeypatch.setattr("agents.implementations.dynamic_agent.GraphBuilder", FakeBuilder)
+    monkeypatch.setattr(
+        "agents.implementations.dynamic_agent.get_model_from_config", lambda *_args: object()
+    )
 
     agent = DynamicAgent(
         {
@@ -83,7 +85,7 @@ def test_dynamic_agent_runtime_system_prompt_overrides_definition(monkeypatch):
 
 def test_dynamic_agent_forwards_mail_tool_config_and_runtime_user(monkeypatch):
     """DynamicAgent should pass mail binding context into GraphBuilder."""
-    from agents.dynamic_agent import DynamicAgent
+    from agents.implementations.dynamic_agent import DynamicAgent
 
     calls = {}
 
@@ -91,8 +93,10 @@ def test_dynamic_agent_forwards_mail_tool_config_and_runtime_user(monkeypatch):
         def __init__(self, **kwargs):
             calls["builder_kwargs"] = kwargs
 
-    monkeypatch.setattr("agents.dynamic_agent.GraphBuilder", FakeBuilder)
-    monkeypatch.setattr("agents.dynamic_agent.get_model_from_config", lambda *_args: object())
+    monkeypatch.setattr("agents.implementations.dynamic_agent.GraphBuilder", FakeBuilder)
+    monkeypatch.setattr(
+        "agents.implementations.dynamic_agent.get_model_from_config", lambda *_args: object()
+    )
 
     agent = DynamicAgent(
         {
@@ -107,3 +111,17 @@ def test_dynamic_agent_forwards_mail_tool_config_and_runtime_user(monkeypatch):
 
     assert build_config["mcp_tool_configs"] == {"send_email": {"mail_config_id": "mail-config-1"}}
     assert build_config["user_id"] == "user-1"
+
+
+def test_default_artifact_policy_comes_from_the_knowledge_evidence_factory(monkeypatch) -> None:
+    from agents.implementations.dynamic_agent import DynamicAgent
+
+    policy = object()
+    monkeypatch.setattr(
+        "agents.implementations.dynamic_agent.build_knowledge_evidence_artifact_policy",
+        lambda: policy,
+    )
+
+    agent = DynamicAgent(agent_config={"name": "agent"}, gateway=object())
+
+    assert agent._artifact_policy is policy

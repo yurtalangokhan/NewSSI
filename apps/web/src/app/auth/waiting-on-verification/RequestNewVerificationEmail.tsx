@@ -2,7 +2,7 @@
 
 import { toast } from "@/hooks/useToast";
 import { getErrorMsg } from "@/lib/fetchUtils";
-import { requestEmailVerification } from "../lib";
+import { requestVerifyToken as requestEmailVerification } from "@/lib/api/domains/session/api";
 import { useTranslation } from "react-i18next";
 import { useState, JSX } from "react";
 

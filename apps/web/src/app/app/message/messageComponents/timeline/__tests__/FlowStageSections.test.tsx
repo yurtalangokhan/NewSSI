@@ -170,6 +170,59 @@ describe("StageOutputBlock — full-view modal", () => {
   });
 });
 
+describe("StageOutputBlock — mermaid streaming", () => {
+  const FENCE = "```mermaid\nflowchart LR\n  A --> B";
+
+  it("keeps an open fence pending while the stage is running", () => {
+    render(
+      <TooltipProvider>
+        <StageGroupSection
+          group={stage({ status: "running", outputText: FENCE })}
+          index={1}
+          chatState={chatState}
+          expanded
+          onToggle={() => {}}
+        />
+      </TooltipProvider>
+    );
+
+    expect(screen.getByTestId("mermaid-pending")).toBeInTheDocument();
+    expect(screen.queryByTestId("mermaid-svg")).not.toBeInTheDocument();
+  });
+
+  it("renders the diagram once the stage is done", async () => {
+    const { rerender } = render(
+      <TooltipProvider>
+        <StageGroupSection
+          group={stage({ status: "running", outputText: FENCE })}
+          index={1}
+          chatState={chatState}
+          expanded
+          onToggle={() => {}}
+        />
+      </TooltipProvider>
+    );
+    expect(screen.getByTestId("mermaid-pending")).toBeInTheDocument();
+
+    rerender(
+      <TooltipProvider>
+        <StageGroupSection
+          group={stage({
+            status: "done",
+            outputText: FENCE + "\n```",
+          })}
+          index={1}
+          chatState={chatState}
+          expanded
+          onToggle={() => {}}
+        />
+      </TooltipProvider>
+    );
+
+    await screen.findByTestId("mermaid-svg");
+  });
+});
+
 describe("LoopGroupSection", () => {
   const loop: LoopGroup = {
     kind: "loop",

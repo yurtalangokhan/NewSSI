@@ -5,12 +5,18 @@ import sys
 from pathlib import Path
 
 import psycopg
-from dotenv import dotenv_values
+from config_manager import load_environment
 from psycopg import sql
+
+# Bootstrap code may read os.environ directly, but only after configs/.env has
+# been loaded into it. Run standalone (a VSCode task, a bare shell) this script
+# otherwise saw a process environment without POSTGRES_USER_SERVICE_USER etc.
+# and failed immediately.
+load_environment()
 
 
 def _env(name: str, default: str | None = None) -> str:
-    value = os.environ.get(name) or dotenv_values(".env").get(name) or default
+    value = os.environ.get(name) or default
     if value is None or value == "":
         print(f"Missing required environment variable: {name}", file=sys.stderr)
         raise SystemExit(1)
@@ -23,9 +29,9 @@ def main() -> None:
 
     host = _env("POSTGRES_HOST", "localhost")
     port = _env("POSTGRES_PORT", "5432")
-    user = _env("POSTGRES_USER")
-    password = _env("POSTGRES_PASSWORD")
-    database = _env("POSTGRES_DB")
+    user = _env("POSTGRES_USER_SERVICE_USER")
+    password = _env("POSTGRES_USER_SERVICE_PASSWORD")
+    database = _env("POSTGRES_USER_SERVICE_DB")
 
     print("Checking Postgres database...")
     try:

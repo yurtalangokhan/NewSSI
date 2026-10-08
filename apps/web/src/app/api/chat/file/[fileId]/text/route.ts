@@ -1,4 +1,6 @@
+import { chatEndpoints } from "@/lib/api/domains/chat/endpoints";
 import { proxyToBackend } from "@/lib/api/proxy";
+
 import { NextRequest } from "next/server";
 
 export async function GET(
@@ -6,11 +8,5 @@ export async function GET(
   { params }: { params: Promise<{ fileId: string }> }
 ) {
   const { fileId } = await params;
-  return proxyToBackend(
-    request,
-    `/api/chat/file/${encodeURIComponent(fileId)}/text`,
-    {
-      backendService: "agent",
-    }
-  );
+  return proxyToBackend(request, chatEndpoints.fileText(fileId).backend);
 }

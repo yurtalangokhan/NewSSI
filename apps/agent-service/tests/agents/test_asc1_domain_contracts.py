@@ -139,3 +139,28 @@ def test_validate_or_raise_raises_for_unknown_key() -> None:
     definition = AgentDefinition(identity="def-r", brain=BrainConfig(key="ghost_brain"))
     with pytest.raises(UnknownComponentKeyError):
         ValidateAgentDefinition().validate_or_raise(definition)
+
+
+# ---------------------------------------------------------------------------
+# AgentFactory registration
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_composing_without_a_registered_agent_class_says_so(monkeypatch):
+    """The failure names the missing registration, not a keyword argument.
+
+    ``AgentFactory`` builds whatever ``register_agent_class`` was handed. When
+    nothing registered, the old fallback returned ``ComposedAgent`` and the call
+    died on ``TypeError: unexpected keyword argument 'agent_config'`` — a message
+    about the wrong thing entirely.
+    """
+    from agent_composition.application import compose_agent
+    from agent_composition.domain.errors import CompositionError
+
+    monkeypatch.setattr(compose_agent, "_registered_agent_class", None)
+
+    with pytest.raises(CompositionError) as error:
+        await compose_agent.AgentFactory.create({"graph_schema": "zero_shot"})
+
+    assert "register" in str(error.value).lower()

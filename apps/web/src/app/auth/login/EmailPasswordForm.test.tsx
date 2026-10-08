@@ -4,8 +4,16 @@
  * Tests the complete user journey for logging in.
  * This tests the full workflow: form → validation → API call → redirect
  */
+import { fakeResponse } from "@tests/setup/responseModel";
 import React from "react";
-import { render, screen, waitFor, setupUser } from "@tests/setup/test-utils";
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  act,
+  setupUser,
+} from "@tests/setup/test-utils";
 import EmailPasswordForm from "./EmailPasswordForm";
 
 const signInButtonText = /^(auth\.signInButton|Sign In)$/i;
@@ -44,10 +52,7 @@ describe("Email/Password Login Workflow", () => {
     const user = setupUser();
 
     // Mock POST /api/auth/login
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({}),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(fakeResponse(true, undefined, {}));
 
     render(<EmailPasswordForm isSignup={false} />);
 
@@ -74,11 +79,11 @@ describe("Email/Password Login Workflow", () => {
       "/api/auth/login",
       expect.objectContaining({
         method: "POST",
-        headers: expect.objectContaining({
-          "Content-Type": "application/x-www-form-urlencoded",
-        }),
       })
     );
+    expect(
+      new Headers(fetchSpy.mock.calls[0]?.[1]?.headers).get("Content-Type")
+    ).toBe("application/x-www-form-urlencoded");
 
     // Verify the request body contains the username. The password is also sent
     // by browser password-login flows, but tests should not normalize printing it.
@@ -91,10 +96,11 @@ describe("Email/Password Login Workflow", () => {
     const user = setupUser();
 
     // Mock POST /api/auth/external/login
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({}),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(
+      fakeResponse(true, undefined, {
+        authorization_url: "http://keycloak/realms/agenticai/auth",
+      })
+    );
 
     render(<EmailPasswordForm isSignup={false} loginProvider="external" />);
 
@@ -107,31 +113,31 @@ describe("Email/Password Login Workflow", () => {
     );
 
     await waitFor(() => {
-      expect(window.location.href).toBe("/app");
+      expect(window.location.href).toBe(
+        "http://keycloak/realms/agenticai/auth"
+      );
     });
 
     expect(fetchSpy).toHaveBeenCalledWith(
       "/api/auth/external/login",
       expect.objectContaining({
         method: "POST",
-        headers: expect.objectContaining({
-          "Content-Type": "application/x-www-form-urlencoded",
-        }),
       })
     );
+    expect(
+      new Headers(fetchSpy.mock.calls[0]?.[1]?.headers).get("Content-Type")
+    ).toBe("application/x-www-form-urlencoded");
   });
 
   test("shows proxy error details instead of unknown error", async () => {
     const user = setupUser();
 
     // Mock POST /api/auth/external/login through the Next.js proxy
-    fetchSpy.mockResolvedValueOnce({
-      ok: false,
-      status: 503,
-      json: async () => ({ error: "Backend service unavailable" }),
-      text: async () =>
-        JSON.stringify({ error: "Backend service unavailable" }),
-    } as unknown as Response);
+    fetchSpy.mockResolvedValueOnce(
+      fakeResponse(false, 503, {
+        message: "Backend service unavailable",
+      })
+    );
 
     render(<EmailPasswordForm isSignup={false} loginProvider="external" />);
 
@@ -150,17 +156,19 @@ describe("Email/Password Login Workflow", () => {
     });
   });
 
-  test("translates the Kong upstream-server error instead of showing it raw", async () => {
+  test("shows the unavailable message when the gateway answers with its HTML 502 page", async () => {
     const user = setupUser();
 
-    // Mock POST /api/auth/login (Kong 502 when Keycloak is unreachable)
-    fetchSpy.mockResolvedValueOnce({
-      ok: false,
-      status: 502,
-      json: async () => ({
-        message: "An invalid response was received from the upstream server",
-      }),
-    } as Response);
+    // Mock POST /api/auth/login: the gateway could not reach user-service and
+    // answered with nginx's page instead of the error envelope.
+    fetchSpy.mockResolvedValueOnce(
+      new Response(
+        "<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n" +
+          "<center><h1>502 Bad Gateway</h1></center>\r\n<hr><center>openresty</center>\r\n" +
+          "</body>\r\n</html>\r\n",
+        { status: 502, headers: { "Content-Type": "text/html" } }
+      )
+    );
 
     render(<EmailPasswordForm isSignup={false} loginProvider="external" />);
 
@@ -172,32 +180,36 @@ describe("Email/Password Login Workflow", () => {
       })
     );
 
-    // The raw Kong string should never reach the user...
     await waitFor(() => {
       expect(
-        screen.queryByText(
-          "An invalid response was received from the upstream server"
+        screen.getByText(
+          "The service is currently unavailable. Please try again."
         )
-      ).not.toBeInTheDocument();
+      ).toBeInTheDocument();
     });
-
-    // ...it should be run through the same translation used by ErrorCallout.
-    expect(
-      screen.getByText(
-        "An invalid response was received from the upstream server."
-      )
-    ).toBeInTheDocument();
+    // The markup of the gateway page never reaches the user.
+    expect(screen.queryByText(/502 Bad Gateway/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/<html>/)).not.toBeInTheDocument();
   });
 
   test("shows error message when login fails", async () => {
     const user = setupUser();
 
     // Mock POST /api/auth/login (failure)
-    fetchSpy.mockResolvedValueOnce({
-      ok: false,
-      status: 401,
-      json: async () => ({ detail: "LOGIN_BAD_CREDENTIALS" }),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          statusCode: 401,
+          message: "Invalid username or password",
+          data: null,
+          error: {
+            code: "auth.invalid_credentials",
+            message: "Invalid username or password",
+          },
+        }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      )
+    );
 
     render(<EmailPasswordForm isSignup={false} />);
 
@@ -218,6 +230,44 @@ describe("Email/Password Login Workflow", () => {
     await waitFor(() => {
       expect(screen.getByText(invalidCredentialsText)).toBeInTheDocument();
     });
+  });
+
+  test("displays caps lock warning when typing password with Caps Lock on and hides on blur", async () => {
+    render(<EmailPasswordForm isSignup={false} loginProvider="external" />);
+
+    const passwordInput = screen.getByPlaceholderText(/∗/);
+
+    // Warning is not visible initially
+    expect(screen.queryByTestId("caps-lock-warning")).not.toBeInTheDocument();
+
+    // Trigger keydown with modifierCapsLock = true
+    act(() => {
+      fireEvent.keyDown(passwordInput, { key: "a", modifierCapsLock: true });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("caps-lock-warning")).toBeInTheDocument();
+    });
+
+    // When Caps Lock is turned off
+    act(() => {
+      fireEvent.keyDown(passwordInput, { key: "a", modifierCapsLock: false });
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("caps-lock-warning")).not.toBeInTheDocument();
+    });
+
+    // Turning it on again and then blurring
+    act(() => {
+      fireEvent.keyDown(passwordInput, { key: "a", modifierCapsLock: true });
+    });
+    expect(screen.getByTestId("caps-lock-warning")).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.blur(passwordInput);
+    });
+    expect(screen.queryByTestId("caps-lock-warning")).not.toBeInTheDocument();
   });
 });
 
@@ -240,10 +290,7 @@ describe("Email/Password Signup Workflow", () => {
     const user = setupUser();
 
     // Mock POST /api/auth/register
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({}),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(fakeResponse(true, undefined, {}));
 
     render(<EmailPasswordForm isSignup={true} />);
 
@@ -302,11 +349,9 @@ describe("Email/Password Signup Workflow", () => {
     const user = setupUser();
 
     // Mock POST /api/auth/register (failure - user exists)
-    fetchSpy.mockResolvedValueOnce({
-      ok: false,
-      status: 400,
-      json: async () => ({ detail: "REGISTER_USER_ALREADY_EXISTS" }),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(
+      fakeResponse(false, 400, { detail: "REGISTER_USER_ALREADY_EXISTS" })
+    );
 
     render(<EmailPasswordForm isSignup={true} />);
 
@@ -339,11 +384,9 @@ describe("Email/Password Signup Workflow", () => {
     const user = setupUser();
 
     // Mock POST /api/auth/register (failure - rate limit)
-    fetchSpy.mockResolvedValueOnce({
-      ok: false,
-      status: 429,
-      json: async () => ({ detail: "Too many requests" }),
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(
+      fakeResponse(false, 429, { detail: "Too many requests" })
+    );
 
     render(<EmailPasswordForm isSignup={true} />);
 

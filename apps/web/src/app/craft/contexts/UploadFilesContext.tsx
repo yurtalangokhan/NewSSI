@@ -14,7 +14,7 @@ import {
   uploadFile as uploadFileApi,
   deleteFile as deleteFileApi,
   fetchDirectoryListing,
-} from "@/app/craft/services/apiServices";
+} from "@/lib/api/domains/craft/api";
 import { useBuildSessionStore } from "@/app/craft/hooks/useBuildSessionStore";
 
 /**

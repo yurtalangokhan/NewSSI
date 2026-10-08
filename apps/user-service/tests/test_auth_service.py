@@ -1,124 +1,35 @@
-import uuid
-from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+import uuid
 
-import pytest
-from i18n.core import set_locale
+from error_contract import DependencyResponseError, ForbiddenError
 from jose import jwt
+import pytest
 
-from src.config import get_settings
+from src.repository import UserRepository
 from src.service.auth_service import AuthService
+from src.service.keycloak_service import KeycloakService
+from tests.error_support import raises_localized
 
 
-@pytest.mark.asyncio
-async def test_basic_login_disabled_error_is_translated(monkeypatch):
-    auth_service = AuthService()
-    monkeypatch.setattr(auth_service.keycloak, "is_enabled", lambda: False)
-
-    with pytest.raises(ValueError) as exc:
-        await auth_service.basic_login("user", "pass")
-
-    assert str(exc.value) == "Username/password login is disabled; use Keycloak login"
-
-
-@pytest.mark.asyncio
-async def test_basic_login_disabled_error_is_translated_for_turkish_locale(monkeypatch):
-    auth_service = AuthService()
-    monkeypatch.setattr(auth_service.keycloak, "is_enabled", lambda: False)
-
-    set_locale("tr")
-    try:
-        with pytest.raises(ValueError) as exc:
-            await auth_service.basic_login("user", "pass")
-    finally:
-        set_locale("en")
-
-    assert str(exc.value) == "Kullanıcı adı/şifre ile giriş devre dışı; Keycloak girişini kullanın"
+@pytest.fixture(autouse=True)
+def _no_keycloak_directory(monkeypatch):
+    """Identity lookups against Keycloak's admin API never leave the process in unit tests."""
+    monkeypatch.setattr(KeycloakService, "user_has_federated_identity", AsyncMock(return_value=False))
+    monkeypatch.setattr(UserRepository, "get_by_id", AsyncMock(return_value=None))
 
 
 @pytest.mark.asyncio
 async def test_upsert_user_from_token_data_translates_missing_id_token_error():
     auth_service = AuthService()
 
-    with pytest.raises(ValueError) as exc:
+    with raises_localized(DependencyResponseError, "Authentication failed — no id_token received"):
         await auth_service._upsert_user_from_token_data({}, fallback_username="user")
 
-    assert str(exc.value) == "Authentication failed — no id_token received"
 
-
-@pytest.mark.asyncio
-async def test_validate_token_accepts_current_service_tokens():
-    auth_service = AuthService()
-
-    token, _ = auth_service._create_access_token(
-        user_id="user-123",
-        email="user@example.com",
-        role="enduser",
-    )
-
-    payload = await auth_service.validate_token(token)
-
-    assert payload is not None
-    assert payload["sub"] == "user-123"
-    assert payload["aud"] == get_settings().SERVICE_NAME
-
-
-@pytest.mark.asyncio
-async def test_validate_token_accepts_legacy_tokens_without_audience():
-    settings = get_settings()
-    secret = settings.require_auth_secret()
-    token = jwt.encode(
-        {
-            "sub": "legacy-user",
-            "email": "legacy@example.com",
-            "role": "enduser",
-            "exp": datetime.utcnow() + timedelta(hours=1),
-            "iat": datetime.utcnow(),
-            "iss": "user-service",
-            "type": "access",
-        },
-        secret,
-        algorithm="HS256",
-    )
-
-    payload = await AuthService().validate_token(token)
-
-    assert payload is not None
-    assert payload["sub"] == "legacy-user"
-
-
-@pytest.mark.asyncio
-async def test_validate_token_treats_missing_external_issuer_as_invalid_token():
-    auth_service = AuthService()
-    auth_service.keycloak = SimpleNamespace(
-        is_enabled=lambda: True,
-        is_external_keycloak=lambda: True,
-        validate_token_jwks=AsyncMock(return_value=None),
-        get_user_info=AsyncMock(return_value=None),
-        get_external_user_info=AsyncMock(
-            side_effect=ValueError(
-                "EXTERNAL_KEYCLOAK_ISSUER_URL or EXTERNAL_KEYCLOAK_BASE_URL "
-                "+ EXTERNAL_KEYCLOAK_REALM must be configured"
-            )
-        ),
-    )
-
-    payload = await auth_service.validate_token("not-a-local-or-internal-token")
-
-    assert payload is None
-    auth_service.keycloak.get_external_user_info.assert_awaited_once_with(
-        "not-a-local-or-internal-token"
-    )
-
-
-@pytest.mark.asyncio
-async def test_refresh_access_token_requires_keycloak_session_management():
-    auth_service = AuthService()
-    auth_service.keycloak = SimpleNamespace(is_enabled=lambda: False)
-
-    with pytest.raises(ValueError, match="handled by Keycloak"):
-        await auth_service.refresh_access_token("old-refresh-token")
+def test_local_token_minting_is_gone():
+    assert not hasattr(AuthService, "_create_access_token")
+    assert not hasattr(AuthService, "_create_refresh_token")
 
 
 @pytest.mark.asyncio
@@ -293,37 +204,11 @@ async def test_logout_ensures_post_logout_redirect_uri():
     auth_service.keycloak.backchannel_logout.assert_awaited_once_with(refresh_token="refresh-token")
 
 
-def test_extract_roles_from_claims_supports_realm_and_client_roles():
-    claims = {
-        "realm_access": {"roles": ["offline_access", "uma_authorization"]},
-        "resource_access": {
-            "agenticai-web": {"roles": ["admin"]},
-            "account": {"roles": ["manage-account"]},
-        },
-    }
-
-    roles = AuthService._extract_roles_from_claims(claims)
-
-    assert "offline_access" in roles
-    assert "admin" in roles
-    assert "manage-account" in roles
-
-
-def test_resolve_role_keeps_claim_role_names_without_admin_alias_mapping():
-    roles = ["manage-account", "ADMIN", "view-profile"]
-
-    resolved = AuthService._resolve_role(roles)
-
-    assert resolved == "admin"
-
-
 @pytest.mark.asyncio
 async def test_login_does_not_promote_bootstrap_admin_from_env_mapping(monkeypatch):
-    monkeypatch.setattr(
-        "src.service.auth_service._settings.KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL",
-        "admin@example.com",
-    )
+    monkeypatch.setenv("KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL", "admin@example.com")
     auth_service = AuthService()
+    auth_service.user_repo.get_by_keycloak_id = AsyncMock(return_value=None)
     keycloak_id = "sp-keycloak-id"
     id_token = jwt.encode(
         {
@@ -377,6 +262,7 @@ def test_get_auth_type_includes_external_keycloak_metadata():
 @pytest.mark.asyncio
 async def test_basic_login_uses_keycloak_tokens_without_local_password_storage():
     auth_service = AuthService()
+    auth_service.user_repo.get_by_keycloak_id = AsyncMock(return_value=None)
     keycloak_id = "sp-keycloak-id"
     id_token = jwt.encode(
         {
@@ -442,7 +328,7 @@ async def test_basic_login_uses_keycloak_tokens_without_local_password_storage()
 async def test_register_is_managed_by_keycloak():
     auth_service = AuthService()
 
-    with pytest.raises(ValueError, match="registration is managed by Keycloak"):
+    with raises_localized(ForbiddenError, "registration is managed by Keycloak"):
         await auth_service.register(
             username="newuser",
             email="newuser@example.com",
@@ -455,6 +341,7 @@ async def test_register_is_managed_by_keycloak():
 @pytest.mark.asyncio
 async def test_external_keycloak_login_uses_sp_brokered_idp_credentials():
     auth_service = AuthService()
+    auth_service.user_repo.get_by_keycloak_id = AsyncMock(return_value=None)
     keycloak_id = "sp-keycloak-id"
     id_token = jwt.encode(
         {
@@ -527,6 +414,7 @@ async def test_external_keycloak_login_uses_sp_brokered_idp_credentials():
 @pytest.mark.asyncio
 async def test_handle_oidc_callback_persists_groups_from_sp_id_token():
     auth_service = AuthService()
+    auth_service.user_repo.get_by_keycloak_id = AsyncMock(return_value=None)
     keycloak_id = "sp-keycloak-id"
     id_token = jwt.encode(
         {
@@ -634,7 +522,7 @@ async def test_refresh_access_token_rejects_when_refresh_response_has_no_subject
         ),
     )
 
-    with pytest.raises(ValueError, match="subject"):
+    with raises_localized(DependencyResponseError, "subject"):
         await auth_service.refresh_access_token("local-refresh-token")
 
 

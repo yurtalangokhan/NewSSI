@@ -99,12 +99,13 @@ describe("buildChatUrl", () => {
     );
   });
 });
-import { authenticatedFetch } from "@/lib/fetcher";
+import { apiRequest } from "@/lib/api/http/browser";
 import { createIdempotencyKey } from "@/lib/api/idempotency";
-import { sendMessage } from "@/app/app/services/lib";
+import { sendMessage } from "@/lib/api/domains/chat/api";
 
-jest.mock("@/lib/fetcher", () => ({
-  authenticatedFetch: jest.fn(),
+jest.mock("@/lib/api/http/browser", () => ({
+  apiRequest: jest.fn(),
+  parseJsonResponse: jest.fn(async (response: Response) => response.json()),
 }));
 
 jest.mock("@/lib/api/idempotency", () => ({
@@ -125,7 +126,7 @@ describe("sendMessage", () => {
   beforeEach(() => {
     jest.mocked(createIdempotencyKey).mockReturnValue("chat-operation-key");
     jest
-      .mocked(authenticatedFetch)
+      .mocked(apiRequest)
       .mockResolvedValue(new Response(null, { status: 200 }));
   });
 
@@ -140,7 +141,7 @@ describe("sendMessage", () => {
     }
 
     expect(createIdempotencyKey).toHaveBeenCalledTimes(1);
-    expect(authenticatedFetch).toHaveBeenCalledWith(
+    expect(apiRequest).toHaveBeenCalledWith(
       "/api/chat/send-chat-message",
       expect.objectContaining({
         method: "POST",
@@ -164,7 +165,7 @@ describe("sendMessage", () => {
     }
 
     expect(createIdempotencyKey).not.toHaveBeenCalled();
-    expect(authenticatedFetch).toHaveBeenCalledWith(
+    expect(apiRequest).toHaveBeenCalledWith(
       "/api/chat/send-chat-message",
       expect.objectContaining({
         headers: expect.objectContaining({
@@ -172,5 +173,56 @@ describe("sendMessage", () => {
         }),
       })
     );
+  });
+});
+
+describe("processRawChatHistory — message timestamps", () => {
+  it("carries the backend's time_sent onto the message", () => {
+    const rawMessages = [
+      {
+        message_id: 1,
+        message_type: "user",
+        message: "merhaba",
+        parent_message: null,
+        latest_child_message: 2,
+        files: [],
+        time_sent: "2026-08-12T13:06:00+00:00",
+      },
+      {
+        message_id: 2,
+        message_type: "assistant",
+        message: "merhaba, nasıl yardımcı olabilirim?",
+        parent_message: 1,
+        latest_child_message: null,
+        files: [],
+        time_sent: "2026-08-12T13:06:04+00:00",
+      },
+    ] as any;
+
+    const tree = processRawChatHistory(rawMessages, []);
+
+    expect(tree.get(1)!.timeSent).toBe("2026-08-12T13:06:00+00:00");
+    expect(tree.get(2)!.timeSent).toBe("2026-08-12T13:06:04+00:00");
+  });
+
+  it("leaves timeSent undefined when the backend could not stamp the message", () => {
+    // The checkpoint-less fallback paths in chat_controller/session_controller
+    // still return time_sent: null; those messages must render without a
+    // timestamp rather than with a bogus one.
+    const rawMessages = [
+      {
+        message_id: 1,
+        message_type: "user",
+        message: "merhaba",
+        parent_message: null,
+        latest_child_message: null,
+        files: [],
+        time_sent: null,
+      },
+    ] as any;
+
+    expect(
+      processRawChatHistory(rawMessages, []).get(1)!.timeSent
+    ).toBeUndefined();
   });
 });

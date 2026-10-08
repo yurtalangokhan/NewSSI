@@ -13,13 +13,13 @@ test:
 	uv run pytest
 
 lint:
-	uv run ruff check src/
+	uv run ruff check --config ruff.toml src/
 
 format:
-	uv run ruff format src/
+	uv run ruff format --config ruff.toml src/
 
 fix:
-	uv run ruff check --fix src/
+	uv run ruff check --config ruff.toml --fix src/
 
 typecheck:
 	uv run mypy src/

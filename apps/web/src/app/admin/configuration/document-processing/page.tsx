@@ -5,15 +5,15 @@ import CardSection from "@/components/admin/CardSection";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import Text from "@/refresh-components/texts/Text";
 import { SvgHardDrive } from "@opal/icons";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 import TableSkeleton from "@/refresh-components/skeletons/TableSkeleton";
 import {
   useCollections,
   useGraphBuildStatus,
   useGraphCollections,
-} from "@/lib/langconnect";
-import { useAirbyteDatasources } from "@/lib/airbyte";
+} from "@/lib/api/domains/knowledge/hooks";
+import { useConnectorDatasources } from "@/lib/api/domains/datasources/hooks";
 import CollectionsPanel from "./components/CollectionsPanel";
 import DocumentsPanel from "./components/DocumentsPanel";
 import { useTranslation } from "react-i18next";
@@ -32,7 +32,7 @@ function RagManagementSection() {
   const [selectedIsDatasource, setSelectedIsDatasource] = useState(false);
   const { collections, isLoading: isCollectionsLoading } = useCollections();
   const { datasources, isLoading: isDatasourcesLoading } =
-    useAirbyteDatasources();
+    useConnectorDatasources();
   const { graphCollections } = useGraphCollections();
   const { status: buildStatus } = useGraphBuildStatus(
     selectedCollectionId,
@@ -164,7 +164,7 @@ export default function Page() {
       <SettingsLayouts.Header
         icon={route.icon}
         title={t(route.titleKey || "", { defaultValue: route.title })}
-        description={t("admin.documentProcessing.langConnectRagDescription")}
+        description={t("admin.documentProcessing.ragServiceDescription")}
         separator
       />
       <SettingsLayouts.Body>

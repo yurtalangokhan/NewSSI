@@ -2,8 +2,11 @@
 
 import React, { memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
-import { usePinnedAgents, useCurrentAgent } from "@/hooks/useAgents";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
+import {
+  usePinnedAgents,
+  useCurrentAgent,
+} from "@/lib/api/domains/agents/hooks";
 import { useProjectsContext } from "@/providers/ProjectsContext";
 import { cn, noProp } from "@/lib/utils";
 import SidebarTab from "@/refresh-components/buttons/SidebarTab";

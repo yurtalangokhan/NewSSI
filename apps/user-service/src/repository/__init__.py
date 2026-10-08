@@ -5,6 +5,7 @@ from .coarse_role_repository import RoleRepository
 from .permission_repository import PermissionRepository
 from .role_repository import CompositeRoleRepository
 from .system_setting_repository import SystemSettingRepository
+from .user_connector_config_repository import UserConnectorConfigRepository
 from .user_memory_repository import UserMemoryRepository
 from .user_repository import UserRepository
 from .user_role_repository import UserRoleRepository
@@ -14,10 +15,11 @@ __all__ = [
     "ApiKeyRepository",
     "AuditLogRepository",
     "BaseRepository",
-    "RoleRepository",
-    "PermissionRepository",
     "CompositeRoleRepository",
+    "PermissionRepository",
+    "RoleRepository",
     "SystemSettingRepository",
+    "UserConnectorConfigRepository",
     "UserMemoryRepository",
     "UserRepository",
     "UserRoleRepository",
@@ -28,7 +30,6 @@ from .organization_repository import OrganizationRepository
 from .permission_audit_repository import PermissionAuditRepository
 from .resource_permission_repository import ResourcePermissionRepository
 from .user_organization_repository import UserOrganizationRepository
-from .organization_layout_repository import OrganizationLayoutRepository
 
 __all__.extend(
     [
@@ -36,6 +37,5 @@ __all__.extend(
         "PermissionAuditRepository",
         "ResourcePermissionRepository",
         "UserOrganizationRepository",
-        "OrganizationLayoutRepository",
     ]
 )

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, JSX } from "react";
-import { Packet, StopReason } from "@/app/app/services/streamingModels";
+import { Packet, StopReason } from "@/lib/api/domains/chat/streaming-types";
 import {
   FullChatState,
   RenderType,

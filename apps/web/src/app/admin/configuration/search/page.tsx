@@ -1,8 +1,13 @@
 "use client";
+import { systemEndpoints } from "@/lib/api/domains/system/endpoints";
 
 import { notFound } from "next/navigation";
 import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import {
+  fetchCurrentSearchSettings,
+  fetchSecondarySearchSettings,
+} from "@/lib/api/domains/system/api";
+
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import Text from "@/refresh-components/texts/Text";
 import Title from "@/components/ui/title";
@@ -13,14 +18,14 @@ import {
   HostedEmbeddingModel,
   CloudEmbeddingModel,
 } from "@/components/embedding/interfaces";
-import { SavedSearchSettings } from "@/app/admin/embeddings/interfaces";
+import { SavedSearchSettings } from "@/lib/api/domains/knowledge/search-settings-types";
 import UpgradingPage from "./UpgradingPage";
 import { useContext } from "react";
 import { SettingsContext } from "@/providers/SettingsProvider";
 import CardSection from "@/components/admin/CardSection";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { useToastFromQuery } from "@/hooks/useToast";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { useTranslation } from "react-i18next";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
@@ -47,15 +52,18 @@ function Main() {
     isLoading: isLoadingCurrentModel,
     error: currentEmeddingModelError,
   } = useSWR<CloudEmbeddingModel | HostedEmbeddingModel | null>(
-    "/api/search-settings/get-current-search-settings",
-    errorHandlingFetcher,
+    systemEndpoints.searchSettingsCurrent.browserPath,
+    () =>
+      fetchCurrentSearchSettings<
+        CloudEmbeddingModel | HostedEmbeddingModel | null
+      >(),
     { refreshInterval: 5000 } // 5 seconds
   );
 
   const { data: searchSettings, isLoading: isLoadingSearchSettings } =
     useSWR<SavedSearchSettings | null>(
-      "/api/search-settings/get-current-search-settings",
-      errorHandlingFetcher,
+      systemEndpoints.searchSettingsCurrent.browserPath,
+      () => fetchCurrentSearchSettings<SavedSearchSettings | null>(),
       { refreshInterval: 5000 } // 5 seconds
     );
 
@@ -64,8 +72,11 @@ function Main() {
     isLoading: isLoadingFutureModel,
     error: futureEmeddingModelError,
   } = useSWR<CloudEmbeddingModel | HostedEmbeddingModel | null>(
-    "/api/search-settings/get-secondary-search-settings",
-    errorHandlingFetcher,
+    systemEndpoints.searchSettingsSecondary.browserPath,
+    () =>
+      fetchSecondarySearchSettings<
+        CloudEmbeddingModel | HostedEmbeddingModel | null
+      >(),
     { refreshInterval: 5000 } // 5 seconds
   );
 

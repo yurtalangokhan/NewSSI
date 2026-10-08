@@ -9,19 +9,23 @@ import Text from "@/refresh-components/texts/Text";
 import Tabs from "@/refresh-components/Tabs";
 import { useIsKGExposed } from "@/app/admin/kg/utils";
 import {
-  useCollections,
-  useGraphCollections,
-  fetchScalableGraphData,
-  fetchFlatGraphData,
   isClusterNode,
   isClusterEdge,
   type ClusteredGraphData,
   type GraphData,
   type GraphNode,
   type GraphEdge,
-} from "@/lib/langconnect";
-import { useAirbyteDatasources } from "@/lib/airbyte";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+} from "@/lib/api/domains/knowledge/types";
+import {
+  fetchScalableGraphData,
+  fetchFlatGraphData,
+} from "@/lib/api/domains/knowledge/api";
+import {
+  useCollections,
+  useGraphCollections,
+} from "@/lib/api/domains/knowledge/hooks";
+import { useConnectorDatasources } from "@/lib/api/domains/datasources/hooks";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 import AdminOverviewPanelSkeleton from "@/refresh-components/skeletons/AdminOverviewPanelSkeleton";
 import GraphBuildPanel from "@/app/admin/kg/components/GraphBuildPanel";
@@ -60,7 +64,7 @@ function CollectionSelector({
 }) {
   const { t } = useTranslation();
   const { collections, isLoading: collectionsLoading } = useCollections();
-  const { datasources, isLoading: dsLoading } = useAirbyteDatasources();
+  const { datasources, isLoading: dsLoading } = useConnectorDatasources();
   const { graphCollections, isLoading: graphLoading } = useGraphCollections();
 
   const isLoading = collectionsLoading || dsLoading || graphLoading;
@@ -427,7 +431,7 @@ function Main({
   );
   const { collections, isLoading: isCollectionsLoading } = useCollections();
   const { datasources, isLoading: isDatasourcesLoading } =
-    useAirbyteDatasources();
+    useConnectorDatasources();
   const { graphCollections } = useGraphCollections();
 
   // Derived from the shared SWR-backed `graphCollections` list (not local

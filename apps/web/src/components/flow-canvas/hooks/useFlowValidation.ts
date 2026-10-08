@@ -1,3 +1,5 @@
+import { validateCanvasFlow } from "@/lib/api/domains/agents/api";
+
 /**
  * Debounced client-side validation against
  * `POST /agent-definitions/validate-flow` — an affordance (blocks the
@@ -13,7 +15,6 @@ import type { StoreApi } from "zustand";
 import type { FlowStore } from "../stores/flowStore";
 import type { ValidationIssue } from "../types/flow";
 import { toFlowSpec } from "../utils/compile";
-import { flowApi } from "@/components/flow-canvas/api/flowApi";
 
 export type { ValidationIssue };
 
@@ -69,12 +70,7 @@ export function useFlowValidation(
       const spec = toFlowSpec(nodes, edges, viewport);
       setIsValidating(true);
       try {
-        const res = await fetch(flowApi.validate(), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ flow_spec: spec }),
-        });
+        const res = await validateCanvasFlow({ flow_spec: spec });
         if (!cancelled && res.ok) {
           const body = (await res.json()) as ValidationResponse;
           setResult(body);

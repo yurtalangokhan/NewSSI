@@ -1,18 +1,24 @@
 import { SlackChannelConfigCreationForm } from "../SlackChannelConfigCreationForm";
 import { tServer } from "@/i18n/server";
-import { fetchSS } from "@/lib/utilsSS";
+import { fetchDocumentSetsSS } from "@/lib/api/domains/knowledge/server";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { DocumentSetSummary } from "@/lib/types";
-import { fetchAgentsSS } from "@/lib/agentsSS";
+import { fetchAgentsSS } from "@/lib/api/domains/agents/server";
 import { getStandardAnswerCategoriesIfEE } from "@/components/standardAnswers/getStandardAnswerCategoriesIfEE";
 import { redirect } from "next/navigation";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { SvgSlack } from "@opal/icons";
-import { resolveLocaleSS } from "@/lib/localeSS";
+import { resolveLocaleSS } from "@/lib/i18n/locale.server";
+import { requireAdminAuth } from "@/lib/auth/requireAuth";
+import { ADMIN_PATHS } from "@/lib/navigation/admin-routes";
+import type { Route } from "next";
 
 async function NewChannelConfigPage(props: {
   params: Promise<{ "bot-id": string }>;
 }) {
+  const auth = await requireAdminAuth(ADMIN_PATHS.SLACK_BOTS);
+  if (auth.redirect) redirect(auth.redirect as Route);
+
   const unwrappedParams = await props.params;
   const slack_bot_id_raw = unwrappedParams?.["bot-id"] || null;
   const slack_bot_id = slack_bot_id_raw
@@ -29,7 +35,7 @@ async function NewChannelConfigPage(props: {
     standardAnswerCategoryResponse,
     locale,
   ] = await Promise.all([
-    fetchSS("/manage/document-set") as Promise<Response>,
+    fetchDocumentSetsSS(),
     fetchAgentsSS(),
     getStandardAnswerCategoriesIfEE(),
     resolveLocaleSS(),

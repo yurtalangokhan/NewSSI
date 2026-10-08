@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
-from models.web_search import WebContent
+from schemas.web_search import WebContent
 
 
 class WebContentProvider(ABC):

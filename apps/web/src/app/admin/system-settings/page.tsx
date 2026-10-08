@@ -1,4 +1,13 @@
 "use client";
+import { errorMessageFromUnknown } from "@/lib/api/errors";
+import { systemEndpoints } from "@/lib/api/domains/system/endpoints";
+
+import {
+  fetchKeycloakSettings,
+  syncExternalIdentityProvider,
+  patchKeycloakConfiguration,
+  patchKeycloakRealmSession,
+} from "@/lib/api/domains/system/api";
 
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
@@ -9,8 +18,7 @@ import Checkbox from "@/refresh-components/inputs/Checkbox";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { ADMIN_PATHS, ADMIN_ROUTE_CONFIG } from "@/lib/admin-routes";
-import { authenticatedFetch, errorHandlingFetcher } from "@/lib/fetcher";
+import { ADMIN_PATHS, ADMIN_ROUTE_CONFIG } from "@/lib/navigation/admin-routes";
 import { toast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 import {
@@ -51,8 +59,6 @@ interface IdentityProviderStatus {
 
 interface SystemKeycloakSettings {
   keycloak: {
-    enabled: boolean;
-    source: string;
     realm: string | null;
     base_url: string | null;
     issuer_url: string | null;
@@ -87,7 +93,6 @@ interface SystemKeycloakSettings {
 
 function configFormFromSettings(data: SystemKeycloakSettings) {
   return {
-    keycloak_enabled: data.keycloak.enabled,
     keycloak_base_url: data.keycloak.base_url ?? "",
     keycloak_issuer_url: data.keycloak.issuer_url ?? "",
     keycloak_realm: data.keycloak.realm ?? "",
@@ -125,7 +130,7 @@ function sessionFormFromSettings(data: SystemKeycloakSettings) {
 }
 
 async function postSyncExternalIdp(url: string) {
-  const res = await authenticatedFetch(url, { method: "POST" });
+  const res = await syncExternalIdentityProvider();
   if (!res.ok) {
     const err = await res.json().catch(() => ({
       detail: i18n.t("admin.systemSettings.syncFailedGeneric"),
@@ -137,15 +142,8 @@ async function postSyncExternalIdp(url: string) {
   return res.json();
 }
 
-async function patchJson(
-  url: string,
-  { arg }: { arg: Record<string, unknown> }
-) {
-  const res = await authenticatedFetch(url, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(arg),
-  });
+async function patchJson(request: Promise<Response>) {
+  const res = await request;
   if (!res.ok) {
     const err = await res.json().catch(() => ({
       detail: i18n.t("admin.systemSettings.saveFailedGeneric"),
@@ -270,7 +268,6 @@ function Panel({
 export default function SystemSettingsPage() {
   const { t } = useTranslation();
   const [configForm, setConfigForm] = useState({
-    keycloak_enabled: false,
     keycloak_base_url: "",
     keycloak_issuer_url: "",
     keycloak_realm: "",
@@ -296,8 +293,8 @@ export default function SystemSettingsPage() {
   });
 
   const { data, error, isLoading, mutate } = useSWR<SystemKeycloakSettings>(
-    "/api/user-service/system-settings/keycloak",
-    errorHandlingFetcher,
+    "keycloak-settings",
+    () => fetchKeycloakSettings<SystemKeycloakSettings>(),
     {
       onSuccess: (nextData) => {
         setConfigForm(configFormFromSettings(nextData));
@@ -307,25 +304,25 @@ export default function SystemSettingsPage() {
   );
 
   const { trigger, isMutating } = useSWRMutation(
-    "/api/user-service/system-settings/keycloak/external-idp/sync",
+    systemEndpoints.syncExternalIdentityProvider().browserPath,
     postSyncExternalIdp
   );
   const { trigger: saveConfig, isMutating: isSavingConfig } = useSWRMutation(
-    "/api/user-service/system-settings/keycloak",
-    patchJson
+    systemEndpoints.keycloakSettings.browserPath,
+    (_key, { arg }: { arg: Record<string, unknown> }) =>
+      patchJson(patchKeycloakConfiguration(arg))
   );
   const { trigger: saveSession, isMutating: isSavingSession } = useSWRMutation(
-    "/api/user-service/system-settings/keycloak/realm-session",
-    patchJson
+    systemEndpoints.patchKeycloakRealmSession().browserPath,
+    (_key, { arg }: { arg: Record<string, unknown> }) =>
+      patchJson(patchKeycloakRealmSession(arg))
   );
 
   const idp = data?.external_keycloak.identity_provider;
   const headline = useMemo(() => {
     if (isLoading) return t("admin.systemSettings.checkingConfig");
     if (error) return t("admin.systemSettings.settingsUnavailable");
-    if (!data?.keycloak.enabled)
-      return t("admin.systemSettings.keycloakDisabled");
-    if (!data.external_keycloak.enabled)
+    if (!data?.external_keycloak.enabled)
       return t("admin.systemSettings.externalKeycloakDisabled");
     if (idp?.exists && idp.mapper?.exists)
       return t("admin.systemSettings.externalIdpReady");
@@ -338,7 +335,7 @@ export default function SystemSettingsPage() {
       await mutate(response.settings, false);
       toast.success(t("admin.systemSettings.externalIdpApplied"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
+      toast.error(errorMessageFromUnknown(err));
     }
   };
 
@@ -351,7 +348,7 @@ export default function SystemSettingsPage() {
       await mutate(response, false);
       toast.success(t("admin.systemSettings.settingsSaved"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
+      toast.error(errorMessageFromUnknown(err));
     }
   };
 
@@ -377,7 +374,7 @@ export default function SystemSettingsPage() {
       );
       toast.success(t("admin.systemSettings.sessionSettingsSaved"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
+      toast.error(errorMessageFromUnknown(err));
     }
   };
 
@@ -405,13 +402,6 @@ export default function SystemSettingsPage() {
             title={t("admin.systemSettings.workspaceTitle")}
             description={t("admin.systemSettings.workspaceDescription")}
             metrics={[
-              {
-                label: t("admin.systemSettings.keycloakLabel"),
-                value: data?.keycloak.enabled
-                  ? t("admin.systemSettings.enabled")
-                  : t("admin.systemSettings.disabled"),
-                tone: data?.keycloak.enabled ? "success" : "warning",
-              },
               {
                 label: t("admin.systemSettings.externalIdpLabel"),
                 value: data?.external_keycloak.enabled
@@ -450,43 +440,62 @@ export default function SystemSettingsPage() {
                 </div>
               </section>
 
-              {/* Keycloak Settings Form Skeleton */}
-              <section className="rounded-08 border border-border-01 bg-background-neutral-00 p-6 shadow-01">
-                <div className="flex flex-col gap-2 mb-6">
-                  <div className="h-5 w-44 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
-                  <div className="h-4 w-80 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="flex flex-col gap-1.5">
-                      <div className="h-4 w-28 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
-                      <div className="h-9 w-full rounded-08 border border-border-01 bg-background-neutral-01 animate-pulse" />
+              {/* Settings Panels Skeleton — mirrors the loaded three-panel
+                  grid below (Internal Keycloak / External Keycloak IdP /
+                  Operations) so the shape doesn't jump once data arrives. */}
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr_360px]">
+                {[7, 7].map((fieldCount, panelIndex) => (
+                  <section
+                    key={panelIndex}
+                    className="rounded-08 border border-border-01 bg-background-neutral-00"
+                  >
+                    <div className="flex items-center gap-2 border-b border-border-01 px-4 py-3">
+                      <div className="h-4 w-4 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                      <div className="h-4 w-40 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
                     </div>
-                  ))}
-                </div>
-                <div className="mt-6 flex justify-end">
-                  <div className="h-9 w-28 rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
-                </div>
-              </section>
+                    <div className="flex flex-col gap-3 border-b border-border-01 px-4 py-4">
+                      <div className="h-9 w-full rounded-08 border border-border-01 bg-background-neutral-01 animate-pulse" />
+                      {Array.from({ length: fieldCount }).map((_, i) => (
+                        <div key={i} className="flex flex-col gap-1.5">
+                          <div className="h-3.5 w-24 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                          <div className="h-9 w-full rounded-08 border border-border-01 bg-background-neutral-01 animate-pulse" />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex flex-col gap-3 px-4 py-3">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="h-3.5 w-full rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse"
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ))}
 
-              {/* Realm Session Settings Form Skeleton */}
-              <section className="rounded-08 border border-border-01 bg-background-neutral-00 p-6 shadow-01">
-                <div className="flex flex-col gap-2 mb-6">
-                  <div className="h-5 w-48 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
-                  <div className="h-4 w-72 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="flex flex-col gap-1.5">
-                      <div className="h-4 w-32 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
-                      <div className="h-9 w-full rounded-08 border border-border-01 bg-background-neutral-01 animate-pulse" />
+                <section className="rounded-08 border border-border-01 bg-background-neutral-00">
+                  <div className="flex items-center gap-2 border-b border-border-01 px-4 py-3">
+                    <div className="h-4 w-4 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                    <div className="h-4 w-28 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                  </div>
+                  <div className="flex flex-col gap-3 px-4 py-4">
+                    <div className="h-9 w-full rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                    <div className="h-9 w-full rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                    <div className="flex flex-col gap-3 rounded-08 border border-border-01 bg-background-neutral-01 px-3 py-3">
+                      <div className="h-3.5 w-40 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="flex flex-col gap-1.5">
+                          <div className="h-3.5 w-28 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                          <div className="h-9 w-full rounded-08 border border-border-01 bg-background-neutral-00 animate-pulse" />
+                        </div>
+                      ))}
+                      <div className="h-9 w-full rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
                     </div>
-                  ))}
-                </div>
-                <div className="mt-6 flex justify-end">
-                  <div className="h-9 w-28 rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
-                </div>
-              </section>
+                    <div className="h-9 w-full rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
+                    <div className="h-14 w-full rounded-08 border border-border-01 bg-background-neutral-01 animate-pulse" />
+                  </div>
+                </section>
+              </div>
             </>
           ) : (
             <section className="rounded-08 border border-border-01 bg-background-neutral-00 px-4 py-4">
@@ -500,10 +509,6 @@ export default function SystemSettingsPage() {
                   </Text>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <StatusPill
-                    active={Boolean(data?.keycloak.enabled)}
-                    label={t("admin.systemSettings.keycloakLabel")}
-                  />
                   <StatusPill
                     active={Boolean(data?.external_keycloak.enabled)}
                     label={t("admin.systemSettings.externalIdpLabel")}
@@ -529,410 +534,400 @@ export default function SystemSettingsPage() {
             </section>
           ) : null}
 
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr_360px]">
-            <Panel
-              icon={SvgServer}
-              title={t("admin.systemSettings.internalKeycloakTitle")}
-            >
-              <div className="flex flex-col gap-3 border-b border-border-01 py-4">
-                <ToggleRow
-                  checked={configForm.keycloak_enabled}
-                  label={t("admin.systemSettings.enableInternalKeycloak")}
-                  onCheckedChange={(checked) =>
-                    setConfigForm((current) => ({
-                      ...current,
-                      keycloak_enabled: checked,
-                    }))
+          {!isLoading && (
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr_360px]">
+              <Panel
+                icon={SvgServer}
+                title={t("admin.systemSettings.internalKeycloakTitle")}
+              >
+                <div className="flex flex-col gap-3 border-b border-border-01 py-4">
+                  <Field label={t("admin.systemSettings.baseUrlLabel")}>
+                    <InputTypeIn
+                      value={configForm.keycloak_base_url}
+                      onChange={(event) =>
+                        setConfigForm((current) => ({
+                          ...current,
+                          keycloak_base_url: event.target.value,
+                        }))
+                      }
+                      placeholder="http://keycloak:8080"
+                    />
+                  </Field>
+                  <Field label={t("admin.systemSettings.issuerUrlLabel")}>
+                    <InputTypeIn
+                      value={configForm.keycloak_issuer_url}
+                      onChange={(event) =>
+                        setConfigForm((current) => ({
+                          ...current,
+                          keycloak_issuer_url: event.target.value,
+                        }))
+                      }
+                      placeholder="http://keycloak:8080/realms/agenticai-v1"
+                    />
+                  </Field>
+                  <Field label={t("admin.systemSettings.realmLabel")}>
+                    <InputTypeIn
+                      value={configForm.keycloak_realm}
+                      onChange={(event) =>
+                        setConfigForm((current) => ({
+                          ...current,
+                          keycloak_realm: event.target.value,
+                        }))
+                      }
+                      placeholder="agenticai-v1"
+                    />
+                  </Field>
+                  <Field label={t("admin.systemSettings.adminUsernameLabel")}>
+                    <InputTypeIn
+                      value={configForm.keycloak_admin}
+                      onChange={(event) =>
+                        setConfigForm((current) => ({
+                          ...current,
+                          keycloak_admin: event.target.value,
+                        }))
+                      }
+                      placeholder="admin"
+                    />
+                  </Field>
+                  <Field label={t("admin.systemSettings.adminPasswordLabel")}>
+                    <InputTypeIn
+                      type="password"
+                      value={configForm.keycloak_admin_password}
+                      onChange={(event) =>
+                        setConfigForm((current) => ({
+                          ...current,
+                          keycloak_admin_password: event.target.value,
+                        }))
+                      }
+                      placeholder={
+                        data?.keycloak.admin_password_configured
+                          ? t("admin.systemSettings.configuredLeaveBlank")
+                          : t("admin.systemSettings.notConfiguredValue")
+                      }
+                    />
+                  </Field>
+                  <Field label={t("admin.systemSettings.clientIdLabel")}>
+                    <InputTypeIn
+                      value={configForm.keycloak_client_id}
+                      onChange={(event) =>
+                        setConfigForm((current) => ({
+                          ...current,
+                          keycloak_client_id: event.target.value,
+                        }))
+                      }
+                      placeholder="web-client"
+                    />
+                  </Field>
+                  <Field label={t("admin.systemSettings.clientSecretLabel")}>
+                    <InputTypeIn
+                      type="password"
+                      value={configForm.keycloak_client_secret}
+                      onChange={(event) =>
+                        setConfigForm((current) => ({
+                          ...current,
+                          keycloak_client_secret: event.target.value,
+                        }))
+                      }
+                      placeholder={
+                        data?.keycloak.client_secret_configured
+                          ? t("admin.systemSettings.configuredLeaveBlank")
+                          : t("admin.systemSettings.optionalValue")
+                      }
+                    />
+                  </Field>
+                </div>
+                <SettingRow
+                  label={t("admin.systemSettings.realmLabel")}
+                  value={data?.keycloak.realm}
+                />
+                <SettingRow
+                  label={t("admin.systemSettings.baseUrlLabel")}
+                  value={data?.keycloak.base_url}
+                />
+                <SettingRow
+                  label={t("admin.systemSettings.adminApiAccessLabel")}
+                  value={data?.keycloak.admin_access_configured}
+                />
+              </Panel>
+
+              <Panel
+                icon={SvgKey}
+                title={t("admin.systemSettings.externalKeycloakIdpTitle")}
+              >
+                <div className="flex flex-col gap-3 border-b border-border-01 py-4">
+                  <ToggleRow
+                    checked={configForm.external_keycloak}
+                    label={t("admin.systemSettings.enableExternalKeycloak")}
+                    onCheckedChange={(checked) =>
+                      setConfigForm((current) => ({
+                        ...current,
+                        external_keycloak: checked,
+                      }))
+                    }
+                  />
+                  <Field label={t("admin.systemSettings.aliasLabel")}>
+                    <InputTypeIn
+                      value={configForm.external_keycloak_alias}
+                      onChange={(event) =>
+                        setConfigForm((current) => ({
+                          ...current,
+                          external_keycloak_alias: event.target.value,
+                        }))
+                      }
+                      placeholder="external-keycloak"
+                    />
+                  </Field>
+                  <Field label={t("admin.systemSettings.displayNameLabel")}>
+                    <InputTypeIn
+                      value={configForm.external_keycloak_display_name}
+                      onChange={(event) =>
+                        setConfigForm((current) => ({
+                          ...current,
+                          external_keycloak_display_name: event.target.value,
+                        }))
+                      }
+                      placeholder="External Keycloak"
+                    />
+                  </Field>
+                  <Field label={t("admin.systemSettings.issuerUrlLabel")}>
+                    <InputTypeIn
+                      value={configForm.external_keycloak_issuer_url}
+                      onChange={(event) =>
+                        setConfigForm((current) => ({
+                          ...current,
+                          external_keycloak_issuer_url: event.target.value,
+                        }))
+                      }
+                      placeholder="https://sso.example.com/realms/external"
+                    />
+                  </Field>
+                  <Field label={t("admin.systemSettings.baseUrlLabel")}>
+                    <InputTypeIn
+                      value={configForm.external_keycloak_base_url}
+                      onChange={(event) =>
+                        setConfigForm((current) => ({
+                          ...current,
+                          external_keycloak_base_url: event.target.value,
+                        }))
+                      }
+                      placeholder="https://sso.example.com"
+                    />
+                  </Field>
+                  <Field label={t("admin.systemSettings.realmLabel")}>
+                    <InputTypeIn
+                      value={configForm.external_keycloak_realm}
+                      onChange={(event) =>
+                        setConfigForm((current) => ({
+                          ...current,
+                          external_keycloak_realm: event.target.value,
+                        }))
+                      }
+                      placeholder="ldap-realm"
+                    />
+                  </Field>
+                  <Field label={t("admin.systemSettings.clientIdLabel")}>
+                    <InputTypeIn
+                      value={configForm.external_keycloak_client_id}
+                      onChange={(event) =>
+                        setConfigForm((current) => ({
+                          ...current,
+                          external_keycloak_client_id: event.target.value,
+                        }))
+                      }
+                      placeholder="ldap-client"
+                    />
+                  </Field>
+                  <Field label={t("admin.systemSettings.clientSecretLabel")}>
+                    <InputTypeIn
+                      type="password"
+                      value={configForm.external_keycloak_client_secret}
+                      onChange={(event) =>
+                        setConfigForm((current) => ({
+                          ...current,
+                          external_keycloak_client_secret: event.target.value,
+                        }))
+                      }
+                      placeholder={
+                        data?.external_keycloak.client_secret_configured
+                          ? t("admin.systemSettings.configuredLeaveBlank")
+                          : t("admin.systemSettings.requiredValue")
+                      }
+                    />
+                  </Field>
+                </div>
+                <SettingRow
+                  label={t("admin.systemSettings.sourceLabel")}
+                  value={data?.external_keycloak.source}
+                />
+                <SettingRow
+                  label={t("admin.systemSettings.aliasLabel")}
+                  value={data?.external_keycloak.alias}
+                />
+                <SettingRow
+                  label={t("admin.systemSettings.displayNameLabel")}
+                  value={data?.external_keycloak.display_name}
+                />
+                <SettingRow
+                  label={t("admin.systemSettings.issuerUrlLabel")}
+                  value={data?.external_keycloak.issuer_url}
+                />
+                <SettingRow
+                  label={t("admin.systemSettings.clientIdLabel")}
+                  value={data?.external_keycloak.client_id}
+                />
+                <SettingRow
+                  label={t("admin.systemSettings.clientSecretLabel")}
+                  value={
+                    data?.external_keycloak.client_secret_configured
+                      ? t("admin.systemSettings.configuredValue")
+                      : null
                   }
                 />
-                <Field label={t("admin.systemSettings.baseUrlLabel")}>
-                  <InputTypeIn
-                    value={configForm.keycloak_base_url}
-                    onChange={(event) =>
-                      setConfigForm((current) => ({
-                        ...current,
-                        keycloak_base_url: event.target.value,
-                      }))
-                    }
-                    placeholder="http://keycloak:8080"
-                  />
-                </Field>
-                <Field label={t("admin.systemSettings.issuerUrlLabel")}>
-                  <InputTypeIn
-                    value={configForm.keycloak_issuer_url}
-                    onChange={(event) =>
-                      setConfigForm((current) => ({
-                        ...current,
-                        keycloak_issuer_url: event.target.value,
-                      }))
-                    }
-                    placeholder="http://keycloak:8080/realms/agenticai"
-                  />
-                </Field>
-                <Field label={t("admin.systemSettings.realmLabel")}>
-                  <InputTypeIn
-                    value={configForm.keycloak_realm}
-                    onChange={(event) =>
-                      setConfigForm((current) => ({
-                        ...current,
-                        keycloak_realm: event.target.value,
-                      }))
-                    }
-                    placeholder="agenticai"
-                  />
-                </Field>
-                <Field label={t("admin.systemSettings.adminUsernameLabel")}>
-                  <InputTypeIn
-                    value={configForm.keycloak_admin}
-                    onChange={(event) =>
-                      setConfigForm((current) => ({
-                        ...current,
-                        keycloak_admin: event.target.value,
-                      }))
-                    }
-                    placeholder="admin"
-                  />
-                </Field>
-                <Field label={t("admin.systemSettings.adminPasswordLabel")}>
-                  <InputTypeIn
-                    type="password"
-                    value={configForm.keycloak_admin_password}
-                    onChange={(event) =>
-                      setConfigForm((current) => ({
-                        ...current,
-                        keycloak_admin_password: event.target.value,
-                      }))
-                    }
-                    placeholder={
-                      data?.keycloak.admin_password_configured
-                        ? t("admin.systemSettings.configuredLeaveBlank")
-                        : t("admin.systemSettings.notConfiguredValue")
-                    }
-                  />
-                </Field>
-                <Field label={t("admin.systemSettings.clientIdLabel")}>
-                  <InputTypeIn
-                    value={configForm.keycloak_client_id}
-                    onChange={(event) =>
-                      setConfigForm((current) => ({
-                        ...current,
-                        keycloak_client_id: event.target.value,
-                      }))
-                    }
-                    placeholder="agenticai-web"
-                  />
-                </Field>
-                <Field label={t("admin.systemSettings.clientSecretLabel")}>
-                  <InputTypeIn
-                    type="password"
-                    value={configForm.keycloak_client_secret}
-                    onChange={(event) =>
-                      setConfigForm((current) => ({
-                        ...current,
-                        keycloak_client_secret: event.target.value,
-                      }))
-                    }
-                    placeholder={
-                      data?.keycloak.client_secret_configured
-                        ? t("admin.systemSettings.configuredLeaveBlank")
-                        : t("admin.systemSettings.optionalValue")
-                    }
-                  />
-                </Field>
-              </div>
-              <SettingRow
-                label={t("admin.systemSettings.enabled")}
-                value={data?.keycloak.enabled}
-              />
-              <SettingRow
-                label={t("admin.systemSettings.sourceLabel")}
-                value={data?.keycloak.source}
-              />
-              <SettingRow
-                label={t("admin.systemSettings.realmLabel")}
-                value={data?.keycloak.realm}
-              />
-              <SettingRow
-                label={t("admin.systemSettings.baseUrlLabel")}
-                value={data?.keycloak.base_url}
-              />
-              <SettingRow
-                label={t("admin.systemSettings.adminApiAccessLabel")}
-                value={data?.keycloak.admin_access_configured}
-              />
-            </Panel>
+              </Panel>
 
-            <Panel
-              icon={SvgKey}
-              title={t("admin.systemSettings.externalKeycloakIdpTitle")}
-            >
-              <div className="flex flex-col gap-3 border-b border-border-01 py-4">
-                <ToggleRow
-                  checked={configForm.external_keycloak}
-                  label={t("admin.systemSettings.enableExternalKeycloak")}
-                  onCheckedChange={(checked) =>
-                    setConfigForm((current) => ({
-                      ...current,
-                      external_keycloak: checked,
-                    }))
-                  }
-                />
-                <Field label={t("admin.systemSettings.aliasLabel")}>
-                  <InputTypeIn
-                    value={configForm.external_keycloak_alias}
-                    onChange={(event) =>
-                      setConfigForm((current) => ({
-                        ...current,
-                        external_keycloak_alias: event.target.value,
-                      }))
-                    }
-                    placeholder="external-keycloak"
-                  />
-                </Field>
-                <Field label={t("admin.systemSettings.displayNameLabel")}>
-                  <InputTypeIn
-                    value={configForm.external_keycloak_display_name}
-                    onChange={(event) =>
-                      setConfigForm((current) => ({
-                        ...current,
-                        external_keycloak_display_name: event.target.value,
-                      }))
-                    }
-                    placeholder="External Keycloak"
-                  />
-                </Field>
-                <Field label={t("admin.systemSettings.issuerUrlLabel")}>
-                  <InputTypeIn
-                    value={configForm.external_keycloak_issuer_url}
-                    onChange={(event) =>
-                      setConfigForm((current) => ({
-                        ...current,
-                        external_keycloak_issuer_url: event.target.value,
-                      }))
-                    }
-                    placeholder="https://sso.example.com/realms/external"
-                  />
-                </Field>
-                <Field label={t("admin.systemSettings.baseUrlLabel")}>
-                  <InputTypeIn
-                    value={configForm.external_keycloak_base_url}
-                    onChange={(event) =>
-                      setConfigForm((current) => ({
-                        ...current,
-                        external_keycloak_base_url: event.target.value,
-                      }))
-                    }
-                    placeholder="https://sso.example.com"
-                  />
-                </Field>
-                <Field label={t("admin.systemSettings.realmLabel")}>
-                  <InputTypeIn
-                    value={configForm.external_keycloak_realm}
-                    onChange={(event) =>
-                      setConfigForm((current) => ({
-                        ...current,
-                        external_keycloak_realm: event.target.value,
-                      }))
-                    }
-                    placeholder="ldap-realm"
-                  />
-                </Field>
-                <Field label={t("admin.systemSettings.clientIdLabel")}>
-                  <InputTypeIn
-                    value={configForm.external_keycloak_client_id}
-                    onChange={(event) =>
-                      setConfigForm((current) => ({
-                        ...current,
-                        external_keycloak_client_id: event.target.value,
-                      }))
-                    }
-                    placeholder="ldap-client"
-                  />
-                </Field>
-                <Field label={t("admin.systemSettings.clientSecretLabel")}>
-                  <InputTypeIn
-                    type="password"
-                    value={configForm.external_keycloak_client_secret}
-                    onChange={(event) =>
-                      setConfigForm((current) => ({
-                        ...current,
-                        external_keycloak_client_secret: event.target.value,
-                      }))
-                    }
-                    placeholder={
-                      data?.external_keycloak.client_secret_configured
-                        ? t("admin.systemSettings.configuredLeaveBlank")
-                        : t("admin.systemSettings.requiredValue")
-                    }
-                  />
-                </Field>
-              </div>
-              <SettingRow
-                label={t("admin.systemSettings.sourceLabel")}
-                value={data?.external_keycloak.source}
-              />
-              <SettingRow
-                label={t("admin.systemSettings.aliasLabel")}
-                value={data?.external_keycloak.alias}
-              />
-              <SettingRow
-                label={t("admin.systemSettings.displayNameLabel")}
-                value={data?.external_keycloak.display_name}
-              />
-              <SettingRow
-                label={t("admin.systemSettings.issuerUrlLabel")}
-                value={data?.external_keycloak.issuer_url}
-              />
-              <SettingRow
-                label={t("admin.systemSettings.clientIdLabel")}
-                value={data?.external_keycloak.client_id}
-              />
-              <SettingRow
-                label={t("admin.systemSettings.clientSecretLabel")}
-                value={
-                  data?.external_keycloak.client_secret_configured
-                    ? t("admin.systemSettings.configuredValue")
-                    : null
-                }
-              />
-            </Panel>
-
-            <Panel
-              icon={SvgShield}
-              title={t("admin.systemSettings.operationsTitle")}
-            >
-              <div className="flex flex-col gap-3 py-4">
-                <Button
-                  main
-                  primary
-                  leftIcon={SvgCheck}
-                  disabled={isLoading || isSavingConfig}
-                  onClick={onSaveConfig}
-                  className="w-full"
-                >
-                  {isSavingConfig
-                    ? t("admin.systemSettings.savingButton")
-                    : t("admin.systemSettings.saveKeycloakSettingsButton")}
-                </Button>
-                <Button
-                  main
-                  secondary
-                  leftIcon={SvgRefreshCw}
-                  disabled={
-                    isLoading || isMutating || !data?.external_keycloak.enabled
-                  }
-                  onClick={syncExternalIdp}
-                  className="w-full"
-                >
-                  {isMutating
-                    ? t("admin.systemSettings.applyingButton")
-                    : t("admin.systemSettings.applyExternalIdpButton")}
-                </Button>
-                <div className="flex flex-col gap-3 rounded-08 border border-border-01 bg-background-neutral-01 px-3 py-3">
-                  <Text as="span" secondaryBody text03>
-                    {t("admin.systemSettings.realmSessionDurations")}
-                  </Text>
-                  <Field
-                    label={t("admin.systemSettings.accessTokenLifespanLabel")}
+              <Panel
+                icon={SvgShield}
+                title={t("admin.systemSettings.operationsTitle")}
+              >
+                <div className="flex flex-col gap-3 py-4">
+                  <Button
+                    main
+                    primary
+                    leftIcon={SvgCheck}
+                    disabled={isLoading || isSavingConfig}
+                    onClick={onSaveConfig}
+                    className="w-full"
                   >
-                    <InputTypeIn
-                      type="number"
-                      value={sessionForm.access_token_lifespan}
-                      onChange={(event) =>
-                        setSessionForm((current) => ({
-                          ...current,
-                          access_token_lifespan: event.target.value,
-                        }))
-                      }
-                    />
-                  </Field>
-                  <Field label={t("admin.systemSettings.ssoIdleTimeoutLabel")}>
-                    <InputTypeIn
-                      type="number"
-                      value={sessionForm.sso_session_idle_timeout}
-                      onChange={(event) =>
-                        setSessionForm((current) => ({
-                          ...current,
-                          sso_session_idle_timeout: event.target.value,
-                        }))
-                      }
-                    />
-                  </Field>
-                  <Field label={t("admin.systemSettings.ssoMaxLifespanLabel")}>
-                    <InputTypeIn
-                      type="number"
-                      value={sessionForm.sso_session_max_lifespan}
-                      onChange={(event) =>
-                        setSessionForm((current) => ({
-                          ...current,
-                          sso_session_max_lifespan: event.target.value,
-                        }))
-                      }
-                    />
-                  </Field>
-                  <Field
-                    label={t(
-                      "admin.systemSettings.clientSessionMaxLifespanLabel"
-                    )}
-                  >
-                    <InputTypeIn
-                      type="number"
-                      min={0}
-                      max={2592000}
-                      value={sessionForm.client_session_max_lifespan}
-                      onChange={(event) =>
-                        setSessionForm((current) => ({
-                          ...current,
-                          client_session_max_lifespan: event.target.value,
-                        }))
-                      }
-                    />
-                  </Field>
+                    {isSavingConfig
+                      ? t("admin.systemSettings.savingButton")
+                      : t("admin.systemSettings.saveKeycloakSettingsButton")}
+                  </Button>
                   <Button
                     main
                     secondary
-                    leftIcon={SvgCheck}
-                    disabled={isLoading || isSavingSession}
-                    onClick={onSaveSession}
+                    leftIcon={SvgRefreshCw}
+                    disabled={
+                      isLoading ||
+                      isMutating ||
+                      !data?.external_keycloak.enabled
+                    }
+                    onClick={syncExternalIdp}
                     className="w-full"
                   >
-                    {isSavingSession
-                      ? t("admin.systemSettings.savingButton")
-                      : t("admin.systemSettings.saveSessionSettingsButton")}
+                    {isMutating
+                      ? t("admin.systemSettings.applyingButton")
+                      : t("admin.systemSettings.applyExternalIdpButton")}
                   </Button>
-                </div>
-                <Button
-                  main
-                  secondary
-                  leftIcon={SvgRefreshCw}
-                  disabled={isLoading || isMutating}
-                  onClick={() => mutate()}
-                  className="w-full"
-                >
-                  {t("admin.systemSettings.refreshStatusButton")}
-                </Button>
-                <div className="rounded-08 border border-border-01 bg-background-neutral-01 px-3 py-3">
-                  <Text as="span" secondaryBody text04 className="block">
-                    {t("admin.systemSettings.startupBehaviorTitle")}
-                  </Text>
-                  <Text as="span" mainUiBody text05 className="block pt-1">
-                    {t("admin.systemSettings.startupBehaviorDescription")}
-                  </Text>
-                </div>
-                {idp?.error ? (
-                  <div className="rounded-08 border border-status-error-02 bg-background-neutral-01 px-3 py-3">
-                    <Text
-                      as="span"
-                      secondaryBody
-                      className="block text-status-error-05"
+                  <div className="flex flex-col gap-3 rounded-08 border border-border-01 bg-background-neutral-01 px-3 py-3">
+                    <Text as="span" secondaryBody text03>
+                      {t("admin.systemSettings.realmSessionDurations")}
+                    </Text>
+                    <Field
+                      label={t("admin.systemSettings.accessTokenLifespanLabel")}
                     >
-                      {idp.error}
+                      <InputTypeIn
+                        type="number"
+                        value={sessionForm.access_token_lifespan}
+                        onChange={(event) =>
+                          setSessionForm((current) => ({
+                            ...current,
+                            access_token_lifespan: event.target.value,
+                          }))
+                        }
+                      />
+                    </Field>
+                    <Field
+                      label={t("admin.systemSettings.ssoIdleTimeoutLabel")}
+                    >
+                      <InputTypeIn
+                        type="number"
+                        value={sessionForm.sso_session_idle_timeout}
+                        onChange={(event) =>
+                          setSessionForm((current) => ({
+                            ...current,
+                            sso_session_idle_timeout: event.target.value,
+                          }))
+                        }
+                      />
+                    </Field>
+                    <Field
+                      label={t("admin.systemSettings.ssoMaxLifespanLabel")}
+                    >
+                      <InputTypeIn
+                        type="number"
+                        value={sessionForm.sso_session_max_lifespan}
+                        onChange={(event) =>
+                          setSessionForm((current) => ({
+                            ...current,
+                            sso_session_max_lifespan: event.target.value,
+                          }))
+                        }
+                      />
+                    </Field>
+                    <Field
+                      label={t(
+                        "admin.systemSettings.clientSessionMaxLifespanLabel"
+                      )}
+                    >
+                      <InputTypeIn
+                        type="number"
+                        min={0}
+                        max={2592000}
+                        value={sessionForm.client_session_max_lifespan}
+                        onChange={(event) =>
+                          setSessionForm((current) => ({
+                            ...current,
+                            client_session_max_lifespan: event.target.value,
+                          }))
+                        }
+                      />
+                    </Field>
+                    <Button
+                      main
+                      secondary
+                      leftIcon={SvgCheck}
+                      disabled={isLoading || isSavingSession}
+                      onClick={onSaveSession}
+                      className="w-full"
+                    >
+                      {isSavingSession
+                        ? t("admin.systemSettings.savingButton")
+                        : t("admin.systemSettings.saveSessionSettingsButton")}
+                    </Button>
+                  </div>
+                  <Button
+                    main
+                    secondary
+                    leftIcon={SvgRefreshCw}
+                    disabled={isLoading || isMutating}
+                    onClick={() => mutate()}
+                    className="w-full"
+                  >
+                    {t("admin.systemSettings.refreshStatusButton")}
+                  </Button>
+                  <div className="rounded-08 border border-border-01 bg-background-neutral-01 px-3 py-3">
+                    <Text as="span" secondaryBody text04 className="block">
+                      {t("admin.systemSettings.startupBehaviorTitle")}
+                    </Text>
+                    <Text as="span" mainUiBody text05 className="block pt-1">
+                      {t("admin.systemSettings.startupBehaviorDescription")}
                     </Text>
                   </div>
-                ) : null}
-              </div>
-            </Panel>
-          </div>
+                  {idp?.error ? (
+                    <div className="rounded-08 border border-status-error-02 bg-background-neutral-01 px-3 py-3">
+                      <Text
+                        as="span"
+                        secondaryBody
+                        className="block text-status-error-05"
+                      >
+                        {idp.error}
+                      </Text>
+                    </div>
+                  ) : null}
+                </div>
+              </Panel>
+            </div>
+          )}
         </div>
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>

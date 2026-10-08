@@ -1,0 +1,34 @@
+# Source of truth for the architecture catalog consumed by governance (OPA).
+services:
+  - name: agent-service
+    owner: core-platform-team
+    tier: critical
+    port: 8123
+    depends_on: [user-service, rag-service, tools-service, keycloak, postgres]
+  - name: user-service
+    owner: identity-platform-team
+    tier: critical
+    port: 8090
+    depends_on: [keycloak, postgres]
+  - name: rag-service
+    owner: data-engineering-team
+    tier: standard
+    port: 8083
+    depends_on: [postgres, milvus, neo4j]
+  - name: tools-service
+    owner: integrations-team
+    tier: standard
+    port: 8003
+    depends_on: [keycloak, postgres]
+  - name: web
+    owner: frontend-platform-team
+    tier: critical
+    port: 3000
+    depends_on: [agent-service, user-service]
+  - name: apisix
+    owner: infrastructure-team
+    tier: critical
+    port: 8000
+    depends_on: []
+
+critical_services: [agent-service, user-service, web, apisix]

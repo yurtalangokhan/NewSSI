@@ -21,6 +21,10 @@ interface UserContextType {
   user: any;
   isAdmin: boolean;
   isCurator: boolean;
+  permissions: string[];
+  hasPermission: (permission: string) => boolean;
+  hasAnyPermission: (permissions: readonly string[]) => boolean;
+  hasAllPermissions: (permissions: readonly string[]) => boolean;
   refreshUser: () => Promise<void>;
   isCloudSuperuser: boolean;
   updateUserAutoScroll: (autoScroll: boolean) => Promise<void>;
@@ -39,6 +43,13 @@ const mockUserContext: UserContextType = {
   user: null,
   isAdmin: false,
   isCurator: false,
+  // Unprivileged by default, matching isAdmin/isCurator above: a test that
+  // needs a permission-gated affordance must opt into it explicitly rather
+  // than inherit it from the shared mock.
+  permissions: [],
+  hasPermission: () => false,
+  hasAnyPermission: () => false,
+  hasAllPermissions: () => false,
   refreshUser: async () => {},
   isCloudSuperuser: false,
   updateUserAutoScroll: async () => {},

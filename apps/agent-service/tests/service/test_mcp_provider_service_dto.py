@@ -8,7 +8,7 @@ import pytest
 
 
 def _service():
-    from service.MCPProviderService import MCPProviderService
+    from service.mcp.mcp_provider_service import MCPProviderService
 
     return MCPProviderService(repo=AsyncMock())
 
@@ -32,7 +32,7 @@ async def test_dto_maps_int_id_to_id_and_status():
     }
     with (
         patch.object(svc, "_tool_count", AsyncMock(return_value=4)),
-        patch("service.MCPProviderService.MCPCredentialService") as cs,
+        patch("service.mcp.mcp_provider_service.MCPCredentialService") as cs,
     ):
         cs.get_instance.return_value.has_valid_auth = AsyncMock(return_value=True)
         dto = await svc.to_mcp_server_dto(row, user_id="u1")
@@ -88,7 +88,7 @@ async def test_dto_includes_masked_credentials_when_requested():
     }
     with (
         patch.object(svc, "_tool_count", AsyncMock(return_value=0)),
-        patch("service.MCPProviderService.MCPCredentialService") as cs,
+        patch("service.mcp.mcp_provider_service.MCPCredentialService") as cs,
     ):
         inst = cs.get_instance.return_value
         inst.has_valid_auth = AsyncMock(return_value=True)
@@ -100,7 +100,7 @@ async def test_dto_includes_masked_credentials_when_requested():
 
 
 def test_builtin_server_dto_has_id_1():
-    from service.MCPProviderService import MCPProviderService
+    from service.mcp.mcp_provider_service import MCPProviderService
 
     dto = MCPProviderService.builtin_server_dto()
     assert dto["id"] == 1

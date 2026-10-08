@@ -6,7 +6,7 @@ import {
   SearchToolPacket,
   StopReason,
   CustomToolStart,
-} from "@/app/app/services/streamingModels";
+} from "@/lib/api/domains/chat/streaming-types";
 import {
   constructCurrentSearchState,
   getSearchedForQuery,

@@ -1,28 +1,31 @@
 """Idempotency configuration for the FastMCP HTTP transport."""
 
+from config_manager import ConfigManager
 from idempotency import (
     IdempotencyConfig,
     IdempotencyMode,
     IdempotencyPolicy,
     IdempotencyPolicyConfig,
 )
+from metrics import install_idempotency_recorder
 
-from src.core.settings import Settings
+from src.core.idempotency_principal import extract_principal_from_jwt
 
 
-def build_idempotency_config(settings: Settings) -> IdempotencyConfig:
+def build_idempotency_config(settings: ConfigManager) -> IdempotencyConfig:
     """Build the shared idempotency middleware config for tools-service."""
     return IdempotencyConfig(
-        redis_host=settings.redis_host,
-        redis_port=settings.redis_port,
-        redis_db=settings.redis_db,
-        redis_password=settings.redis_password,
-        idempotency_ttl=settings.idempotency_ttl,
-        idempotency_enabled=settings.idempotency_enabled,
+        redis_host=settings.REDIS_HOST,
+        redis_port=settings.REDIS_PORT,
+        redis_db=settings.REDIS_DB,
+        redis_password=settings.REDIS_PASSWORD,
+        idempotency_ttl=settings.IDEMPOTENCY_TTL,
+        idempotency_enabled=settings.IDEMPOTENCY_ENABLED,
+        lock_ttl=settings.IDEMPOTENCY_LOCK_TTL,
+        wait_timeout=settings.IDEMPOTENCY_WAIT_TIMEOUT,
         service_name="tools-service",
-        enforce_required_keys=settings.idempotency_enforce_required_keys,
-        lock_ttl=settings.idempotency_lock_ttl,
-        wait_timeout=settings.idempotency_wait_timeout,
+        decision_recorder=install_idempotency_recorder("tools-service"),
+        principal_extractor=extract_principal_from_jwt,
         policy=build_idempotency_policy(),
     )
 

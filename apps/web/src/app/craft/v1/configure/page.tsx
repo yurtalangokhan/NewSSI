@@ -37,7 +37,7 @@ import {
 } from "@/app/craft/v1/configure/components/ConfigureOverlays";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
 import { getSourceMetadata } from "@/lib/sources";
-import { deleteConnector } from "@/app/craft/services/apiServices";
+import { deleteConnector } from "@/lib/api/domains/craft/api";
 import Button from "@/refresh-components/buttons/Button";
 import {
   OAUTH_STATE_KEY,
@@ -49,7 +49,7 @@ import Switch from "@/refresh-components/inputs/Switch";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import NotAllowedModal from "@/app/craft/onboarding/components/NotAllowedModal";
 import { useOnboarding } from "@/app/craft/onboarding/BuildOnboardingProvider";
-import { useLLMProviders } from "@/hooks/useLLMProviders";
+import { useLLMProviders } from "@/lib/api/domains/model-providers/hooks";
 import { useUser } from "@/providers/UserProvider";
 import { getProviderIcon } from "@/app/admin/configuration/llm/utils";
 import {

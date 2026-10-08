@@ -1,28 +1,27 @@
 "use client";
-
-import { authenticatedFetch } from "@/lib/fetcher";
+import { fetchSubscriptionStripeKey } from "@/lib/api/domains/billing/api";
+import { createResubscriptionSession } from "@/lib/api/domains/billing/api";
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import i18n from "@/i18n/config";
 import Link from "next/link";
 import ErrorPageLayout from "@/components/errorPages/ErrorPageLayout";
 import Button from "@/refresh-components/buttons/Button";
 import InlineExternalLink from "@/refresh-components/InlineExternalLink";
-import { logout } from "@/lib/user";
+import { logout } from "@/lib/api/domains/session/api";
 import { loadStripe } from "@stripe/stripe-js";
-import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
-import { useLicense } from "@/hooks/useLicense";
+import { useLicense } from "@/lib/api/domains/billing/hooks";
+import { appSettings } from "@/lib/settings";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import { ApplicationStatus } from "@/interfaces/settings";
 import Text from "@/refresh-components/texts/Text";
 import { SvgLock } from "@opal/icons";
-import { APP_NAME, APP_SUPPORT_EMAIL } from "@/lib/appInfo";
+import i18n from "@/i18n/config";
 
 const linkClassName = "text-action-link-05 hover:text-action-link-06 underline";
 
 const fetchStripePublishableKey = async (): Promise<string> => {
-  const response = await fetch("/api/tenants/stripe-publishable-key");
+  const response = await fetchSubscriptionStripeKey();
   if (!response.ok) {
     throw new Error(i18n.t("errors.accessRestricted.fetchStripeKeyFailed"));
   }
@@ -31,15 +30,7 @@ const fetchStripePublishableKey = async (): Promise<string> => {
 };
 
 const fetchResubscriptionSession = async () => {
-  const response = await authenticatedFetch(
-    "/api/tenants/create-subscription-session",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  const response = await createResubscriptionSession();
   if (!response.ok) {
     throw new Error(i18n.t("errors.accessRestricted.fetchResubFailed"));
   }
@@ -59,7 +50,8 @@ export default function AccessRestricted() {
     settings.settings.application_status ===
     ApplicationStatus.SEAT_LIMIT_EXCEEDED;
   const hadPreviousLicense = license?.has_license === true;
-  const showRenewalMessage = NEXT_PUBLIC_CLOUD_ENABLED || hadPreviousLicense;
+  const showRenewalMessage =
+    appSettings.NEXT_PUBLIC_CLOUD_ENABLED || hadPreviousLicense;
 
   function getSeatLimitMessage() {
     const { used_seats, seat_count } = settings.settings;
@@ -73,10 +65,10 @@ export default function AccessRestricted() {
   const initialModalMessage = isSeatLimitExceeded
     ? getSeatLimitMessage()
     : showRenewalMessage
-      ? NEXT_PUBLIC_CLOUD_ENABLED
-        ? t("suspendedCloud", { appName: APP_NAME })
-        : t("suspendedLicense", { appName: APP_NAME })
-      : t("licenseRequired", { appName: APP_NAME });
+      ? appSettings.NEXT_PUBLIC_CLOUD_ENABLED
+        ? t("suspendedCloud", { appName: appSettings.APP_NAME })
+        : t("suspendedLicense", { appName: appSettings.APP_NAME })
+      : t("licenseRequired", { appName: appSettings.APP_NAME });
 
   const handleResubscribe = async () => {
     setIsLoading(true);
@@ -132,9 +124,11 @@ export default function AccessRestricted() {
             </Button>
           </div>
         </>
-      ) : NEXT_PUBLIC_CLOUD_ENABLED ? (
+      ) : appSettings.NEXT_PUBLIC_CLOUD_ENABLED ? (
         <>
-          <Text text03>{t("reinstateCloudBody", { appName: APP_NAME })}</Text>
+          <Text text03>
+            {t("reinstateCloudBody", { appName: appSettings.APP_NAME })}
+          </Text>
 
           <Text text03>{t("manageSubscriptionBody")}</Text>
 
@@ -158,7 +152,7 @@ export default function AccessRestricted() {
         <>
           <Text text03>
             {hadPreviousLicense
-              ? t("reinstateLicenseBody", { appName: APP_NAME })
+              ? t("reinstateLicenseBody", { appName: appSettings.APP_NAME })
               : t("getStartedBody")}
           </Text>
 
@@ -171,8 +165,11 @@ export default function AccessRestricted() {
               ? t("billingVisitMiddleRenew")
               : t("billingVisitMiddleActivate")}{" "}
             {t("billingVisitSuffixPrefix")}{" "}
-            <a className={linkClassName} href={`mailto:${APP_SUPPORT_EMAIL}`}>
-              {APP_SUPPORT_EMAIL}
+            <a
+              className={linkClassName}
+              href={`mailto:${appSettings.APP_SUPPORT_EMAIL}`}
+            >
+              {appSettings.APP_SUPPORT_EMAIL}
             </a>{" "}
             {t("billingVisitSuffixSuffix")}
           </Text>

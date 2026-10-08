@@ -186,7 +186,7 @@ describe("OpenAIOnboardingForm", () => {
      * This test verifies that the exact curated list of OpenAI visible models
      * matches what's returned from /api/admin/llm/built-in/options.
      * The expected models are defined in OPENAI_VISIBLE_MODEL_NAMES in
-     * backend/onyx/llm/llm_provider_options.py
+     * backend/atlas/llm/llm_provider_options.py
      */
     test("llmDescriptor contains the correct default visible models from built-in options", () => {
       const expectedModelNames = [
@@ -218,7 +218,7 @@ describe("OpenAIOnboardingForm", () => {
     });
 
     test("OPENAI_DEFAULT_VISIBLE_MODELS matches backend OPENAI_VISIBLE_MODEL_NAMES", () => {
-      // These are the exact model names from backend/onyx/llm/llm_provider_options.py
+      // These are the exact model names from backend/atlas/llm/llm_provider_options.py
       // OPENAI_VISIBLE_MODEL_NAMES = {"gpt-5.2", "gpt-5-mini", "o1", "o3-mini", "gpt-4o", "gpt-4o-mini"}
       const backendVisibleModelNames = new Set([
         "gpt-5.2",

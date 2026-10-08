@@ -13,14 +13,14 @@ from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
 
-from agents.graphs.flow_builder import (
+from agents.graphs.flow import (
     FlowGraphBuilder,
     _human_input_result_key,
     _make_human_input_node,
     _match_decision,
 )
 from core.exceptions import FlowBuildError
-from models.flows import FlowNode, FlowSpec
+from schemas.flows import FlowNode, FlowSpec
 
 
 @pytest.fixture(autouse=True)
@@ -238,7 +238,7 @@ async def test_unmatched_answer_takes_the_unmatched_branch_when_enabled():
         values={"prompt": "?", "decisions": [{"label": "Onayla"}], "enable_unmatched": True},
     )
     fn = _make_human_input_node(node)
-    with patch("agents.graphs.flow_builder.interrupt", return_value="bambaska"):
+    with patch("agents.graphs.flow.nodes.routing.interrupt", return_value="bambaska"):
         result = await fn({"messages": [], "scratch": {}}, None)
     assert result["scratch"][_human_input_result_key("hi-1")] == "__unmatched__"
 
@@ -252,6 +252,49 @@ async def test_unmatched_answer_without_the_branch_is_an_error():
         values={"prompt": "?", "decisions": [{"label": "Onayla"}], "enable_unmatched": False},
     )
     fn = _make_human_input_node(node)
-    with patch("agents.graphs.flow_builder.interrupt", return_value="bambaska"):
+    with patch("agents.graphs.flow.nodes.routing.interrupt", return_value="bambaska"):
         with pytest.raises(FlowBuildError):
             await fn({"messages": [], "scratch": {}}, None)
+
+
+# ---------------------------------------------------------------------------
+# B9: the decision must reach the continuing branch as a message, not just
+# routing — otherwise a downstream agent reads its input off the *last*
+# message, sees whatever preceded HumanInput, and re-answers the original
+# request instead of acting on what was approved.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_the_chosen_decision_lands_in_the_message_stream():
+    graph = await _build(_hitl_flow())
+    cfg = {"configurable": {"thread_id": "t7"}, "recursion_limit": 50}
+
+    await graph.ainvoke({"messages": [HumanMessage(content="go")], "scratch": {}}, config=cfg)
+    result = await graph.ainvoke(Command(resume="approve"), config=cfg)
+
+    assert result["messages"][-1].content == "approve"
+
+
+@pytest.mark.asyncio
+async def test_the_structured_decision_also_lands_in_the_message_stream():
+    graph = await _build(_hitl_flow())
+    cfg = {"configurable": {"thread_id": "t8"}, "recursion_limit": 50}
+
+    await graph.ainvoke({"messages": [HumanMessage(content="go")], "scratch": {}}, config=cfg)
+    result = await graph.ainvoke(Command(resume={"decision": "reject"}), config=cfg)
+
+    assert result["messages"][-1].content == "reject"
+
+
+@pytest.mark.asyncio
+async def test_an_unmatched_answer_carries_its_own_raw_text_into_the_branch():
+    """There is no label for the unmatched branch, so the continuing agent
+    gets what the person actually typed, not the internal sentinel."""
+    graph = await _build(_hitl_flow(enable_unmatched=True, wire_unmatched=True))
+    cfg = {"configurable": {"thread_id": "t9"}, "recursion_limit": 50}
+
+    await graph.ainvoke({"messages": [HumanMessage(content="go")], "scratch": {}}, config=cfg)
+    result = await graph.ainvoke(Command(resume="maybe later"), config=cfg)
+
+    assert result["messages"][-1].content == "maybe later"

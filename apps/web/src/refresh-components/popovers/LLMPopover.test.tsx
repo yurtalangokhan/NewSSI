@@ -6,7 +6,7 @@ import {
 } from "./LLMPopover";
 import { LLMOption } from "./interfaces";
 import { LLMProviderDescriptor } from "@/interfaces/llm";
-import type { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import type { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import { makeProvider } from "@tests/setup/llmProviderTestUtils";
 
 function agent(
@@ -30,20 +30,24 @@ function agent(
  * pointed at the wrong one.
  */
 describe("modelSelectionAppliesToAgent", () => {
-  it("marks nothing for a flow agent, whose model its own spec decides", () => {
-    expect(modelSelectionAppliesToAgent(agent({ graph_schema: "flow" }))).toBe(
-      false
-    );
-  });
-
-  it("still marks the current model for a classic agent", () => {
+  it("marks nothing for a flow agent", () => {
     expect(
-      modelSelectionAppliesToAgent(agent({ graph_schema: "zero_shot" }))
-    ).toBe(true);
-    expect(modelSelectionAppliesToAgent(agent({}))).toBe(true);
+      modelSelectionAppliesToAgent(agent({ id: 2, graph_schema: "flow" }))
+    ).toBe(false);
   });
 
-  it("still marks the current model when no agent is selected at all", () => {
+  it("marks nothing for a custom agent so only the agent appears selected", () => {
+    expect(
+      modelSelectionAppliesToAgent(agent({ id: 1, graph_schema: "zero_shot" }))
+    ).toBe(false);
+    expect(modelSelectionAppliesToAgent(agent({ id: 5 }))).toBe(false);
+  });
+
+  it("marks the current model when default assistant (id 0) is in use", () => {
+    expect(modelSelectionAppliesToAgent(agent({ id: 0 }))).toBe(true);
+  });
+
+  it("marks the current model when no agent is selected at all", () => {
     expect(modelSelectionAppliesToAgent(undefined)).toBe(true);
   });
 });

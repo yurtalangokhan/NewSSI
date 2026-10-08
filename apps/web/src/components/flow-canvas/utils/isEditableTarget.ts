@@ -2,7 +2,7 @@
  * Concept ported from Langflow (MIT) — src/frontend/src/utils/is-wrapped-with-class.ts
  * Upstream: https://github.com/langflow-ai/langflow @ 3ec070e9
  *
- * Adapted for Onyx: Langflow marks specific elements with a "noflow"/
+ * Adapted for Atlas: Langflow marks specific elements with a "noflow"/
  * "nodelete" class to opt out of canvas-level keyboard handling (so typing
  * in a field doesn't trigger flow delete/undo). Rather than requiring every
  * refresh-components input to carry that marker class, this checks the

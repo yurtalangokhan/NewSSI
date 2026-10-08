@@ -4,10 +4,10 @@ import {
   BuiltinOllamaPanel,
   BuiltinOllamaPanelView,
 } from "@/sections/llmConfig/BuiltinOllamaPanel";
-import * as providerHooks from "@/hooks/useProviders";
+import * as providerHooks from "@/lib/api/domains/model-providers/hooks";
 
-jest.mock("@/hooks/useProviders", () => ({
-  ...jest.requireActual("@/hooks/useProviders"),
+jest.mock("@/lib/api/domains/model-providers/hooks", () => ({
+  ...jest.requireActual("@/lib/api/domains/model-providers/hooks"),
   useBuiltinOllamaStatus: jest.fn(),
   useBuiltinOllamaModels: jest.fn(),
   useDeleteBuiltinOllamaModel: jest.fn(),

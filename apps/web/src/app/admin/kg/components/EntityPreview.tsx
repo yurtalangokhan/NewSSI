@@ -3,7 +3,7 @@
 import CardSection from "@/components/admin/CardSection";
 import Text from "@/refresh-components/texts/Text";
 import { SvgX, SvgChevronRight } from "@opal/icons";
-import type { GraphNode, GraphEdge } from "@/lib/langconnect";
+import type { GraphNode, GraphEdge } from "@/lib/api/domains/knowledge/types";
 import { useTranslation } from "react-i18next";
 
 const ISO_DATE_RE =

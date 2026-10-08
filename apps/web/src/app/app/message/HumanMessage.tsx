@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { FileDescriptor } from "@/app/app/interfaces";
+import { FileDescriptor } from "@/lib/api/domains/chat/types";
 import "katex/dist/katex.min.css";
 import MessageSwitcher from "@/app/app/message/MessageSwitcher";
 import Text from "@/refresh-components/texts/Text";
@@ -11,6 +11,7 @@ import { Button } from "@opal/components";
 import { SvgEdit } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 import FileDisplay from "./FileDisplay";
+import MessageTimestamp from "./MessageTimestamp";
 import { useAppBackground } from "@/providers/AppBackgroundProvider";
 
 interface MessageEditingProps {
@@ -103,6 +104,9 @@ interface HumanMessageProps {
   // Streaming and generation
   stopGenerating?: () => void;
   disableSwitchingForStreaming?: boolean;
+
+  // When the message was sent; absent for one the backend could not stamp.
+  timeSent?: string;
 }
 
 // Memoization comparison - compare by value for primitives, by reference for objects/arrays
@@ -117,7 +121,8 @@ function arePropsEqual(
     prev.files === next.files &&
     prev.disableSwitchingForStreaming === next.disableSwitchingForStreaming &&
     prev.otherMessagesCanSwitchTo === next.otherMessagesCanSwitchTo &&
-    prev.onEdit === next.onEdit
+    prev.onEdit === next.onEdit &&
+    prev.timeSent === next.timeSent
     // Skip: stopGenerating, onMessageSelection (inline function props)
   );
 }
@@ -132,6 +137,7 @@ const HumanMessage = React.memo(function HumanMessage({
   onMessageSelection,
   stopGenerating = () => null,
   disableSwitchingForStreaming = false,
+  timeSent,
 }: HumanMessageProps) {
   // TODO (@raunakab):
   //
@@ -175,7 +181,7 @@ const HumanMessage = React.memo(function HumanMessage({
 
   return (
     <div
-      id="onyx-human-message"
+      id="atlas-human-message"
       className="group flex flex-col justify-end w-full relative"
     >
       <FileDisplay alignBubble files={files || []} />
@@ -288,6 +294,7 @@ const HumanMessage = React.memo(function HumanMessage({
                 }}
               />
             )}
+          <MessageTimestamp timeSent={timeSent} className="ml-2 self-center" />
         </div>
       </div>
     </div>

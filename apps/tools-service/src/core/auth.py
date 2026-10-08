@@ -1,141 +1,72 @@
-"""Bearer token authentication for the FastMCP HTTP transport."""
+"""Caller verification for the FastMCP HTTP transport.
+
+Tools-service does not authenticate anyone. Gateway introspects the user token
+with Keycloak, applies the route's authorization decision, and forwards the
+result as trusted headers. This verifier turns those headers into the
+``AccessToken`` FastMCP expects.
+
+FastMCP hands :meth:`verify_token` only the bearer string, so the trusted
+headers are read from the active HTTP request via ``get_http_headers``. A
+request that did not traverse Gateway has no valid ``x-gateway-token`` and is
+rejected — there is no direct-MCP, API-key or development path.
+"""
 
 from __future__ import annotations
 
 import time
-from typing import Any
 
-import jwt
+from config_manager import env
 from fastmcp.server.auth import AccessToken, TokenVerifier
-from jwt import InvalidTokenError, PyJWKClient
+from fastmcp.server.dependencies import get_http_headers
+from security import INTERNAL_SERVICE_USER_ID, resolve_gateway_identity
 
 from .authorization import get_user_service_permissions
-from .settings import get_settings, optional_env
 
-
-def _get_valid_api_keys() -> set:
-    keys = optional_env("VALID_API_KEYS")
-    if keys:
-        return {k.strip() for k in keys.split(",") if k.strip()}
-    return set()
+INTERNAL_TOKEN_TTL_SECONDS = 3600
+GATEWAY_TOKEN_TTL_SECONDS = 300
 
 
 def _get_internal_service_token() -> str:
-    return optional_env("INTERNAL_SERVICE_TOKEN").strip()
+    return env.INTERNAL_SERVICE_TOKEN.strip()
 
 
-class KeycloakTokenVerifier(TokenVerifier):
-    """Validate Bearer tokens for direct MCP access.
-
-    Supports three authentication tiers checked in order:
-    1. Keycloak RS256 JWT (if KEYCLOAK_ISSUER_URL is set)
-    2. Internal Service Token (X-Internal-Service-Token header)
-    3. VALID_API_KEYS (comma-separated in env)
-    """
+class GatewayTokenVerifier(TokenVerifier):
+    """Accept only callers Gateway has already authenticated."""
 
     def __init__(self) -> None:
-        settings = get_settings()
-        super().__init__(base_url=settings.mcp_public_base_url, required_scopes=["tool:execute"])
-        self._issuer = settings.keycloak_issuer_url
-        self._audience = settings.keycloak_audience
-        self._client_id = settings.keycloak_client_id
-        self._leeway = settings.keycloak_token_leeway_seconds
-        self._jwks_client: PyJWKClient | None = None
-
-    def _get_jwks_client(self) -> PyJWKClient | None:
-        if not self._issuer:
-            return None
-        if self._jwks_client is None:
-            self._jwks_client = PyJWKClient(
-                f"{self._issuer}/protocol/openid-connect/certs",
-                cache_keys=True,
-            )
-        return self._jwks_client
-
-    def _audiences(self) -> list[str]:
-        audiences = [a.strip() for a in self._audience.split(",") if a.strip()]
-        if self._client_id and self._client_id not in audiences:
-            audiences.append(self._client_id)
-        return audiences
+        settings = env
+        super().__init__(base_url=settings.MCP_PUBLIC_BASE_URL, required_scopes=["tool:execute"])
 
     async def verify_token(self, token: str) -> AccessToken | None:
-        # Tier 1: Keycloak JWT validation
-        jwks_client = self._get_jwks_client()
-        if jwks_client is not None:
-            audiences = self._audiences()
-            try:
-                signing_key = jwks_client.get_signing_key_from_jwt(token)
-                claims: dict[str, Any] = jwt.decode(
-                    jwt=token,
-                    key=signing_key.key,
-                    algorithms=["RS256", "RS384", "RS512"],
-                    issuer=self._issuer,
-                    audience=audiences if audiences else None,
-                    leeway=self._leeway,
-                    options={
-                        "verify_aud": bool(audiences),
-                        "verify_iss": True,
-                        "verify_exp": True,
-                        "verify_iat": False,
-                    },
-                )
-                subject = str(
-                    claims.get("sub")
-                    or claims.get("preferred_username")
-                    or claims.get("email")
-                    or ""
-                )
-                if subject:
-                    exp = claims.get("exp")
-                    expires_at = int(exp) if isinstance(exp, int) else int(time.time()) + 300
-                    scopes = await get_user_service_permissions(token, subject)
-                    return AccessToken(
-                        token=token,
-                        client_id=subject,
-                        scopes=scopes,
-                        expires_at=expires_at,
-                        claims=claims,
-                    )
-            except InvalidTokenError:
-                pass
-            except Exception:
-                pass
+        headers = get_http_headers(include_all=True)
+        identity = resolve_gateway_identity(headers, _get_internal_service_token())
+        if identity is None:
+            return None
 
-        # Tier 2: Internal Service Token (machine-to-machine)
-        internal_token = _get_internal_service_token()
-        if internal_token and token == internal_token:
-            expires_at = int(time.time()) + 3600
+        if identity.is_internal:
+            subject = identity.delegated_user_id or INTERNAL_SERVICE_USER_ID
             return AccessToken(
                 token=token,
-                client_id="internal-service",
+                client_id=subject,
                 scopes=["tool:execute"],
-                expires_at=expires_at,
-                claims={"sub": "internal-service", "iss": "tools-service"},
+                expires_at=int(time.time()) + INTERNAL_TOKEN_TTL_SECONDS,
+                claims={"sub": subject, "iss": "gateway", "internal": True},
             )
 
-        # Tier 3: API key fallback
-        valid_keys = _get_valid_api_keys()
-        if token in valid_keys:
-            expires_at = int(time.time()) + 3600
-            return AccessToken(
-                token=token,
-                client_id=token,
-                scopes=["tool:execute"],
-                expires_at=expires_at,
-                claims={"sub": token, "iss": "tools-service"},
-            )
+        scopes = await get_user_service_permissions(token, identity.user_id)
+        return AccessToken(
+            token=token,
+            client_id=identity.user_id,
+            scopes=scopes,
+            expires_at=int(time.time()) + GATEWAY_TOKEN_TTL_SECONDS,
+            claims={
+                "sub": identity.user_id,
+                "email": identity.email,
+                "preferred_username": identity.username,
+                "realm_access": {"roles": list(identity.roles)},
+                "iss": "gateway",
+            },
+        )
 
-        # api-key:xxx format
-        if token.startswith("api-key:"):
-            key = token[8:]
-            if key in valid_keys:
-                expires_at = int(time.time()) + 3600
-                return AccessToken(
-                    token=token,
-                    client_id=key,
-                    scopes=["tool:execute"],
-                    expires_at=expires_at,
-                    claims={"sub": key, "iss": "tools-service"},
-                )
 
-        return None
+__all__ = ["GatewayTokenVerifier"]

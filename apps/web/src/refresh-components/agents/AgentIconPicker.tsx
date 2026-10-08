@@ -1,4 +1,5 @@
 "use client";
+import { uploadAgentIcon } from "@/lib/api/domains/agents/api";
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -68,10 +69,7 @@ export default function AgentIconPicker({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const response = await fetch("/api/admin/persona/upload-image", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await uploadAgentIcon(formData);
 
       if (!response.ok) {
         console.error("Failed to upload image");
@@ -79,8 +77,10 @@ export default function AgentIconPicker({
         return;
       }
 
-      const { file_id } = await response.json();
-      onChange({ uploadedImageId: file_id, iconName: null });
+      const { file_id: fileId } = (await response.json()) as {
+        file_id: string;
+      };
+      onChange({ uploadedImageId: fileId, iconName: null });
       setPopoverOpen(false);
     } catch (error) {
       console.error("Upload error:", error);
@@ -106,7 +106,7 @@ export default function AgentIconPicker({
 
   const isLarge = size === "large";
   // The medallion frame is now the whole avatar surface, so it fills the
-  // InputAvatar circle the same way an uploaded image does.
+  // InputAvatar frame (circle for agents, squircle for flows) the same way an uploaded image does.
   const avatarSizePx = isLarge ? 10 * 16 : 7.5 * 16;
 
   const fileInputNode = (
@@ -128,6 +128,7 @@ export default function AgentIconPicker({
       <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
         <Popover.Trigger asChild>
           <InputAvatar
+            variant={variant}
             className={cn(
               "group/InputAvatar relative flex flex-col items-center justify-center cursor-pointer",
               isLarge ? "h-[10rem] w-[10rem]" : "h-[7.5rem] w-[7.5rem]"

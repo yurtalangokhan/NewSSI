@@ -11,16 +11,21 @@ import ListSkeleton from "@/refresh-components/skeletons/ListSkeleton";
 import { toast } from "@/hooks/useToast";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
 import {
-  useDocuments,
-  useDocumentChunks,
-  useUploadStatus,
+  type RagDocument,
+  type UploadProgress,
+} from "@/lib/api/domains/knowledge/types";
+import {
   startUploadJob,
   fetchUploadStatus,
   deleteDocument,
-  type RagDocument,
-  type UploadProgress,
-} from "@/lib/langconnect";
-import { getDatasourceDetails, type ChunkInfo } from "@/lib/airbyte";
+} from "@/lib/api/domains/knowledge/api";
+import {
+  useDocuments,
+  useDocumentChunks,
+  useUploadStatus,
+} from "@/lib/api/domains/knowledge/hooks";
+import type { ChunkInfo } from "@/lib/api/domains/datasources/api";
+import { getDatasourceDetails } from "@/lib/api/domains/datasources/api";
 import {
   SvgFileText,
   SvgTrash,
@@ -237,7 +242,7 @@ function DocumentRow({
       toast.warning(
         t("admin.documentProcessing.datasourceReadOnlyActionsBlocked", {
           defaultValue:
-            "Airbyte datasource koleksiyonlarında dosya silme işlemi yapılamaz.",
+            "Bağlayıcı veri kaynağı koleksiyonlarında dosya silme işlemi yapılamaz.",
         })
       );
       return;
@@ -356,7 +361,7 @@ export default function DocumentsPanel({
   isCollectionMutationLocked = false,
 }: DocumentsPanelProps) {
   const { t } = useTranslation();
-  // readOnly = Airbyte connector koleksiyonu; chunks agent-service'ten gelir, rag-service'e istek atma
+  // readOnly = bağlayıcı (connector) koleksiyonu; chunks agent-service'ten gelir, rag-service'e istek atma
   const { documents, isLoading, mutate } = useDocuments(
     readOnly ? null : collectionId
   );

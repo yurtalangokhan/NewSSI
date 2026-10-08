@@ -3,8 +3,8 @@ import {
   FetchToolPacket,
   FetchToolUrls,
   FetchToolDocuments,
-} from "@/app/app/services/streamingModels";
-import { OnyxDocument } from "@/lib/search/interfaces";
+} from "@/lib/api/domains/chat/streaming-types";
+import { AtlasDocument } from "@/lib/search/interfaces";
 
 export const INITIAL_URLS_TO_SHOW = 3;
 export const URLS_PER_EXPANSION = 5;
@@ -13,7 +13,7 @@ export const READ_MIN_DURATION_MS = 1000;
 
 export interface FetchState {
   urls: string[];
-  documents: OnyxDocument[];
+  documents: AtlasDocument[];
   hasStarted: boolean;
   isLoading: boolean;
   isComplete: boolean;

@@ -7,7 +7,7 @@ from src.connectors.sql import ConnectorSqlError, read_sql_connector
 
 
 @pytest.mark.asyncio
-async def test_mysql_uses_airbyte_config_and_parameterized_equality_filter(monkeypatch):
+async def test_mysql_uses_saved_config_and_parameterized_equality_filter(monkeypatch):
     calls = {}
 
     class Cursor:
@@ -62,7 +62,7 @@ async def test_mysql_uses_airbyte_config_and_parameterized_equality_filter(monke
 
 
 @pytest.mark.asyncio
-async def test_mssql_uses_bounded_query_and_airbyte_ssl_shape(monkeypatch):
+async def test_mssql_uses_bounded_query_and_saved_ssl_shape(monkeypatch):
     calls = {}
 
     class Cursor:
@@ -87,6 +87,7 @@ async def test_mssql_uses_bounded_query_and_airbyte_ssl_shape(monkeypatch):
         return Connection()
 
     monkeypatch.setitem(__import__("sys").modules, "aioodbc", SimpleNamespace(connect=connect))
+    monkeypatch.setitem(__import__("sys").modules, "pyodbc", SimpleNamespace(Error=OSError))
 
     rows = await read_sql_connector(
         "source-mssql",
@@ -136,7 +137,7 @@ def test_mssql_escapes_saved_odbc_values():
         ({"connection_type": "sid", "sid": "XE"}, {"sid": "XE"}),
     ],
 )
-async def test_oracle_supports_airbyte_service_name_and_sid(
+async def test_oracle_supports_saved_service_name_and_sid(
     monkeypatch, connection_data, dsn_kwargs
 ):
     calls = {}

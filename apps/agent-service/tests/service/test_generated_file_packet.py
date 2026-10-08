@@ -1,13 +1,13 @@
 """Tests for the shared generated_file payload parsing/packet-building helpers.
 
-Both the live streaming path (AgentsRoute.message_generator) and the chat
-history rebuild path (chat_controller) must recognise a document tool's
+Both the live streaming path (agents_route.message_generator) and the chat
+history rebuild path (chat_service) must recognise a document tool's
 ToolMessage content identically — this module is their single source of truth.
 """
 
 import json
 
-from service.GeneratedFilePacket import (
+from service.storage.generated_file_packet import (
     build_generated_file_packet_obj,
     parse_generated_file_payload,
 )
@@ -61,3 +61,27 @@ def test_build_generated_file_packet_obj_shapes_the_packet():
         "size_bytes": 42,
         "download_url": "/api/chat/file/abc123?download=1",
     }
+
+
+def test_revision_fields_pass_through_and_legacy_payload_is_unchanged() -> None:
+    legacy = {"file_id": "f", "filename": "a.pdf", "mime_type": "application/pdf", "size_bytes": 1, "download_url": "/x"}
+    assert build_generated_file_packet_obj(legacy) == {"type": "generated_file", **legacy}
+
+    packet = build_generated_file_packet_obj(
+        {
+            **legacy,
+            "document_id": "d",
+            "revision_no": 2,
+            "revision_count": 2,
+            "operation": "edit",
+            "summary": "s",
+            "stats": {"added": 1},
+            "diagram_check": "passed",
+        }
+    )
+
+    assert packet["document_id"] == "d" and packet["revision_no"] == 2 and packet["stats"] == {"added": 1}
+    assert packet["revision_count"] == 2
+    assert packet["operation"] == "edit"
+    assert packet["summary"] == "s"
+    assert packet["diagram_check"] == "passed"

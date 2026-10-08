@@ -1,4 +1,3 @@
-import { authenticatedFetch } from "@/lib/fetcher";
 import {
   CloudEmbeddingProvider,
   HostedEmbeddingModel,
@@ -8,61 +7,10 @@ import {
   AdvancedSearchConfiguration,
   SavedSearchSettings,
   SwitchoverType,
-} from "../interfaces";
+} from "@/lib/api/domains/knowledge/search-settings-types";
 
-import { EmbeddingProvider } from "@/components/embedding/interfaces";
-import { RerankingDetails } from "../interfaces";
-
-export const deleteSearchSettings = async (search_settings_id: number) => {
-  const response = await authenticatedFetch(
-    `/api/search-settings/delete-search-settings`,
-    {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ search_settings_id }),
-    }
-  );
-  return response;
-};
-
-export const testEmbedding = async ({
-  provider_type,
-  modelName,
-  apiKey,
-  apiUrl,
-  apiVersion,
-  deploymentName,
-}: {
-  provider_type: string;
-  modelName: string;
-  apiKey: string | null;
-  apiUrl: string | null;
-  apiVersion: string | null;
-  deploymentName: string | null;
-}) => {
-  const testModelName =
-    provider_type === "openai" ? "text-embedding-3-small" : modelName;
-
-  const testResponse = await authenticatedFetch(
-    "/api/admin/embedding/test-embedding",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        provider_type: provider_type,
-        api_key: apiKey,
-        api_url: apiUrl,
-        model_name: testModelName,
-        api_version: apiVersion,
-        deployment_name: deploymentName,
-      }),
-    }
-  );
-
-  return testResponse;
-};
+import { EmbeddingProvider } from "@/lib/api/domains/knowledge/search-settings-types";
+import { RerankingDetails } from "@/lib/api/domains/knowledge/search-settings-types";
 
 // We use a spread operation to merge properties from multiple objects into a single object.
 // Advanced embedding details may update default values.

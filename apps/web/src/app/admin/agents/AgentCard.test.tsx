@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@tests/setup/test-utils";
 import AgentCard from "@/sections/cards/AgentCard";
-import { useAgent } from "@/hooks/useAgents";
-import { deleteAgent } from "@/lib/agents";
+import { useAgent } from "@/lib/api/domains/agents/hooks";
+import { deleteAgent } from "@/lib/api/domains/agents/api";
 
 const mockRoute = jest.fn();
 jest.mock("@/hooks/appNavigation", () => ({
@@ -58,7 +58,7 @@ jest.mock("@/sections/modals/ShareAgentModal", () => () => null);
 jest.mock("@/sections/modals/AgentViewerModal", () => () => null);
 
 const mockTogglePinnedAgent = jest.fn();
-jest.mock("@/hooks/useAgents", () => ({
+jest.mock("@/lib/api/domains/agents/hooks", () => ({
   useAgents: () => ({
     refresh: jest.fn(),
   }),
@@ -72,8 +72,12 @@ jest.mock("@/hooks/useAgents", () => ({
   })),
 }));
 
-jest.mock("@/lib/agents", () => ({
+jest.mock("@/lib/api/domains/agents/selectors", () => ({
+  ...jest.requireActual("@/lib/api/domains/agents/selectors"),
   checkUserOwnsAgent: () => true,
+}));
+
+jest.mock("@/lib/api/domains/agents/api", () => ({
   updateAgentSharedStatus: jest.fn(),
   updateAgentFeaturedStatus: jest.fn(),
   deleteAgent: jest.fn().mockResolvedValue(null),

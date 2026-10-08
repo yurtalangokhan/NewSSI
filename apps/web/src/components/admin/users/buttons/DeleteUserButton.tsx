@@ -1,6 +1,7 @@
+import { errorMessageFromUnknown } from "@/lib/api/errors";
 import { type User } from "@/lib/types";
 import { toast } from "@/hooks/useToast";
-import userMutationFetcher from "@/lib/admin/users/userMutationFetcher";
+import { deleteDirectoryUser } from "@/lib/api/domains/access/api";
 import useSWRMutation from "swr/mutation";
 import Button from "@/refresh-components/buttons/Button";
 import { useState } from "react";
@@ -22,8 +23,8 @@ const DeleteUserButton = ({
 }) => {
   const { t } = useTranslation();
   const { trigger, isMutating } = useSWRMutation(
-    `/api/user-service/users/${user.id}`,
-    userMutationFetcher,
+    ["delete-directory-user", user.id],
+    () => deleteDirectoryUser(user.id),
     {
       onSuccess: () => {
         mutate();
@@ -31,7 +32,11 @@ const DeleteUserButton = ({
         toast.success(t("admin.users.deletedSuccess"));
       },
       onError: (errorMsg) =>
-        toast.error(t("admin.users.deleteError", { error: errorMsg.message })),
+        toast.error(
+          t("admin.users.deleteError", {
+            error: errorMessageFromUnknown(errorMsg),
+          })
+        ),
     }
   );
 
@@ -43,7 +48,7 @@ const DeleteUserButton = ({
           entityType={t("admin.users.userEntity")}
           entityName={user.email}
           onClose={() => setShowDeleteModal(false)}
-          onSubmit={() => trigger({ method: "DELETE" })}
+          onSubmit={() => trigger()}
           additionalDetails={t("admin.users.deleteAdditionalDetails")}
         />
       )}

@@ -42,20 +42,26 @@ function LogoSection({ folded, onFoldClick }: LogoSectionProps) {
 }
 
 export interface SidebarWrapperProps {
+  /** Dresses the sidebar in the TÜRKSAT theme colors (see
+   * `css/sidebar-turksat.css`) instead of the default surface. */
+  turksatTheme?: boolean;
   folded?: boolean;
   onFoldClick?: () => void;
   children?: React.ReactNode;
 }
 
 export default function SidebarWrapper({
+  turksatTheme,
   folded,
   onFoldClick,
   children,
 }: SidebarWrapperProps) {
   return (
     <aside
+      data-sidebar-theme={turksatTheme ? "turksat" : undefined}
       className={cn(
-        "h-screen flex flex-col bg-background-tint-02 py-2 gap-4 group/SidebarWrapper shrink-0 overflow-hidden select-none transition-[width] duration-300 ease-in-out",
+        "h-screen flex flex-col py-2 gap-4 group/SidebarWrapper shrink-0 overflow-hidden select-none transition-[width] duration-300 ease-in-out",
+        !turksatTheme && "bg-background-tint-02",
         folded ? "w-[3.25rem]" : "w-[15rem]"
       )}
     >

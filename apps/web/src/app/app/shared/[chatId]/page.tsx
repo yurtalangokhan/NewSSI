@@ -1,15 +1,18 @@
-import { fetchSS } from "@/lib/utilsSS";
+import { fetchSharedChatSS } from "@/lib/api/domains/chat/server";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { requireAuth } from "@/lib/auth/requireAuth";
 import SharedChatDisplay from "@/app/app/shared/[chatId]/SharedChatDisplay";
 import * as AppLayouts from "@/layouts/app-layouts";
-import { Persona } from "@/app/admin/agents/interfaces";
+import { Persona } from "@/lib/api/domains/agents/types";
 
 // This is used for rendering a persona in the shared chat display
-export function constructMiniFiedPersona(name: string, id: number): Persona {
+export function constructMiniFiedPersona(
+  name: string,
+  id: number | string
+): Persona {
   return {
-    id,
+    id: id as number,
     name,
     is_visible: true,
     is_public: true,
@@ -31,16 +34,6 @@ export function constructMiniFiedPersona(name: string, id: number): Persona {
   };
 }
 
-async function getSharedChat(chatId: string) {
-  const response = await fetchSS(
-    `/chat/get-chat-session/${chatId}?is_shared=True`
-  );
-  if (response.ok) {
-    return await response.json();
-  }
-  return null;
-}
-
 export interface PageProps {
   params: Promise<{ chatId: string }>;
 }
@@ -55,7 +48,7 @@ export default async function Page(props: PageProps) {
 
   // Catch cases where backend is completely unreachable
   // Allows render instead of throwing an exception and crashing
-  const chatSession = await getSharedChat(params.chatId).catch(() => null);
+  const chatSession = await fetchSharedChatSS(params.chatId).catch(() => null);
 
   const persona: Persona = constructMiniFiedPersona(
     chatSession?.persona_name ?? "",

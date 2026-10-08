@@ -1,6 +1,12 @@
 "use client";
+import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 
-import { authenticatedFetch } from "@/lib/fetcher";
+import { validateFederatedCredentials } from "@/lib/api/domains/integrations/api";
+import { createFederatedConnection } from "@/lib/api/domains/integrations/api";
+import { updateFederatedConnection } from "@/lib/api/domains/integrations/api";
+import { deleteFederatedConnection } from "@/lib/api/domains/integrations/api";
+import { fetchFederatedCredentialSchema as loadFederatedCredentialSchema } from "@/lib/api/domains/integrations/api";
+import { loadFederatedConfigurationSchema } from "@/lib/api/domains/integrations/api";
 
 import { useState, useEffect } from "react";
 import Button from "@/refresh-components/buttons/Button";
@@ -18,7 +24,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import Text from "@/refresh-components/texts/Text";
-import { AlertTriangle, Check, Loader2, Trash2Icon, Info } from "lucide-react";
+import { AlertTriangle, Check, Trash2Icon, Info } from "lucide-react";
 import BackButton from "@/refresh-components/buttons/BackButton";
 import Title from "@/components/ui/title";
 import {
@@ -30,7 +36,7 @@ import { DropdownMenuItemWithTooltip } from "@/components/ui/dropdown-menu-with-
 import { toast } from "@/hooks/useToast";
 
 import { Badge } from "@/components/ui/badge";
-import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
+
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import { ListFieldInput } from "@/refresh-components/inputs/ListFieldInput";
 import FormSkeleton from "@/refresh-components/skeletons/FormSkeleton";
@@ -69,16 +75,7 @@ async function validateCredentials(
   credentials: CredentialForm
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await authenticatedFetch(
-      `/api/federated/sources/federated_${source}/credentials/validate`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(credentials),
-      }
-    );
+    const response = await validateFederatedCredentials(source, credentials);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -105,17 +102,11 @@ async function createFederatedConnector(
   config?: ConfigForm
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await authenticatedFetch("/api/federated", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        source: `federated_${source}`,
-        credentials,
-        config: config || {},
-      } as FederatedConnectorCreateRequest),
-    });
+    const response = await createFederatedConnection({
+      source: `federated_${source}`,
+      credentials,
+      config: config || {},
+    } as FederatedConnectorCreateRequest);
 
     if (response.ok) {
       return {
@@ -140,15 +131,9 @@ async function updateFederatedConnector(
   config?: ConfigForm
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await authenticatedFetch(`/api/federated/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        credentials,
-        config: config || {},
-      }),
+    const response = await updateFederatedConnection(id, {
+      credentials,
+      config: config || {},
     });
 
     if (response.ok) {
@@ -172,9 +157,7 @@ async function deleteFederatedConnector(
   id: number
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await authenticatedFetch(`/api/federated/${id}`, {
-      method: "DELETE",
-    });
+    const response = await deleteFederatedConnection(id);
 
     if (response.ok) {
       return {
@@ -231,9 +214,7 @@ export function FederatedConnectorForm({
       if (!preloadedCredentialSchema) {
         setIsLoadingSchema(true);
         try {
-          const response = await fetch(
-            `/api/federated/sources/federated_${connector}/credentials/schema`
-          );
+          const response = await loadFederatedCredentialSchema(connector);
 
           if (!response.ok) {
             throw new Error(
@@ -266,9 +247,7 @@ export function FederatedConnectorForm({
   useEffect(() => {
     const fetchConfigurationSchema = async () => {
       try {
-        const response = await fetch(
-          `/api/federated/sources/federated_${connector}/configuration/schema`
-        );
+        const response = await loadFederatedConfigurationSchema(connector);
 
         if (!response.ok) {
           throw new Error(

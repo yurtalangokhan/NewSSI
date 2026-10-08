@@ -70,6 +70,12 @@ such as `database_search.collection_ids`. The retrieval implementation lives in
 `POST /api/v1/retrieval`. Agent-service no longer keeps local
 `database_search` or `graph_search` LangChain tool wrappers.
 
+`KnowledgeToolSelector.select_collections` is the single mapping: `rag_config`
+`document_processing` (or the legacy `collections` key) feeds `database_search`
+and `knowledge_graph` feeds `graph_search`. Binding references and persona tool
+snapshots are both built from it. `rag_config.display_names` (collection id to
+label) is optional and only names the per-collection tool rows.
+
 ## Built-in agents and Studio
 
 Built-in agents are recipes over the same composer used by persisted dynamic
@@ -116,7 +122,7 @@ deletion rule: do not delete a module with live importers):
 
 - `src/agents/document_tools.py` — used by `graphs/strategies/*`, `graphs/builder.py`, `chatbot.py`, `configurable_mcp_agent.py`, and their tests.
 - `src/agents/mail_tooling.py` — used by `graphs/strategies/*`, `graphs/builder.py`, `configurable_mcp_agent.py`.
-- `src/agents/tools.py` — Milvus/vector-store and embedding helpers used by `IngestService`, `data_controller`, `DatasourcesRoute`, and `core/db/repositories/datasource_repo.py`.
+- `src/agents/tools.py` — Milvus/vector-store and embedding helpers used by `IngestService`, `data_controller`, `datasources_route`, and `core/db/repositories/datasource_repo.py`.
 
 Moving these behind tools-service / RAG-service contracts remains active
 simplification work. ASC-2 laid the trusted-context foundation, and new generic

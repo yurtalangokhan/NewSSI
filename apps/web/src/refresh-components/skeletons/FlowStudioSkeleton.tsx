@@ -3,20 +3,13 @@ import { cn } from "@/lib/utils";
 
 export interface FlowStudioSkeletonProps {
   className?: string;
-  isInline?: boolean;
 }
 
-export function FlowStudioSkeleton({
-  className,
-  isInline = false,
-}: FlowStudioSkeletonProps) {
+export function FlowStudioSkeleton({ className }: FlowStudioSkeletonProps) {
   return (
     <div
       className={cn(
-        "langflow-canvas flex flex-col overflow-hidden bg-canvas-panel text-canvas-fg select-none",
-        isInline
-          ? "h-[36rem] w-full rounded-12 border border-border-01"
-          : "h-screen w-screen",
+        "langflow-canvas flex h-screen w-screen flex-col overflow-hidden bg-canvas-panel text-canvas-fg select-none",
         className
       )}
       role="status"
@@ -172,29 +165,6 @@ export function FlowStudioSkeleton({
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-export function InlineFlowDesignerSkeleton({
-  className,
-}: {
-  className?: string;
-}) {
-  return (
-    <div className={cn("flex flex-col gap-2 w-full", className)}>
-      {/* Notice Banner Skeleton */}
-      <div className="flex w-full items-center justify-between rounded-12 border border-border-01 bg-background-neutral-01 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-08 bg-background-tint-03 dark:bg-background-tint-04 animate-pulse shrink-0" />
-          <div className="flex flex-col gap-1">
-            <div className="h-3.5 w-36 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse" />
-            <div className="h-3 w-72 rounded bg-background-tint-03 dark:bg-background-tint-04 animate-pulse opacity-70" />
-          </div>
-        </div>
-      </div>
-      {/* Canvas Skeleton */}
-      <FlowStudioSkeleton isInline />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { forgotPassword } from "./utils";
+import { forgotPassword } from "@/lib/api/domains/session/api";
 import AuthFlowContainer from "@/components/auth/AuthFlowContainer";
 import Title from "@/components/ui/title";
 import Text from "@/components/ui/text";
@@ -11,14 +11,14 @@ import * as Yup from "yup";
 import { TextFormField } from "@/components/Field";
 import { toast } from "@/hooks/useToast";
 import { redirect } from "next/navigation";
-import { NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED } from "@/lib/constants";
 import { useTranslation } from "react-i18next";
+import { appSettings } from "@/lib/settings";
 
 const ForgotPasswordPage: React.FC = () => {
   const [isWorking, setIsWorking] = useState(false);
   const { t } = useTranslation();
 
-  if (!NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED) {
+  if (!appSettings.NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED) {
     redirect("/auth/login");
   }
 

@@ -1,4 +1,4 @@
-import type { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import type { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import {
   filterChatReadyAgents,
   isFlowAgent,

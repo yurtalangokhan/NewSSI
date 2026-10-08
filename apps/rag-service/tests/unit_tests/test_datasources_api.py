@@ -1,12 +1,26 @@
-from tests.unit_tests.fixtures import get_async_test_client
+from unittest.mock import AsyncMock
 
-USER_1_HEADERS = {
-    "Authorization": "Bearer user1",
-}
+import pytest
 
-USER_2_HEADERS = {
-    "Authorization": "Bearer user2",
-}
+from src.shared.authorization import AuthorizationClient
+from tests.unit_tests.fixtures import gateway_headers, get_async_test_client
+
+
+@pytest.fixture(autouse=True)
+def isolate_resource_permissions(monkeypatch):
+    monkeypatch.setattr(
+        AuthorizationClient, "get_user_accessible_collections", AsyncMock(return_value=[])
+    )
+    monkeypatch.setattr(
+        AuthorizationClient,
+        "check_collection_access",
+        AsyncMock(return_value={"allowed": False}),
+    )
+
+
+USER_1_HEADERS = gateway_headers("user1")
+
+USER_2_HEADERS = gateway_headers("user2")
 
 
 def idempotency_headers(base_headers: dict[str, str], key: str) -> dict[str, str]:
@@ -22,7 +36,7 @@ async def test_knowledge_selector_only_returns_current_user_visible_collections(
         return []
 
     monkeypatch.setattr(
-        "langconnect.api.datasources.GraphStore.list_graph_collection_ids",
+        "src.datasources.service.GraphStore.list_graph_collection_ids",
         fake_graph_ids,
     )
 
@@ -69,7 +83,7 @@ async def test_knowledge_selector_omits_orphan_graph_collections(
             return [live_id, "00000000-0000-0000-0000-000000000000"]
 
         monkeypatch.setattr(
-            "langconnect.api.datasources.GraphStore.list_graph_collection_ids",
+            "src.datasources.service.GraphStore.list_graph_collection_ids",
             fake_graph_ids,
         )
 

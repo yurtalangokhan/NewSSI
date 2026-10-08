@@ -60,8 +60,8 @@ const mockFetchModels = jest.fn().mockResolvedValue({
   error: null,
 });
 
-jest.mock("@/app/admin/configuration/llm/utils", () => ({
-  canProviderFetchModels: jest.fn().mockReturnValue(true),
+jest.mock("@/lib/api/domains/model-providers/api", () => ({
+  ...jest.requireActual("@/lib/api/domains/model-providers/api"),
   fetchModels: (...args: any[]) => mockFetchModels(...args),
 }));
 
@@ -132,7 +132,7 @@ describe("OpenRouterOnboardingForm", () => {
           "https://openrouter.ai/settings/keys"
         );
       } else {
-        expect(screen.getByText("llmOnboarding.apiKey")).toBeInTheDocument();
+        expect(screen.getByText(apiKeyText)).toBeInTheDocument();
       }
     });
 

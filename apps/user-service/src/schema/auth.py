@@ -1,4 +1,4 @@
-from i18n import t
+from localization import t
 from pydantic import BaseModel, ConfigDict, field_validator
 
 

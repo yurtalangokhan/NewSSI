@@ -1,7 +1,7 @@
 "use client";
 
 import { Callout } from "@/components/ui/callout";
-import { FiAlertTriangle } from "react-icons/fi";
+import { SvgAlertTriangle } from "@/icons";
 import i18n from "@/i18n/config";
 
 export function formatErrorMessage(rawError: unknown): string {
@@ -13,51 +13,14 @@ export function formatErrorMessage(rawError: unknown): string {
 
   if (
     typeof msg === "string" &&
-    msg.trim().startsWith("{") &&
-    msg.trim().endsWith("}")
+    msg.includes("An error occurred while fetching the data")
   ) {
-    try {
-      const parsed = JSON.parse(msg);
-      if (parsed.message) {
-        let parsedMsg = parsed.message;
-        if (
-          parsedMsg ===
-            "An invalid response was received from the upstream server" ||
-          parsedMsg.includes("upstream server")
-        ) {
-          parsedMsg = i18n.t("common.upstreamServerInvalidResponse", {
-            defaultValue: "Üst sunucudan geçersiz bir yanıt alındı.",
-          });
-        }
-        msg = parsed.request_id
-          ? `${parsedMsg} (İstek Kimliği: ${parsed.request_id})`
-          : parsedMsg;
-      }
-    } catch {
-      // Keep original msg
-    }
-  }
-
-  if (typeof msg === "string") {
-    if (
-      msg === "An invalid response was received from the upstream server" ||
-      msg.includes("An invalid response was received from the upstream server")
-    ) {
-      msg = msg.replace(
-        "An invalid response was received from the upstream server",
-        i18n.t("common.upstreamServerInvalidResponse", {
-          defaultValue: "Üst sunucudan geçersiz bir yanıt alındı.",
-        })
-      );
-    }
-    if (msg.includes("An error occurred while fetching the data")) {
-      msg = msg.replace(
-        "An error occurred while fetching the data",
-        i18n.t("common.fetchError", {
-          defaultValue: "Veriler alınırken bir hata oluştu.",
-        })
-      );
-    }
+    msg = msg.replace(
+      "An error occurred while fetching the data",
+      i18n.t("common.fetchError", {
+        defaultValue: "Veriler alınırken bir hata oluştu.",
+      })
+    );
   }
 
   return msg;
@@ -77,9 +40,11 @@ export function ErrorCallout({
         className="mt-4"
         title={
           errorTitle ||
-          i18n.t("common.pageNotFound", { defaultValue: "Sayfa bulunamadı" })
+          i18n.t("common.pageNotFound", {
+            defaultValue: "Sayfa bulunamadı",
+          })
         }
-        icon={<FiAlertTriangle className="text-red-500 h-5 w-5" />}
+        icon={<SvgAlertTriangle className="h-5 w-5 stroke-status-error-05" />}
         type="danger"
       >
         {formatted}

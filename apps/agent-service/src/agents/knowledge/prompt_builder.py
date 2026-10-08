@@ -1,3 +1,4 @@
+# ruff: noqa: RUF001 -- Intentional Unicode punctuation and Turkish text.
 """Knowledge system prompt builder.
 
 Generates retrieval-specific system prompt addenda based on which
@@ -134,7 +135,7 @@ class KnowledgeSystemPromptBuilder:
     @classmethod
     def determine_mode(cls, rag_config: dict) -> KnowledgeMode | None:
         """Return the KnowledgeMode implied by rag_config, or None if no collections."""
-        has_doc = bool(rag_config.get("document_processing"))
+        has_doc = bool(rag_config.get("document_processing") or rag_config.get("collections"))
         has_graph = bool(rag_config.get("knowledge_graph"))
         if has_doc and has_graph:
             return KnowledgeMode.HYBRID

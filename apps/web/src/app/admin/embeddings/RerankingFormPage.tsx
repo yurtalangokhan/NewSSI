@@ -11,9 +11,8 @@ import { useTranslation } from "react-i18next";
 import {
   RerankerProvider,
   RerankingDetails,
-  RerankingModel,
-  rerankingModels,
-} from "./interfaces";
+} from "@/lib/api/domains/knowledge/search-settings-types";
+import { RerankingModel, rerankingModels } from "./interfaces";
 import { FiExternalLink } from "react-icons/fi";
 import {
   AmazonIcon,

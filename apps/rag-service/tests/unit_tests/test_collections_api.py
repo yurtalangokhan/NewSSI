@@ -1,22 +1,35 @@
+from unittest.mock import AsyncMock
 from uuid import UUID
 
-from langconnect.models.graph import BuildProgress
-from tests.unit_tests.fixtures import get_async_test_client
+import pytest
 
-USER_1_HEADERS = {
-    "Authorization": "Bearer user1",
-}
+from src.graph.schemas import BuildProgress
+from src.shared.authorization import AuthorizationClient
+from tests.unit_tests.fixtures import (
+    GATEWAY_SECRET,
+    gateway_headers,
+    get_async_test_client,
+)
 
-USER_2_HEADERS = {
-    "Authorization": "Bearer user2",
-}
 
-NO_SUCH_USER_HEADERS = {
-    "Authorization": "Bearer no_such_user",
-}
+@pytest.fixture(autouse=True)
+def isolate_resource_permissions(monkeypatch):
+    monkeypatch.setattr(
+        AuthorizationClient, "get_user_accessible_collections", AsyncMock(return_value=[])
+    )
+    monkeypatch.setattr(
+        AuthorizationClient,
+        "check_collection_access",
+        AsyncMock(return_value={"allowed": False}),
+    )
+
+
+USER_1_HEADERS = gateway_headers("user1")
+
+USER_2_HEADERS = gateway_headers("user2")
 
 INTERNAL_HEADERS = {
-    "X-Internal-Service-Token": "internal-token",
+    "X-Internal-Service-Token": GATEWAY_SECRET,
 }
 
 
@@ -173,7 +186,7 @@ async def test_delete_collection_and_nonexistent() -> None:
             f"/api/v1/collections/{collection_id}",
             headers=idempotency_headers(USER_1_HEADERS, "col-delete-1"),
         )
-        assert r2.status_code == 204
+        assert r2.status_code == 200
 
         # Try to get it again by ID
         r3 = await client.get(
@@ -186,15 +199,13 @@ async def test_delete_collection_and_nonexistent() -> None:
             f"/api/v1/collections/{collection_id}",
             headers=idempotency_headers(USER_1_HEADERS, "col-delete-1"),
         )
-        assert r4.status_code == 204
+        assert r4.status_code == 200
 
 
-async def test_user_can_rename_and_delete_internal_collection_visible_in_list(
+async def test_user_needs_grant_to_mutate_internal_collection_visible_in_list(
     monkeypatch,
 ) -> None:
-    """User-visible internal collections should not 404 during mutations."""
-    monkeypatch.setattr("langconnect.auth.INTERNAL_SERVICE_TOKEN", "internal-token")
-
+    """Public visibility permits reading; explicit grants permit mutations."""
     async with get_async_test_client() as client:
         create_resp = await client.post(
             "/api/v1/collections",
@@ -208,6 +219,21 @@ async def test_user_can_rename_and_delete_internal_collection_visible_in_list(
         assert list_resp.status_code == 200
         assert collection_id in {c["uuid"] for c in list_resp.json()}
 
+        denied = await client.patch(
+            f"/api/v1/collections/{collection_id}",
+            json={"name": "denied"},
+            headers=idempotency_headers(USER_1_HEADERS, "col-internal-denied"),
+        )
+        assert denied.status_code == 404
+
+        async def allow_grant(*args: object, **kwargs: object):
+            return {"allowed": True}
+
+        monkeypatch.setattr(
+            "src.shared.authorization.AuthorizationClient.check_collection_access",
+            allow_grant,
+        )
+
         rename_resp = await client.patch(
             f"/api/v1/collections/{collection_id}",
             json={"name": "renamed_internal_visible"},
@@ -220,7 +246,7 @@ async def test_user_can_rename_and_delete_internal_collection_visible_in_list(
             f"/api/v1/collections/{collection_id}",
             headers=idempotency_headers(USER_1_HEADERS, "col-internal-delete"),
         )
-        assert delete_resp.status_code == 204
+        assert delete_resp.status_code == 200
 
         get_resp = await client.get(
             f"/api/v1/collections/{collection_id}",
@@ -246,7 +272,7 @@ async def test_collection_mutations_blocked_while_graph_building(
             return BuildProgress(collection_id=collection_id, status="building")
 
         monkeypatch.setattr(
-            "langconnect.services.build_lock.get_build_progress",
+            "src.collections.write_guards.get_build_progress",
             _fake_progress,
         )
 
@@ -272,7 +298,7 @@ async def test_force_delete_removes_connector_managed_collection() -> None:
             json={
                 "name": "orphan_connector_collection",
                 "metadata": {
-                    "connector_type": "airbyte",
+                    "connector_type": "postgres",
                     "sync_status": "error",
                 },
             },
@@ -293,7 +319,7 @@ async def test_force_delete_removes_connector_managed_collection() -> None:
                 USER_1_HEADERS, "force-delete-orphan-collection"
             ),
         )
-        assert force_delete_resp.status_code == 204
+        assert force_delete_resp.status_code == 200
 
         get_resp = await client.get(
             f"/api/v1/collections/{collection_id}",
@@ -482,7 +508,7 @@ async def test_ownership() -> None:
             f"/api/v1/collections/{collection_id}",
             headers=idempotency_headers(USER_2_HEADERS, "col-owner-delete-u2"),
         )
-        assert r3.status_code == 204
+        assert r3.status_code == 200
 
         # Try listing collections as user 2
         r4 = await client.get("/api/v1/collections", headers=USER_2_HEADERS)
@@ -502,4 +528,4 @@ async def test_ownership() -> None:
             f"/api/v1/collections/{collection_id}",
             headers=idempotency_headers(USER_1_HEADERS, "col-owner-delete-u1"),
         )
-        assert r5.status_code == 204
+        assert r5.status_code == 200

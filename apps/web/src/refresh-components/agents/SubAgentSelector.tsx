@@ -8,7 +8,7 @@
 import { useMemo, useState } from "react";
 import { useFormikContext } from "formik";
 import { useTranslation } from "react-i18next";
-import { useAvailableAgents } from "@/hooks/useAvailableAgents";
+import { useAvailableAgents } from "@/lib/api/domains/agents/hooks";
 import Button from "@/refresh-components/buttons/Button";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";

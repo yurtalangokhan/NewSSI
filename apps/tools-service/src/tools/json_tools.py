@@ -4,11 +4,16 @@ Provides tools for JSON formatting and querying.
 """
 
 import json
-from typing import Any
+from typing import Annotated, Any
 
-from i18n import t
+from localization import t
+from pydantic import Field
 
 from ..core.base import BaseToolCategory
+from ..core.schema import LongText, ShortText
+from .response import tool_error_message
+
+BoundedIndent = Annotated[int, Field(ge=0, le=10)]
 
 
 class JsonTools(BaseToolCategory):
@@ -20,9 +25,7 @@ class JsonTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return t(
-            "categories.json_data.description", default="JSON formatting, validation, and querying"
-        )
+        return t("categories.json_data.description", default="JSON formatting, validation, and querying")
 
     @property
     def label(self) -> str:
@@ -32,7 +35,7 @@ class JsonTools(BaseToolCategory):
         """Register all JSON tools with MCP."""
 
         @mcp.tool()
-        def json_format(data: str, indent: int = 2) -> str:
+        def json_format(data: LongText, indent: BoundedIndent = 2) -> str:
             """
             Format and validate JSON data.
 
@@ -47,10 +50,10 @@ class JsonTools(BaseToolCategory):
                 parsed = json.loads(data)
                 return json.dumps(parsed, indent=indent, ensure_ascii=False)
             except json.JSONDecodeError as e:
-                return t("json.invalid_json", error=str(e))
+                return t("json.invalid_json", error=tool_error_message(e))
 
         @mcp.tool()
-        def json_query(data: str, path: str) -> str:
+        def json_query(data: LongText, path: ShortText) -> str:
             """
             Query JSON data using dot notation.
 
@@ -77,4 +80,4 @@ class JsonTools(BaseToolCategory):
                 return str(parsed)
 
             except (json.JSONDecodeError, KeyError, IndexError, ValueError) as e:
-                return t("json.query_error", error=str(e))
+                return t("json.query_error", error=tool_error_message(e))

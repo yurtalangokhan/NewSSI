@@ -45,8 +45,8 @@ import {
 import {
   fetchHierarchyNodes,
   fetchHierarchyNodeDocuments,
-} from "@/lib/hierarchy/svc";
-import { AttachedDocumentSnapshot } from "@/app/admin/agents/interfaces";
+} from "@/lib/api/domains/access/api";
+import { AttachedDocumentSnapshot } from "@/lib/api/domains/agents/types";
 import { timeAgo } from "@/lib/time";
 import Spacer from "@/refresh-components/Spacer";
 import { useTranslation } from "react-i18next";

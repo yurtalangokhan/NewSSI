@@ -1,4 +1,4 @@
-import { createApiKey } from "@/app/admin/api-key/lib";
+import { createApiKey } from "@/lib/api/domains/access/api";
 
 describe("admin API key client", () => {
   afterEach(() => {

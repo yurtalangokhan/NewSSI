@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import type { Route } from "next";
-import { getAuthTypeMetadataSS } from "@/lib/userSS";
+import { getAuthTypeMetadataSS } from "@/lib/api/domains/session/server";
 import { buildLoginPath } from "@/lib/auth/loginRoute";
 
 export default async function Page() {

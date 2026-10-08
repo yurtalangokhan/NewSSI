@@ -2,9 +2,9 @@ import i18n from "../../../../i18n";
 
 export const getPlaceholder = (
   disabled: boolean,
-  returnMessage: string = i18n.t("input.placeholder"),
+  returnMessage: string = localization.t("input.placeholder"),
 ) => {
-  if (disabled) return i18n.t("component.receivingInput");
+  if (disabled) return localization.t("component.receivingInput");
 
-  return returnMessage || i18n.t("input.placeholder");
+  return returnMessage || localization.t("input.placeholder");
 };

@@ -1,4 +1,6 @@
+import { chatEndpoints } from "@/lib/api/domains/chat/endpoints";
 import { proxyToBackend } from "@/lib/api/proxy";
+
 import { NextRequest } from "next/server";
 
 export async function GET(
@@ -6,5 +8,8 @@ export async function GET(
   { params }: { params: Promise<{ chatSessionId: string }> }
 ) {
   const { chatSessionId } = await params;
-  return proxyToBackend(request, `/api/chat/get-chat-session/${chatSessionId}`);
+  return proxyToBackend(
+    request,
+    chatEndpoints.getSession(chatSessionId).backend
+  );
 }

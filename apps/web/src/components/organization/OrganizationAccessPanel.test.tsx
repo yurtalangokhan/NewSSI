@@ -1,15 +1,22 @@
+import { envelopeResponse, fakeResponse } from "@tests/setup/responseModel";
+import { useCallback, useState } from "react";
 import { screen, waitFor } from "@testing-library/react";
 import "@/i18n/config";
 
-import { usePersonaOptions } from "@/hooks/usePersonaOptions";
-import { useCollections } from "@/lib/langconnect";
-import { OrganizationAccessPanel } from "@/components/organization/OrganizationAccessPanel";
+import { usePersonaOptions } from "@/lib/api/domains/agents/hooks";
+import { useCollections } from "@/lib/api/domains/knowledge/hooks";
+import {
+  OrganizationAccessPanel,
+  type ResourceType,
+} from "@/components/organization/OrganizationAccessPanel";
 import { render, setupUser } from "@tests/setup/test-utils";
 
-jest.mock("@/hooks/usePersonaOptions", () => ({
+jest.mock("@/lib/api/domains/agents/hooks", () => ({
   usePersonaOptions: jest.fn(),
 }));
-jest.mock("@/lib/langconnect", () => ({ useCollections: jest.fn() }));
+jest.mock("@/lib/api/domains/knowledge/hooks", () => ({
+  useCollections: jest.fn(),
+}));
 
 const mockedUsePersonaOptions = jest.mocked(usePersonaOptions);
 const mockedUseCollections = jest.mocked(useCollections);
@@ -23,30 +30,87 @@ describe("OrganizationAccessPanel", () => {
   });
 
   beforeEach(() => {
-    mockedUsePersonaOptions.mockReturnValue({
-      personas: [{ id: 11, name: "Research agent", description: "" }],
-      error: undefined,
-      isLoading: false,
-      refresh: jest.fn(),
-    });
-    mockedUseCollections.mockReturnValue({
-      collections: [{ uuid: "collection-1", name: "Policies" }],
-      error: undefined,
-      isLoading: false,
-      mutate: jest.fn(),
-    });
-    // Serves scoped direct-permission GET requests.
-    jest.spyOn(global, "fetch").mockImplementation(async (_request) => {
-      return new Response(JSON.stringify({ permissions: [], count: 0 }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+    jest.spyOn(global, "fetch").mockImplementation(async (request) => {
+      const resources = String(request).includes("rag_collection")
+        ? [{ id: "collection-1", name: "Policies" }]
+        : [{ id: "11", name: "Research agent", description: "" }];
+      return envelopeResponse(
+        { resources, permissions: [], count: 0 },
+        { status: 200 }
+      );
     });
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
+
+  it.each<ResourceType>(["agent", "rag_collection"])(
+    "keeps parent loading state stable for %s until loading completes",
+    async (resourceType) => {
+      const notifications = jest.fn();
+      let resolveWorkspace!: (response: Response) => void;
+      jest
+        .mocked(global.fetch)
+        .mockImplementationOnce(
+          () => new Promise<Response>((resolve) => (resolveWorkspace = resolve))
+        );
+
+      function LoadingParent({ visible = true }: { visible?: boolean }) {
+        const [loading, setLoading] = useState({
+          agent: false,
+          rag_collection: false,
+        });
+        const handleLoading = useCallback(
+          (type: ResourceType, value: boolean) => {
+            notifications(type, value);
+            // Bound the regression so a render loop fails promptly.
+            if (notifications.mock.calls.length > 20) {
+              throw new Error("Loading notifications did not settle");
+            }
+            setLoading((current) =>
+              current[type] === value ? current : { ...current, [type]: value }
+            );
+          },
+          []
+        );
+        return (
+          <>
+            <output aria-label="Access loading">
+              {String(loading[resourceType])}
+            </output>
+            {visible && (
+              <OrganizationAccessPanel
+                organization={{ id: "org-1", name: "Platform" }}
+                members={[]}
+                editable
+                resourceType={resourceType}
+                onLoadingChange={handleLoading}
+              />
+            )}
+          </>
+        );
+      }
+
+      const { rerender } = render(<LoadingParent />);
+      expect(screen.getByLabelText("Access loading")).toHaveTextContent("true");
+      resolveWorkspace(
+        envelopeResponse(
+          { resources: [], permissions: [], count: 0 },
+          { status: 200 }
+        )
+      );
+      await waitFor(() =>
+        expect(screen.getByLabelText("Access loading")).toHaveTextContent(
+          "false"
+        )
+      );
+      rerender(<LoadingParent visible={false} />);
+      expect(screen.getByLabelText("Access loading")).toHaveTextContent(
+        "false"
+      );
+    }
+  );
 
   it("renders only the requested agent panel for the organization target", async () => {
     render(
@@ -69,10 +133,12 @@ describe("OrganizationAccessPanel", () => {
     });
     expect(screen.queryByText("Policies")).not.toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/user-service/permissions/organizations/org-1/targets/organization/org-1/resources/agent"
+      "/api/user-service/permissions/organizations/org-1/targets/organization/org-1/resources/agent/workspace",
+      expect.any(Object)
     );
     expect(global.fetch).not.toHaveBeenCalledWith(
-      expect.stringContaining("/resources/rag_collection")
+      expect.stringContaining("/resources/rag_collection"),
+      expect.any(Object)
     );
   });
 
@@ -91,10 +157,12 @@ describe("OrganizationAccessPanel", () => {
     );
     expect(screen.queryByText("Research agent")).not.toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/user-service/permissions/organizations/org-1/targets/organization/org-1/resources/rag_collection"
+      "/api/user-service/permissions/organizations/org-1/targets/organization/org-1/resources/rag_collection/workspace",
+      expect.any(Object)
     );
     expect(global.fetch).not.toHaveBeenCalledWith(
-      expect.stringContaining("/resources/agent")
+      expect.stringContaining("/resources/agent"),
+      expect.any(Object)
     );
   });
 
@@ -139,8 +207,8 @@ describe("OrganizationAccessPanel", () => {
     // Serves scoped permission GET and PUT requests for the selected member.
     fetchMock.mockImplementation(async (_request, options) => {
       if (options?.method === "PUT") {
-        return new Response(
-          JSON.stringify({
+        return envelopeResponse(
+          {
             permissions: [
               {
                 resource_id: "11",
@@ -149,14 +217,18 @@ describe("OrganizationAccessPanel", () => {
               },
             ],
             count: 1,
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } }
+          },
+          { status: 200 }
         );
       }
-      return new Response(JSON.stringify({ permissions: [], count: 0 }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+      return envelopeResponse(
+        {
+          resources: [{ id: "11", name: "Research agent", description: "" }],
+          permissions: [],
+          count: 0,
+        },
+        { status: 200 }
+      );
     });
     render(
       <OrganizationAccessPanel
@@ -179,7 +251,8 @@ describe("OrganizationAccessPanel", () => {
     await user.click(screen.getByRole("tab", { name: "Member access" }));
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/user-service/permissions/organizations/org-1/targets/user/user-1/resources/agent"
+        "/api/user-service/permissions/organizations/org-1/targets/user/user-1/resources/agent/workspace",
+        expect.any(Object)
       )
     );
     await user.click(
@@ -217,8 +290,8 @@ describe("OrganizationAccessPanel", () => {
     // Serves scoped permission GET and PUT requests for the ancillary-refresh case.
     jest.mocked(global.fetch).mockImplementation(async (_request, options) => {
       if (options?.method === "PUT") {
-        return new Response(
-          JSON.stringify({
+        return envelopeResponse(
+          {
             permissions: [
               {
                 resource_id: "11",
@@ -227,14 +300,18 @@ describe("OrganizationAccessPanel", () => {
               },
             ],
             count: 1,
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } }
+          },
+          { status: 200 }
         );
       }
-      return new Response(JSON.stringify({ permissions: [], count: 0 }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+      return envelopeResponse(
+        {
+          resources: [{ id: "11", name: "Research agent", description: "" }],
+          permissions: [],
+          count: 0,
+        },
+        { status: 200 }
+      );
     });
     render(
       <OrganizationAccessPanel
@@ -254,5 +331,43 @@ describe("OrganizationAccessPanel", () => {
 
     await waitFor(() => expect(onSaveComplete).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(save).toBeDisabled());
+    expect(screen.getByText("Research agent")).toBeInTheDocument();
+  });
+
+  it("disables editing after a workspace error and retries the same request", async () => {
+    const user = setupUser();
+    const fetchMock = jest.mocked(global.fetch);
+    fetchMock
+      .mockResolvedValueOnce(
+        fakeResponse(false, 502, { detail: "Catalog unavailable" })
+      )
+      .mockResolvedValueOnce(
+        envelopeResponse(
+          {
+            resources: [{ id: "11", name: "Research agent" }],
+            permissions: [],
+            count: 0,
+          },
+          { status: 200 }
+        )
+      );
+
+    render(
+      <OrganizationAccessPanel
+        organization={{ id: "org-1", name: "Platform" }}
+        members={[]}
+        editable
+        resourceType="agent"
+      />
+    );
+
+    expect(await screen.findByText("Catalog unavailable")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Research agent")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/api/user-service/permissions/organizations/org-1/targets/organization/org-1/resources/agent/workspace",
+      expect.any(Object)
+    );
   });
 });

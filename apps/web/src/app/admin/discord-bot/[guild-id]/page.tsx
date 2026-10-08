@@ -22,11 +22,11 @@ import {
 import {
   updateGuildConfig,
   bulkUpdateChannelConfigs,
-} from "@/app/admin/discord-bot/lib";
+} from "@/lib/api/domains/integrations/api";
 import { DiscordChannelsTable } from "@/app/admin/discord-bot/[guild-id]/DiscordChannelsTable";
-import { DiscordChannelConfig } from "@/app/admin/discord-bot/types";
-import { useAdminPersonas } from "@/hooks/useAdminPersonas";
-import { Persona } from "@/app/admin/agents/interfaces";
+import { DiscordChannelConfig } from "@/lib/api/domains/integrations/discord-types";
+import { useAdminPersonas } from "@/lib/api/domains/agents/hooks";
+import { Persona } from "@/lib/api/domains/agents/types";
 import { useTranslation } from "react-i18next";
 
 interface Props {

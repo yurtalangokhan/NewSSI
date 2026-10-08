@@ -30,7 +30,7 @@ import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import { SourceIcon } from "@/components/SourceIcon";
 import { getSourceDisplayName } from "@/lib/sources";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
-import { ConnectorCredentialPairStatus } from "../../connector/[ccPairId]/types";
+import { ConnectorCredentialPairStatus } from "@/lib/api/domains/datasources/types";
 import { PageSelector } from "@/components/PageSelector";
 import { ConnectorStaggeredSkeleton } from "./ConnectorRowSkeleton";
 import { Button } from "@opal/components";

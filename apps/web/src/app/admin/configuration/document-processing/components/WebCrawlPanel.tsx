@@ -1,6 +1,5 @@
 "use client";
-
-import { authenticatedFetch } from "@/lib/fetcher";
+import { crawlDocumentEntry } from "@/lib/api/domains/knowledge/api";
 
 import { useState, useCallback } from "react";
 import CardSection from "@/components/admin/CardSection";
@@ -8,7 +7,7 @@ import Button from "@/refresh-components/buttons/Button";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
 import { toast } from "@/hooks/useToast";
-import { uploadDocuments } from "@/lib/langconnect";
+import { uploadDocuments } from "@/lib/api/domains/knowledge/api";
 import {
   SvgArrowRightCircle,
   SvgGlobe,
@@ -134,14 +133,7 @@ export default function WebCrawlPanel({
         result: null,
       });
       try {
-        const res = await authenticatedFetch(
-          "/api/admin/web-search/content-providers/crawl",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url: trimmed }),
-          }
-        );
+        const res = await crawlDocumentEntry({ url: trimmed });
         const data = (await res.json()) as CrawlResult & { detail?: string };
         if (!res.ok) {
           patchEntry(id, {

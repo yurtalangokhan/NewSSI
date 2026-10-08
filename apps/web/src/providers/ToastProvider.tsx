@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import i18n from "@/i18n/config";
 import { cn } from "@/lib/utils";
 import Message from "@/refresh-components/messages/Message";
-import { NEXT_PUBLIC_INCLUDE_ERROR_POPUP_SUPPORT_LINK } from "@/lib/constants";
 import { toast, toastStore, MAX_VISIBLE_TOASTS } from "@/hooks/useToast";
 import type { Toast, ToastLevel } from "@/hooks/useToast";
+import { appSettings } from "@/lib/settings";
+import i18n from "@/i18n/config";
 
 const ANIMATION_DURATION = 200; // matches tailwind fade-out-scale (0.2s)
 
@@ -28,7 +28,10 @@ function levelProps(level: ToastLevel): Record<string, boolean> {
 function buildDescription(t: Toast): string | undefined {
   const parts: string[] = [];
   if (t.description) parts.push(t.description);
-  if (t.level === "error" && NEXT_PUBLIC_INCLUDE_ERROR_POPUP_SUPPORT_LINK) {
+  if (
+    t.level === "error" &&
+    appSettings.NEXT_PUBLIC_INCLUDE_ERROR_POPUP_SUPPORT_LINK
+  ) {
     parts.push(i18n.t("common.supportMessage"));
   }
   return parts.length > 0 ? parts.join(" ") : undefined;

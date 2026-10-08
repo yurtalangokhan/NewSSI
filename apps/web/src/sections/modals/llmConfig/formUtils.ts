@@ -1,13 +1,16 @@
-import { authenticatedFetch } from "@/lib/fetcher";
+import { modelProvidersEndpoints } from "@/lib/api/domains/model-providers/endpoints";
+import { testProviderConfiguration } from "@/lib/api/domains/model-providers/api";
+import { saveProviderFormConfiguration } from "@/lib/api/domains/model-providers/api";
+import { setProviderDefault } from "@/lib/api/domains/model-providers/api";
+import type { BaseLLMFormValues } from "@/lib/api/domains/model-providers/types";
+export type { BaseLLMFormValues } from "@/lib/api/domains/model-providers/types";
+
 import {
   LLMProviderView,
   ModelConfiguration,
   WellKnownLLMProviderDescriptor,
 } from "@/interfaces/llm";
-import {
-  LLM_ADMIN_URL,
-  LLM_PROVIDERS_ADMIN_URL,
-} from "@/lib/llmConfig/constants";
+
 import { getErrorMsg } from "@/lib/fetchUtils";
 import { toast } from "@/hooks/useToast";
 import * as Yup from "yup";
@@ -73,20 +76,6 @@ export const buildAvailableModelConfigurations = (
 
   return Array.from(modelMap.values());
 };
-
-// Base form values that all provider forms share
-export interface BaseLLMFormValues {
-  name: string;
-  api_key?: string;
-  api_base?: string;
-  default_model_name?: string;
-  is_public: boolean;
-  is_auto_mode: boolean;
-  groups: number[];
-  personas: number[];
-  selected_model_names: string[];
-  custom_config?: Record<string, string>;
-}
 
 export interface SubmitLLMProviderParams<
   T extends BaseLLMFormValues = BaseLLMFormValues,
@@ -215,17 +204,11 @@ export const submitLLMProvider = async <T extends BaseLLMFormValues>({
   if (!isEqual(finalValues, initialValues)) {
     setIsTesting(true);
 
-    const response = await authenticatedFetch("/api/admin/llm/test", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        provider: providerName,
-        ...finalValues,
-        model: finalDefaultModelName,
-        id: existingLlmProvider?.id,
-      }),
+    const response = await testProviderConfiguration({
+      provider: providerName,
+      ...finalValues,
+      model: finalDefaultModelName,
+      id: existingLlmProvider?.id,
     });
     setIsTesting(false);
 
@@ -237,20 +220,12 @@ export const submitLLMProvider = async <T extends BaseLLMFormValues>({
     }
   }
 
-  const response = await authenticatedFetch(
-    `${LLM_PROVIDERS_ADMIN_URL}${
-      existingLlmProvider ? "" : "?is_creation=true"
-    }`,
+  const response = await saveProviderFormConfiguration(
+    existingLlmProvider ? "" : "?is_creation=true",
     {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        provider: providerName,
-        ...finalValues,
-        id: existingLlmProvider?.id,
-      }),
+      provider: providerName,
+      ...finalValues,
+      id: existingLlmProvider?.id,
     }
   );
 
@@ -265,19 +240,10 @@ export const submitLLMProvider = async <T extends BaseLLMFormValues>({
 
   if (shouldMarkAsDefault) {
     const newLlmProvider = (await response.json()) as LLMProviderView;
-    const setDefaultResponse = await authenticatedFetch(
-      `${LLM_ADMIN_URL}/default`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          provider_id: newLlmProvider.id,
-          model_name: finalDefaultModelName,
-        }),
-      }
-    );
+    const setDefaultResponse = await setProviderDefault({
+      provider_id: newLlmProvider.id,
+      model_name: finalDefaultModelName,
+    });
     if (!setDefaultResponse.ok) {
       const errorMsg = (await setDefaultResponse.json()).detail;
       toast.error(`Failed to set provider as default: ${errorMsg}`);
@@ -285,7 +251,7 @@ export const submitLLMProvider = async <T extends BaseLLMFormValues>({
     }
   }
 
-  mutate(LLM_PROVIDERS_ADMIN_URL);
+  mutate(modelProvidersEndpoints.getAdminProvider.browserPath);
   onClose();
 
   if (!hideSuccess) {

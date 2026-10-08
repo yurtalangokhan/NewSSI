@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "User Service",
-    "description": "User Management Microservice \u2014 Auth, Users, Roles, Permissions",
+    "description": "User Management Microservice — Auth, Users, Roles, Permissions",
     "version": "0.1.0"
   },
   "paths": {
@@ -6024,83 +6024,6 @@
         }
       }
     },
-    "/api/v1/organizations/layout": {
-      "get": {
-        "tags": [
-          "organizations"
-        ],
-        "summary": "Get Organization Layout",
-        "description": "Return the shared canvas positions and organizations the actor may move.",
-        "operationId": "get_organization_layout_api_v1_organizations_layout_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OrganizationLayoutReadResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      },
-      "put": {
-        "tags": [
-          "organizations"
-        ],
-        "summary": "Save Organization Layout",
-        "description": "Atomically create or update shared canvas positions.",
-        "operationId": "save_organization_layout_api_v1_organizations_layout_put",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/OrganizationLayoutUpdateRequest"
-              },
-              "example": {
-                "positions": [
-                  "item"
-                ]
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OrganizationLayoutUpdateResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
     "/api/v1/organizations/members": {
       "get": {
         "tags": [
@@ -8001,116 +7924,6 @@
         ],
         "title": "OrganizationDirectMember",
         "description": "One active direct organization membership."
-      },
-      "OrganizationLayoutPosition": {
-        "properties": {
-          "organization_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Organization Id",
-            "example": "550e8400-e29b-41d4-a716-446655440000"
-          },
-          "x": {
-            "type": "number",
-            "maximum": 100000000.0,
-            "minimum": -100000000.0,
-            "title": "X",
-            "example": 100000000
-          },
-          "y": {
-            "type": "number",
-            "maximum": 100000000.0,
-            "minimum": -100000000.0,
-            "title": "Y",
-            "example": 100000000
-          }
-        },
-        "type": "object",
-        "required": [
-          "organization_id",
-          "x",
-          "y"
-        ],
-        "title": "OrganizationLayoutPosition",
-        "description": "One canvas coordinate for an organization."
-      },
-      "OrganizationLayoutReadResponse": {
-        "properties": {
-          "positions": {
-            "items": {
-              "$ref": "#/components/schemas/OrganizationLayoutPosition"
-            },
-            "type": "array",
-            "title": "Positions",
-            "example": [
-              "item"
-            ]
-          },
-          "writable_organization_ids": {
-            "items": {
-              "type": "string",
-              "format": "uuid",
-              "example": "item"
-            },
-            "type": "array",
-            "title": "Writable Organization Ids",
-            "example": "abc123def456"
-          }
-        },
-        "type": "object",
-        "required": [
-          "positions",
-          "writable_organization_ids"
-        ],
-        "title": "OrganizationLayoutReadResponse",
-        "description": "Shared positions and the organizations that the actor may move."
-      },
-      "OrganizationLayoutUpdateRequest": {
-        "properties": {
-          "positions": {
-            "items": {
-              "$ref": "#/components/schemas/OrganizationLayoutPosition"
-            },
-            "type": "array",
-            "maxItems": 100000,
-            "title": "Positions",
-            "example": [
-              "item"
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "positions"
-        ],
-        "title": "OrganizationLayoutUpdateRequest",
-        "description": "Shared organization positions to create or update atomically."
-      },
-      "OrganizationLayoutUpdateResponse": {
-        "properties": {
-          "positions": {
-            "items": {
-              "$ref": "#/components/schemas/OrganizationLayoutPosition"
-            },
-            "type": "array",
-            "title": "Positions",
-            "example": [
-              "item"
-            ]
-          },
-          "count": {
-            "type": "integer",
-            "title": "Count",
-            "example": 42
-          }
-        },
-        "type": "object",
-        "required": [
-          "positions",
-          "count"
-        ],
-        "title": "OrganizationLayoutUpdateResponse",
-        "description": "Positions saved by a shared-layout update."
       },
       "OrganizationMemberIdentity": {
         "properties": {

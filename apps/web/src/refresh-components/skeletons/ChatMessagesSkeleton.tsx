@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 // Pools to draw random shapes from — every mount gets a slightly different
@@ -44,6 +45,17 @@ interface HumanInputExchange {
 
 type Exchange = ReplyExchange | HumanInputExchange;
 
+function buildReplyLineWidths(): string[] {
+  const lineCount = randomInt(2, 4);
+  return Array.from({ length: lineCount }, (_, i) =>
+    // Last line in a paragraph is always shorter — keep that even when
+    // randomized, so it still reads as trailing off rather than cut short.
+    i === lineCount - 1
+      ? pick(["w-[35%]", "w-[45%]", "w-[55%]"])
+      : pick(REPLY_LINE_WIDTH_POOL)
+  );
+}
+
 function buildExchange(): Exchange {
   const bubbleWidthClass = pick(USER_BUBBLE_WIDTH_POOL);
 
@@ -58,16 +70,11 @@ function buildExchange(): Exchange {
     };
   }
 
-  const lineCount = randomInt(2, 4);
-  const lineWidths = Array.from({ length: lineCount }, (_, i) =>
-    // Last line in a paragraph is always shorter — keep that even when
-    // randomized, so it still reads as trailing off rather than cut short.
-    i === lineCount - 1
-      ? pick(["w-[35%]", "w-[45%]", "w-[55%]"])
-      : pick(REPLY_LINE_WIDTH_POOL)
-  );
-
-  return { kind: "reply", bubbleWidthClass, lineWidths };
+  return {
+    kind: "reply",
+    bubbleWidthClass,
+    lineWidths: buildReplyLineWidths(),
+  };
 }
 
 function buildExchanges(pairCount: number): Exchange[] {
@@ -76,6 +83,48 @@ function buildExchanges(pairCount: number): Exchange[] {
 
 const pulseShape =
   "border border-border-02 bg-background-tint-03 animate-pulse";
+
+/** The pulsing prose lines of an assistant reply, staggered by `baseDelayMs`. */
+function ReplyLines({
+  lineWidths,
+  baseDelayMs = 0,
+}: {
+  lineWidths: string[];
+  baseDelayMs?: number;
+}) {
+  return (
+    <div className="flex flex-col gap-2.5" aria-hidden="true">
+      {lineWidths.map((width, lineIndex) => (
+        <div
+          key={lineIndex}
+          className={cn("h-3 rounded-04", pulseShape, width)}
+          style={{ animationDelay: `${baseDelayMs + lineIndex * 100}ms` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Placeholder for one assistant answer whose content is on its way (a
+ * reloaded run's replay is still loading): just the reply lines from
+ * `ChatMessagesSkeleton`, without a user bubble, since that message is
+ * already on screen.
+ */
+export function AssistantReplySkeleton({ className }: { className?: string }) {
+  const { t } = useTranslation();
+  const [lineWidths] = useState(buildReplyLineWidths);
+  return (
+    <div
+      className={className}
+      role="status"
+      aria-label={t("agentMessage.loadingReply")}
+      data-testid="resume-skeleton"
+    >
+      <ReplyLines lineWidths={lineWidths} />
+    </div>
+  );
+}
 
 export interface ChatMessagesSkeletonProps {
   /**
@@ -126,17 +175,10 @@ export default function ChatMessagesSkeleton({
           </div>
 
           {exchange.kind === "reply" ? (
-            <div className="flex flex-col gap-2.5" aria-hidden="true">
-              {exchange.lineWidths.map((width, lineIndex) => (
-                <div
-                  key={lineIndex}
-                  className={cn("h-3 rounded-04", pulseShape, width)}
-                  style={{
-                    animationDelay: `${pairIndex * 300 + lineIndex * 100}ms`,
-                  }}
-                />
-              ))}
-            </div>
+            <ReplyLines
+              lineWidths={exchange.lineWidths}
+              baseDelayMs={pairIndex * 300}
+            />
           ) : (
             // Human-in-the-loop card placeholder (approval / clarification)
             <div

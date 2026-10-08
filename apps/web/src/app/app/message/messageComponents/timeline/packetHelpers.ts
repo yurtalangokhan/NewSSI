@@ -1,4 +1,4 @@
-import { Packet, PacketType } from "@/app/app/services/streamingModels";
+import { Packet, PacketType } from "@/lib/api/domains/chat/streaming-types";
 
 // Packet types with renderers supporting collapsed streaming mode
 export const COLLAPSED_STREAMING_PACKET_TYPES = new Set<PacketType>([

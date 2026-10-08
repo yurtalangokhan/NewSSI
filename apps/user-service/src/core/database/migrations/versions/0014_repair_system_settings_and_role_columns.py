@@ -8,8 +8,8 @@ Create Date: 2026-06-26
 
 from collections.abc import Sequence
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
 from sqlalchemy import inspect
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -80,10 +80,7 @@ def upgrade() -> None:
                 "composite_roles",
                 sa.Column("is_admin", sa.Boolean(), nullable=False, server_default="false"),
             )
-            op.execute(
-                "UPDATE composite_roles SET is_admin = true "
-                "WHERE name IN ('system-admin', 'enterprise-admin')"
-            )
+            op.execute("UPDATE composite_roles SET is_admin = true WHERE name IN ('system-admin', 'enterprise-admin')")
         if "created_at" not in composite_columns:
             op.add_column(
                 "composite_roles",

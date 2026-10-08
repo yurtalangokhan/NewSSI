@@ -5,10 +5,13 @@ Provides tools for time and date operations.
 
 from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfoNotFoundError
 
-from i18n import t
+from localization import t
 
 from ..core.base import BaseToolCategory
+from ..core.schema import ShortText
+from .response import tool_error_message
 
 
 class TimeTools(BaseToolCategory):
@@ -30,7 +33,7 @@ class TimeTools(BaseToolCategory):
         """Register all time tools with MCP."""
 
         @mcp.tool()
-        def get_current_time(timezone: str | None = None) -> str:
+        def get_current_time(timezone: ShortText | None = None) -> str:
             """
             Get the current date and time.
 
@@ -49,5 +52,5 @@ class TimeTools(BaseToolCategory):
                     now = datetime.now()
 
                 return now.strftime("%Y-%m-%d %H:%M:%S %Z").strip()
-            except Exception as e:
-                return t("time.error", error=str(e))
+            except (ZoneInfoNotFoundError, ValueError, OverflowError, OSError) as e:
+                return t("time.error", error=tool_error_message(e))

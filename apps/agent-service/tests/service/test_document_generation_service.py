@@ -6,22 +6,20 @@ import zipfile
 
 import pytest
 
-from service.DocumentGenerationService import (
+from service.documents.blocks import (
     BulletListBlock,
     CodeBlock,
     HeadingBlock,
     OrderedListBlock,
     ParagraphBlock,
     TableBlock,
-    mime_for_format,
-    parse_markdown_blocks,
-    render_csv,
-    render_docx,
-    render_markdown_text,
-    render_pdf,
-    render_xlsx,
-    sanitize_filename,
 )
+from service.documents.docx_renderer import render_docx
+from service.documents.markdown_parser import parse_markdown_blocks
+from service.documents.naming import mime_for_format, sanitize_filename
+from service.documents.pdf_renderer import render_pdf
+from service.documents.text_renderer import render_markdown_text
+from service.documents.xlsx_renderer import render_csv, render_xlsx
 
 TURKISH = "Çalışma özeti: ğüşıöç İĞÜŞİÖÇ"
 

@@ -1,5 +1,5 @@
 """Tests for resource resolution: LLMModel/OllamaModel resource nodes -> a
-real BaseChatModel instance, reusing core.llm.get_model exactly as
+real BaseChatModel instance, reusing infrastructure.llm.get_model exactly as
 GraphBuilder._get_model already does.
 
 Spec: .tmp/flow-canvas-design.md sections 4.3, 7.1.
@@ -11,9 +11,9 @@ from __future__ import annotations
 import pytest
 from langchain_core.language_models import BaseChatModel
 
-from agents.graphs.flow_builder import resolve_resources
+from agents.graphs.flow import resolve_resources
 from core.exceptions import NotAResourceNodeError
-from models.flows import FlowNode
+from schemas.flows import FlowNode
 
 
 @pytest.fixture(autouse=True)
@@ -22,7 +22,7 @@ def _fake_model_env(monkeypatch):
 
 
 def test_llm_model_resource_resolves_to_chat_model():
-    """8.1 — resolves via the real core.llm.get_model factory, not a mock."""
+    """8.1 — resolves via the real infrastructure.llm.get_model factory, not a mock."""
     node = FlowNode(
         id="model-1",
         type="LLMModel",
@@ -56,7 +56,7 @@ def test_missing_model_value_falls_back_to_default_model():
 def test_resolve_resources_keys_by_node_id_not_type():
     """8.4 — each node's own config is read independently, keyed by node id.
 
-    Both request the same underlying model name ("fake"); `core.llm.get_model`
+    Both request the same underlying model name ("fake"); `infrastructure.llm.get_model`
     is `@cache`d, so identical requests may legitimately return the same
     cached object — asserting object identity would test caching, not
     independence. The real guarantee is that each node id maps to a

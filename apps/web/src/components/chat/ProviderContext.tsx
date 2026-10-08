@@ -11,9 +11,9 @@ import React, {
   useCallback,
 } from "react";
 import { useUser } from "@/providers/UserProvider";
-import { useLLMProviders } from "@/hooks/useLLMProviders";
-import { useLLMProviderOptions } from "@/lib/hooks/useLLMProviderOptions";
-import { testDefaultProvider as testDefaultProviderSvc } from "@/lib/llmConfig/svc";
+import { useLLMProviders } from "@/lib/api/domains/model-providers/hooks";
+import { useLLMProviderOptions } from "@/lib/api/domains/model-providers/hooks";
+import { testDefaultProvider as testDefaultProviderSvc } from "@/lib/api/domains/model-providers/api";
 
 interface ProviderContextType {
   shouldShowConfigurationNeeded: boolean;
@@ -48,7 +48,7 @@ export function ProviderContextProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, hasPermission } = useUser();
+  const { hasPermission } = useUser();
 
   // Use SWR hooks instead of raw fetch
   const {
@@ -57,7 +57,7 @@ export function ProviderContextProvider({
     refetch: refetchProviders,
   } = useLLMProviders();
   const { llmProviderOptions: providerOptions, refetch: refetchOptions } =
-    useLLMProviderOptions();
+    useLLMProviderOptions({ enabled: hasPermission("provider:read") });
 
   const [defaultCheckSuccessful, setDefaultCheckSuccessful] =
     useState<boolean>(true);
@@ -65,8 +65,7 @@ export function ProviderContextProvider({
   // Test the default provider - only runs if test hasn't passed yet
   const testDefaultProvider = useCallback(async () => {
     const shouldCheck =
-      !checkDefaultLLMProviderTestComplete() &&
-      (!user || hasPermission("provider:read"));
+      !checkDefaultLLMProviderTestComplete() && hasPermission("provider:read");
 
     if (shouldCheck) {
       const success = await testDefaultProviderSvc();
@@ -75,7 +74,7 @@ export function ProviderContextProvider({
         setDefaultLLMProviderTestComplete();
       }
     }
-  }, [hasPermission, user]);
+  }, [hasPermission]);
 
   // Test default provider on mount
   useEffect(() => {
@@ -91,11 +90,12 @@ export function ProviderContextProvider({
   const refreshProviderInfo = useCallback(async () => {
     // Refetch provider lists and re-test default provider if needed
     await Promise.all([
-      refetchProviders(),
-      refetchOptions(),
+      ...(hasPermission("provider:read")
+        ? [refetchProviders(), refetchOptions()]
+        : []),
       testDefaultProvider(),
     ]);
-  }, [refetchProviders, refetchOptions, testDefaultProvider]);
+  }, [hasPermission, refetchProviders, refetchOptions, testDefaultProvider]);
 
   return (
     <ProviderContext.Provider

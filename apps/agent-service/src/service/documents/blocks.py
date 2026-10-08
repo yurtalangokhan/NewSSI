@@ -89,6 +89,22 @@ class CodeBlock:
 
 
 @dataclass
+class DiagramBlock:
+    """A fenced ```mermaid block. Rendered as an image when the renderer
+    resolved one for its digest, otherwise as its source code."""
+
+    source: str
+    language: str = "mermaid"
+    caption: str | None = None
+
+    @property
+    def digest(self) -> str:
+        import hashlib
+
+        return hashlib.sha256(self.source.strip().encode("utf-8")).hexdigest()
+
+
+@dataclass
 class QuoteBlock:
     spans: list[InlineSpan]
     callout_type: str | None = None
@@ -132,6 +148,7 @@ Block = (
     | OrderedListBlock
     | TableBlock
     | CodeBlock
+    | DiagramBlock
     | QuoteBlock
     | ImageBlock
     | HorizontalRuleBlock

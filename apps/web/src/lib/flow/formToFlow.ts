@@ -1,4 +1,4 @@
-import type { FullPersona } from "@/app/admin/agents/interfaces";
+import type { FullPersona } from "@/lib/api/domains/agents/types";
 
 export interface FlowNode {
   id: string;

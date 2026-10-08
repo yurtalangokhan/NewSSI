@@ -1,20 +1,24 @@
-import { getDomain } from "@/lib/redirectSS";
-import { buildPublicUserAuthUrl } from "@/lib/api/publicUserAuthUrl";
+import { parseApiErrorResponse } from "@/lib/api/http/errors";
+import { sessionEndpoints } from "@/lib/api/domains/session/endpoints";
+import { getDomain } from "@/lib/navigation/redirect.server";
+
 import { getLoginPath } from "@/lib/auth/loginRoute";
-import { getAuthTypeMetadataSS } from "@/lib/userSS";
+import { getAuthTypeMetadataSS } from "@/lib/api/domains/session/server";
+import { backendRequest } from "@/lib/api/http/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export const GET = async (request: NextRequest) => {
   // Wrapper around the FastAPI endpoint /auth/oidc/callback,
   // which adds back a redirect to the main app.
-  const url = buildPublicUserAuthUrl("/oidc/callback");
-  url.search = request.nextUrl.search;
+  const query = new URLSearchParams(request.nextUrl.searchParams);
   const callbackBase = getDomain(request).replace(/\/$/, "");
-  url.searchParams.set("redirect_uri", `${callbackBase}/auth/oidc/callback`);
+  query.set("redirect_uri", `${callbackBase}/auth/oidc/callback`);
   const cookieHeader = request.headers.get("cookie") || "";
 
   // Set 'redirect' to 'manual' to prevent automatic redirection
-  const response = await fetch(url.toString(), {
+  const response = await backendRequest({
+    ...sessionEndpoints.oidcCallback.backend,
+    query,
     redirect: "manual",
     headers: cookieHeader ? { cookie: cookieHeader } : undefined,
   });
@@ -30,16 +34,15 @@ export const GET = async (request: NextRequest) => {
         })();
 
   // Handle any non-success response
-  if (!response.ok) {
-    let errorMessage = `Authentication error (status ${response.status})`;
-    try {
-      const errorBody = await response.json();
-      if (errorBody?.detail) {
-        errorMessage = String(errorBody.detail);
-      }
-    } catch {
-      // Ignore parse failures and keep generic message.
-    }
+  if (
+    !response.ok &&
+    !(
+      response.status >= 300 &&
+      response.status < 400 &&
+      response.headers.get("location")
+    )
+  ) {
+    const errorMessage = (await parseApiErrorResponse(response)).userMessage;
 
     // For 401, redirect to login with error. For others, go to error page.
     if (response.status === 401) {

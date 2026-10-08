@@ -84,10 +84,10 @@ export const mutateTemplate = async (
               e,
             );
             setErrorData({
-              title: i18n.t("input.titleErrorUpdatingComponent"),
+              title: localization.t("input.titleErrorUpdatingComponent"),
               list: [
                 error.response?.data?.detail ||
-                  i18n.t("input.errorUpdatingComponent"),
+                  localization.t("input.errorUpdatingComponent"),
               ],
             });
           }

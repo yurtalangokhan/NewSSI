@@ -63,7 +63,6 @@ async def seed_default_organization():
         await user_org_repo.create(
             user_id=user_id,
             organization_id=root["id"],
-            role_in_org="member",
             is_primary=True,  # Set as primary since it's their first org
             assigned_by=None,
         )

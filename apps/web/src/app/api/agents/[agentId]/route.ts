@@ -1,5 +1,6 @@
+import { agentsEndpoints } from "@/lib/api/domains/agents/endpoints";
 import { proxyToBackend } from "@/lib/api/proxy";
-import { buildAgentDetailApiPath } from "@/lib/agents/apiPaths";
+
 import { NextRequest } from "next/server";
 
 export async function GET(
@@ -7,5 +8,5 @@ export async function GET(
   { params }: { params: Promise<{ agentId: string }> }
 ) {
   const { agentId } = await params;
-  return proxyToBackend(request, buildAgentDetailApiPath(agentId));
+  return proxyToBackend(request, agentsEndpoints.getAgent(agentId).backend);
 }

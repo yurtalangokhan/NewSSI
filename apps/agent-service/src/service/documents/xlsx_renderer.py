@@ -64,9 +64,7 @@ def render_xlsx(sheets: list[dict[str, Any]], options: SpreadsheetOptions | None
     return buffer.getvalue()
 
 
-def _style_sheet(
-    worksheet: Any, rows: list[list[Any]], options: SpreadsheetOptions, theme: ThemeDefinition
-) -> None:
+def _style_sheet(worksheet: Any, rows: list[list[Any]], options: SpreadsheetOptions, theme: ThemeDefinition) -> None:
     n_rows = len(rows)
     n_cols = max((len(row) for row in rows), default=0)
     first_data_row = 2 if options.header_row else 1
@@ -140,9 +138,7 @@ def _apply_column_widths(worksheet: Any, widths: list[int]) -> None:
         worksheet.column_dimensions[get_column_letter(index)].width = width
 
 
-def _apply_column_formats(
-    worksheet: Any, formats: list[str], n_rows: int, first_data_row: int
-) -> None:
+def _apply_column_formats(worksheet: Any, formats: list[str], n_rows: int, first_data_row: int) -> None:
     for index, format_name in enumerate(formats, start=1):
         excel_format = _NUMBER_FORMATS.get(format_name)
         if not excel_format:
@@ -151,9 +147,7 @@ def _apply_column_formats(
             worksheet.cell(row=row, column=index).number_format = excel_format
 
 
-def _apply_column_alignments(
-    worksheet: Any, alignments: list[str], n_rows: int, first_data_row: int
-) -> None:
+def _apply_column_alignments(worksheet: Any, alignments: list[str], n_rows: int, first_data_row: int) -> None:
     from openpyxl.styles import Alignment
 
     for index, alignment_name in enumerate(alignments, start=1):
@@ -165,30 +159,18 @@ def _matches_conditional_rule(rule: ConditionalFormatRule, value: Any) -> bool:
     if rule.rule == "equals":
         return value == rule.value
     if rule.rule == "greater_than":
-        return (
-            isinstance(value, int | float)
-            and isinstance(rule.value, int | float)
-            and value > rule.value
-        )
+        return isinstance(value, int | float) and isinstance(rule.value, int | float) and value > rule.value
     if rule.rule == "less_than":
-        return (
-            isinstance(value, int | float)
-            and isinstance(rule.value, int | float)
-            and value < rule.value
-        )
+        return isinstance(value, int | float) and isinstance(rule.value, int | float) and value < rule.value
     if rule.rule == "contains":
         return isinstance(value, str) and isinstance(rule.value, str) and rule.value in value
     return False
 
 
-def _apply_conditional_format(
-    worksheet: Any, rule: ConditionalFormatRule, n_rows: int, first_data_row: int
-) -> None:
+def _apply_conditional_format(worksheet: Any, rule: ConditionalFormatRule, n_rows: int, first_data_row: int) -> None:
     from openpyxl.styles import PatternFill
 
-    fill = PatternFill(
-        start_color=rule.color.lstrip("#"), end_color=rule.color.lstrip("#"), fill_type="solid"
-    )
+    fill = PatternFill(start_color=rule.color.lstrip("#"), end_color=rule.color.lstrip("#"), fill_type="solid")
     for row in range(first_data_row, n_rows + 1):
         cell = worksheet.cell(row=row, column=rule.column)
         if _matches_conditional_rule(rule, cell.value):

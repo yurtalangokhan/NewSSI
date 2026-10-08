@@ -52,5 +52,15 @@ export function validateInternalRedirect(
     return null;
   }
 
+  // A percent-encoded backslash (%5C / %5c). The caller's own decode
+  // (e.g. URLSearchParams.get()) already turns a normally-encoded value
+  // into a literal backslash, caught above; a value that still contains
+  // "%5c" here has itself been decoded once already and encoded backslash
+  // survived that -- i.e. it was double-encoded -- which is exactly the
+  // shape a double-decode host-confusion bypass depends on.
+  if (/%5c/i.test(trimmedUrl)) {
+    return null;
+  }
+
   return trimmedUrl;
 }

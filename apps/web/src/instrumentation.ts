@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { appSettings } from "@/lib/settings";
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {

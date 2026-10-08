@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from core.logger import get_logger
+from core.observability.logger import get_logger
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
@@ -39,18 +39,14 @@ class CheckpointAdapter:
     @property
     def _g(self) -> CompiledStateGraph | Pregel:
         if self._graph is None:
-            raise RuntimeError(
-                "CheckpointAdapter has no graph attached. Call attach_graph() after load()."
-            )
+            raise RuntimeError("CheckpointAdapter has no graph attached. Call attach_graph() after load().")
         return self._graph
 
     async def aget_state(self, config: RunnableConfig | None = None, **kwargs: Any) -> Any:
         """Delegate aget_state to the underlying compiled graph."""
         return await self._g.aget_state(config=config, **kwargs)
 
-    async def aupdate_state(
-        self, config: RunnableConfig, values: dict[str, Any], **kwargs: Any
-    ) -> Any:
+    async def aupdate_state(self, config: RunnableConfig, values: dict[str, Any], **kwargs: Any) -> Any:
         """Delegate aupdate_state to the underlying compiled graph.
 
         Used by AgentHelpers._handle_input to replace an edited message's

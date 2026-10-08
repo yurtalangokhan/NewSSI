@@ -1,11 +1,12 @@
-import { authenticatedFetch } from "@/lib/fetcher";
+import { startQueryHistoryCsvExport } from "@/lib/api/domains/system/api";
+import { checkQueryHistoryCsvExport } from "@/lib/api/domains/system/api";
+
 import { toast } from "@/hooks/useToast";
 import Button from "@/refresh-components/buttons/Button";
 import { useRef, useState } from "react";
-import { DateRange } from "../../../../../components/dateRangeSelectors/AdminDateRangeSelector";
-import { withRequestId, withDateRange } from "./utils";
+import { DateRange } from "@/lib/api/domains/knowledge/types";
+import { withRequestId } from "./utils";
 import {
-  CHECK_QUERY_HISTORY_EXPORT_STATUS_URL,
   DOWNLOAD_QUERY_HISTORY_URL,
   MAX_RETRIES,
   PREVIOUS_CSV_TASK_BUTTON_NAME,
@@ -58,12 +59,7 @@ export default function KickoffCSVExport({
         buttonName: PREVIOUS_CSV_TASK_BUTTON_NAME,
       })
     );
-    const response = await authenticatedFetch(withDateRange(dateRange), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const response = await startQueryHistoryCsvExport(dateRange);
 
     if (!response.ok) {
       reset(true);
@@ -88,12 +84,7 @@ export default function KickoffCSVExport({
     retryCount.current += 1;
     rerender();
 
-    const response = await fetch(
-      withRequestId(CHECK_QUERY_HISTORY_EXPORT_STATUS_URL, requestId),
-      {
-        method: "GET",
-      }
-    );
+    const response = await checkQueryHistoryCsvExport(requestId);
 
     if (!response.ok) {
       reset(true);

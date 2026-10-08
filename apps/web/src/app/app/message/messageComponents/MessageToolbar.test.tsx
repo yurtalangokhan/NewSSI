@@ -4,8 +4,8 @@ import MessageToolbar, {
   MessageToolbarProps,
   isRetryToSameAgent,
 } from "@/app/app/message/messageComponents/MessageToolbar";
-import { Message } from "@/app/app/interfaces";
-import { LlmManager } from "@/lib/hooks";
+import { Message } from "@/lib/api/domains/chat/types";
+import { LlmManager } from "@/lib/api/domains/model-providers/hooks";
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),

@@ -2,9 +2,12 @@
 
 import React, { RefObject, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Packet, StreamingCitation } from "@/app/app/services/streamingModels";
-import { FeedbackType } from "@/app/app/interfaces";
-import { OnyxDocument } from "@/lib/search/interfaces";
+import {
+  Packet,
+  StreamingCitation,
+} from "@/lib/api/domains/chat/streaming-types";
+import { FeedbackType } from "@/lib/api/domains/chat/types";
+import { AtlasDocument } from "@/lib/search/interfaces";
 import { TooltipGroup } from "@/components/tooltip/CustomTooltip";
 import {
   useChatSessionStore,
@@ -20,9 +23,9 @@ import { citationsToSourceInfoArray } from "@/refresh-components/buttons/source-
 import CopyIconButton from "@/refresh-components/buttons/CopyIconButton";
 import LLMPopover from "@/refresh-components/popovers/LLMPopover";
 import { parseLlmDescriptor } from "@/lib/llmConfig/utils";
-import { LlmManager } from "@/lib/hooks";
-import { AgentId } from "@/app/admin/agents/interfaces";
-import { Message } from "@/app/app/interfaces";
+import { LlmManager } from "@/lib/api/domains/model-providers/hooks";
+import { AgentId } from "@/lib/api/domains/agents/types";
+import { Message } from "@/lib/api/domains/chat/types";
 import { SvgThumbsDown, SvgThumbsUp, SvgRefreshCw } from "@opal/icons";
 import { RegenerationFactory } from "./AgentMessage";
 import useFeedbackController from "@/hooks/useFeedbackController";
@@ -44,7 +47,7 @@ const SourcesTagWrapper = React.memo(function SourcesTagWrapper({
   updateCurrentSelectedNodeForDocDisplay,
 }: {
   citations: StreamingCitation[];
-  documentMap: Map<string, OnyxDocument>;
+  documentMap: Map<string, AtlasDocument>;
   nodeId: number;
   selectedMessageForDocDisplay: number | null;
   documentSidebarVisible: boolean;
@@ -121,7 +124,7 @@ export interface MessageToolbarProps {
 
   // Citations
   citations: StreamingCitation[];
-  documentMap: Map<string, OnyxDocument>;
+  documentMap: Map<string, AtlasDocument>;
 }
 
 // A message produced by a custom agent must retry silently to that same

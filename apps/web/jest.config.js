@@ -12,6 +12,9 @@
 // Shared configuration
 const sharedConfig = {
   preset: "ts-jest",
+  // Runs before the test framework and the module graph, so `src/lib/env`
+  // has the variables it validates at import time.
+  setupFiles: ["<rootDir>/tests/setup/env.ts"],
   setupFilesAfterEnv: ["<rootDir>/tests/setup/jest.setup.ts"],
 
   // Performance: Use 50% of CPU cores for parallel execution
@@ -29,6 +32,9 @@ const sharedConfig = {
     // Mock specific components that have complex dependencies
     "^@/providers/UserProvider$":
       "<rootDir>/tests/setup/mocks/components/UserProvider.tsx",
+    // jsdom cannot lay out SVG (no getBBox), so Mermaid cannot render under
+    // Jest. Real rendering is covered by tests/e2e/chat/mermaid_rendering.spec.ts.
+    "^mermaid$": "<rootDir>/tests/setup/mocks/mermaid.ts",
     // Path aliases (must come after specific mocks)
     "^@/(.*)$": "<rootDir>/src/$1",
     "^@tests/(.*)$": "<rootDir>/tests/$1",
@@ -54,6 +60,9 @@ const sharedConfig = {
       [
         // Auth & Security
         "jose",
+        // Environment schema (src/lib/env) — ships ESM only
+        "@t3-oss/env-nextjs",
+        "@t3-oss/env-core",
         // UI Libraries
         "@radix-ui",
         "@headlessui",
@@ -62,6 +71,8 @@ const sharedConfig = {
         // entry here — its build is already jest-compatible, confirmed by
         // Task 20's xyflowLoads.test.tsx passing with no config change)
         "react-hotkeys-hook",
+        // Knowledge graph layout: d3-force-3d and its d3-* dependencies
+        "d3-.*",
         // Testing & Mocking
         "msw",
         "until-async",
@@ -86,6 +97,8 @@ const sharedConfig = {
         "micromark.*", // All micromark packages
         "decode-named-character-reference",
         "character-entities",
+        "character-entities-.*", // -legacy, -html4
+        "character-reference-invalid",
         "devlop",
         "comma-separated-tokens",
         "property-information",
@@ -155,6 +168,8 @@ module.exports = {
         "**/src/app/**/services/*.test.ts",
         "**/src/app/**/utils/*.test.ts",
         "**/src/app/**/hooks/*.test.ts", // Pure packet processor tests
+        // Zustand chat/build session stores — pure state logic, no DOM.
+        "**/src/app/**/stores/*.test.ts",
         "**/src/app/**/renderers/**/*.test.ts", // Pure timeline renderer state helpers
         // Pure timeline parsing helpers (node-type classification, stage
         // ordering) — no DOM. The timeline's component tests sit alongside
@@ -171,6 +186,10 @@ module.exports = {
         // serialization) — no DOM needed. Component tests live alongside as
         // .test.tsx and are picked up by the "integration" project below.
         "**/src/components/flow-canvas/**/*.test.ts",
+        // Mermaid pure logic (fence completeness, theme mapping, runtime
+        // queue/cache, SVG helpers, viewport) — no DOM. Its component tests
+        // are .test.tsx and run in the "integration" project.
+        "**/src/components/mermaid/**/*.test.ts",
         // Add more patterns here as you add more unit tests
       ],
     },
@@ -190,9 +209,17 @@ module.exports = {
         "**/src/refresh-pages/**/*.test.tsx",
         "**/src/sections/input/**/*.test.tsx",
         "**/src/sections/AppHealthBanner.test.tsx",
+        // Transcript surface: ChatUI's day headings.
+        "**/src/sections/chat/**/*.test.tsx",
         // Flow list surface: FlowCard, FlowSettingsModal (agents/flows split).
         "**/src/sections/cards/**/*.test.tsx",
         "**/src/sections/modals/**/*.test.tsx",
+        // Document drafts panel (tabs, editor, workspace layout).
+        "**/src/sections/document-panel/**/*.test.tsx",
+        // Admin actions surface: the MCP/OpenAPI action bar's permission gate.
+        "**/src/sections/actions/**/*.test.tsx",
+        // Knowledge search page: search box, results, graph canvas, drawer.
+        "**/src/sections/knowledge-search/**/*.test.tsx",
         // Add more patterns here as you add more integration tests
       ],
     },

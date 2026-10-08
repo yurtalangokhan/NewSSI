@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import useSWR from "swr";
-import { ChatSession } from "@/app/app/interfaces";
+import { ChatSession } from "@/lib/api/domains/chat/types";
 import {
   deleteChatSession,
   deleteAllChatSessions,
-} from "@/app/app/services/lib";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+  fetchChatHistory,
+} from "@/lib/api/domains/chat/api";
 import Button from "@/refresh-components/buttons/Button";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
@@ -56,8 +56,8 @@ export default function ChatHistoryModal({
 
   // Fetch all chat sessions
   const { data, mutate, isLoading } = useSWR<ChatHistoryResponse>(
-    `/api/chat/get-user-chat-sessions?page_size=${PAGE_SIZE}`,
-    errorHandlingFetcher,
+    ["chat-history", PAGE_SIZE],
+    () => fetchChatHistory<ChatHistoryResponse>(PAGE_SIZE),
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,

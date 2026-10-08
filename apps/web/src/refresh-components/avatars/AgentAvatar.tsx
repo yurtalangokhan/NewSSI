@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
 import { buildImgUrl } from "@/app/app/components/files/images/utils";
 import {
   DEFAULT_AGENT_AVATAR_SIZE_PX,

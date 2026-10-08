@@ -2,7 +2,7 @@
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from service.ChatHistoryReconstruction import reconstruct_message_tree
+from service.chat.chat_history_reconstruction import reconstruct_message_tree
 
 _FINAL_AI_ID = "run-ai-final"
 

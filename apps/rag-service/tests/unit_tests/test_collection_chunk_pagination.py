@@ -1,6 +1,6 @@
 import pytest
 
-from langconnect.services.collections import Collection
+from src.documents.service import Collection
 
 
 class FakeMilvusCollection:

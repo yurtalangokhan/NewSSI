@@ -5,9 +5,6 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any, Protocol, runtime_checkable
 
-from .definitions import GraphBuildRequest, GraphSchemaConfig
-from .errors import ValidationIssue
-
 
 def _freeze_value(value: Any) -> Any:
     if isinstance(value, Mapping):
@@ -17,40 +14,13 @@ def _freeze_value(value: Any) -> Any:
     return value
 
 
-@dataclass(frozen=True)
-class BrainRequest:
-    messages: list[dict[str, Any]]
-    settings: Mapping[str, Any] = field(default_factory=dict)
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "settings", _freeze_value(self.settings))
-
-
-@dataclass(frozen=True)
-class BrainResponse:
-    content: str
-    metadata: Mapping[str, Any] = field(default_factory=dict)
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "metadata", _freeze_value(self.metadata))
-
-
-@dataclass(frozen=True)
-class PerceptionRequest:
-    inputs: dict[str, Any]
-    settings: Mapping[str, Any] = field(default_factory=dict)
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "settings", _freeze_value(self.settings))
-
-
-@dataclass(frozen=True)
-class PerceptionResult:
-    context: dict[str, Any]
-    metadata: Mapping[str, Any] = field(default_factory=dict)
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "metadata", _freeze_value(self.metadata))
+def thaw_value(value: Any) -> Any:
+    """Plain ``dict``/``list`` copy of a value frozen by the domain ports."""
+    if isinstance(value, Mapping):
+        return {key: thaw_value(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [thaw_value(item) for item in value]
+    return value
 
 
 @dataclass(frozen=True)
@@ -94,12 +64,17 @@ class ToolInvocation:
 
 @dataclass(frozen=True)
 class ToolResult:
+    """A tool's answer. ``structured`` is machine-readable output for the platform
+    (MCP ``structuredContent``), never shown to the model."""
+
     output: Any
     metadata: Mapping[str, Any] = field(default_factory=dict)
+    structured: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "output", _freeze_value(self.output))
         object.__setattr__(self, "metadata", _freeze_value(self.metadata))
+        object.__setattr__(self, "structured", _freeze_value(self.structured))
 
 
 @dataclass(frozen=True)
@@ -188,28 +163,17 @@ class RuntimePolicyResult:
 
 
 @runtime_checkable
-class Brain(Protocol):
-    async def load(self) -> None: ...
-
-    async def generate(self, request: BrainRequest) -> BrainResponse: ...
-
-    async def close(self) -> None: ...
-
-
-@runtime_checkable
-class Perceptron(Protocol):
-    async def load(self) -> None: ...
-
-    async def perceive(self, request: PerceptionRequest) -> PerceptionResult: ...
-
-    async def close(self) -> None: ...
-
-
-@runtime_checkable
 class ToolBinding(Protocol):
     descriptor: ToolDescriptor
 
     async def invoke(self, invocation: ToolInvocation) -> ToolResult: ...
+
+
+@runtime_checkable
+class ToolArtifactPolicy(Protocol):
+    """Decides the platform-only artifact a tool result carries (never model-visible)."""
+
+    async def artifact_for(self, tool_name: str, result: ToolResult) -> Mapping[str, Any] | None: ...
 
 
 @runtime_checkable
@@ -241,23 +205,12 @@ class ExecutableAgent(Protocol):
 
 
 @runtime_checkable
-class GraphSchemaStrategy(Protocol):
-    key: str
-
-    def validate(self, config: GraphSchemaConfig) -> tuple[ValidationIssue, ...]: ...
-
-    async def build(self, request: GraphBuildRequest) -> ExecutableAgent: ...
-
-
-@runtime_checkable
 class RuntimePolicy(Protocol):
     key: str
 
     async def before_run(self, request: RuntimePolicyRequest) -> RuntimePolicyDecision: ...
 
-    async def after_run(
-        self, request: RuntimePolicyRequest, result: AgentRunResult
-    ) -> RuntimePolicyResult: ...
+    async def after_run(self, request: RuntimePolicyRequest, result: AgentRunResult) -> RuntimePolicyResult: ...
 
     async def close(self) -> None: ...
 

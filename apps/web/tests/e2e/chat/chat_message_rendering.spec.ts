@@ -4,29 +4,29 @@ import { sendMessage } from "@tests/e2e/utils/chatActions";
 import { THEMES, setThemeBeforeNavigation } from "@tests/e2e/utils/theme";
 import { expectElementScreenshot } from "@tests/e2e/utils/visualRegression";
 
-const SHORT_USER_MESSAGE = "What is Onyx?";
+const SHORT_USER_MESSAGE = "What is Atlas?";
 
 const LONG_WORD_USER_MESSAGE =
   "Please look into this issue: __________________________________________ and also this token: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA and this URL: https://example.com/a/very/long/path/that/keeps/going/and/going/and/going/without/any/breaks/whatsoever/to/test/overflow";
 
-const LONG_USER_MESSAGE = `I've been evaluating several enterprise search and AI platforms for our organization, and I have a number of detailed questions about Onyx that I'd like to understand before we make a decision.
+const LONG_USER_MESSAGE = `I've been evaluating several enterprise search and AI platforms for our organization, and I have a number of detailed questions about Atlas that I'd like to understand before we make a decision.
 
-First, can you explain how Onyx handles document indexing across multiple data sources? We currently use Confluence, Google Drive, Slack, and GitHub, and we need to ensure that all of these can be indexed simultaneously without performance degradation.
+First, can you explain how Atlas handles document indexing across multiple data sources? We currently use Confluence, Google Drive, Slack, and GitHub, and we need to ensure that all of these can be indexed simultaneously without performance degradation.
 
-Second, I'm interested in understanding the security model. Specifically, how does Onyx handle document-level permissions when syncing from sources that have their own ACL systems? Does it respect the original source permissions, or does it create its own permission layer?
+Second, I'm interested in understanding the security model. Specifically, how does Atlas handle document-level permissions when syncing from sources that have their own ACL systems? Does it respect the original source permissions, or does it create its own permission layer?
 
-Third, we have a requirement for real-time or near-real-time indexing. What is the typical latency between a document being updated in a source system and it becoming searchable in Onyx?
+Third, we have a requirement for real-time or near-real-time indexing. What is the typical latency between a document being updated in a source system and it becoming searchable in Atlas?
 
 Finally, could you walk me through the architecture of the AI chat system? How does it decide which documents to reference when answering a question, and how does it handle cases where the retrieved documents might contain conflicting information?`;
 
 const SHORT_AI_RESPONSE =
-  "Onyx is an open-source AI-powered enterprise search platform that connects to your company's documents, apps, and people.";
+  "Atlas is an open-source AI-powered enterprise search platform that connects to your company's documents, apps, and people.";
 
-const LONG_AI_RESPONSE = `Onyx is an open-source Gen-AI and Enterprise Search platform designed to connect to your company's documents, applications, and people. Let me address each of your questions in detail.
+const LONG_AI_RESPONSE = `Atlas is an open-source Gen-AI and Enterprise Search platform designed to connect to your company's documents, applications, and people. Let me address each of your questions in detail.
 
 ## Document Indexing
 
-Onyx uses a **connector-based architecture** where each data source has a dedicated connector. These connectors run as background workers and can index simultaneously without interfering with each other. The supported connectors include:
+Atlas uses a **connector-based architecture** where each data source has a dedicated connector. These connectors run as background workers and can index simultaneously without interfering with each other. The supported connectors include:
 
 - **Confluence** — Full page and space indexing with attachment support
 - **Google Drive** — File and folder indexing with shared drive support
@@ -37,10 +37,10 @@ Each connector runs on its own schedule and can be configured independently for 
 
 ## Security Model
 
-Onyx implements a **document-level permission system** that syncs with source ACLs. When documents are indexed, their permissions are preserved:
+Atlas implements a **document-level permission system** that syncs with source ACLs. When documents are indexed, their permissions are preserved:
 
 \`\`\`
-Source Permission → Onyx ACL Sync → Query-time Filtering
+Source Permission → Atlas ACL Sync → Query-time Filtering
 \`\`\`
 
 This means that when a user searches, they only see documents they have access to in the original source system. The permission sync runs periodically to stay up to date.
@@ -79,16 +79,16 @@ const MARKDOWN_AI_RESPONSE = `Here's a quick overview with various formatting:
 ### Code Example
 
 \`\`\`python
-from onyx import OnyxClient
+from atlas import AtlasClient
 
-client = OnyxClient(api_key="your-key")
+client = AtlasClient(api_key="your-key")
 results = client.search("quarterly revenue report")
 
 for doc in results:
     print(f"{doc.title}: {doc.score:.2f}")
 \`\`\`
 
-> **Note**: Onyx supports both cloud and self-hosted deployments. The self-hosted option gives you full control over your data.
+> **Note**: Atlas supports both cloud and self-hosted deployments. The self-hosted option gives you full control over your data.
 
 Key benefits include:
 
@@ -227,7 +227,7 @@ function buildMockSearchStream(options: SearchMockOptions): string {
 async function openChat(page: Page): Promise<void> {
   await page.goto("/app");
   await page.waitForLoadState("networkidle");
-  await page.waitForSelector("#onyx-chat-input-textarea", { timeout: 15000 });
+  await page.waitForSelector("#atlas-chat-input-textarea", { timeout: 15000 });
 }
 
 async function mockChatEndpoint(
@@ -320,10 +320,10 @@ for (const theme of THEMES) {
 
         await sendMessage(page, SHORT_USER_MESSAGE);
 
-        const userMessage = page.locator("#onyx-human-message").first();
+        const userMessage = page.locator("#atlas-human-message").first();
         await expect(userMessage).toContainText(SHORT_USER_MESSAGE);
 
-        const aiMessage = page.getByTestId("onyx-ai-message").first();
+        const aiMessage = page.getByTestId("atlas-ai-message").first();
         await expect(aiMessage).toContainText("open-source AI-powered");
 
         await screenshotChatContainer(
@@ -340,7 +340,7 @@ for (const theme of THEMES) {
 
         await sendMessage(page, LONG_USER_MESSAGE);
 
-        const userMessage = page.locator("#onyx-human-message").first();
+        const userMessage = page.locator("#atlas-human-message").first();
         await expect(userMessage).toContainText("document indexing");
         await expect(userMessage).toContainText("security model");
         await expect(userMessage).toContainText("real-time or near-real-time");
@@ -360,7 +360,7 @@ for (const theme of THEMES) {
 
         await sendMessage(page, SHORT_USER_MESSAGE);
 
-        const aiMessage = page.getByTestId("onyx-ai-message").first();
+        const aiMessage = page.getByTestId("atlas-ai-message").first();
         await expect(aiMessage).toContainText("Document Indexing");
         await expect(aiMessage).toContainText("Security Model");
         await expect(aiMessage).toContainText("Indexing Latency");
@@ -380,7 +380,7 @@ for (const theme of THEMES) {
 
         await sendMessage(page, LONG_WORD_USER_MESSAGE);
 
-        const userMessage = page.locator("#onyx-human-message").first();
+        const userMessage = page.locator("#atlas-human-message").first();
         await expect(userMessage).toContainText("__________");
 
         await screenshotChatContainer(
@@ -410,10 +410,10 @@ for (const theme of THEMES) {
 
         await sendMessage(page, LONG_USER_MESSAGE);
 
-        const userMessage = page.locator("#onyx-human-message").first();
+        const userMessage = page.locator("#atlas-human-message").first();
         await expect(userMessage).toContainText("document indexing");
 
-        const aiMessage = page.getByTestId("onyx-ai-message").first();
+        const aiMessage = page.getByTestId("atlas-ai-message").first();
         await expect(aiMessage).toContainText("Retrieval-Augmented Generation");
 
         await screenshotChatContainerTopAndBottom(
@@ -430,11 +430,11 @@ for (const theme of THEMES) {
         await openChat(page);
         await mockChatEndpoint(page, MARKDOWN_AI_RESPONSE);
 
-        await sendMessage(page, "Give me an overview of Onyx features");
+        await sendMessage(page, "Give me an overview of Atlas features");
 
-        const aiMessage = page.getByTestId("onyx-ai-message").first();
+        const aiMessage = page.getByTestId("atlas-ai-message").first();
         await expect(aiMessage).toContainText("Key Features");
-        await expect(aiMessage).toContainText("OnyxClient");
+        await expect(aiMessage).toContainText("AtlasClient");
         await expect(aiMessage).toContainText("Privacy");
 
         await screenshotChatContainer(
@@ -452,28 +452,28 @@ for (const theme of THEMES) {
 
         const responses = [
           SHORT_AI_RESPONSE,
-          "Yes, Onyx supports over 30 data source connectors including Confluence, Google Drive, Slack, GitHub, Jira, Notion, and many more.",
-          "To get started, you can deploy Onyx using Docker Compose with a single command. The setup takes about 5 minutes.",
+          "Yes, Atlas supports over 30 data source connectors including Confluence, Google Drive, Slack, GitHub, Jira, Notion, and many more.",
+          "To get started, you can deploy Atlas using Docker Compose with a single command. The setup takes about 5 minutes.",
         ];
 
         await mockChatEndpointSequence(page, responses);
 
         await sendMessage(page, SHORT_USER_MESSAGE);
-        await expect(page.getByTestId("onyx-ai-message").first()).toContainText(
-          "open-source AI-powered"
-        );
+        await expect(
+          page.getByTestId("atlas-ai-message").first()
+        ).toContainText("open-source AI-powered");
 
         await sendMessage(page, "What connectors does it support?");
-        await expect(page.getByTestId("onyx-ai-message")).toHaveCount(2, {
+        await expect(page.getByTestId("atlas-ai-message")).toHaveCount(2, {
           timeout: 30000,
         });
 
         await sendMessage(page, "How do I get started?");
-        await expect(page.getByTestId("onyx-ai-message")).toHaveCount(3, {
+        await expect(page.getByTestId("atlas-ai-message")).toHaveCount(3, {
           timeout: 30000,
         });
 
-        const userMessages = page.locator("#onyx-human-message");
+        const userMessages = page.locator("#atlas-human-message");
         await expect(userMessages).toHaveCount(3);
 
         await screenshotChatContainerTopAndBottom(
@@ -492,12 +492,12 @@ for (const theme of THEMES) {
         await mockChatEndpointSequence(page, responses);
 
         await sendMessage(page, LONG_USER_MESSAGE);
-        await expect(page.getByTestId("onyx-ai-message").first()).toContainText(
-          "Document Indexing"
-        );
+        await expect(
+          page.getByTestId("atlas-ai-message").first()
+        ).toContainText("Document Indexing");
 
         await sendMessage(page, SHORT_USER_MESSAGE);
-        await expect(page.getByTestId("onyx-ai-message")).toHaveCount(2, {
+        await expect(page.getByTestId("atlas-ai-message")).toHaveCount(2, {
           timeout: 30000,
         });
 
@@ -519,7 +519,7 @@ for (const theme of THEMES) {
         page: Page,
         namePrefix: string
       ): Promise<void> {
-        const aiMessage = page.getByTestId("onyx-ai-message").first();
+        const aiMessage = page.getByTestId("atlas-ai-message").first();
         const toolbar = aiMessage.getByTestId("AgentMessage/toolbar");
         await expect(toolbar).toBeVisible({ timeout: 10000 });
 
@@ -560,17 +560,17 @@ for (const theme of THEMES) {
       const WEB_SEARCH_DOCUMENTS: MockDocument[] = [
         {
           document_id: "web-doc-1",
-          semantic_identifier: "Onyx Documentation - Getting Started",
-          link: "https://docs.onyx.app/getting-started",
+          semantic_identifier: "Atlas Documentation - Getting Started",
+          link: "https://docs.atlas.app/getting-started",
           source_type: "web",
           blurb:
-            "Onyx is an open-source enterprise search and AI platform. Deploy in minutes with Docker Compose.",
+            "Atlas is an open-source enterprise search and AI platform. Deploy in minutes with Docker Compose.",
           is_internet: true,
         },
         {
           document_id: "web-doc-2",
-          semantic_identifier: "Onyx GitHub Repository",
-          link: "https://github.com/onyx-dot-app/onyx",
+          semantic_identifier: "Atlas GitHub Repository",
+          link: "https://github.com/atlas-dot-app/atlas",
           source_type: "web",
           blurb:
             "Open-source Gen-AI platform with 30+ connectors. MIT licensed community edition.",
@@ -582,22 +582,22 @@ for (const theme of THEMES) {
           link: "https://example.com/enterprise-search-comparison",
           source_type: "web",
           blurb:
-            "Comparing top enterprise search platforms including Onyx, Glean, and Coveo.",
+            "Comparing top enterprise search platforms including Atlas, Glean, and Coveo.",
           is_internet: true,
         },
       ];
 
-      const WEB_SEARCH_RESPONSE = `Based on my web search, here's what I found about Onyx:
+      const WEB_SEARCH_RESPONSE = `Based on my web search, here's what I found about Atlas:
 
-Onyx is an open-source enterprise search and AI platform that can be deployed in minutes using Docker Compose [[D1]](https://docs.onyx.app/getting-started). The project is hosted on GitHub and is MIT licensed for the community edition, with over 30 connectors available [[D2]](https://github.com/onyx-dot-app/onyx).
+Atlas is an open-source enterprise search and AI platform that can be deployed in minutes using Docker Compose [[D1]](https://docs.atlas.app/getting-started). The project is hosted on GitHub and is MIT licensed for the community edition, with over 30 connectors available [[D2]](https://github.com/atlas-dot-app/atlas).
 
-In comparisons with other enterprise search platforms, Onyx stands out for its open-source nature and self-hosted deployment option [[D3]](https://example.com/enterprise-search-comparison). Unlike proprietary alternatives, you maintain full control over your data and infrastructure.
+In comparisons with other enterprise search platforms, Atlas stands out for its open-source nature and self-hosted deployment option [[D3]](https://example.com/enterprise-search-comparison). Unlike proprietary alternatives, you maintain full control over your data and infrastructure.
 
 Key advantages include:
 
 - **Self-hosted**: Deploy on your own infrastructure
-- **Open source**: Full visibility into the codebase [[D2]](https://github.com/onyx-dot-app/onyx)
-- **Quick setup**: Get running in under 5 minutes [[D1]](https://docs.onyx.app/getting-started)
+- **Open source**: Full visibility into the codebase [[D2]](https://github.com/atlas-dot-app/atlas)
+- **Quick setup**: Get running in under 5 minutes [[D1]](https://docs.atlas.app/getting-started)
 - **Extensible**: 30+ pre-built connectors with custom connector support`;
 
       test("web search response with citations renders correctly", async ({
@@ -611,7 +611,7 @@ Key advantages include:
             contentType: "text/plain",
             body: buildMockSearchStream({
               content: WEB_SEARCH_RESPONSE,
-              queries: ["Onyx enterprise search platform overview"],
+              queries: ["Atlas enterprise search platform overview"],
               documents: WEB_SEARCH_DOCUMENTS,
               citations: {
                 1: "web-doc-1",
@@ -623,9 +623,9 @@ Key advantages include:
           });
         });
 
-        await sendMessage(page, "Search the web for information about Onyx");
+        await sendMessage(page, "Search the web for information about Atlas");
 
-        const aiMessage = page.getByTestId("onyx-ai-message").first();
+        const aiMessage = page.getByTestId("atlas-ai-message").first();
         await expect(aiMessage).toContainText("open-source enterprise search");
         await expect(aiMessage).toContainText("Docker Compose");
         await expect(aiMessage).toContainText("MIT licensed");
@@ -657,7 +657,7 @@ Key advantages include:
             link: "https://drive.google.com/file/d/abc123",
             source_type: "google_drive",
             blurb:
-              "Onyx platform architecture document covering microservices, data flow, and deployment topology.",
+              "Atlas platform architecture document covering microservices, data flow, and deployment topology.",
             is_internet: false,
           },
         ];
@@ -693,7 +693,7 @@ The platform architecture document provides additional context on how these impr
 
         await sendMessage(page, "What are our engineering priorities for Q3?");
 
-        const aiMessage = page.getByTestId("onyx-ai-message").first();
+        const aiMessage = page.getByTestId("atlas-ai-message").first();
         await expect(aiMessage).toContainText("Platform stability");
         await expect(aiMessage).toContainText("New integrations");
         await expect(aiMessage).toContainText("Performance");
@@ -712,7 +712,7 @@ The platform architecture document provides additional context on how these impr
 
 This is the introductory paragraph.
 
-## Installing the \`onyx-sdk\`
+## Installing the \`atlas-sdk\`
 
 Follow these steps to install the SDK.
 
@@ -732,13 +732,13 @@ Set \`max_results\` to limit the number of returned documents.`;
 
         await sendMessage(page, "Show me all heading levels");
 
-        const aiMessage = page.getByTestId("onyx-ai-message").first();
+        const aiMessage = page.getByTestId("atlas-ai-message").first();
 
         await expect(aiMessage.locator("h1")).toContainText("Getting Started");
         await expect(aiMessage.locator("h2")).toContainText("Installing the");
         await expect(
           aiMessage.locator("h2").locator('[data-testid="code-block"]')
-        ).toContainText("onyx-sdk");
+        ).toContainText("atlas-sdk");
         await expect(aiMessage.locator("h3")).toContainText(
           "Configuration Options"
         );
@@ -768,7 +768,7 @@ Set \`max_results\` to limit the number of returned documents.`;
 
         await sendMessage(page, SHORT_USER_MESSAGE);
 
-        const userMessage = page.locator("#onyx-human-message").first();
+        const userMessage = page.locator("#atlas-human-message").first();
         await userMessage.hover();
 
         const editButton = userMessage.getByTestId("HumanMessage/edit-button");
@@ -788,7 +788,7 @@ Set \`max_results\` to limit the number of returned documents.`;
 
         await sendMessage(page, SHORT_USER_MESSAGE);
 
-        const aiMessage = page.getByTestId("onyx-ai-message").first();
+        const aiMessage = page.getByTestId("atlas-ai-message").first();
 
         const copyButton = aiMessage.getByTestId("AgentMessage/copy-button");
         const likeButton = aiMessage.getByTestId("AgentMessage/like-button");

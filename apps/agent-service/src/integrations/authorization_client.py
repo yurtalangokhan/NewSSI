@@ -4,13 +4,17 @@ from __future__ import annotations
 
 import time
 
-from core.env import env
+from cachetools import LRUCache
+from config_manager import env
+
 from core.exceptions import ApplicationError
 
 
 class AuthorizationClient:
     def __init__(self) -> None:
-        self._permission_cache: dict[tuple[str, str], tuple[bool, float]] = {}
+        # Bounded: an unbounded dict here grew one entry per (user, permission)
+        # pair ever checked, for the lifetime of the process.
+        self._permission_cache: LRUCache[tuple[str, str], tuple[bool, float]] = LRUCache(maxsize=10_000)
 
     async def has_permission(
         self,
@@ -39,7 +43,7 @@ class AuthorizationClient:
         permission: str,
         access_token: str | None,
     ) -> bool:
-        from service.UserServiceClient import (
+        from integrations.user_service_client import (
             authorize_user_permission,
             get_user_permissions,
         )
@@ -48,12 +52,23 @@ class AuthorizationClient:
             decision = await authorize_user_permission(user_id, permission, access_token)
             return bool(decision.get("allowed"))
         except ApplicationError:
-            permissions_data = await get_user_permissions(user_id, access_token)
+            try:
+                permissions_data = await get_user_permissions(user_id, access_token)
+            except ApplicationError:
+                # Both lookups failed. Letting the second one's status code
+                # (e.g. a raw 401) propagate past this point would surface
+                # an internal plumbing failure as if the caller's own
+                # session were invalid -- authenticatedFetch treats any 401
+                # as an expired session and logs the user out. A permission
+                # check that cannot be answered must deny the one action
+                # being checked (a normal, expected 403), not end the
+                # session over an unrelated dependency hiccup.
+                return False
             permissions = permissions_data.get("permissions", [])
             return permissions == ["*"] or permission in permissions
 
     def _cache_ttl_seconds(self) -> float:
-        value = env.get("USER_PERMISSION_CACHE_TTL_SECONDS", "30")
+        value = env.USER_PERMISSION_CACHE_TTL_SECONDS or "30"
         try:
             return float(value)
         except (TypeError, ValueError):

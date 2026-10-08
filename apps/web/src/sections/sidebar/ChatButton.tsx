@@ -2,19 +2,22 @@
 
 import React, { useState, memo, useMemo, useEffect } from "react";
 import { useDraggable } from "@dnd-kit/core";
-import useChatSessions from "@/hooks/useChatSessions";
-import { deleteChatSession, renameChatSession } from "@/app/app/services/lib";
-import { ChatSession } from "@/app/app/interfaces";
+import { useChatSessions } from "@/lib/api/domains/chat/hooks";
+import {
+  deleteChatSession,
+  renameChatSession,
+} from "@/lib/api/domains/chat/api";
+import { ChatSession } from "@/lib/api/domains/chat/types";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
 import Button from "@/refresh-components/buttons/Button";
 import { cn, noProp } from "@/lib/utils";
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
 import { buildAppPath, useAppRouter } from "@/hooks/appNavigation";
+import { Project } from "@/lib/api/domains/projects/types";
 import {
-  Project,
   removeChatSessionFromProject,
   createProject as createProjectService,
-} from "@/app/app/projects/projectsService";
+} from "@/lib/api/domains/projects/api";
 import { useProjectsContext } from "@/providers/ProjectsContext";
 import MoveCustomAgentChatModal from "@/components/modals/MoveCustomAgentChatModal";
 import { UNNAMED_CHAT } from "@/lib/constants";
@@ -30,6 +33,12 @@ import {
   handleMoveOperation,
 } from "@/sections/sidebar/sidebarUtils";
 import ButtonRenaming from "@/refresh-components/buttons/ButtonRenaming";
+import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
+import {
+  getChatRunIndicator,
+  type ChatRunIndicator,
+} from "@/lib/chat/chatRunIndicator";
+import { useChatSessionStore } from "@/app/app/stores/useChatSessionStore";
 import useAppFocus from "@/hooks/useAppFocus";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import {
@@ -114,6 +123,20 @@ const ChatButton = memo(
         activeSidebarTab.getId() === chatSession.id,
       [activeSidebarTab, chatSession.id]
     );
+    // "running" is server truth; "unread" is an answer newer than the last open.
+    // An unread badge on the chat the user is currently reading is noise, so it
+    // is suppressed for the active row (the running spinner is not).
+    // A run this tab is streaming turns the spinner on the moment a message is
+    // sent; the server's `has_active_run` covers runs from other tabs or
+    // devices, but only once the session list refreshes.
+    const locallyStreaming = useChatSessionStore((state) => {
+      const chatState = state.sessions.get(chatSession.id)?.chatState;
+      return chatState !== undefined && chatState !== "input";
+    });
+    const runIndicator: ChatRunIndicator = locallyStreaming
+      ? "running"
+      : getChatRunIndicator(chatSession);
+    const showUnreadDot = runIndicator === "unread" && !active;
     const mounted = useOnMount();
     const { foregroundIconClass, foregroundMutedTextClass } =
       useAppBackground();
@@ -449,7 +472,28 @@ const ChatButton = memo(
                 : buildAppPath({ type: "chat", id: chatSession.id })
             }
             transient={active}
-            rightChildren={rightMenu}
+            leadingIndicator={
+              runIndicator === "running" ? (
+                <SimpleLoader
+                  data-testid="ChatButton/running-spinner"
+                  aria-label={t("sidebar.chatRunning")}
+                  className={cn("h-3.5 w-3.5 shrink-0", foregroundIconClass)}
+                />
+              ) : undefined
+            }
+            rightChildren={
+              <>
+                {rightMenu}
+                {showUnreadDot && (
+                  <span
+                    data-testid="ChatButton/unread-dot"
+                    role="status"
+                    aria-label={t("sidebar.chatUnread")}
+                    className="h-2 w-2 shrink-0 rounded-full bg-status-info-05"
+                  />
+                )}
+              </>
+            }
             focused={renaming}
             nested={!!project}
           >

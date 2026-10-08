@@ -2,7 +2,7 @@
 
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { QueryHistoryTable } from "@/app/ee/admin/performance/query-history/QueryHistoryTable";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/navigation/admin-routes";
 import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.QUERY_HISTORY]!;

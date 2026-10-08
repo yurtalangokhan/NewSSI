@@ -2,6 +2,7 @@
 
 import uuid
 
+from error_contract import register_error_handlers
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -15,6 +16,7 @@ from src.api.routes.user_route import router as user_router
 @pytest.fixture
 def app():
     app = FastAPI()
+    register_error_handlers(app, service_name="user-service-test")
     app.include_router(user_router)
     app.include_router(settings_router)
     app.include_router(api_keys_router)

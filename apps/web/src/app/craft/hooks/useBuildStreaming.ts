@@ -6,7 +6,7 @@ import {
   Artifact,
   ArtifactType,
   SessionErrorCode,
-} from "@/app/craft/types/streamingTypes";
+} from "@/lib/api/domains/craft/streaming-types";
 
 import {
   sendMessageStream,
@@ -14,7 +14,7 @@ import {
   fetchSession,
   generateFollowupSuggestions,
   RateLimitError,
-} from "@/app/craft/services/apiServices";
+} from "@/lib/api/domains/craft/api";
 
 import { useBuildSessionStore } from "@/app/craft/hooks/useBuildSessionStore";
 import { StreamItem } from "@/app/craft/types/displayTypes";

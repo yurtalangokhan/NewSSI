@@ -29,7 +29,9 @@ jest.mock("react-i18next", () => ({
   }),
 }));
 
-jest.mock("@/lib/fetcher", () => ({ errorHandlingFetcher: jest.fn() }));
+jest.mock("@/lib/api/domains/agents/api", () => ({
+  fetchFlowSource: jest.fn(),
+}));
 
 jest.mock("../../FlowCanvas", () => ({
   FlowCanvas: () => <div data-testid="flow-canvas" />,
@@ -45,7 +47,9 @@ jest.mock("../../hooks/useCanvasWiring", () => ({
 
 jest.mock("../../nodes/registry", () => ({ createNodeTypes: () => ({}) }));
 
-const { errorHandlingFetcher } = jest.requireMock("@/lib/fetcher");
+const { fetchFlowSource: errorHandlingFetcher } = jest.requireMock(
+  "@/lib/api/domains/agents/api"
+);
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -75,11 +79,8 @@ describe("FlowAgentPreview", () => {
 
     await waitFor(() => expect(errorHandlingFetcher).toHaveBeenCalled());
 
-    const urls = errorHandlingFetcher.mock.calls.map((c: unknown[]) =>
-      String(c[0])
-    );
-    expect(urls).toContain("/api/agent-definitions/def-1/flow/published");
-    expect(urls).not.toContain("/api/agent-definitions/def-1/flow/draft");
+    expect(errorHandlingFetcher).toHaveBeenCalledWith("def-1", "published");
+    expect(errorHandlingFetcher).not.toHaveBeenCalledWith("def-1", "draft");
 
     expect(await screen.findByTestId("flow-canvas")).toBeInTheDocument();
   });

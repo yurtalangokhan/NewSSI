@@ -1,5 +1,4 @@
 import {
-  inferOrganizationLayoutOrientation,
   repositionOrganizationSubtree,
   organizationTreeToLayoutPositions,
   organizationTreeToFlowGraph,
@@ -178,6 +177,147 @@ describe("organizationTreeToFlowGraph", () => {
 });
 
 describe("organizationTreeToLayoutPositions", () => {
+  it.each(["vertical", "horizontal"] as const)(
+    "preserves spacing and mirror balance across an uneven %s forest",
+    (orientation) => {
+      const forest = [...unevenOrganizations, ...wideOrganizations];
+      const first = organizationTreeToLayoutPositions(forest, orientation);
+      function mirror(nodes: OrganizationTreeNode[]): OrganizationTreeNode[] {
+        return [...nodes].reverse().map((node) => ({
+          ...node,
+          children: mirror(node.children ?? []),
+        }));
+      }
+      const reflected = organizationTreeToLayoutPositions(
+        mirror(forest),
+        orientation
+      );
+      const axis = orientation === "vertical" ? "x" : "y";
+      const depth = orientation === "vertical" ? "y" : "x";
+      const gap = orientation === "vertical" ? 280 : 180;
+      const reflectionCenter = first.root![axis] + reflected.root![axis];
+
+      expect(first).toEqual(
+        organizationTreeToLayoutPositions(forest, orientation)
+      );
+      for (const [id, position] of Object.entries(first)) {
+        expect(position[axis] + reflected[id]![axis]).toBeCloseTo(
+          reflectionCenter
+        );
+        const laterPeers = Object.values(first).filter(
+          (peer) =>
+            peer[depth] === position[depth] && peer[axis] > position[axis]
+        );
+        for (const peer of laterPeers) {
+          expect(peer[axis] - position[axis]).toBeGreaterThanOrEqual(gap);
+        }
+      }
+      expect(
+        first["wide-root"]![axis] - first.root![axis]
+      ).toBeGreaterThanOrEqual(360);
+    }
+  );
+
+  it("omits collapsed descendants until a complete reset is requested", () => {
+    const collapsed = new Set(["a"]);
+    const visible = organizationTreeToLayoutPositions(
+      unevenOrganizations,
+      "vertical",
+      new Set(["a"]),
+      collapsed
+    );
+    const complete = organizationTreeToLayoutPositions(
+      unevenOrganizations,
+      "vertical",
+      new Set(),
+      collapsed,
+      true
+    );
+
+    expect(visible.a).toBeDefined();
+    expect(visible.a1).toBeUndefined();
+    expect(visible.b1).toBeDefined();
+    expect(complete).toEqual(
+      organizationTreeToLayoutPositions(unevenOrganizations, "vertical")
+    );
+  });
+
+  it("lays out a ten-thousand-node organization without duplicate coordinates", () => {
+    const tree: OrganizationTreeNode[] = [
+      {
+        ...organizations[0]!,
+        children: Array.from({ length: 100 }, (_, branch) => ({
+          id: `branch-${branch}`,
+          name: `Branch ${branch}`,
+          path: `root/${branch}/`,
+          parent_id: "root",
+          children: Array.from({ length: 100 }, (_, leaf) => ({
+            id: `${branch}-${leaf}`,
+            name: `Leaf ${leaf}`,
+            path: `root/${branch}/${leaf}/`,
+            parent_id: `branch-${branch}`,
+          })),
+        })),
+      },
+    ];
+    const positions = organizationTreeToLayoutPositions(tree, "vertical");
+
+    expect(Object.keys(positions)).toHaveLength(10101);
+    expect(
+      new Set(Object.values(positions).map(({ x, y }) => `${x}:${y}`)).size
+    ).toBe(10101);
+  });
+
+  it.each(["vertical", "horizontal"] as const)(
+    "packs shallow siblings around a wide branch without wasted %s space",
+    (orientation) => {
+      const root = unevenOrganizations[0]!;
+      const tree = [
+        {
+          ...root,
+          children: [root.children![0]!, organizations[0]!.children![0]!],
+        },
+      ];
+      const positions = organizationTreeToLayoutPositions(tree, orientation);
+      const axis = orientation === "vertical" ? "x" : "y";
+      const gap = orientation === "vertical" ? 280 : 180;
+
+      expect(positions.product![axis] - positions.a![axis]).toBe(gap);
+      expect(positions.root![axis]).toBe(
+        (positions.a![axis] + positions.product![axis]) / 2
+      );
+    }
+  );
+
+  it.each(["vertical", "horizontal"] as const)(
+    "balances a shallow middle sibling between wide %s branches",
+    (orientation) => {
+      const wideBranch = unevenOrganizations[0]!.children![0]!;
+      const rightBranch = {
+        ...wideBranch,
+        id: "right",
+        children: wideBranch.children!.map((child) => ({
+          ...child,
+          id: `right-${child.id}`,
+          parent_id: "right",
+        })),
+      };
+      const tree = [
+        {
+          ...organizations[0]!,
+          children: [wideBranch, organizations[0]!.children![0]!, rightBranch],
+        },
+      ];
+      const positions = organizationTreeToLayoutPositions(tree, orientation);
+      const axis = orientation === "vertical" ? "x" : "y";
+      const gap = orientation === "vertical" ? 280 : 180;
+
+      expect(positions.product![axis]).toBe(positions.root![axis]);
+      expect(positions.right![axis] - positions.a![axis]).toBe(3 * gap);
+      expect(positions["right-a1"]![axis] - positions.a3![axis]).toBe(gap);
+    }
+  );
+
   it("places hierarchy levels top-to-bottom for vertical layout", () => {
     const positions = organizationTreeToLayoutPositions(
       organizations,
@@ -268,39 +408,6 @@ describe("organization connection routing", () => {
       expect.objectContaining({ sourceHandle: "right", targetHandle: "left" })
     );
     expect(graph.nodes[0]?.data.layoutOrientation).toBe("horizontal");
-  });
-
-  it("infers a reopened horizontal layout from saved coordinates", () => {
-    const positions = organizationTreeToLayoutPositions(
-      organizations,
-      "horizontal"
-    );
-
-    expect(inferOrganizationLayoutOrientation(organizations, positions)).toBe(
-      "horizontal"
-    );
-  });
-
-  it("does not confuse wide vertical sibling spread with horizontal depth", () => {
-    const positions = organizationTreeToLayoutPositions(
-      wideOrganizations,
-      "vertical"
-    );
-
-    expect(
-      inferOrganizationLayoutOrientation(wideOrganizations, positions)
-    ).toBe("vertical");
-  });
-
-  it("does not confuse tall horizontal sibling spread with vertical depth", () => {
-    const positions = organizationTreeToLayoutPositions(
-      wideOrganizations,
-      "horizontal"
-    );
-
-    expect(
-      inferOrganizationLayoutOrientation(wideOrganizations, positions)
-    ).toBe("horizontal");
   });
 });
 

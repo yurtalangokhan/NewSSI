@@ -4498,10 +4498,10 @@
         <div class="pulse-dot"></div>
         <h1>Agentic AI Platform — Runtime Architecture</h1>
       </div>
-      <p class="subtitle">Kong-gated LangGraph services over shared infrastructure</p>
+      <p class="subtitle">apisix-gated LangGraph services over shared infrastructure</p>
     </div>
 
-    <script id="archify-guided-views-data" type="application/json">[{"id":"primary-path","label":"Primary chat path","focus":["users","web","kong","agent","llm"],"note":"Browser chat request routed through Kong JWT to a LangGraph run, streamed back over SSE."},{"id":"internal-mesh","label":"Internal service mesh","focus":["agent","tools","rag","user","postgres","milvus","neo4j"],"note":"Service-to-service trust zone via /internal/* with X-Internal-Service-Token."},{"id":"identity","label":"Identity \u0026 edge","focus":["users","keycloak","kong","web"],"note":"OIDC login flow and JWT verification at the Kong edge."}]</script>
+    <script id="archify-guided-views-data" type="application/json">[{"id":"primary-path","label":"Primary chat path","focus":["users","web","apisix","agent","llm"],"note":"Browser chat request routed through apisix JWT to a LangGraph run, streamed back over SSE."},{"id":"internal-mesh","label":"Internal service mesh","focus":["agent","tools","rag","user","postgres","milvus","neo4j"],"note":"Service-to-service trust zone via /internal/* with X-Internal-Service-Token."},{"id":"identity","label":"Identity \u0026 edge","focus":["users","keycloak","apisix","web"],"note":"OIDC login flow and JWT verification at the apisix edge."}]</script>
 
     <div class="guided-views no-print" id="guided-views" hidden aria-label="Guided diagram views">
       <button id="guided-view-prev" type="button" aria-label="Previous guided view" title="Previous guided view ([)">&#8592;</button>
@@ -4546,7 +4546,7 @@
     <div class="diagram-container" data-detail-level="read">
       <svg viewBox="0 0 1540 760" role="img" aria-labelledby="archify-diagram-title archify-diagram-description" data-preset="classic" data-quality-profile="showcase">
         <title id="archify-diagram-title">Agentic AI Platform — Runtime Architecture</title>
-        <desc id="archify-diagram-description">Kong-gated LangGraph services over shared infrastructure</desc>
+        <desc id="archify-diagram-description">apisix-gated LangGraph services over shared infrastructure</desc>
         <!-- Definitions -->
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -4584,12 +4584,12 @@
 
         <!-- Connection paths (before components for correct z-order) -->
         <path data-edge-from="users" data-edge-to="web" data-edge-label="HTTPS" data-edge-key="0" data-edge-id="users-web" data-composition-points="160,460;250,460" d="M 160 460 L 250 460" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="web" data-edge-to="kong" data-edge-label="JWT" data-edge-key="1" data-edge-id="web-kong" data-composition-points="380,460;404,460;404,478;446,478;446,462;470,462" d="M 380 460 L 396 460 Q 404 460 404 468 L 404 470 Q 404 478 412 478 L 438 478 Q 446 478 446 470 L 446 470 Q 446 462 454 462 L 470 462" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="kong" data-edge-to="agent" data-edge-label="chat" data-edge-key="2" data-edge-id="kong-agent" data-composition-points="610,462;655,462;655,440;700,440" d="M 610 462 L 647 462 Q 655 462 655 454 L 655 448 Q 655 440 663 440 L 700 440" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="web" data-edge-to="apisix" data-edge-label="JWT" data-edge-key="1" data-edge-id="web-apisix" data-composition-points="380,460;404,460;404,478;446,478;446,462;470,462" d="M 380 460 L 396 460 Q 404 460 404 468 L 404 470 Q 404 478 412 478 L 438 478 Q 446 478 446 470 L 446 470 Q 446 462 454 462 L 470 462" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="apisix" data-edge-to="agent" data-edge-label="chat" data-edge-key="2" data-edge-id="apisix-agent" data-composition-points="610,462;655,462;655,440;700,440" d="M 610 462 L 647 462 Q 655 462 655 454 L 655 448 Q 655 440 663 440 L 700 440" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="agent" data-edge-to="llm" data-edge-label="inference" data-edge-key="3" data-edge-id="agent-llm" data-composition-points="830,447;854,447;854,463;1316,463;1316,440;1340,440" d="M 830 447 L 846 447 Q 854 447 854 455 L 854 455 Q 854 463 862 463 L 1308 463 Q 1316 463 1316 455 L 1316 448 Q 1316 440 1324 440 L 1340 440" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="users" data-edge-to="keycloak" data-edge-label="OIDC" data-edge-key="4" data-edge-id="users-keycloak" data-composition-points="100,430;100,406;121,406;121,208;105,208;105,184" d="M 100 430 L 100 414 Q 100 406 108 406 L 113 406 Q 121 406 121 398 L 121 216 Q 121 208 113 208 L 113 208 Q 105 208 105 200 L 105 184" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="keycloak" data-edge-to="kong" data-edge-label="verify JWT" data-edge-key="5" data-edge-id="keycloak-kong" data-composition-points="170,152;540,152;540,430" d="M 170 152 L 532 152 Q 540 152 540 160 L 540 430" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="kong" data-edge-to="user" data-edge-label="auth" data-edge-key="6" data-edge-id="kong-user" data-composition-points="540,494;540,567;758,567;758,640" d="M 540 494 L 540 559 Q 540 567 548 567 L 750 567 Q 758 567 758 575 L 758 640" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="keycloak" data-edge-to="apisix" data-edge-label="verify JWT" data-edge-key="5" data-edge-id="keycloak-apisix" data-composition-points="170,152;540,152;540,430" d="M 170 152 L 532 152 Q 540 152 540 160 L 540 430" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="apisix" data-edge-to="user" data-edge-label="auth" data-edge-key="6" data-edge-id="apisix-user" data-composition-points="540,494;540,567;758,567;758,640" d="M 540 494 L 540 559 Q 540 567 548 567 L 750 567 Q 758 567 758 575 L 758 640" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="agent" data-edge-to="tools" data-edge-label="MCP" data-edge-key="7" data-edge-id="agent-tools" data-composition-points="765,410;765,386;781,386;781,194;755,194;755,170" d="M 765 410 L 765 394 Q 765 386 773 386 L 773 386 Q 781 386 781 378 L 781 202 Q 781 194 773 194 L 763 194 Q 755 194 755 186 L 755 170" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="agent" data-edge-to="rag" data-edge-label="RAG search" data-edge-key="8" data-edge-id="agent-rag" data-composition-points="830,433;885,433;885,140;940,140" d="M 830 433 L 877 433 Q 885 433 885 425 L 885 148 Q 885 140 893 140 L 940 140" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="agent" data-edge-to="user" data-edge-label="permissions" data-edge-key="9" data-edge-id="agent-user" data-composition-points="765,470;765,494;788,494;788,616;772,616;772,640" d="M 765 470 L 765 486 Q 765 494 773 494 L 780 494 Q 788 494 788 502 L 788 608 Q 788 616 780 616 L 780 616 Q 772 616 772 624 L 772 640" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
@@ -4622,8 +4622,8 @@
         <text data-detail="context" x="105" y="166" class="t-muted" font-size="9" text-anchor="middle">OIDC IdP · JWT issuer</text>
         </g>
 
-        <g id="node-web" data-node-id="web" data-node-label="Web App" tabindex="0" role="button" aria-label="Focus Web App, Next.js 16 (Onyx), Agentic AI Platform — Docker Compose trust zone" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="Next.js 16 (Onyx)" data-node-context="Agentic AI Platform — Docker Compose trust zone">
-          <title>Web App · Next.js 16 (Onyx) · Agentic AI Platform — Docker Compose trust zone</title>
+        <g id="node-web" data-node-id="web" data-node-label="Web App" tabindex="0" role="button" aria-label="Focus Web App, Next.js 16 (Atlas), Agentic AI Platform — Docker Compose trust zone" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="Next.js 16 (Atlas)" data-node-context="Agentic AI Platform — Docker Compose trust zone">
+          <title>Web App · Next.js 16 (Atlas) · Agentic AI Platform — Docker Compose trust zone</title>
           <rect x="250" y="430" width="130" height="60" rx="6" class="c-mask"/>
           <rect x="250" y="430" width="130" height="60" rx="6" class="c-frontend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(256 436) scale(0.6875)">
@@ -4633,11 +4633,11 @@
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
           <text data-detail-anchor x="315" y="458" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Web App</text>
-        <text data-detail="context" x="315" y="474" class="t-muted" font-size="9" text-anchor="middle">Next.js 16 (Onyx)</text>
+        <text data-detail="context" x="315" y="474" class="t-muted" font-size="9" text-anchor="middle">Next.js 16 (Atlas)</text>
         </g>
 
-        <g id="node-kong" data-node-id="kong" data-node-label="API Gateway" tabindex="0" role="button" aria-label="Focus API Gateway, Kong :8000, Agentic AI Platform — Docker Compose trust zone" aria-pressed="false" data-node-kind="security" data-node-sublabel="Kong :8000" data-node-tag="JWT verify" data-node-context="Agentic AI Platform — Docker Compose trust zone">
-          <title>API Gateway · Kong :8000 · Agentic AI Platform — Docker Compose trust zone · JWT verify</title>
+        <g id="node-apisix" data-node-id="apisix" data-node-label="API Gateway" tabindex="0" role="button" aria-label="Focus API Gateway, apisix :8000, Agentic AI Platform — Docker Compose trust zone" aria-pressed="false" data-node-kind="security" data-node-sublabel="apisix :8000" data-node-tag="JWT verify" data-node-context="Agentic AI Platform — Docker Compose trust zone">
+          <title>API Gateway · apisix :8000 · Agentic AI Platform — Docker Compose trust zone · JWT verify</title>
           <rect x="470" y="430" width="140" height="64" rx="6" class="c-mask"/>
           <rect x="470" y="430" width="140" height="64" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(476 436) scale(0.6875)">
@@ -4645,7 +4645,7 @@
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
           <text data-detail-anchor x="540" y="460" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">API Gateway</text>
-        <text data-detail="context" x="540" y="476" class="t-muted" font-size="9" text-anchor="middle">Kong :8000</text>
+        <text data-detail="context" x="540" y="476" class="t-muted" font-size="9" text-anchor="middle">apisix :8000</text>
         <text data-detail="fine" x="540" y="486" class="t-security" font-size="7" text-anchor="middle">JWT verify</text>
         </g>
 
@@ -4672,15 +4672,15 @@
         <text data-detail="context" x="755" y="154" class="t-muted" font-size="9" text-anchor="middle">FastMCP · 44 tools</text>
         </g>
 
-        <g id="node-rag" data-node-id="rag" data-node-label="RAG Service" tabindex="0" role="button" aria-label="Focus RAG Service, LangConnect :8083, Agentic AI Platform — Docker Compose trust zone › Internal mesh — /internal/* · X-Internal-Service-Token" aria-pressed="false" data-node-kind="backend" data-node-sublabel="LangConnect :8083" data-node-context="Agentic AI Platform — Docker Compose trust zone › Internal mesh — /internal/* · X-Internal-Service-Token">
-          <title>RAG Service · LangConnect :8083 · Agentic AI Platform — Docker Compose trust zone › Internal mesh — /internal/* · X-Internal-Service-Token</title>
+        <g id="node-rag" data-node-id="rag" data-node-label="RAG Service" tabindex="0" role="button" aria-label="Focus RAG Service, rag-service :8083, Agentic AI Platform — Docker Compose trust zone › Internal mesh — /internal/* · X-Internal-Service-Token" aria-pressed="false" data-node-kind="backend" data-node-sublabel="rag-service :8083" data-node-context="Agentic AI Platform — Docker Compose trust zone › Internal mesh — /internal/* · X-Internal-Service-Token">
+          <title>RAG Service · rag-service :8083 · Agentic AI Platform — Docker Compose trust zone › Internal mesh — /internal/* · X-Internal-Service-Token</title>
           <rect x="940" y="110" width="130" height="60" rx="6" class="c-mask"/>
           <rect x="940" y="110" width="130" height="60" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(946 116) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-detail-anchor x="1005" y="138" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">RAG Service</text>
-        <text data-detail="context" x="1005" y="154" class="t-muted" font-size="9" text-anchor="middle">LangConnect :8083</text>
+        <text data-detail="context" x="1005" y="154" class="t-muted" font-size="9" text-anchor="middle">rag-service :8083</text>
         </g>
 
         <g id="node-user" data-node-id="user" data-node-label="User Service" tabindex="0" role="button" aria-label="Focus User Service, auth · users · roles, Agentic AI Platform — Docker Compose trust zone › Internal mesh — /internal/* · X-Internal-Service-Token" aria-pressed="false" data-node-kind="backend" data-node-sublabel="auth · users · roles" data-node-context="Agentic AI Platform — Docker Compose trust zone › Internal mesh — /internal/* · X-Internal-Service-Token">
@@ -4747,11 +4747,11 @@
           <rect x="188" y="440" width="34" height="14" rx="3" class="c-mask"/>
           <text x="205" y="450" class="t-backend" font-size="8" text-anchor="middle">HTTPS</text>
         </g>
-        <g data-detail="context" data-edge-from="web" data-edge-to="kong" data-edge-label="JWT" data-edge-key="1" data-edge-id="web-kong">
+        <g data-detail="context" data-edge-from="web" data-edge-to="apisix" data-edge-label="JWT" data-edge-key="1" data-edge-id="web-apisix">
           <rect x="389" y="449" width="30" height="14" rx="3" class="c-mask"/>
           <text x="404" y="459" class="t-muted" font-size="8" text-anchor="middle">JWT</text>
         </g>
-        <g data-detail="context" data-edge-from="kong" data-edge-to="agent" data-edge-label="chat" data-edge-key="2" data-edge-id="kong-agent">
+        <g data-detail="context" data-edge-from="apisix" data-edge-to="agent" data-edge-label="chat" data-edge-key="2" data-edge-id="apisix-agent">
           <rect x="640" y="431" width="30" height="14" rx="3" class="c-mask"/>
           <text x="655" y="441" class="t-muted" font-size="8" text-anchor="middle">chat</text>
         </g>
@@ -4763,11 +4763,11 @@
           <rect x="95.5" y="386" width="30" height="14" rx="3" class="c-mask"/>
           <text x="110.5" y="396" class="t-messagebus" font-size="8" text-anchor="middle">OIDC</text>
         </g>
-        <g data-detail="context" data-edge-from="keycloak" data-edge-to="kong" data-edge-label="verify JWT" data-edge-key="5" data-edge-id="keycloak-kong">
+        <g data-detail="context" data-edge-from="keycloak" data-edge-to="apisix" data-edge-label="verify JWT" data-edge-key="5" data-edge-id="keycloak-apisix">
           <rect x="511" y="271" width="58" height="14" rx="3" class="c-mask"/>
           <text x="540" y="281" class="t-security" font-size="8" text-anchor="middle">verify JWT</text>
         </g>
-        <g data-detail="context" data-edge-from="kong" data-edge-to="user" data-edge-label="auth" data-edge-key="6" data-edge-id="kong-user">
+        <g data-detail="context" data-edge-from="apisix" data-edge-to="user" data-edge-label="auth" data-edge-key="6" data-edge-id="apisix-user">
           <rect x="634" y="547" width="30" height="14" rx="3" class="c-mask"/>
           <text x="649" y="557" class="t-muted" font-size="8" text-anchor="middle">auth</text>
         </g>
@@ -4987,7 +4987,7 @@
           <h3>Primary path — chat</h3>
         </div>
         <ul>
-          <li>&bull; POST /agent-service/api/v1/chat/send-chat-message via Kong JWT</li>
+          <li>&bull; POST /agent-service/api/v1/chat/send-chat-message via apisix JWT</li>
           <li>&bull; LangGraph run: persona, provider, checkpointer, thread</li>
           <li>&bull; SSE stream: token · reasoning · tool_calls back to the UI</li>
         </ul>
@@ -5001,7 +5001,7 @@
         <ul>
           <li>&bull; route → controller → service → repository per service</li>
           <li>&bull; agent-service orchestrates; proxies to tools (MCP) and rag</li>
-          <li>&bull; tools-service FastMCP · rag-service LangConnect · user-service auth</li>
+          <li>&bull; tools-service FastMCP · rag-service · user-service auth</li>
         </ul>
       </div>
 
@@ -5011,7 +5011,7 @@
           <h3>Trust boundaries</h3>
         </div>
         <ul>
-          <li>&bull; External: Kong validates Keycloak JWT at /{service}/api/v1/*</li>
+          <li>&bull; External: apisix validates Keycloak JWT at /{service}/api/v1/*</li>
           <li>&bull; Internal: /internal/* uses X-Internal-Service-Token, bypasses JWT</li>
           <li>&bull; Role checks: require_admin, require_permission via user-service</li>
         </ul>
@@ -5025,7 +5025,7 @@
         <ul>
           <li>&bull; PostgreSQL 15 shared: metadata, users, LangGraph checkpoints</li>
           <li>&bull; Milvus vectors · Neo4j graph · MinIO files · Redis locks</li>
-          <li>&bull; Airbyte datasource sync; Ollama local + OpenAI/Anthropic remote</li>
+          <li>&bull; In-process connector datasource sync; Ollama local + OpenAI/Anthropic remote</li>
         </ul>
       </div>
 
@@ -5035,8 +5035,8 @@
           <h3>Operational</h3>
         </div>
         <ul>
-          <li>&bull; All external traffic through Kong :8000; ports from .env, never hardcoded</li>
-          <li>&bull; Service-to-service via http://kong:8000/internal/{service}</li>
+          <li>&bull; All external traffic through apisix :8000; ports from .env, never hardcoded</li>
+          <li>&bull; Service-to-service via http://apisix:8000/internal/{service}</li>
           <li>&bull; make validate gates lint + typecheck + test per service</li>
         </ul>
       </div>

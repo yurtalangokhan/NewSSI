@@ -150,7 +150,6 @@ async def test_external_login_passes_redirect_uri_to_auth_service():
     response = Response()
 
     await controller.external_login(
-        request=request,
         response=response,
         username="external@example.com",
         password="secret",
@@ -282,3 +281,14 @@ def test_current_token_lifetime_is_empty_without_a_usable_token():
         )
         == {}
     )
+
+
+@pytest.mark.asyncio
+async def test_oidc_authorize_returns_the_authorization_url_without_a_legacy_alias():
+    controller = AuthController.__new__(AuthController)
+    controller.auth_service = AsyncMock()
+    controller.auth_service.get_oidc_authorize_url.return_value = "http://keycloak/auth"
+
+    assert await controller.oidc_authorize(redirect_uri="http://web/callback") == {
+        "authorization_url": "http://keycloak/auth"
+    }

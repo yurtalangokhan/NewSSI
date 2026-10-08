@@ -21,9 +21,9 @@ import pytest
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 
-from agents.graphs.flow_builder import FlowGraphBuilder, _make_condrouter_node
-from domain.flows.comparison import evaluate_comparison
-from models.flows import FlowNode, FlowSpec
+from agents.graphs.flow import FlowGraphBuilder, _make_condrouter_node
+from schemas.flows import FlowNode, FlowSpec
+from service.flow_model.comparison import evaluate_comparison
 
 
 @pytest.fixture(autouse=True)

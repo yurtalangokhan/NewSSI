@@ -1,10 +1,7 @@
-"""Core module - provides backward compatibility.
+"""Core package for agent-service."""
 
-This module re-exports core modules.
-"""
+from config_manager import env
 
-from core.llm import get_model
-from core.logger import configure_logging, get_logger
-from core.settings import settings
+from core.observability.logger import configure_logging, get_logger
 
-__all__ = ["settings", "get_model", "get_logger", "configure_logging"]
+__all__ = ["configure_logging", "env", "get_logger"]

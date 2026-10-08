@@ -1,7 +1,7 @@
 /**
  * Ported from Langflow (MIT) — src/frontend/src/utils/reactflowUtils.ts
  * Upstream: https://github.com/langflow-ai/langflow @ 3ec070e9
- * Adapted for Onyx: only `getNodeId` is ported in Task 21. Langflow's
+ * Adapted for Atlas: only `getNodeId` is ported in Task 21. Langflow's
  * `scapeJSONParse`/`scapedJSONStringfy` exist to encode a structured handle
  * descriptor (component id + field name) into a single string attribute —
  * our FlowEdge already carries `source`/`target`/`sourceHandle`/

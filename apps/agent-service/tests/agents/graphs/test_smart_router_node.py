@@ -11,13 +11,13 @@ import pytest
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.messages import AIMessage, HumanMessage
 
-from agents.graphs.flow_builder import (
+from agents.graphs.flow import (
     FlowGraphBuilder,
     _make_smart_router_node,
     _smart_router_result_key,
 )
 from core.exceptions import FlowBuildError
-from models.flows import FlowNode, FlowSpec
+from schemas.flows import FlowNode, FlowSpec
 
 
 @pytest.fixture(autouse=True)
@@ -131,8 +131,9 @@ async def test_compiles_and_routes_to_the_else_branch_with_the_fake_model():
     )
     graph = await FlowGraphBuilder().build(spec)
     result = await graph.ainvoke({"messages": [HumanMessage(content="hello")], "scratch": {}})
-    # else branch -> straight to ChatOutput, no agent message added
-    assert [m.content for m in result["messages"]] == ["hello"]
+    # the else branch forwards the conversation as a concrete message (B10)
+    # instead of leaving the turn silent — the input is passed through.
+    assert result["messages"][-1].content == "hello"
 
 
 # ---------------------------------------------------------------------------

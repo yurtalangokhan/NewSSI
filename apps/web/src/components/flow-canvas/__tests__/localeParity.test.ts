@@ -185,4 +185,40 @@ describe("Task 52 — i18n locale parity and template overrides", () => {
       }
     }
   });
+
+  it("52.16 — flowCanvas.handles and flowCanvas.fields.names have identical key sets", () => {
+    // Both blocks are addressed with template literals at runtime
+    // (`flowCanvas.handles.${handle.name}`, `flowCanvas.fields.names.${key}`),
+    // so tKeyResolution.test.ts deliberately skips them. A key that only one
+    // locale defines renders the other locale's UI in English — this is the
+    // only guard that sees the whole block.
+    const enFlow = (en as any).flowCanvas;
+    const trFlow = (tr as any).flowCanvas;
+    const blocks: [Record<string, string>, Record<string, string>][] = [
+      [enFlow.handles, trFlow.handles],
+      [enFlow.fields.names, trFlow.fields.names],
+    ];
+    for (const [enBlock, trBlock] of blocks) {
+      expect(Object.keys(trBlock).sort()).toEqual(Object.keys(enBlock).sort());
+      for (const key of Object.keys(enBlock)) {
+        expect(enBlock[key]).toBeTruthy();
+        expect(trBlock[key]).toBeTruthy();
+      }
+    }
+  });
+
+  it("52.17 — shared password-input copy and the sidebar lifecycle badge exist in both locales", () => {
+    const keys = [
+      "showPassword",
+      "hidePassword",
+      "capsLockOn",
+      "valueCannotBeRevealed",
+    ];
+    for (const locale of [en, tr] as any[]) {
+      for (const key of keys) expect(locale.common[key]).toBeTruthy();
+      expect(locale.flowCanvas.sidebar.lifecycle.stable).toBeTruthy();
+      expect(locale.flowCanvas.sidebar.lifecycle.beta).toBeTruthy();
+      expect(locale.flowCanvas.sidebar.lifecycle.deprecated).toBeTruthy();
+    }
+  });
 });

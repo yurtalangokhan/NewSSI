@@ -1,4 +1,8 @@
-import { PacketType } from "@/app/app/services/lib";
+import { PacketType } from "@/lib/api/domains/chat/message-types";
+import {
+  isRunMetaPacket,
+  type RunMetaPacket,
+} from "@/lib/api/domains/chat/run-types";
 import {
   GENERATED_FILE_CATEGORY_ID,
   TOOL_PACKET_TYPES,
@@ -6,10 +10,20 @@ import {
   shouldSplitCategories,
 } from "./packetCategories";
 
+export interface SSEStreamOptions {
+  /** Parse but do not yield events whose id is <= this (replay after a re-attach). */
+  suppressThroughSeq?: number;
+  /** Called at each event boundary, after that event's packets were yielded. */
+  onEventId?: (seq: number) => void;
+  /** Receives run meta packets; they are never yielded and never touch turn bookkeeping. */
+  onRunMeta?: (meta: RunMetaPacket) => void;
+}
+
 // Backend packet types from our agent-service
 interface BackendPacket {
   type: string;
   content?: any;
+  error?: { code: string; message: string };
   // Set on graph_stage_start / graph_stage_end packets (flow-canvas node
   // execution boundaries streamed to the chat flow preview).
   stage_name?: string;
@@ -19,6 +33,10 @@ interface BackendPacket {
   stage_order?: number;
   iteration?: number;
   is_final_stage?: boolean;
+  // Structurally known (before this run proves it) to sit on a Loop/While
+  // cycle — lets the timeline fold iteration one into its collapsible group
+  // right away instead of flashing it as a standalone card. See B18.
+  is_loop_body?: boolean;
 }
 
 function extractMessageContent(content: any): string {
@@ -90,7 +108,7 @@ function mapBackendToFrontend(packet: BackendPacket): any {
     case "error":
       return {
         placement: defaultPlacement,
-        error: packet.content || "Unknown error",
+        error: packet.error?.message || packet.content || "Unknown error",
         stack_trace: "",
       };
 
@@ -188,11 +206,25 @@ const CALL_START_TYPES = new Set<string>([
 
 export async function* handleSSEStream<T extends PacketType>(
   streamingResponse: Response,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options: SSEStreamOptions = {}
 ): AsyncGenerator<T, void, unknown> {
   const reader = streamingResponse.body?.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  // The id of the SSE event whose data lines are currently being parsed.
+  // Cleared at each event boundary (blank line).
+  let currentSeq: number | null = null;
+  // The id of the last event whose data line was fully handled. Only this id
+  // is ever reported: an event whose data never arrived (or arrived cut off)
+  // must be replayed, and one already yielded must not be.
+  let handledSeq: number | null = null;
+  const reportHandledSeq = () => {
+    if (handledSeq !== null) {
+      options.onEventId?.(handledSeq);
+      handledSeq = null;
+    }
+  };
 
   // Track turn_index so tool packets and message packets land in separate groups.
   // The frontend packetProcessor classifies an entire group by its *first* packet,
@@ -223,10 +255,20 @@ export async function* handleSSEStream<T extends PacketType>(
     signal.addEventListener("abort", () => {
       reader?.cancel();
     });
+    // An already-aborted signal never fires the listener: cancel now so a
+    // pending read cannot hang the stream.
+    if (signal.aborted) reader?.cancel();
   }
 
   if (!reader) {
     throw new Error("No reader available for stream");
+  }
+
+  // A replayed packet is parsed (the turn/tool bookkeeping must see the whole
+  // stream) but not yielded. `emit` is the one place that decides.
+  let suppressed = false;
+  function* emit(packet: T): Generator<T, void, unknown> {
+    if (!suppressed) yield packet;
   }
 
   try {
@@ -244,21 +286,37 @@ export async function* handleSSEStream<T extends PacketType>(
       buffer = lines.pop() || "";
 
       for (const line of lines) {
-        if (line.trim() === "") continue;
+        if (line.trim() === "") {
+          reportHandledSeq();
+          currentSeq = null;
+          continue;
+        }
 
         const trimmedLine = line.trim();
+        if (trimmedLine.startsWith("id:")) {
+          const seq = Number.parseInt(trimmedLine.slice(3).trim(), 10);
+          currentSeq = Number.isFinite(seq) ? seq : null;
+          continue;
+        }
         if (trimmedLine.startsWith(":")) {
           continue;
         }
+        suppressed =
+          currentSeq !== null &&
+          currentSeq <= (options.suppressThroughSeq ?? 0);
+        // Lines are only split off the buffer once complete, so this data
+        // line is handled in full (every packet it maps to is yielded before
+        // the next read).
+        if (currentSeq !== null) handledSeq = currentSeq;
         if (
           trimmedLine === "data: [DONE]" ||
           trimmedLine === "[DONE]" ||
           trimmedLine === "data:"
         ) {
-          yield {
+          yield* emit({
             placement: { turn_index: turnIndex, sub_turn_index: null },
             obj: { type: "stop", stop_reason: "finished" },
-          } as T;
+          } as T);
           continue;
         }
 
@@ -269,6 +327,13 @@ export async function* handleSSEStream<T extends PacketType>(
 
         try {
           const backendPacket = JSON.parse(jsonLine) as BackendPacket;
+
+          // Run lifecycle meta packets: never rendered, never yielded, and
+          // they never touch the turn/tool bookkeeping below.
+          if (isRunMetaPacket(backendPacket)) {
+            options.onRunMeta?.(backendPacket);
+            continue;
+          }
 
           // The real, persisted ids for this turn — sent once, near the end
           // of the stream, with no `type` field. It's pure metadata, not a
@@ -284,7 +349,7 @@ export async function* handleSSEStream<T extends PacketType>(
             "reserved_assistant_message_id" in backendPacket ||
             "user_message_id" in backendPacket
           ) {
-            yield backendPacket as unknown as T;
+            yield* emit(backendPacket as unknown as T);
             continue;
           }
 
@@ -299,7 +364,7 @@ export async function* handleSSEStream<T extends PacketType>(
             backendPacket.type === "flow_stage_end" ||
             backendPacket.type === "flow_stage_output_delta"
           ) {
-            yield {
+            yield* emit({
               placement: {
                 turn_index: turnIndex,
                 sub_turn_index: null,
@@ -307,9 +372,10 @@ export async function* handleSSEStream<T extends PacketType>(
                 stage_order: (backendPacket as any).stage_order,
                 iteration: (backendPacket as any).iteration,
                 is_final_stage: (backendPacket as any).is_final_stage,
+                is_loop_body: (backendPacket as any).is_loop_body,
               },
               obj: backendPacket,
-            } as T;
+            } as T);
             continue;
           }
 
@@ -330,10 +396,10 @@ export async function* handleSSEStream<T extends PacketType>(
             lastToolPacketType = null;
             sawTokenForCurrentAnswer = false;
             hasMessageStartForCurrentAnswer = false;
-            yield {
+            yield* emit({
               placement: { turn_index: humanInputTurn, sub_turn_index: null },
               obj: backendPacket,
-            } as T;
+            } as T);
             continue;
           }
 
@@ -344,13 +410,13 @@ export async function* handleSSEStream<T extends PacketType>(
             backendPacket.type === "user_clarification_answered" &&
             lastClarificationTurn !== null
           ) {
-            yield {
+            yield* emit({
               placement: {
                 turn_index: lastClarificationTurn,
                 sub_turn_index: null,
               },
               obj: backendPacket,
-            } as T;
+            } as T);
             continue;
           }
 
@@ -453,7 +519,7 @@ export async function* handleSSEStream<T extends PacketType>(
           if (backendPacket.type === "message_start") {
             const duration = (backendPacket as any)
               .pre_answer_processing_seconds;
-            yield {
+            yield* emit({
               placement: { turn_index: turnIndex, sub_turn_index: null },
               obj: {
                 type: "message_start",
@@ -461,7 +527,7 @@ export async function* handleSSEStream<T extends PacketType>(
                 final_documents: null,
                 pre_answer_processing_seconds: duration,
               },
-            } as T;
+            } as T);
             hasMessageStartForCurrentAnswer = true;
             continue;
           }
@@ -470,14 +536,14 @@ export async function* handleSSEStream<T extends PacketType>(
             backendPacket.type === "token" &&
             !hasMessageStartForCurrentAnswer
           ) {
-            yield {
+            yield* emit({
               placement: { turn_index: turnIndex, sub_turn_index: null },
               obj: {
                 type: "message_start",
                 content: "",
                 final_documents: null,
               },
-            } as T;
+            } as T);
             hasMessageStartForCurrentAnswer = true;
           }
 
@@ -487,7 +553,7 @@ export async function* handleSSEStream<T extends PacketType>(
           ) {
             const duration = (backendPacket as any).content?.additional_kwargs
               ?.processing_duration_seconds;
-            yield {
+            yield* emit({
               placement: { turn_index: turnIndex, sub_turn_index: null },
               obj: {
                 type: "message_start",
@@ -495,7 +561,7 @@ export async function* handleSSEStream<T extends PacketType>(
                 final_documents: null,
                 pre_answer_processing_seconds: duration,
               },
-            } as T;
+            } as T);
             hasMessageStartForCurrentAnswer = true;
           }
 
@@ -534,7 +600,7 @@ export async function* handleSSEStream<T extends PacketType>(
             documentTurnIndex = null;
           }
 
-          yield mappedPacket as T;
+          yield* emit(mappedPacket as T);
         } catch (error) {
           console.error("Error parsing SSE data:", error);
         }
@@ -543,5 +609,9 @@ export async function* handleSSEStream<T extends PacketType>(
   } catch (error) {
     console.error("Stream error:", error);
     throw error;
+  } finally {
+    // A stream can end, or fail, right after an event's data line and before
+    // its blank line: that event was still delivered.
+    reportHandledSeq();
   }
 }

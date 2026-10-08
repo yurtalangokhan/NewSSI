@@ -4,12 +4,12 @@ import os
 
 os.environ.setdefault("MCP_HOST", "127.0.0.1")
 os.environ.setdefault("MCP_PORT", "9000")
-os.environ.setdefault("USER_SERVICE_URL", "http://user-service")
+os.environ.setdefault("INTERNAL_USER_SERVICE_URL", "http://apisix:8000/internal/user-service")
 os.environ.setdefault("POSTGRES_HOST", "postgres")
 os.environ.setdefault("POSTGRES_PORT", "5432")
-os.environ.setdefault("POSTGRES_USER", "tools")
-os.environ.setdefault("POSTGRES_PASSWORD", "secret")
-os.environ.setdefault("POSTGRES_DB", "tools")
+os.environ.setdefault("POSTGRES_TOOL_SERVICE_USER", "tools")
+os.environ.setdefault("POSTGRES_TOOL_SERVICE_PASSWORD", "secret")
+os.environ.setdefault("POSTGRES_TOOL_SERVICE_DB", "tools")
 
 
 def test_log_startup_banner_uses_structured_logger() -> None:

@@ -1,8 +1,8 @@
 "use client";
+import { connectMcpOAuthResponse } from "@/lib/api/domains/tools/api";
 
 import { useState, useMemo, useEffect } from "react";
 import useSWR, { KeyedMutator } from "swr";
-import { errorHandlingFetcher, authenticatedFetch } from "@/lib/fetcher";
 import Modal from "@/refresh-components/Modal";
 import { FormField } from "@/refresh-components/form/FormField";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
@@ -25,13 +25,18 @@ import {
 import Separator from "@/refresh-components/Separator";
 import Tabs from "@/refresh-components/Tabs";
 import { PerUserAuthConfig } from "@/sections/actions/PerUserAuthConfig";
-import { updateMCPServerStatus, upsertMCPServer } from "@/lib/tools/mcpService";
+import {
+  connectMCPServer,
+  fetchMcpServerAdminDetail,
+  updateMCPServerStatus,
+} from "@/lib/api/domains/tools/api";
 import Message from "@/refresh-components/messages/Message";
 import { toast } from "@/hooks/useToast";
 import { SvgArrowExchange } from "@opal/icons";
-import { useAuthType } from "@/lib/hooks";
+import { useAuthType } from "@/lib/api/domains/session/hooks";
 import { AuthType } from "@/lib/constants";
 import { useTranslation } from "react-i18next";
+import { savedAuthChoice } from "@/sections/actions/modals/mcpAuthChoice";
 
 interface MCPAuthenticationModalProps {
   mcpServer: MCPServer | null;
@@ -111,7 +116,7 @@ export default function MCPAuthenticationModal({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Check if OAuth is enabled for the Onyx instance
+  // Check if OAuth is enabled for the Atlas instance
   const authType = useAuthType();
   const isOAuthEnabled =
     authType === AuthType.OIDC || authType === AuthType.GOOGLE_OAUTH;
@@ -125,21 +130,25 @@ export default function MCPAuthenticationModal({
 
   // Get the current frontend URL for redirect URI
   const { data: fullServer } = useSWR<MCPServer>(
-    mcpServer ? `/api/admin/mcp/servers/${mcpServer.id}` : null,
-    errorHandlingFetcher
+    mcpServer ? ["mcp-server", mcpServer.id] : null,
+    () => fetchMcpServerAdminDetail(mcpServer!.id)
   );
 
   // Set the initial active tab based on the server configuration
   useEffect(() => {
-    if (fullServer) {
-      if (
-        fullServer.auth_performer === MCPAuthenticationPerformer.ADMIN ||
-        fullServer.auth_type === MCPAuthenticationType.NONE
-      ) {
-        setActiveAuthTab("admin");
-      } else {
-        setActiveAuthTab("per-user");
-      }
+    if (!fullServer) return;
+    const saved = savedAuthChoice(fullServer);
+    if (!saved) {
+      setActiveAuthTab("per-user");
+      return;
+    }
+    if (
+      saved.auth_performer === MCPAuthenticationPerformer.ADMIN ||
+      saved.auth_type === MCPAuthenticationType.NONE
+    ) {
+      setActiveAuthTab("admin");
+    } else {
+      setActiveAuthTab("per-user");
     }
   }, [fullServer]);
 
@@ -156,45 +165,39 @@ export default function MCPAuthenticationModal({
   };
 
   const initialValues = useMemo<MCPAuthFormValues>(() => {
-    if (!fullServer) {
-      return {
-        transport: mcpServer?.server_url
-          ? getTransportFromUrl(mcpServer.server_url)
-          : MCPTransportType.STREAMABLE_HTTP,
-        auth_type: MCPAuthenticationType.OAUTH,
-        auth_performer: MCPAuthenticationPerformer.PER_USER,
-        api_token: "",
-        auth_template: {
-          headers: { Authorization: "Bearer {api_key}" },
-          required_fields: ["api_key"],
-        },
-        user_credentials: {},
-        oauth_client_id: "",
-        oauth_client_secret: "",
-      };
-    }
+    const defaults: MCPAuthFormValues = {
+      transport: mcpServer?.server_url
+        ? getTransportFromUrl(mcpServer.server_url)
+        : MCPTransportType.STREAMABLE_HTTP,
+      auth_type: MCPAuthenticationType.OAUTH,
+      auth_performer: MCPAuthenticationPerformer.PER_USER,
+      api_token: "",
+      auth_template: {
+        headers: { Authorization: "Bearer {api_key}" },
+        required_fields: ["api_key"],
+      },
+      user_credentials: {},
+      oauth_client_id: "",
+      oauth_client_secret: "",
+    };
+    const saved = savedAuthChoice(fullServer);
+    if (!fullServer || !saved) return defaults;
 
     return {
       transport: fullServer.server_url
         ? getTransportFromUrl(fullServer.server_url)
         : (fullServer.transport as MCPTransportType) ||
           MCPTransportType.STREAMABLE_HTTP,
-      auth_type:
-        (fullServer.auth_type as MCPAuthenticationType) ||
-        MCPAuthenticationType.OAUTH,
-      auth_performer:
-        (fullServer.auth_performer as MCPAuthenticationPerformer) ||
-        MCPAuthenticationPerformer.PER_USER,
+      auth_type: saved.auth_type || defaults.auth_type,
+      auth_performer: saved.auth_performer || defaults.auth_performer,
       // Admin API Token
       api_token: fullServer.admin_credentials?.api_key || "",
       // OAuth Credentials
       oauth_client_id: fullServer.admin_credentials?.client_id || "",
       oauth_client_secret: fullServer.admin_credentials?.client_secret || "",
       // Auth Template
-      auth_template: (fullServer.auth_template as MCPAuthTemplate) || {
-        headers: { Authorization: "Bearer {api_key}" },
-        required_fields: ["api_key"],
-      },
+      auth_template:
+        (fullServer.auth_template as MCPAuthTemplate) || defaults.auth_template,
       // User Credentials (substitutions)
       user_credentials:
         (fullServer.user_credentials as Record<string, string>) || {},
@@ -206,9 +209,6 @@ export default function MCPAuthenticationModal({
     const authType = values.auth_type;
 
     return {
-      name: mcpServer.name,
-      description: mcpServer.description || undefined,
-      server_url: mcpServer.server_url,
       transport: values.transport,
       auth_type: values.auth_type,
       auth_performer: values.auth_performer,
@@ -235,7 +235,6 @@ export default function MCPAuthenticationModal({
         authType === MCPAuthenticationType.OAUTH
           ? values.oauth_client_secret
           : undefined,
-      existing_server_id: mcpServer.id,
     };
   };
 
@@ -247,9 +246,11 @@ export default function MCPAuthenticationModal({
 
     try {
       const authType = values.auth_type;
-      // Step 1: Save the authentication configuration to the MCP server
-      const { data: serverResult, error: serverError } =
-        await upsertMCPServer(serverData);
+      // Step 1: Bind the supplied credentials to the registered provider.
+      const { data: serverResult, error: serverError } = await connectMCPServer(
+        mcpServer.id,
+        serverData
+      );
 
       if (serverError || !serverResult) {
         throw new Error(
@@ -267,22 +268,13 @@ export default function MCPAuthenticationModal({
 
       // Step 3: For OAuth, initiate the OAuth flow
       if (authType === MCPAuthenticationType.OAUTH) {
-        const oauthResponse = await authenticatedFetch(
-          "/api/admin/mcp/oauth/connect",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              server_id: mcpServer.id.toString(),
-              oauth_client_id: values.oauth_client_id,
-              oauth_client_secret: values.oauth_client_secret,
-              return_path: `/admin/actions/mcp/?server_id=${mcpServer.id}&trigger_fetch=true`,
-              include_resource_param: true,
-            }),
-          }
-        );
+        const oauthResponse = await connectMcpOAuthResponse({
+          server_id: mcpServer.id.toString(),
+          oauth_client_id: values.oauth_client_id,
+          oauth_client_secret: values.oauth_client_secret,
+          return_path: `/admin/actions/mcp/?server_id=${mcpServer.id}&trigger_fetch=true`,
+          include_resource_param: true,
+        });
 
         if (!oauthResponse.ok) {
           const error = await oauthResponse.json();
@@ -416,22 +408,26 @@ export default function MCPAuthenticationModal({
                             {isOAuthEnabled && (
                               <InputSelect.Item
                                 value={MCPAuthenticationType.PT_OAUTH}
-                                description="Forward the user's OAuth access token used to authenticate Onyx."
+                                description={t(
+                                  "admin.mcpAuth.oauthPassThroughDescription"
+                                )}
                               >
-                                OAuth Pass-through
+                                {t("admin.mcpAuth.oauthPassThrough")}
                               </InputSelect.Item>
                             )}
                             <InputSelect.Item
                               value={MCPAuthenticationType.API_TOKEN}
-                              description="Use per-user individual API key or organization-wide shared API key."
-                            >
-                              {t("admin.mcpAuth.oauthPassThrough")}
-                            </InputSelect.Item>
-                            <InputSelect.Item
-                              value={MCPAuthenticationType.NONE}
                               description={t("admin.mcpAuth.apiKeyDescription")}
                             >
                               {t("admin.mcpAuth.apiKey")}
+                            </InputSelect.Item>
+                            <InputSelect.Item
+                              value={MCPAuthenticationType.NONE}
+                              description={t(
+                                "admin.mcpAuth.noAuthenticationText"
+                              )}
+                            >
+                              {t("admin.mcpAuth.none")}
                             </InputSelect.Item>
                           </InputSelect.Content>
                         </InputSelect>
@@ -512,13 +508,9 @@ export default function MCPAuthenticationModal({
                       <div className="flex flex-col gap-2">
                         <Text as="p" text03 secondaryBody>
                           {t("admin.mcpAuth.dcrInfo")}
-                          {t("admin.mcpAuth.nonDcrInfo")}
                         </Text>
                         <Text as="p" text03 secondaryBody>
-                          If your server does not support DCR, you need register
-                          your Onyx instance with the server provider to obtain
-                          these credentials first. Make sure to grant Onyx
-                          necessary scopes/permissions for your actions.
+                          {t("admin.mcpAuth.nonDcrInfo")}
                         </Text>
 
                         {/* Redirect URI */}

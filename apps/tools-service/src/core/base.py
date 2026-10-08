@@ -3,11 +3,11 @@ Base classes for tool categories.
 Provides abstract base class that all tool categories must implement.
 """
 
-import json
 from abc import ABC, abstractmethod
+import json
 from typing import Any
 
-from i18n import t
+from localization import t
 
 
 class BaseToolCategory(ABC):

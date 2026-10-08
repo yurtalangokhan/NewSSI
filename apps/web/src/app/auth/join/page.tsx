@@ -2,9 +2,9 @@ import { User } from "@/lib/types";
 import {
   getCurrentUserSS,
   getAuthTypeMetadataSS,
-  AuthTypeMetadata,
   getAuthUrlSS,
-} from "@/lib/userSS";
+} from "@/lib/api/domains/session/server";
+import type { AuthTypeMetadata } from "@/lib/api/domains/session/types";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import EmailPasswordForm from "../login/EmailPasswordForm";

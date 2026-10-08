@@ -5,6 +5,7 @@ import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import AgentPreviewTooltip from "@/refresh-components/agents/AgentPreviewTooltip";
 import { getProviderIcon } from "@/app/admin/configuration/llm/utils";
 import { useFieldOptions } from "./useFieldOptions";
+import { resolveFieldName } from "./fieldName";
 import type { FieldRendererProps } from "./types";
 import { useTranslation } from "react-i18next";
 
@@ -15,6 +16,7 @@ export function OptionsField({
   onChange,
   disabled,
   allValues,
+  componentType,
 }: FieldRendererProps) {
   const { t } = useTranslation();
   // Narrowing by a sibling field (the chosen provider for `llm.models`) now
@@ -30,22 +32,22 @@ export function OptionsField({
   }
 
   const hasNoOptions = options.length === 0 || unavailable;
+  // The placeholder's interpolated word is the field's own name in the active
+  // locale: the server's English `display_name` would leave a translated
+  // sentence half English ("model seçin...").
+  const fieldName = resolveFieldName(t, fieldKey, field, componentType);
   const placeholderText = unavailable
     ? t(
         "flowCanvas.fields.options.sourceUnavailable",
         "Option source unavailable"
       )
     : options.length === 0
-      ? t(
-          "flowCanvas.fields.options.noOptions",
-          `No ${field.display_name.toLowerCase()} available`,
-          { field: field.display_name.toLowerCase() }
-        )
-      : t(
-          "flowCanvas.fields.options.select",
-          `Select ${field.display_name.toLowerCase()}...`,
-          { field: field.display_name.toLowerCase() }
-        );
+      ? t("flowCanvas.fields.options.noOptions", `No ${fieldName} available`, {
+          field: fieldName,
+        })
+      : t("flowCanvas.fields.options.select", `Select ${fieldName}...`, {
+          field: fieldName,
+        });
 
   return (
     <InputSelect

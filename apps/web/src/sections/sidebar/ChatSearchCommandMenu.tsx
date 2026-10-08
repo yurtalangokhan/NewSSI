@@ -6,7 +6,7 @@ import type { Route } from "next";
 import CommandMenu, {
   useCommandMenuContext,
 } from "@/refresh-components/commandmenu/CommandMenu";
-import { useProjects } from "@/lib/hooks/useProjects";
+import { useProjects } from "@/lib/api/domains/projects/hooks";
 import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
 import CreateProjectModal from "@/components/modals/CreateProjectModal";
 import {
@@ -14,7 +14,7 @@ import {
   highlightMatch,
 } from "@/sections/sidebar/chatSearchUtils";
 import { useSettingsContext } from "@/providers/SettingsProvider";
-import { useCurrentAgent } from "@/hooks/useAgents";
+import { useCurrentAgent } from "@/lib/api/domains/agents/hooks";
 import { useProjectsContext } from "@/providers/ProjectsContext";
 import Text from "@/refresh-components/texts/Text";
 import { useChatSearchOptimistic } from "./useChatSearchOptimistic";

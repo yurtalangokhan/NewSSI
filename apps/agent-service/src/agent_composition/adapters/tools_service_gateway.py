@@ -21,14 +21,14 @@ def _mcp_endpoint(service_url: str) -> str:
 
 
 @asynccontextmanager
-async def _open_mcp_session(
-    url: str, headers: dict[str, str]
-) -> AsyncIterator[ClientSession]:
+async def _open_mcp_session(url: str, headers: dict[str, str]) -> AsyncIterator[ClientSession]:
     """Open and initialize one Streamable HTTP MCP session."""
-    async with streamablehttp_client(url, headers=headers) as (read, write, _session_id):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            yield session
+    async with (
+        streamablehttp_client(url, headers=headers) as (read, write, _session_id),
+        ClientSession(read, write) as session,
+    ):
+        await session.initialize()
+        yield session
 
 
 def _content_to_dict(content: Any) -> dict[str, Any]:
@@ -54,13 +54,16 @@ class ToolsServiceToolBinding(ToolBinding):
         headers["Authorization"] = f"Bearer {self._internal_token}"
         try:
             async with _open_mcp_session(self._mcp_url, headers) as session:
-                result = await session.call_tool(
-                    self.descriptor.key, dict(invocation.model_arguments)
-                )
+                result = await session.call_tool(self.descriptor.key, dict(invocation.model_arguments))
             content = tuple(_content_to_dict(item) for item in result.content)
             if result.isError:
                 raise ToolInvocationError(message="Tool call failed")
-            return ToolResult(output=content, metadata={"tool": self.descriptor.key})
+            structured = getattr(result, "structuredContent", None)
+            return ToolResult(
+                output=content,
+                metadata={"tool": self.descriptor.key},
+                structured=structured if isinstance(structured, dict) else None,
+            )
         except ToolInvocationError:
             raise
         except Exception as exc:

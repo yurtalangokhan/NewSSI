@@ -4,23 +4,26 @@ import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
 
-import { errorHandlingFetcher } from "@/lib/fetcher";
-
 // Any type that has an id property
 type PaginatedType = {
   id: number | string;
   [key: string]: any;
 };
 
-interface PaginatedApiResponse<T extends PaginatedType> {
+export interface PaginatedApiResponse<T extends PaginatedType> {
   items: T[];
   total_items: number;
+  // A filtered page reports how far the backend read, plus one probe row, so
+  // that another page can be offered without counting the whole directory.
+  // Absent means the endpoint always counts, as it did before.
+  total_items_exact?: boolean;
 }
 
-interface PaginationConfig {
+interface PaginationConfig<T extends PaginatedType> {
   itemsPerPage: number;
   pagesPerBatch: number;
-  endpoint: string;
+  requestKey: string;
+  loadPage: (params: URLSearchParams) => Promise<PaginatedApiResponse<T>>;
   query?: string;
   filter?: Record<string, string | boolean | number | string[] | Date>;
   refreshIntervalInMs?: number; // 0 or undefined to disable polling
@@ -33,6 +36,9 @@ interface PaginatedHookReturnData<T extends PaginatedType> {
   currentPage: number;
   totalPages: number;
   totalItems: number;
+  // False when totalItems is a lower bound rather than a count: enough to page
+  // with, never enough to display as a total.
+  totalItemsExact: boolean;
   goToPage: (page: number) => void;
   refresh: () => Promise<void>;
   updateItem: (itemId: T["id"], updater: (item: T) => T) => void;
@@ -41,11 +47,12 @@ interface PaginatedHookReturnData<T extends PaginatedType> {
 function usePaginatedFetch<T extends PaginatedType>({
   itemsPerPage,
   pagesPerBatch,
-  endpoint,
+  requestKey,
+  loadPage,
   query,
   filter,
   refreshIntervalInMs = 0, // Disabled by default; set to > 0 to enable periodic polling
-}: PaginationConfig): PaginatedHookReturnData<T> {
+}: PaginationConfig<T>): PaginatedHookReturnData<T> {
   const router = useRouter();
   const currentPath = usePathname();
   const searchParams = useSearchParams();
@@ -58,12 +65,35 @@ function usePaginatedFetch<T extends PaginatedType>({
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [totalItems, setTotalItems] = useState<number>(0);
+  const [totalItemsExact, setTotalItemsExact] = useState<boolean>(true);
   const [cachedBatches, setCachedBatches] = useState<{ [key: number]: T[][] }>(
     {}
   );
 
-  // Tracks ongoing requests to avoid duplicate requests, uses ref to persist across renders
-  const ongoingRequestsRef = useRef<Set<number>>(new Set());
+  // Tracks ongoing requests to avoid duplicate requests, uses ref to persist across renders.
+  // Keyed by the request's parameters as well as its batch, so that changing the
+  // search term or the filters is never mistaken for a duplicate of the request
+  // already in flight for the previous ones.
+  const ongoingRequestsRef = useRef<Set<string>>(new Set());
+  const loadPageRef = useRef(loadPage);
+  useEffect(() => {
+    loadPageRef.current = loadPage;
+  }, [loadPage]);
+
+  // Identifies the set of results currently being asked for. Responses that
+  // belong to an earlier one are discarded instead of being cached under the
+  // current search term.
+  const effectiveRequestKey = useMemo(
+    () =>
+      JSON.stringify({
+        requestKey,
+        query: query ?? "",
+        filter: filter ?? null,
+      }),
+    [requestKey, query, filter]
+  );
+  const requestKeyRef = useRef(effectiveRequestKey);
+  requestKeyRef.current = effectiveRequestKey;
 
   const totalPages = useMemo(() => {
     if (totalItems === 0) return 1;
@@ -81,10 +111,11 @@ function usePaginatedFetch<T extends PaginatedType>({
   const fetchBatchData = useCallback(
     async (batchNum: number) => {
       // Prevents duplicate requests
-      if (ongoingRequestsRef.current.has(batchNum)) {
+      const requestId = `${effectiveRequestKey}#${batchNum}`;
+      if (ongoingRequestsRef.current.has(requestId)) {
         return;
       }
-      ongoingRequestsRef.current.add(batchNum);
+      ongoingRequestsRef.current.add(requestId);
 
       try {
         // Build query params
@@ -112,9 +143,7 @@ function usePaginatedFetch<T extends PaginatedType>({
           }
         }
 
-        const url = `${endpoint}?${params.toString()}`;
-        const responseData =
-          await errorHandlingFetcher<PaginatedApiResponse<T>>(url);
+        const responseData = await loadPageRef.current(params);
 
         // Validate response data structure
         if (
@@ -127,7 +156,13 @@ function usePaginatedFetch<T extends PaginatedType>({
           );
         }
 
+        // The search term or filters moved on while this was in flight.
+        if (requestKeyRef.current !== effectiveRequestKey) {
+          return;
+        }
+
         setTotalItems(responseData.total_items);
+        setTotalItemsExact(responseData.total_items_exact ?? true);
 
         // Splits a batch into pages
         const pagesInBatch = Array.from({ length: pagesPerBatch }, (_, i) => {
@@ -143,12 +178,14 @@ function usePaginatedFetch<T extends PaginatedType>({
           [batchNum]: pagesInBatch,
         }));
       } catch (error) {
-        setError(error instanceof Error ? error : new Error(String(error)));
+        if (requestKeyRef.current === effectiveRequestKey) {
+          setError(error instanceof Error ? error : new Error(String(error)));
+        }
       } finally {
-        ongoingRequestsRef.current.delete(batchNum);
+        ongoingRequestsRef.current.delete(requestId);
       }
     },
-    [endpoint, pagesPerBatch, itemsPerPage, query, filter]
+    [effectiveRequestKey, pagesPerBatch, itemsPerPage, query, filter]
   );
 
   // Updates the URL with the current page number
@@ -269,15 +306,17 @@ function usePaginatedFetch<T extends PaginatedType>({
     setCachedBatches({});
     setCurrentPageData(null);
     setTotalItems(0);
+    setTotalItemsExact(true);
     goToPage(1);
     setError(null);
-  }, [currentPath, query, filter]);
+  }, [currentPath, effectiveRequestKey]);
 
   return {
     currentPage,
     currentPageData,
     totalPages,
     totalItems,
+    totalItemsExact,
     goToPage,
     refresh,
     updateItem,

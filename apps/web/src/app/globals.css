@@ -13,6 +13,7 @@
 @import "css/knowledge-table.css";
 @import "css/line-item.css";
 @import "css/sidebar-tab.css";
+@import "css/sidebar-turksat.css";
 @import "css/sizes.css";
 @import "css/square-button.css";
 @import "css/switch.css";
@@ -264,9 +265,9 @@
     --border-inverted-02: var(--grey-60);
     --border-inverted-01: var(--grey-80);
 
-    --theme-primary-06: var(--onyx-ink-100);
-    --theme-primary-05: var(--onyx-ink-95);
-    --theme-primary-04: var(--onyx-ink-90);
+    --theme-primary-06: var(--atlas-ink-100);
+    --theme-primary-05: var(--atlas-ink-95);
+    --theme-primary-04: var(--atlas-ink-90);
 
     --theme-gradient-05: var(--tint-50);
     --theme-gradient-00: var(--grey-100);
@@ -461,13 +462,48 @@
     stroke: rgba(255, 255, 255, 0.6) !important;
   }
 
+  .auth-login-shell input,
+  .auth-login-shell textarea,
+  .auth-login-shell select {
+    color-scheme: light;
+    color: #0f172a;
+    font-size: 1rem;
+    line-height: 1.5rem;
+    font-family: var(--font-hanken-grotesk), "Hanken Grotesk", sans-serif !important;
+  }
+
   .auth-login-shell input:-webkit-autofill,
   .auth-login-shell input:-webkit-autofill:hover,
-  .auth-login-shell input:-webkit-autofill:focus {
-    -webkit-text-fill-color: var(--text-04) !important;
-    -webkit-box-shadow: 0 0 0px 1000px var(--background-neutral-00) inset !important;
-    box-shadow: 0 0 0px 1000px var(--background-neutral-00) inset !important;
+  .auth-login-shell input:-webkit-autofill:focus,
+  .auth-login-shell input:-webkit-autofill:active,
+  .auth-login-shell input:autofill,
+  .auth-login-shell input:autofill:hover,
+  .auth-login-shell input:autofill:focus,
+  .auth-login-shell input:autofill:active {
+    color-scheme: light !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
+    box-shadow: 0 0 0px 1000px #ffffff inset !important;
+    font-family: var(--font-hanken-grotesk), "Hanken Grotesk", sans-serif !important;
+    font-size: 1rem !important;
+    font-weight: inherit !important;
+    line-height: 1.5rem !important;
+    letter-spacing: inherit !important;
+    caret-color: #0f172a !important;
     transition: background-color 5000s ease-in-out 0s;
+  }
+
+  .auth-login-shell input:-webkit-autofill::first-line,
+  .auth-login-shell input:autofill::first-line {
+    color-scheme: light !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    font-family: var(--font-hanken-grotesk), "Hanken Grotesk", sans-serif !important;
+    font-size: 1rem !important;
+    font-weight: inherit !important;
+    line-height: 1.5rem !important;
+    letter-spacing: inherit !important;
   }
 }
 

@@ -125,6 +125,7 @@ function CheckboxInner(
       <div
         role="checkbox"
         aria-checked={indeterminate ? "mixed" : checked}
+        aria-disabled={disabled ?? false}
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledby}
         aria-describedby={ariaDescribedby}

@@ -1,3 +1,4 @@
+import { envelopeResponse, fakeResponse } from "@tests/setup/responseModel";
 import { screen, waitFor } from "@testing-library/react";
 import { mutate } from "swr";
 import "@/i18n/config";
@@ -7,18 +8,22 @@ import { toast } from "@/hooks/useToast";
 import { render, setupUser } from "@tests/setup/test-utils";
 
 let managementEditable = false;
+let membersPending = false;
 let organizationName = "Platform";
 let organizationPath = "/platform";
 let organizationChildren: any[] = [];
 let globalCanCreateRoot = false;
-let globalCanEditLayout = false;
+let globalOrganizationScope = true;
+let globalCanMoveOrganization = false;
 let swrKeys: Array<string | null> = [];
+let treeDataCacheKey = "";
+let treeDataCache: { roots: any[] } | undefined;
 
 jest.mock("@/providers/UserProvider", () => ({
   useUser: () => ({
     hasPermission: (permission: string) =>
       (permission === "org:create" && globalCanCreateRoot) ||
-      (permission === "org:update" && globalCanEditLayout),
+      (permission === "org:move" && globalCanMoveOrganization),
   }),
 }));
 
@@ -27,9 +32,22 @@ jest.mock("swr", () => ({
   __esModule: true,
   default: jest.fn((key: string | null) => {
     swrKeys.push(key);
-    if (key?.startsWith("/api/user-service/organizations/tree")) {
+    if (key === "/api/user-service/organizations/scope")
       return {
         data: {
+          global_access: globalOrganizationScope,
+          root_ids: globalOrganizationScope ? [] : ["org-1"],
+        },
+      };
+    if (key?.startsWith("/api/user-service/organizations/tree")) {
+      const nextCacheKey = JSON.stringify([
+        organizationName,
+        organizationPath,
+        organizationChildren,
+      ]);
+      if (!treeDataCache || treeDataCacheKey !== nextCacheKey) {
+        treeDataCacheKey = nextCacheKey;
+        treeDataCache = {
           roots: [
             {
               id: "org-1",
@@ -39,11 +57,15 @@ jest.mock("swr", () => ({
               children: organizationChildren,
             },
           ],
-        },
+        };
+      }
+      return {
+        data: treeDataCache,
         isLoading: false,
       };
     }
     if (key?.endsWith("/users")) {
+      if (membersPending) return { data: undefined, isLoading: true };
       return {
         data: {
           users: [
@@ -173,7 +195,7 @@ jest.mock("@/components/organization/OrganizationDesigner", () => ({
     onRemoveUser,
     onAccessSaveComplete,
     canCreateRoot,
-    canEditLayout,
+    canMoveOrganization,
     showMembers,
     membersByOrganizationId,
     onShowMembersChange,
@@ -213,9 +235,7 @@ jest.mock("@/components/organization/OrganizationDesigner", () => ({
       <span>
         {canCreateRoot ? "Root creation permitted" : "Root creation denied"}
       </span>
-      <span>
-        {canEditLayout ? "Layout editing permitted" : "Layout editing denied"}
-      </span>
+      <span>{canMoveOrganization ? "Moving permitted" : "Moving denied"}</span>
       <button onClick={onClose}>Close designer</button>
       <button
         onClick={() => onUpdateOrg(selectedOrg.id, { name: "Platform Core" })}
@@ -266,12 +286,16 @@ describe("OrganizationsPage", () => {
 
   beforeEach(() => {
     managementEditable = false;
+    membersPending = false;
     organizationName = "Platform";
     organizationPath = "/platform";
     organizationChildren = [];
     globalCanCreateRoot = false;
-    globalCanEditLayout = false;
+    globalOrganizationScope = true;
+    globalCanMoveOrganization = false;
     swrKeys = [];
+    treeDataCacheKey = "";
+    treeDataCache = undefined;
     window.sessionStorage.clear();
     // Serves organization CRUD and membership mutation endpoints used by this page.
     jest.spyOn(global, "fetch").mockImplementation(async (request, options) => {
@@ -284,10 +308,10 @@ describe("OrganizationsPage", () => {
       if (
         typeof request === "string" &&
         request.endsWith("/users") &&
-        (!options || options.method === "GET")
+        (!options?.method || options.method === "GET")
       ) {
-        return new Response(
-          JSON.stringify({
+        return envelopeResponse(
+          {
             users: [
               {
                 id: "membership-1",
@@ -299,25 +323,33 @@ describe("OrganizationsPage", () => {
               },
             ],
             count: 1,
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } }
+          },
+          { status: 200 }
         );
       }
       if (typeof request === "string" && request.endsWith("/children")) {
-        return new Response(JSON.stringify({ children: [], count: 0 }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        });
+        return envelopeResponse({ children: [], count: 0 }, { status: 200 });
       }
-      return new Response(JSON.stringify({ role_in_org: "unit_manager" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+      return envelopeResponse({ role_in_org: "unit_manager" }, { status: 200 });
     });
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  it("shows member loading instead of empty assignments while the request is pending", async () => {
+    membersPending = true;
+    const user = setupUser();
+    render(<OrganizationsPage />);
+    await user.click(screen.getByRole("button", { name: "Select Platform" }));
+    expect(screen.getByRole("region", { name: "Loading" })).toHaveAttribute(
+      "aria-busy",
+      "true"
+    );
+    expect(
+      screen.queryByText("No users assigned to this organization.")
+    ).not.toBeInTheDocument();
   });
 
   it("promotes Agents and Collections beside Users as main tabs", async () => {
@@ -377,6 +409,9 @@ describe("OrganizationsPage", () => {
     expect(
       window.sessionStorage.getItem("admin-organizations-show-members")
     ).toBe("true");
+    await waitFor(() =>
+      expect(screen.getByText("Tree members: 1")).toBeInTheDocument()
+    );
 
     await user.click(
       screen.getByRole("button", { name: "Open organization designer" })
@@ -473,7 +508,7 @@ describe("OrganizationsPage", () => {
     });
   });
 
-  it("uses the Users page role catalog plus the localized unit manager role", async () => {
+  it("offers only non-administrator catalog roles and the localized unit manager role", async () => {
     managementEditable = true;
     const user = setupUser();
     render(<OrganizationsPage />);
@@ -485,11 +520,11 @@ describe("OrganizationsPage", () => {
       screen.getByRole("option", { name: "End User" })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: "Enterprise Admin" })
-    ).toBeInTheDocument();
+      screen.queryByRole("option", { name: "Enterprise Admin" })
+    ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: "System Admin" })
-    ).toBeInTheDocument();
+      screen.queryByRole("option", { name: "System Admin" })
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("option", { name: "Unit manager" })
     ).toBeInTheDocument();
@@ -525,7 +560,7 @@ describe("OrganizationsPage", () => {
     expect(designer).toHaveTextContent("Children: Runtime");
   });
 
-  it("revalidates exactly tree and layout after create", async () => {
+  it("revalidates exactly tree after create", async () => {
     managementEditable = true;
     const user = setupUser();
     render(<OrganizationsPage />);
@@ -538,10 +573,9 @@ describe("OrganizationsPage", () => {
     await user.click(
       screen.getByRole("button", { name: "Create in designer" })
     );
-    await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(1));
     expect(jest.mocked(mutate).mock.calls).toEqual([
       ["/api/user-service/organizations/tree?max_depth=2"],
-      ["/api/user-service/organizations/layout"],
     ]);
   });
 
@@ -571,7 +605,7 @@ describe("OrganizationsPage", () => {
     ).toBeTruthy();
   });
 
-  it("revalidates exactly tree and layout after move", async () => {
+  it("revalidates exactly tree after move", async () => {
     managementEditable = true;
     const successToast = jest.spyOn(toast, "success");
     const user = setupUser();
@@ -583,17 +617,16 @@ describe("OrganizationsPage", () => {
     jest.mocked(mutate).mockClear();
 
     await user.click(screen.getByRole("button", { name: "Move in designer" }));
-    await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(1));
     expect(jest.mocked(mutate).mock.calls).toEqual([
       ["/api/user-service/organizations/tree?max_depth=2"],
-      ["/api/user-service/organizations/layout"],
     ]);
     expect(successToast).toHaveBeenCalledWith(
       "Organization moved successfully"
     );
   });
 
-  it("revalidates exactly tree and layout after delete", async () => {
+  it("revalidates exactly tree after delete", async () => {
     managementEditable = true;
     const user = setupUser();
     render(<OrganizationsPage />);
@@ -606,10 +639,9 @@ describe("OrganizationsPage", () => {
     await user.click(
       screen.getByRole("button", { name: "Delete in designer" })
     );
-    await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(1));
     expect(jest.mocked(mutate).mock.calls).toEqual([
       ["/api/user-service/organizations/tree?max_depth=2"],
-      ["/api/user-service/organizations/layout"],
     ]);
   });
 
@@ -629,12 +661,12 @@ describe("OrganizationsPage", () => {
       .mocked(global.fetch)
       .mockImplementation(async (request: any, options: any) => {
         if (request === "/api/user-service/organizations/org-1/children") {
-          return new Response(
-            JSON.stringify({
+          return envelopeResponse(
+            {
               children: platformChildren,
               count: platformChildren.length,
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
+            },
+            { status: 200 }
           );
         }
         return baseFetch(request, options);
@@ -712,12 +744,13 @@ describe("OrganizationsPage", () => {
   );
 
   it.each([
-    [true, "Layout editing permitted"],
-    [false, "Layout editing denied"],
+    [true, "Moving permitted"],
+    [false, "Moving denied"],
   ])(
-    "passes coarse org:update permission %s to the designer",
+    "passes org:move permission %s to the designer",
     async (allowed, label) => {
-      globalCanEditLayout = allowed;
+      globalOrganizationScope = false;
+      globalCanMoveOrganization = allowed;
       const user = setupUser();
       render(<OrganizationsPage />);
       await user.click(
@@ -765,8 +798,8 @@ describe("OrganizationsPage", () => {
     const user = setupUser();
     jest.spyOn(global, "fetch").mockImplementation(async (request) => {
       if (request === "/api/user-service/organizations/org-1/children") {
-        return new Response(
-          JSON.stringify({
+        return envelopeResponse(
+          {
             children: [
               {
                 id: "child-1",
@@ -776,13 +809,13 @@ describe("OrganizationsPage", () => {
               },
             ],
             count: 1,
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } }
+          },
+          { status: 200 }
         );
       }
       if (request === "/api/user-service/organizations/org-1/users") {
-        return new Response(
-          JSON.stringify({
+        return envelopeResponse(
+          {
             users: [
               {
                 id: "membership-1",
@@ -792,11 +825,11 @@ describe("OrganizationsPage", () => {
               },
             ],
             count: 1,
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } }
+          },
+          { status: 200 }
         );
       }
-      return new Response(JSON.stringify({}), { status: 200 });
+      return envelopeResponse({}, { status: 200 });
     });
 
     render(<OrganizationsPage />);
@@ -805,10 +838,12 @@ describe("OrganizationsPage", () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        "/api/user-service/organizations/org-1/children"
+        "/api/user-service/organizations/org-1/children",
+        expect.any(Object)
       );
       expect(global.fetch).toHaveBeenCalledWith(
-        "/api/user-service/organizations/org-1/users"
+        "/api/user-service/organizations/org-1/users",
+        expect.any(Object)
       );
     });
   });
@@ -832,8 +867,8 @@ describe("OrganizationsPage", () => {
         "/api/user-service/organizations/search?q=security&max_results=100"
       ) {
         return Promise.resolve(
-          new Response(
-            JSON.stringify({
+          envelopeResponse(
+            {
               results: [
                 {
                   id: "security",
@@ -842,12 +877,12 @@ describe("OrganizationsPage", () => {
                   parent_id: null,
                 },
               ],
-            }),
+            },
             { status: 200 }
           )
         );
       }
-      return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
+      return Promise.resolve(envelopeResponse({}, { status: 200 }));
     });
 
     render(<OrganizationsPage />);
@@ -859,8 +894,8 @@ describe("OrganizationsPage", () => {
       expect(screen.getByText(/Search results: Security/)).toBeInTheDocument()
     );
     resolveRuntime(
-      new Response(
-        JSON.stringify({
+      envelopeResponse(
+        {
           results: [
             {
               id: "runtime",
@@ -869,11 +904,88 @@ describe("OrganizationsPage", () => {
               parent_id: null,
             },
           ],
-        }),
+        },
         { status: 200 }
       )
     );
     await Promise.resolve();
+    expect(
+      screen.queryByText(/Search results: Runtime/)
+    ).not.toBeInTheDocument();
+  });
+
+  it("refreshes an expired session before reporting search failure", async () => {
+    const user = setupUser();
+    let attempts = 0;
+    jest.spyOn(global, "fetch").mockImplementation(async (request) => {
+      if (String(request).includes("/organizations/search?")) {
+        attempts++;
+        if (attempts === 1) return fakeResponse(false, 401, {});
+        return envelopeResponse({
+          results: [
+            {
+              id: "runtime",
+              name: "Runtime",
+              path: "/runtime",
+              parent_id: null,
+            },
+          ],
+        });
+      }
+      return envelopeResponse({}, { status: 200 });
+    });
+    render(<OrganizationsPage />);
+    await user.click(screen.getByRole("button", { name: "Search runtime" }));
+    await waitFor(() =>
+      expect(screen.getByText(/Search results: Runtime/)).toBeInTheDocument()
+    );
+    expect(attempts).toBe(2);
+    expect(screen.getByText("Search error: none")).toBeInTheDocument();
+  });
+
+  it("offers loaded matches when full-tree search is unavailable", async () => {
+    organizationName = "Runtime";
+    const user = setupUser();
+    jest
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response("{}", { status: 500 }));
+    render(<OrganizationsPage />);
+    await user.click(screen.getByRole("button", { name: "Search runtime" }));
+    await waitFor(() =>
+      expect(screen.getByText(/Search results: Runtime/)).toBeInTheDocument()
+    );
+    expect(
+      screen.getByText(/Showing matches from loaded organizations/)
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Reveal first result" })
+    );
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Search error: none")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Search security" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/Search results: Runtime/)
+      ).not.toBeInTheDocument()
+    );
+    expect(
+      screen.getByText(/Organization search could not be completed/)
+    ).toBeInTheDocument();
+  });
+
+  it("does not substitute loaded matches for an authorization failure", async () => {
+    organizationName = "Runtime";
+    const user = setupUser();
+    jest
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response("{}", { status: 403 }));
+    render(<OrganizationsPage />);
+    await user.click(screen.getByRole("button", { name: "Search runtime" }));
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Organization search could not be completed/)
+      ).toBeInTheDocument()
+    );
     expect(
       screen.queryByText(/Search results: Runtime/)
     ).not.toBeInTheDocument();
@@ -897,8 +1009,8 @@ describe("OrganizationsPage", () => {
         request ===
         "/api/user-service/organizations/search?q=runtime&max_results=100"
       ) {
-        return new Response(
-          JSON.stringify({
+        return envelopeResponse(
+          {
             results: [
               {
                 id: "runtime",
@@ -908,13 +1020,13 @@ describe("OrganizationsPage", () => {
                 order_index: 2,
               },
             ],
-          }),
+          },
           { status: 200 }
         );
       }
       if (request === "/api/user-service/organizations/runtime/ancestors") {
-        return new Response(
-          JSON.stringify({
+        return envelopeResponse(
+          {
             ancestors: [
               {
                 id: "org-1",
@@ -931,11 +1043,44 @@ describe("OrganizationsPage", () => {
                 order_index: 1,
               },
             ],
-          }),
+          },
           { status: 200 }
         );
       }
-      return new Response(JSON.stringify({}), { status: 200 });
+      if (request === "/api/user-service/organizations/org-1/children") {
+        return envelopeResponse(
+          { children: organizationChildren },
+          { status: 200 }
+        );
+      }
+      if (request === "/api/user-service/organizations/platform/children") {
+        return envelopeResponse(
+          {
+            children: [
+              {
+                id: "security",
+                name: "Security",
+                path: "/org-1/platform/security",
+                parent_id: "platform",
+                order_index: 1,
+                children_count: 5,
+                has_children: true,
+              },
+              {
+                id: "runtime",
+                name: "Runtime",
+                path: "/org-1/platform/runtime",
+                parent_id: "platform",
+                order_index: 2,
+                children_count: 3,
+                has_children: true,
+              },
+            ],
+          },
+          { status: 200 }
+        );
+      }
+      return envelopeResponse({}, { status: 200 });
     });
 
     render(<OrganizationsPage />);
@@ -949,11 +1094,59 @@ describe("OrganizationsPage", () => {
 
     await waitFor(() =>
       expect(global.fetch).toHaveBeenCalledWith(
-        "/api/user-service/organizations/runtime/ancestors"
+        "/api/user-service/organizations/runtime/ancestors",
+        expect.any(Object)
       )
     );
     await waitFor(() =>
-      expect(screen.getByText("Search error: none")).toBeInTheDocument()
+      expect(
+        screen.getByText("Loaded platform children: Security, Runtime")
+      ).toBeInTheDocument()
+    );
+    const tree = JSON.parse(
+      screen.getByTestId("organization-tree").dataset.organizations!
+    );
+    expect(tree[0].children[0].children_count).toBe(2);
+    expect(tree[0].children[0].children[0].children_count).toBe(5);
+    await user.click(
+      screen.getByRole("button", { name: "Reveal first result" })
+    );
+    for (const ancestorId of ["org-1", "platform"]) {
+      expect(
+        jest
+          .mocked(global.fetch)
+          .mock.calls.filter(
+            ([url]) =>
+              url === `/api/user-service/organizations/${ancestorId}/children`
+          )
+      ).toHaveLength(1);
+    }
+    expect(global.fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining("security/children"),
+      expect.anything()
     );
   });
+});
+
+it("does not offer global root creation to an assigned unit manager", async () => {
+  globalOrganizationScope = false;
+  globalCanCreateRoot = true;
+  managementEditable = true;
+  const user = setupUser();
+  render(<OrganizationsPage />);
+  await user.click(
+    screen.getByRole("button", { name: "Open organization designer" })
+  );
+  expect(screen.getByText("Root creation denied")).toBeInTheDocument();
+});
+
+it("does not allow admins to move without org:move", async () => {
+  globalOrganizationScope = true;
+  globalCanMoveOrganization = false;
+  const user = setupUser();
+  render(<OrganizationsPage />);
+  await user.click(
+    screen.getByRole("button", { name: "Open organization designer" })
+  );
+  expect(screen.getByText("Moving denied")).toBeInTheDocument();
 });

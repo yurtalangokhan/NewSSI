@@ -18,7 +18,7 @@ src/core/settings.py            Configuration
 src/tools/*_tools.py            Auto-discovered tool categories
 src/tools/response.py           Tool response helpers
 src/tools/knowledge_tools.py    RAG-backed tools
-src/models/                     Permission catalog
+src/models/                     Permission catalog, response models and response errors
 tests/test_registry.py          Registry tests
 tests/test_*_tools.py           Category tests
 ```
@@ -57,6 +57,9 @@ Open only a document whose condition matches the change.
 - Keep retrieval implementation in RAG service; this service exposes knowledge
   tools only.
 - Use Ruff line length 100 and the existing response helpers.
+- Read configuration only through config_manager's typed accessor
+  (`from config_manager import env`); direct `os.environ`/`os.getenv` reads are
+  not allowed in application code (migrations and bootstrap excepted).
 
 ## Test scope
 

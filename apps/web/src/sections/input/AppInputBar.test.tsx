@@ -1,8 +1,8 @@
 import { render, screen, setupUser } from "@tests/setup/test-utils";
 import AppInputBar from "@/sections/input/AppInputBar";
 import type React from "react";
-import type { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
-import type { ChatState } from "@/app/app/interfaces";
+import type { MinimalPersonaSnapshot } from "@/lib/api/domains/agents/types";
+import type { ChatState } from "@/lib/api/domains/chat/types";
 
 jest.mock("react-i18next", () => ({
   initReactI18next: { type: "3rdParty", init: jest.fn() },
@@ -30,11 +30,13 @@ jest.mock("@opal/components", () => ({
       {children}
     </button>
   ),
+  Tag: ({ title }: { title: string }) => <div>{title}</div>,
 }));
 
 jest.mock("@opal/icons", () => {
   const Icon = () => <span />;
   return {
+    SvgActions: Icon,
     SvgArrowUp: Icon,
     SvgCalendar: Icon,
     SvgFiles: Icon,
@@ -90,6 +92,10 @@ jest.mock("@/refresh-components/Popover", () => {
   function MockPopoverMenu({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
+  function MockPopoverTrigger({ children }: { children: React.ReactNode }) {
+    return <>{children}</>;
+  }
+  MockPopover.Trigger = MockPopoverTrigger;
   MockPopover.Anchor = MockPopoverAnchor;
   MockPopover.Content = MockPopoverContent;
   MockPopover.Menu = MockPopoverMenu;
@@ -144,19 +150,6 @@ jest.mock("@/providers/ProjectsContext", () => ({
   }),
 }));
 
-jest.mock("@/providers/AppModeProvider", () => ({
-  useAppMode: () => ({
-    appMode: "chat",
-  }),
-}));
-
-jest.mock("@/providers/QueryControllerProvider", () => ({
-  useQueryController: () => ({
-    isClassifying: false,
-    classification: null,
-  }),
-}));
-
 jest.mock("@/providers/AppBackgroundProvider", () => ({
   useAppBackground: () => ({
     appBackground: null,
@@ -181,9 +174,10 @@ jest.mock("@/lib/hooks/useForcedTools", () => ({
   }),
 }));
 
-jest.mock("@/hooks/usePromptShortcuts", () => ({
+jest.mock("@/lib/api/domains/preferences/hooks", () => ({
+  ...jest.requireActual("@/lib/api/domains/preferences/hooks"),
   __esModule: true,
-  default: () => ({
+  usePromptShortcuts: () => ({
     activePromptShortcuts: [],
   }),
 }));
@@ -196,15 +190,16 @@ jest.mock("@/hooks/useFilter", () => ({
   }),
 }));
 
-jest.mock("@/hooks/useCCPairs", () => ({
+jest.mock("@/lib/api/domains/datasources/hooks", () => ({
+  ...jest.requireActual("@/lib/api/domains/datasources/hooks"),
   __esModule: true,
-  default: () => ({
+  useCCPairs: () => ({
     ccPairs: [],
     isLoading: false,
   }),
 }));
 
-jest.mock("@/lib/hooks", () => ({
+jest.mock("@/lib/api/domains/integrations/hooks", () => ({
   useFederatedConnectors: () => ({
     data: [],
     isLoading: false,
@@ -277,7 +272,7 @@ describe("AppInputBar", () => {
     const user = setupUser();
     const { container, stopGenerating } = renderInputBar("loading");
 
-    await user.click(container.querySelector("#onyx-chat-input-send-button")!);
+    await user.click(container.querySelector("#atlas-chat-input-send-button")!);
 
     expect(stopGenerating).toHaveBeenCalledTimes(1);
   });
@@ -298,5 +293,43 @@ describe("AppInputBar", () => {
     } as unknown as MinimalPersonaSnapshot);
 
     expect(screen.getByTestId("actions-popover")).toBeInTheDocument();
+  });
+
+  it("renders McpToolsPopover instead of deep research button when selectedAgent is an MCP agent", () => {
+    renderInputBar("input", jest.fn(), {
+      ...selectedAgent,
+      base_agent: "configurable-mcp-agent",
+      tools: [
+        {
+          id: 101,
+          name: "database_search",
+          display_name: "Veri Tabanı Arama",
+          description: "Search documents",
+        },
+      ],
+      capabilities: {
+        has_actions: true,
+        has_retrieval: true,
+      },
+    } as unknown as MinimalPersonaSnapshot);
+
+    expect(screen.getByTestId("mcp-tools-toggle")).toBeInTheDocument();
+    expect(
+      screen.queryByText("inputBar.deepResearchButton")
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["brain_type", { brain_type: "configurable-mcp-agent" }],
+    ["a non-empty mcp_tools list", { mcp_tools: ["fetch_page"] }],
+  ])("treats an agent flagged by %s as an MCP agent", (_label, flags) => {
+    renderInputBar("input", jest.fn(), {
+      ...selectedAgent,
+      base_agent: "chatbot",
+      ...flags,
+      capabilities: { has_actions: true, has_retrieval: true },
+    } as unknown as MinimalPersonaSnapshot);
+
+    expect(screen.getByTestId("mcp-tools-toggle")).toBeInTheDocument();
   });
 });

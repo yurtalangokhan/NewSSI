@@ -2,7 +2,7 @@ import { type User } from "@/lib/types";
 import { toast } from "@/hooks/useToast";
 import Button from "@/refresh-components/buttons/Button";
 import useSWRMutation from "swr/mutation";
-import userMutationFetcher from "@/lib/admin/users/userMutationFetcher";
+import { setDirectoryUserActive } from "@/lib/api/domains/access/api";
 import { SvgXCircle } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 const DeactivateUserButton = ({
@@ -22,8 +22,8 @@ const DeactivateUserButton = ({
 }) => {
   const { t } = useTranslation();
   const { trigger, isMutating } = useSWRMutation(
-    `/api/user-service/users/${user.id}/active`,
-    userMutationFetcher,
+    ["set-directory-user-active", user.id, deactivate],
+    () => setDirectoryUserActive(user.id, !deactivate),
     {
       onSuccess: (updatedUser: User) => {
         onSuccess?.(updatedUser);
@@ -42,7 +42,7 @@ const DeactivateUserButton = ({
   return (
     <Button
       className={className}
-      onClick={() => trigger({ is_active: !deactivate })}
+      onClick={() => trigger()}
       disabled={isMutating}
       leftIcon={SvgXCircle}
       tertiary
